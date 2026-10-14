@@ -240,3 +240,13 @@ README 只保留「是什么 + 核心特性 + 插件一览 + 启动指南」，�
 每个插件的细节（移植范围、配置键、与 MediaWiki 原版的差异）在各插件的 `plugin/<id>/README.md`，入口见上面的
 [内置插件一览表](#内置插件一览表)。界面文案与配置键的约定见 [docs/CONFIG.md](docs/CONFIG.md) 与
 [docs/PLUGIN-DEV.md](docs/PLUGIN-DEV.md)。
+
+## 许可证
+
+本项目以 **GNU General Public License v3.0** 发布，许可全文见 [LICENSE](LICENSE)。
+
+这意味着你可以自由地使用、修改、分发本项目（包括商用），但**衍生作品必须同样以 GPL-3.0 开源**，
+并保留版权声明与许可全文。分发时请一并附带 [LICENSE](LICENSE)。
+
+> 说明：本项目在行为上移植/参考了大量 MediaWiki 及其扩展的设计与文档描述；仓库内内置的第三方资源
+> （例如 TypeScript 编译器、Ruffle、OOUI 等前端库）**各自保留其原始许可**，详见相应目录下的许可文件。
