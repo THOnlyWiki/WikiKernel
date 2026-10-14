@@ -908,16 +908,22 @@ public class WikiPageController {
         return base.toString();
     }
 
-    /** 调用 {@link HtmlHeadProvider}：把插件生成的 meta / link 片段与 <title> 覆盖放进模型。 */
+    /**
+     * 调用**页面级** {@link HtmlHeadProvider}（{@code siteWide()=false}）：把插件生成的
+     * meta / link 片段与 <title> 覆盖放进模型（SEO、TemplateData 等要用本次渲染的页面属性）。
+     * <p>
+     * 站点级实现（{@code siteWide()=true}）由全局 advice {@link PluginHeadAdvice} 在所有页面统一注入：
+     * 这里只取页面级实现，避免同一片段注入两遍——脚本会执行两次（图片查看器弹两层等问题）。
+     */
     private void applyHeadExtensions(ModelAndView modelAndView, long pageId, String pageTitle,
                                      Map<String, String> pageProperties,
                                      Map<String, String> parameters, HttpServletRequest request,
                                      List<String> extraItems) {
-        // 页面级 head 已由本方法处理：全局 advice（PluginHeadAdvice）不再重复询问插件
-        request.setAttribute(PluginHeadAdvice.HEAD_HANDLED_ATTRIBUTE, Boolean.TRUE);
         // 按客户端依赖（plugin.clientRequires）拓扑顺序取实现：被依赖插件的片段在前；
         // 客户端依赖缺失时先留一条 HTML 注释警告（页面照常渲染）
-        List<HtmlHeadProvider> providers = this.pluginManager.headProviders(false);
+        List<HtmlHeadProvider> providers = this.pluginManager.headProviders(false).stream()
+                .filter(provider -> !provider.siteWide())
+                .toList();
         List<String> items = new ArrayList<>(this.pluginManager.clientDependencyWarnings());
         if (extraItems != null) {
             items.addAll(extraItems);

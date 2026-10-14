@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${htmlTitle != null && !htmlTitle.isEmpty() ? htmlTitle : title}">WikiKernel</title>
-    <!-- 插件 <head> 扩展（HtmlHeadProvider：WikiSEO 的 meta / OpenGraph / canonical / 站点验证等） -->
+    <!-- 页面级插件 <head> 扩展（HtmlHeadProvider siteWide()=false：WikiSEO 的 meta / OpenGraph / canonical / 站点验证等） -->
     <th:block th:each="headItem : ${headItems}" th:utext="${headItem}"></th:block>
     <!-- 静态资源放在 core/src/main/resources/static/ 下 -->
     <!-- 基础样式（全皮肤共用）+ 当前皮肤样式（base 之后加载，可覆盖） -->
@@ -14,11 +14,12 @@
     <!-- 页面自定义样式（Wiki.css + {title}/XXX.css），服务端已转义 <，不会提前闭合 style -->
     <style th:each="css : ${pageCss}" th:utext="${css}">/* 页面自定义样式 */</style>
     <script th:inline="javascript">
-        /* 站点级前端配置：各功能插件自己往 window.WIKI_CONFIG 里加自己的键（core 不再内置功能开关） */
-        window.WIKI_CONFIG = {
-        };
-        /* /js/auth.js 用到的本地化文案（Thymeleaf 内联，随语言切换） */
-        window.WIKI_MESSAGES = {
+        /* 站点级前端配置：各功能插件自己往 window.WIKI_CONFIG 里加自己的键（core 不再内置功能开关）。
+           这里合并而不是重建：前面的页面级插件片段可能已经写过自己的键，重建会把它们清掉 */
+        window.WIKI_CONFIG = window.WIKI_CONFIG || {};
+        /* /js/auth.js 用到的本地化文案（Thymeleaf 内联，随语言切换）；与 WIKI_CONFIG 一样合并：
+           前面的页面级插件片段可能已经往 WIKI_MESSAGES 里写过自己的文案 */
+        window.WIKI_MESSAGES = Object.assign(window.WIKI_MESSAGES || {}, {
             networkError: /*[[#{auth.networkError}]]*/ '',
             operationFailed: /*[[#{auth.operationFailed}]]*/ '',
             passwordMismatch: /*[[#{auth.passwordMismatch}]]*/ '',
@@ -88,7 +89,7 @@
             veDiscardConfirm: /*[[#{edit.visualDiscardConfirm}]]*/ '',
             watchWatch: /*[[#{watch.watch}]]*/ '',
             watchUnwatch: /*[[#{watch.unwatch}]]*/ ''
-        };
+        });
         /* MediaWiki 兼容：页面配置（mw.config 的 RLCONF）与模块启动队列（RLQ，由 /js/mediawiki.js 处理） */
         window.RLCONF = /*[[${mwConfig}]]*/ {};
         window.RLQ = window.RLQ || [];

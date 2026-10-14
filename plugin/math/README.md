@@ -9,7 +9,8 @@ Math 扩展的 WikiKernel 移植（对应 MediaWiki 的 [Math](https://www.media
   服务端生成占位 `<span class="mw-math" data-tex="…">`，标签内容原样作为 TeX（不做 wikitext 解析，与 MediaWiki 一致）；
 - 前端脚本 `static/plugins/math/math.js`（经 `/plugins/math/math.js` 提供）懒加载
   **KaTeX**（`/vendor/katex/…`，随 core 分发）渲染，失败时显示 TeX 源码（`mw-math-fallback`）；
-- 功能开启时由 `HtmlHeadProvider` 注入脚本（词条阅读页）。
+- 功能开启时由 `HtmlHeadProvider` **站点级**注入开关与脚本（所有页面，含编辑预览；
+  KaTeX 运行时仍然只在页面真的出现公式时才下载）。
 
 ## 兼容性
 
@@ -17,7 +18,9 @@ Math 扩展的 WikiKernel 移植（对应 MediaWiki 的 [Math](https://www.media
   关闭时标签按原文转义显示（与迁移前一致）；
 - 空公式提示沿用 core 消息键 `math.empty`；
 - 占位 HTML（`mw-math` / `mw-math-block` / `data-tex` / `data-display` / `data-chem` / `mw-math-fallback`）
-  与迁移前逐字节一致；`WIKI_CONFIG.math` 开关仍由 core 注入。
+  与迁移前逐字节一致；`WIKI_CONFIG.math` 开关由插件自己**站点级**注入
+  （必须在 core 初始化 `window.WIKI_CONFIG` 之后写入，否则会被页头重置覆盖、
+  脚本拿不到开关就不渲染——公式只剩 TeX 源码回退）。
 
 ## 与迁移前的差异
 

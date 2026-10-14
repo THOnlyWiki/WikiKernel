@@ -18,17 +18,14 @@ import java.util.Map;
 
 /**
  * 站点级 {@code <head>} 注入（插件 {@link HtmlHeadProvider#siteWide()} = true 的扩展点）：
- * 特殊页 / 编辑页 / 历史页等**非词条阅读视图**也会注入，供 Gadgets、多媒体预览、评论区这类
- * 「全站脚本」使用。
+ * 特殊页 / 编辑页 / 历史页等**所有页面**都会注入，供 Gadgets、多媒体预览、评论区这类
+ * 「全站脚本」使用（脚本片段放在 core 的站点级配置之后，见 {@code fragments/head.html}）。
  * <p>
- * 词条阅读视图由 {@code WikiPageController} 自己处理（那里有本次渲染的页面属性，SEO 等才能生效），
- * 它会设置请求属性 {@link #HEAD_HANDLED_ATTRIBUTE}，本 advice 随之让路，避免重复注入。
+ * 页面级实现（{@code siteWide()=false}）由 {@code WikiPageController} 在词条阅读视图处理
+ * （那里有本次渲染的页面属性，SEO 等才能生效）；两边各管一半，同一片段不会注入两遍。
  */
 @ControllerAdvice
 public class PluginHeadAdvice {
-
-    /** 请求属性：词条阅读视图已在控制器里处理过 head 扩展。 */
-    public static final String HEAD_HANDLED_ATTRIBUTE = "wikikernel.pluginHeadHandled";
 
     private final PluginManager pluginManager;
     private final SiteSettingsService siteSettingsService;
@@ -43,9 +40,8 @@ public class PluginHeadAdvice {
 
     @ModelAttribute("pluginHeadItems")
     public List<String> pluginHeadItems(HttpServletRequest request) {
-        // API 不渲染模板；阅读视图已由控制器处理
-        if (request.getRequestURI().startsWith("/api/")
-                || request.getAttribute(HEAD_HANDLED_ATTRIBUTE) != null) {
+        // API 不渲染模板；站点级片段在词条阅读视图同样从这里注入（页面级片段由 WikiPageController 负责）
+        if (request.getRequestURI().startsWith("/api/")) {
             return List.of();
         }
         // 按客户端依赖（plugin.clientRequires）拓扑顺序取实现：被依赖插件的片段在前

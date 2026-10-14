@@ -439,7 +439,7 @@ core 不写 `renameuser` / `usermerge` 日志**；core 侧「插件未加载」�
 | `MagicWord` | `{{NAME}}`（含本地化别名） | `WikitextRenderer.magicWord`（内置魔术字优先） |
 | `BehaviorSwitch` | `__NAME__` 行为开关，可写页面属性 | `WikitextRenderer.renderWithMeta` |
 | `ParserTag` | `<tag>内容</tag>`；`expandBody()=false` 时内容不参与模板展开（如 `<templatedata>` 的 JSON） | `WikitextRenderer.protectPreBlocks` / `extractPluginTags` |
-| `HtmlHeadProvider` | `<head>` 注入（meta / link）与 `<title>` 覆盖；`siteWide()=true` 时注入**所有**页面 | `WikiPageController.applyHeadExtensions`（阅读视图，带本次渲染属性）+ `PluginHeadAdvice`（特殊页 / 编辑页等，站点级） |
+| `HtmlHeadProvider` | `<head>` 注入（meta / link）与 `<title>` 覆盖；`siteWide()=true` 时注入**所有**页面（脚本片段在 core 站点级配置之后，可直接用 `window.WIKI_CONFIG` / `WIKI_MESSAGES`） | `WikiPageController.applyHeadExtensions`（阅读视图，只取**页面级**实现，带本次渲染属性）+ `PluginHeadAdvice`（所有页面，只取**站点级**实现；两边各管一半、同一片段不会注入两遍） |
 | `PageViewHook` | 词条阅读（非 diff / 旧版本）时的事件（用户 / 机器人 / 用户组） | `WikiPageController.firePageView` |
 | `PageDisplayHook` | 页面显示：`renderBody()` 认领整页正文（`图表:` / `微件:` 这类非 wikitext 页）、`renderMissingPage()` 认领**不存在的标题**（审核的「待审创建」页）、`beforeTitle()` 标题上方（页面横幅）、`beforeContent()` 正文之前（待审提示条）、`afterContent()` 正文下方（评论区）、`headItems()` 该页额外 head | `PageDisplayHookService`（core 的服务，统一按 `order()` 升序 + 异常容错）+ `WikiPageController`（阅读视图；皮肤布局与 `wiki/view.html` 有对应槽位；缺失页用通用外壳 `templates/wiki/plugin-missing-page.html`） |
 | `FileEmbedRenderer` | `[[文件:X]]` 嵌入与文件页预览的渲染（多媒体播放器） | `WikitextRenderer.renderFileEmbedding`、`WikiPageController.renderFilePage` |

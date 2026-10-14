@@ -10,6 +10,14 @@
 ( function () {
     'use strict';
 
+    // 站点级 + 词条阅读视图会各插入一次同一脚本（core 的 head 扩展现状）：
+    // 重复执行会让两个副本各自加载 KaTeX（后加载的副本替换 window.katex），
+    // 先渲染的公式会拿不到 mhchem 的 \ce 宏——这里只保留第一个副本。
+    if ( window.WIKI_MATH_SCRIPT_LOADED ) {
+        return;
+    }
+    window.WIKI_MATH_SCRIPT_LOADED = true;
+
     if ( !window.WIKI_CONFIG || !window.WIKI_CONFIG.math ) {
         return;
     }
@@ -20,57 +28,71 @@
     var loading = null;
 
     function ensureKatex( needChem ) {
-        if ( window.katex ) {
-            if ( needChem && !window.katex.__mhchemLoaded ) {
-                loadChem( window.katex.__mhchemLoadedResolver );
-            }
-            return Promise.resolve( window.katex );
-        }
-        if ( !loading ) {
-            loading = new Promise( function ( resolve, reject ) {
-                if ( !document.querySelector( 'link[href*="katex.min.css"]' ) ) {
-                    var link = document.createElement( 'link' );
-                    link.rel = 'stylesheet';
-                    link.href = CSS_URL;
-                    document.head.appendChild( link );
-                }
-                var script = document.createElement( 'script' );
-                script.src = JS_URL;
-                script.onload = function () {
-                    if ( !window.katex ) {
-                        reject( new Error( 'KaTeX 未初始化' ) );
-                        return;
+        var ready = window.katex ? Promise.resolve( window.katex ) : null;
+        if ( !ready ) {
+            if ( !loading ) {
+                loading = new Promise( function ( resolve, reject ) {
+                    if ( !document.querySelector( 'link[href*="katex.min.css"]' ) ) {
+                        var link = document.createElement( 'link' );
+                        link.rel = 'stylesheet';
+                        link.href = CSS_URL;
+                        document.head.appendChild( link );
                     }
-                    loadChem( resolve );
-                };
-                script.onerror = function () {
-                    reject( new Error( '加载 ' + JS_URL + ' 失败' ) );
-                };
-                document.head.appendChild( script );
-            } );
+                    var script = document.createElement( 'script' );
+                    script.src = JS_URL;
+                    script.onload = function () {
+                        if ( !window.katex ) {
+                            reject( new Error( 'KaTeX 未初始化' ) );
+                            return;
+                        }
+                        resolve( window.katex );
+                    };
+                    script.onerror = function () {
+                        reject( new Error( '加载 ' + JS_URL + ' 失败' ) );
+                    };
+                    document.head.appendChild( script );
+                } );
+            }
+            ready = loading;
         }
-        return loading;
+        if ( !needChem ) {
+            return ready;
+        }
+        // 含 \ce{}（<chem>）时必须等 mhchem 真正加载完成再渲染，
+        // 否则 KaTeX 会报 "Undefined control sequence: \ce"，而 data-math-ready 已置位就不再重试。
+        return ready.then( function ( katex ) {
+            return loadChem().then( function () {
+                return katex;
+            } );
+        } );
     }
 
-    /** 加载 mhchem（化学式）；失败也继续，只有 \ce{} 的公式会报错。 */
-    function loadChem( resolve ) {
-        if ( window.katex.__mhchemLoaded || window.katex.__mhchemLoading ) {
-            if ( resolve ) {
-                resolve( window.katex );
+    /**
+     * 加载 mhchem（化学式）。返回 Promise：**等脚本真正 onload 之后才 resolve**
+     * （失败也 resolve，普通公式不受影响，只有 \ce{} 会报错）。
+     * 结果缓存在 katex.__mhchemPromise，重复调用不会重复插入 <script>。
+     */
+    function loadChem() {
+        if ( window.katex.__mhchemPromise ) {
+            return window.katex.__mhchemPromise;
+        }
+        window.katex.__mhchemPromise = new Promise( function ( resolve ) {
+            if ( window.katex.__mhchemLoaded ) {
+                resolve();
+                return;
             }
-            return;
-        }
-        window.katex.__mhchemLoading = true;
-        var script = document.createElement( 'script' );
-        script.src = MHCHEM_URL;
-        script.onload = function () {
-            window.katex.__mhchemLoaded = true;
-        };
-        script.onerror = function () { /* 忽略：普通公式不受影响 */ };
-        document.head.appendChild( script );
-        if ( resolve ) {
-            resolve( window.katex );
-        }
+            var script = document.createElement( 'script' );
+            script.src = MHCHEM_URL;
+            script.onload = function () {
+                window.katex.__mhchemLoaded = true;
+                resolve();
+            };
+            script.onerror = function () { /* 忽略：普通公式不受影响 */
+                resolve();
+            };
+            document.head.appendChild( script );
+        } );
+        return window.katex.__mhchemPromise;
     }
 
     function renderOne( element, katex ) {
