@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!-- 特殊:封禁列表 / Special:BlockList：当前生效中的封禁，可解封 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{block.list.intro}">当前生效中的封禁（解封后立即失效）；封禁与解封都会写入日志。</p>
+
+    <p class="form-message success" th:if="${unblockedSuccess}" th:text="#{block.unblockSuccess}">已解封。</p>
+
+    <p class="wiki-form-error" th:if="${!canBlock and !blockLogin}" th:text="#{block.forbidden}">
+        只有管理员可以封禁用户或 IP。
+    </p>
+    <p th:if="${#lists.isEmpty(blocks)}" th:text="#{block.list.empty}">当前没有生效中的封禁。</p>
+
+    <table class="wikitable" th:unless="${#lists.isEmpty(blocks)}">
+        <tr>
+            <th th:text="#{block.list.target}">目标</th>
+            <th th:text="#{block.list.reason}">原因</th>
+            <th th:text="#{block.list.expiry}">到期</th>
+            <th th:text="#{block.list.options}">选项</th>
+            <th th:text="#{block.list.by}">封禁者</th>
+            <th th:text="#{block.list.time}">封禁时间</th>
+            <th th:if="${canBlock}" th:text="#{block.list.actions}">操作</th>
+        </tr>
+        <tr th:each="row : ${blocks}">
+            <td>
+                <a th:if="${row.block.targetType == 'user'}"
+                   th:href="@{/wiki/{t}(t=${'用户:' + row.block.target})}" th:text="${row.block.target}">目标</a>
+                <span th:unless="${row.block.targetType == 'user'}" th:text="${row.block.target}">IP</span>
+            </td>
+            <td th:text="${#strings.isEmpty(row.block.reason) ? #messages.msg('block.noReason') : row.block.reason}">
+                原因
+            </td>
+            <td th:text="${row.block.expiresAt == null
+                    ? #messages.msg('block.permanent')
+                    : @wikiTime.format(row.block.expiresAt)}">到期</td>
+            <td th:text="${row.optionsText}">选项</td>
+            <td>
+                <a th:if="${row.blocker != null}" th:href="@{/wiki/{t}(t=${'用户:' + row.blocker})}"
+                   th:text="${row.blocker}">封禁者</a>
+                <span th:if="${row.blocker == null}" th:text="#{block.system}">系统</span>
+            </td>
+            <td th:text="${@wikiTime.format(row.block.createAt)}">时间</td>
+            <td th:if="${canBlock}">
+                <button type="button" class="wiki-button block-unblock" th:attr="data-id=${row.block.id}"
+                        th:text="#{block.unblock}">解封</button>
+            </td>
+        </tr>
+    </table>
+</section>
+</body>
+</html>

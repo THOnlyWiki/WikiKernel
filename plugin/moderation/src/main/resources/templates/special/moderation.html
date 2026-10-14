@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:审核 / Special:Moderation（插件 moderation；仿 MediaWiki Moderation：待审队列 + 通过/拒绝） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="moderation">
+    <p class="wiki-form-error" th:unless="${canReview}" th:text="#{moderation.forbidden}">
+        只有核查员 / 管理员可以审核更改。
+    </p>
+
+    <th:block th:if="${canReview}">
+        <p class="wiki-warning" th:unless="${enabled}" th:text="#{moderation.disabled}">
+            此站点未启用审核。
+        </p>
+
+        <th:block th:if="${enabled}">
+        <p class="wiki-hint" th:text="#{moderation.intro}">
+            没有豁免权的用户提交的页面编辑 / 创建、文件上传与文件删除会进入下面的队列，通过后才会生效。
+        </p>
+
+        <!-- 状态页签（待审 / 已通过 / 已拒绝 / 全部） -->
+        <div class="moderation-tabs">
+            <a th:each="tab : ${tabs}" th:href="${tab.url}" th:classappend="${tab.selected} ? 'selected'">
+                <span th:text="${tab.label}">待审</span>
+                <span class="moderation-tab-count" th:text="${'（' + tab.count + '）'}">（0）</span>
+            </a>
+        </div>
+        <p class="wiki-hint" th:if="${titleFilter != ''}"
+           th:text="#{moderation.filteredByPage(${titleFilter})}">只显示本页面的更改。</p>
+
+        <p class="wiki-warning" th:if="${#lists.isEmpty(rows)}" th:text="#{moderation.empty}">
+            没有符合条件的更改。
+        </p>
+
+        <div class="moderation-row" th:each="row : ${rows}" th:attr="data-id=${row.id}">
+            <div class="moderation-head">
+                <span class="moderation-type" th:text="${row.typeLabel}">页面编辑</span>
+                <strong>
+                    <a th:href="${row.titleUrl}" th:text="${row.title}">页面标题</a>
+                </strong>
+                <span class="moderation-author">
+                    <span th:text="#{moderation.byPrefix}">由</span><a
+                            th:if="${row.authorUrl != null}" th:href="${row.authorUrl}"
+                            th:text="${row.author}">用户</a><span
+                            th:if="${row.authorUrl == null}" th:text="${row.author}">用户</span><span
+                            th:text="#{moderation.bySuffix}">提交</span>
+                </span>
+                <span class="moderation-time" th:text="${row.timeText}">时间</span>
+                <span class="moderation-status" th:text="${row.statusLabel}">待审</span>
+            </div>
+            <div class="moderation-comment" th:if="${row.comment != ''}" th:text="${row.comment}">摘要</div>
+
+            <!-- 页面编辑：当前版本 → 待审内容 的行级差异 -->
+            <th:block th:if="${row.changeType == 'edit'}">
+                <p class="wiki-hint moderation-new" th:if="${row.isNew}" th:text="#{moderation.newPage}">
+                    新页面（当前还没有已通过的版本）。
+                </p>
+                <details class="moderation-diff" open="open">
+                    <summary th:text="#{moderation.showDiff}">查看差异</summary>
+                    <p class="wiki-hint" th:text="#{moderation.diffLegend}">图例：− 当前版本，+ 待审内容。</p>
+                    <table class="diff">
+                        <tr th:each="diff : ${row.diffRows}">
+                            <td class="diff-marker" th:text="${diff.oldMarker}">-</td>
+                            <td class="diff-lineno" th:text="${diff.oldNo}">1</td>
+                            <td th:class="${diff.oldClass}"><span th:text="${diff.oldBefore}"></span><span
+                                    th:if="${diff.oldChange != ''}" class="diffchange"
+                                    th:text="${diff.oldChange}"></span><span th:text="${diff.oldAfter}"></span></td>
+                            <td class="diff-marker" th:text="${diff.newMarker}">+</td>
+                            <td class="diff-lineno" th:text="${diff.newNo}">1</td>
+                            <td th:class="${diff.newClass}"><span th:text="${diff.newBefore}"></span><span
+                                    th:if="${diff.newChange != ''}" class="diffchange"
+                                    th:text="${diff.newChange}"></span><span th:text="${diff.newAfter}"></span></td>
+                        </tr>
+                    </table>
+                </details>
+            </th:block>
+
+            <!-- 上传文件：图片可预览（只有审核员能看） -->
+            <th:block th:if="${row.changeType == 'upload'}">
+                <div class="moderation-file">
+                    <img class="moderation-image" th:if="${row.isImage}" th:src="${row.previewUrl}"
+                         th:alt="${row.fileName}"/>
+                    <span class="moderation-file-name" th:text="${row.fileName}">文件.png</span>
+                    <span class="moderation-file-size" th:text="${row.fileSizeText}">12 KB</span>
+                    <a class="moderation-file-download" th:if="${!row.isImage}" th:href="${row.previewUrl}"
+                       th:text="#{moderation.downloadPreview}">下载预览</a>
+                </div>
+                <div class="moderation-file-description" th:if="${row.fileDescription != ''}"
+                     th:text="${row.fileDescription}">文件说明</div>
+            </th:block>
+
+            <!-- 删除文件 -->
+            <th:block th:if="${row.changeType == 'filedelete'}">
+                <div class="moderation-file">
+                    <span class="moderation-file-name" th:text="${row.fileName}">文件.png</span>
+                    <span class="moderation-hard" th:if="${row.hardDelete}"
+                          th:text="#{moderation.hardDelete}">彻底删除（含全部历史版本）</span>
+                </div>
+            </th:block>
+
+            <!-- 审核结果（已通过 / 已拒绝） -->
+            <div class="moderation-result" th:if="${row.status != 'pending'}">
+                <span th:if="${row.reviewer != null}"><span
+                        th:text="#{moderation.reviewedByPrefix}">已由</span><a
+                        th:if="${row.reviewerUrl != null}" th:href="${row.reviewerUrl}"
+                        th:text="${row.reviewer}">用户</a><span
+                        th:if="${row.reviewerUrl == null}" th:text="${row.reviewer}">用户</span><span
+                        th:text="#{moderation.reviewedByMid}">于</span><span
+                        th:text="${row.reviewedAtText}">时间</span><span
+                        th:text="#{moderation.reviewedBySuffix}">审核</span></span>
+                <span th:if="${row.reviewComment != ''}"
+                      th:text="#{moderation.reviewComment(${row.reviewComment})}">意见：…</span>
+            </div>
+
+            <!-- 操作（仅待审行） -->
+            <div class="moderation-actions" th:if="${row.status == 'pending'}">
+                <input type="text" class="moderation-comment-input"
+                       th:placeholder="#{moderation.commentPlaceholder}"/>
+                <button type="button" class="wiki-button moderation-approve"
+                        th:text="#{moderation.approve}">通过</button>
+                <button type="button" class="wiki-button moderation-reject"
+                        th:text="#{moderation.reject}">拒绝</button>
+            </div>
+            <p class="form-message moderation-message" hidden="hidden"></p>
+        </div>
+        </th:block>
+    </th:block>
+</section>
+</body>
+</html>

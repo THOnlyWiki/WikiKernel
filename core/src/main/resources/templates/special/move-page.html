@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- 特殊:移动页面 / Special:MovePage -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="move-intro" th:text="#{move.intro}">移动页面会保留编辑历史，并把标题改成新名称。</p>
+
+    <form th:if="${sourcePage == null and pageNotFound != true}" id="wiki-move-lookup" class="wiki-form wiki-form-inline"
+          th:action="@{/wiki/特殊:移动页面}" method="get">
+        <input type="text" name="page" th:value="${lookupName}" th:placeholder="#{move.fromPlaceholder}"
+               autofocus required/>
+        <button type="submit" class="wiki-button" th:text="#{userRights.load}">加载</button>
+    </form>
+    <p class="wiki-form-error" th:if="${pageNotFound}" th:text="#{permissions.userNotFound}">页面不存在。</p>
+
+    <th:block th:if="${sourcePage != null}">
+        <p class="move-from">
+            <span th:text="#{move.from}">原页面：</span>
+            <a th:href="@{/wiki/{t}(t=${sourcePage.title})}" th:text="${sourcePage.title}">标题</a>
+        </p>
+        <p class="wiki-form-error" th:if="${moveLogin}" th:text="#{source.notLoggedIn}">
+            您尚未登录。您可以登录后编辑此页面。
+        </p>
+        <p class="wiki-form-error" th:if="${moveProtected}" th:text="#{move.protected}">
+            本页面已被保护，只有管理员可以移动或编辑。
+        </p>
+        <p class="wiki-form-error" th:if="${moveForbidden}" th:text="#{move.forbidden}">
+            您没有权限移动本页面。
+        </p>
+
+        <!-- 无权限 / 未登录 / 受保护页面（不渲染表单）时也要能返回原页面 -->
+        <p class="page-back" th:unless="${canMove}">
+            <a class="wiki-button" th:href="@{/wiki/{t}(t=${sourcePage.title})}"
+               th:text="#{common.back}">返回</a>
+        </p>
+
+        <form th:if="${canMove}" id="wiki-move-form" class="wiki-form" method="post"
+              th:action="@{/api/pages/move}">
+            <input type="hidden" name="from" th:value="${sourcePage.title}"/>
+            <div class="form-field">
+                <label for="wpNewTitle" th:text="#{move.newTitle}">新标题：</label>
+                <input type="text" id="wpNewTitle" name="to" autofocus required/>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" name="leaveRedirect" value="1" checked/>
+                    <span th:text="#{move.leaveRedirect}">留下重定向（旧标题自动跳转到新标题）</span>
+                </label>
+            </div>
+            <div class="form-message" role="alert" hidden></div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{move.submit}">移动页面</button>
+                <a class="wiki-button" th:href="@{/wiki/{t}(t=${sourcePage.title})}"
+                   th:text="#{common.back}">返回</a>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

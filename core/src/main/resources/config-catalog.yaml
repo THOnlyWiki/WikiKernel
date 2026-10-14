@@ -1,0 +1,648 @@
+# ============================================================
+# WikiKernel 配置全集目录（配置项的单一事实来源）
+#
+# 用途：
+#   1) /init 安装向导按本文件生成「全字段 + 默认值 + 中文注释」的 LocalSettings.yaml；
+#   2) 由本文件生成 JSON Schema（IDEA / VS Code 的 YAML 补全）；
+#   3) 一致性测试用它比对 spring-configuration-metadata.json，防止新增配置项漏同步。
+#
+# 字段说明（每一项）：
+#   key         必填，配置键（完整路径，含 wikikernel. / spring. 前缀）
+#   type        必填，string / boolean / integer / long / list / map / object
+#   default     默认值（字符串形式；list/map/object 类型由 YAML 直接给出结构）
+#   enum        可选，可选值清单（写进 Schema 的 enum，也写进生成的注释）
+#   write       是否写进生成的 LocalSettings.yaml（默认 true）
+#               false 用于：敏感值（不落明文）、用户数据（初始账号）、
+#               结构复杂且会覆盖用户配置的对象（访问规则 / AI 厂商表 / 插件设置）
+#   secret      true = 敏感项，永远不把值落盘；写进生成文件时只留注释与键名
+#   description 中文说明，写进生成的注释与 JSON Schema
+#
+# 注意：default 必须与运行时的真实默认值一致（application.yaml 声明值，或 Java 字段初始值）。
+#       测试 ConfigCatalogConsistencyTest 会校验「本文件 ⊇ metadata 键集合」。
+# ============================================================
+
+groups:
+
+  # ---------------- 数据库（切换只改这里） ----------------
+  - prefix: wikikernel.database
+    comment: |-
+      数据库（切换只改这里）。
+      type=sqlite 时用 file 指定数据文件；type=mysql / h2 时用 host / port / name / user / password。
+      这些键由 LocalSettingsEnvironmentPostProcessor 翻译成 Spring 标准的 spring.datasource.*，
+      所以它们不出现在 spring-configuration-metadata.json 里（本目录是它们的唯一声明处）。
+      password 支持 ${环境变量:默认值} 语法（如 "${MYSQL_PASSWORD:root}"），建议走环境变量。
+    items:
+      - key: wikikernel.database.type
+        type: string
+        default: sqlite
+        enum: [sqlite, mysql, h2]
+        description: 数据库引擎；sqlite（默认，零安装）/ mysql / h2。
+      - key: wikikernel.database.file
+        type: string
+        default: ./data/wiki.db
+        description: type=sqlite 时的数据文件（type=h2 时是数据文件前缀，默认 ./data/wiki）。
+      - key: wikikernel.database.auto-ddl
+        type: boolean
+        default: true
+        description: 启动时根据实体自动建表 / 补字段（类 JPA ddl-auto=update，只增不减）。
+      - key: wikikernel.database.host
+        type: string
+        default: 127.0.0.1
+        description: type=mysql 时的数据库主机。
+      - key: wikikernel.database.port
+        type: integer
+        default: 3306
+        description: type=mysql 时的数据库端口。
+      - key: wikikernel.database.name
+        type: string
+        default: wikikernel
+        description: type=mysql 时的数据库名。
+      - key: wikikernel.database.user
+        type: string
+        default: root
+        description: 数据库用户名（type=mysql 默认 root；type=h2 默认 sa）。
+      - key: wikikernel.database.password
+        type: string
+        default: ""
+        secret: true
+        description: 数据库密码；支持 ${环境变量:默认值} 语法，建议走环境变量而不是写明文。
+      - key: wikikernel.database.pool-size
+        type: integer
+        default: 10
+        description: 连接池大小（MySQL / H2 生效；SQLite 固定为 1）。
+
+  # ---------------- 站点信息 ----------------
+  - prefix: wikikernel.site
+    comment: |-
+      站点信息。
+      站点名称显示在浏览器标题栏、页眉、页脚、搜索框占位符、邮件主题与 API 的 sitename。
+      文件里显式写了的每次启动都会导入数据库设置（site.name），覆盖在「特殊:权限配置」里的修改；
+      不想每次覆盖就不要写这一项（注释掉即可）。
+    items:
+      - key: wikikernel.site.name
+        type: string
+        default: WikiKernel
+        write: false
+        description: 站点名称；留空 / 不写 = 使用默认名 WikiKernel。
+
+  # ---------------- 运行目录与上传 ----------------
+  - prefix: wikikernel.run-path
+    comment: |-
+      文件上传。
+      运行文件目录（上传文件存放位置，相对启动目录；通过 /files/<存储名> 访问）。
+    items:
+      - key: wikikernel.run-path
+        type: string
+        default: ./run/files
+        description: 上传文件的存放目录（相对启动目录）。
+      - key: wikikernel.max-file-size-mb
+        type: integer
+        default: 20
+        description: 单个上传文件大小上限（MB）；同时受 spring.servlet.multipart 限制。
+
+  # ---------------- 侧边栏 ----------------
+  - prefix: wikikernel.sidebar
+    comment: |-
+      侧边栏。
+      控制侧边栏内容的页面标题（该页面不存在或为空时用内置默认侧边栏）。
+    items:
+      - key: wikikernel.sidebar.page
+        type: string
+        default: "WikiKernel:Sidebar"
+        description: 控制侧边栏内容的页面标题。
+
+  # ---------------- 标题规则 ----------------
+  - prefix: wikikernel.title
+    comment: |-
+      标题规则（仿 MediaWiki）。
+      首字母自动大写（$wgCapitalLinks）：true 时「java 开发教程」与「Java 开发教程」是同一页。
+    items:
+      - key: wikikernel.title.capitalize-first-letter
+        type: boolean
+        default: true
+        description: 首字母自动大写；false = 标题完全区分大小写（仿 $wgCapitalLinks=false）。
+
+  # ---------------- Wikitext 渲染 ----------------
+  - prefix: wikikernel.wikitext
+    comment: |-
+      Wikitext 渲染。
+      模板命名空间按顺序查找：{{abc模板|a=1}} 会依次找「模板:abc模板」「Template:abc模板」。
+    items:
+      - key: wikikernel.wikitext.template-prefixes
+        type: list
+        default: ["模板:", "Template:"]
+        description: 模板命名空间前缀（按顺序查找）。
+      - key: wikikernel.wikitext.max-template-depth
+        type: integer
+        default: 20
+        description: 模板最大嵌套深度（防递归炸弹）。
+
+  # ---------------- 特殊页面 ----------------
+  - prefix: wikikernel.special-page
+    comment: |-
+      特殊页面。
+      特殊页前缀（Special:XXX / 特殊:XXX），可增删。
+    items:
+      - key: wikikernel.special-page.prefixes
+        type: list
+        default: ["特殊:", "Special:"]
+        description: 特殊页前缀（默认中英双前缀，可增删）。
+
+  # ---------------- 权限（用户组） ----------------
+  - prefix: wikikernel.permissions
+    comment: |-
+      权限（用户组）。内置类型见 PermissionTypeSeeder：用户 / 自动确定用户 / 管理员 / 行政员。
+      bootstrap-admins：首次搭建时填自己的用户名，启动后自动获得「管理员 + 行政员」；
+                       只提升、不降权；留空表示不生效；每次启动都会导入。
+      rules：访问控制默认规则（仿 $wgGroupPermissions）；结构复杂，默认不写进生成的文件。
+    items:
+      - key: wikikernel.permissions.bootstrap-admins
+        type: list
+        default: []
+        write: false
+        description: 启动时自动获得「管理员 + 行政员」的用户名列表；留空 = 不生效。
+      - key: wikikernel.permissions.rules
+        type: list
+        default: []
+        write: false
+        description: 访问控制默认规则（每项含 target / action / groups）；每次启动写入数据库。
+      - key: wikikernel.permissions.allow-other-user-page-edit
+        type: boolean
+        default: false
+        write: false
+        description: 是否允许编辑其他用户的用户页；不写 = 不改动数据库里的设置。
+
+  # ---------------- 认证 ----------------
+  - prefix: wikikernel.auth
+    comment: |-
+      认证。
+      持久登录令牌（勾选「记住登录状态」时签发，存数据库，重启不掉线）。
+    items:
+      - key: wikikernel.auth.token-expire-days
+        type: integer
+        default: 0
+        description: 令牌有效期（天）；0 = 永不过期（当前默认，浏览器 Cookie 按 10 年设置）。
+      - key: wikikernel.auth.token-cookie-name
+        type: string
+        default: wiki_token
+        description: 持久登录 Cookie 名。
+
+  # ---------------- 反向代理 / CDN ----------------
+  - prefix: wikikernel.http
+    comment: |-
+      反向代理 / CDN。
+      部署在 Cloudflare 等 CDN / 反向代理后面时设为 true：日志与用户核查会用真实客户端 IP
+      （依次读 CF-Connecting-IP / True-Client-IP / X-Real-IP / X-Forwarded-For）。
+    items:
+      - key: wikikernel.http.trust-proxy-headers
+        type: boolean
+        default: false
+        description: 是否信任代理 / CDN 的转发头；false = 直接使用连接来源地址。
+
+  # ---------------- 请求速率限制 ----------------
+  - prefix: wikikernel.security.rate-limit
+    comment: |-
+      请求速率限制（防字典爆破）。
+      按「分类 + 键」统计失败次数：window-seconds 秒内失败达到 max-attempts 次后锁定 lock-seconds 秒（返回 429），
+      成功一次立即清除该键的失败记录。
+    items:
+      - key: wikikernel.security.rate-limit.enabled
+        type: boolean
+        default: true
+        description: 总开关；false = 不限制。
+      - key: wikikernel.security.rate-limit.login.max-attempts
+        type: integer
+        default: 5
+        description: 登录接口：窗口内允许的失败次数（按 IP + 用户名）。
+      - key: wikikernel.security.rate-limit.login.window-seconds
+        type: integer
+        default: 300
+        description: 登录接口：统计窗口（秒）。
+      - key: wikikernel.security.rate-limit.login.lock-seconds
+        type: integer
+        default: 300
+        description: 登录接口：触发后的锁定时长（秒）。
+      - key: wikikernel.security.rate-limit.setup.max-attempts
+        type: integer
+        default: 5
+        description: /init 安装密钥：窗口内允许的失败次数（按 IP）。
+      - key: wikikernel.security.rate-limit.setup.window-seconds
+        type: integer
+        default: 300
+        description: /init 安装密钥：统计窗口（秒）。
+      - key: wikikernel.security.rate-limit.setup.lock-seconds
+        type: integer
+        default: 300
+        description: /init 安装密钥：触发后的锁定时长（秒）。
+      - key: wikikernel.security.rate-limit.password-reset.max-attempts
+        type: integer
+        default: 10
+        description: 密码重置请求：窗口内允许的失败次数（按 IP）。
+      - key: wikikernel.security.rate-limit.password-reset.window-seconds
+        type: integer
+        default: 3600
+        description: 密码重置请求：统计窗口（秒）。
+      - key: wikikernel.security.rate-limit.password-reset.lock-seconds
+        type: integer
+        default: 900
+        description: 密码重置请求：触发后的锁定时长（秒）。
+      - key: wikikernel.security.rate-limit.ai-agent.max-attempts
+        type: integer
+        default: 30
+        description: AI 代理对话：窗口内允许的次数（每用户）。
+      - key: wikikernel.security.rate-limit.ai-agent.window-seconds
+        type: integer
+        default: 3600
+        description: AI 代理对话：统计窗口（秒）。
+      - key: wikikernel.security.rate-limit.ai-agent.lock-seconds
+        type: integer
+        default: 600
+        description: AI 代理对话：触发后的锁定时长（秒）。
+      - key: wikikernel.security.rate-limit.fingerprint-login.max-attempts
+        type: integer
+        default: 5
+        description: 指纹登录（插件 fingerprint-login）：窗口内允许的失败次数（按 IP + 指纹摘要）。
+      - key: wikikernel.security.rate-limit.fingerprint-login.window-seconds
+        type: integer
+        default: 300
+        description: 指纹登录：统计窗口（秒）。
+      - key: wikikernel.security.rate-limit.fingerprint-login.lock-seconds
+        type: integer
+        default: 300
+        description: 指纹登录：触发后的锁定时长（秒）。
+      - key: wikikernel.security.rate-limit.fingerprint-login-ip.max-attempts
+        type: integer
+        default: 10
+        description: 指纹登录（仅按 IP 兜底）：窗口内允许的失败次数。
+      - key: wikikernel.security.rate-limit.fingerprint-login-ip.window-seconds
+        type: integer
+        default: 300
+        description: 指纹登录（仅按 IP 兜底）：统计窗口（秒）。
+      - key: wikikernel.security.rate-limit.fingerprint-login-ip.lock-seconds
+        type: integer
+        default: 300
+        description: 指纹登录（仅按 IP 兜底）：触发后的锁定时长（秒）。
+
+  # ---------------- 页面正文缓存 ----------------
+  - prefix: wikikernel.cache.page
+    comment: |-
+      页面正文缓存（渲染后的正文 HTML）：默认关闭，开箱即安全。
+      这里写的是「站点设置（wiki_setting）里没有同名键时」的兜底默认值；站点设置 cache.page.* 优先，
+      在「特殊:权限配置 → 站点设置」里改完立即生效、无需重启。
+    items:
+      - key: wikikernel.cache.page.enabled
+        type: boolean
+        default: false
+        description: 页面正文缓存总开关（默认关闭）。
+      - key: wikikernel.cache.page.backend
+        type: string
+        default: auto
+        enum: [auto, redis, memory, none]
+        description: 缓存后端；auto = 配了 Redis 且连得上就用 Redis，否则进程内 LRU。
+      - key: wikikernel.cache.page.ttl-seconds
+        type: integer
+        default: 300
+        description: 条目有效期（秒）。
+      - key: wikikernel.cache.page.max-entries
+        type: integer
+        default: 500
+        description: 进程内 LRU 的条目上限。
+      - key: wikikernel.cache.page.preload-on-template-change
+        type: boolean
+        default: true
+        description: 模板变更后是否用虚拟线程批量预渲染受影响页面（预热）。
+      - key: wikikernel.cache.page.preload-parallelism
+        type: integer
+        default: 0
+        write: false
+        description: 预渲染并发上限；不写或 0 = CPU 核数。
+      - key: wikikernel.cache.page.preload-batch-size
+        type: integer
+        default: 0
+        description: 单批预渲染页面数；0 = 自动（并发上限 × 8）。
+      - key: wikikernel.cache.page.redis.enabled
+        type: boolean
+        default: false
+        description: spring.data.redis.* 没配置时，用它强制使用 Redis（连不上仍自动退回内存）。
+      - key: wikikernel.cache.page.redis.key-prefix
+        type: string
+        default: "wikikernel:pagecache:"
+        description: Redis 键前缀（条目键与「纪元」键都用它）；结尾没有冒号时会自动补一个。
+
+  # ---------------- 插件 ----------------
+  - prefix: wikikernel.plugins
+    comment: |-
+      插件（类似 wfLoadExtension）。
+      dir：插件 jar 扫描目录（相对启动时工作目录）。
+      runtime-dir：运行时副本目录（加载的是拷贝，源 jar 不被锁定，可随时替换 / 删除）。
+      settings：各插件的私有配置（键为插件 id），形如
+        settings:
+          hit-counters: { disabled: false, footer: true }
+      插件设置结构由插件自己决定，故本目录不给出默认值。
+    items:
+      - key: wikikernel.plugins.dir
+        type: string
+        default: plugins
+        description: 运行时扫描的插件 jar 目录（相对启动时的工作目录）。
+      - key: wikikernel.plugins.runtime-dir
+        type: string
+        default: run/.plugins
+        description: 插件运行时副本目录：加载的是内容哈希副本，源 jar 不被锁定（可替换 / 删除后调 POST /api/plugins/reload 动态装卸）。
+      - key: wikikernel.plugins.classpath-scan
+        type: boolean
+        default: true
+        description: 是否同时扫描 classpath 上的插件（IDE 调试 / 单元测试时方便）。
+      - key: wikikernel.plugins.enabled
+        type: list
+        default: []
+        description: 插件白名单；为空 = 启用扫描到的全部插件。
+      - key: wikikernel.plugins.aop-bridge
+        type: string
+        default: auto
+        enum: [auto, true, false]
+        description: 插件 AOP 桥；auto = 只有插件声明了 plugin.aop=true 时才对 core Bean 套代理。
+      - key: wikikernel.plugins.settings
+        type: map
+        default: {}
+        write: false
+        description: 各插件的私有配置（键为插件 id，值结构由插件决定）。
+
+  # ---------------- 皮肤 ----------------
+  - prefix: wikikernel.skins
+    comment: |-
+      皮肤。
+      默认皮肤：内置 vector / fallback，或插件皮肤 id（找不到或已禁用时自动回退到 fallback）。
+    items:
+      - key: wikikernel.skins.default-skin
+        type: string
+        default: vector
+        description: 默认皮肤 id（内置 vector / fallback，或插件皮肤 id）。
+      - key: wikikernel.skins.disabled
+        type: list
+        default: []
+        description: 禁用的皮肤 id（Vector 可禁用；内置 fallback 始终可用）。
+
+  # ---------------- 功能开关 ----------------
+  - prefix: wikikernel.features
+    comment: |-
+      功能开关。
+      可在「特殊:权限配置 → 站点设置」里随时改；这里写了值则每次启动覆盖数据库设置（要想改完不被覆盖，把对应行注释掉）。
+    items:
+      - key: wikikernel.features.register
+        type: boolean
+        default: true
+        description: 注册；关闭后非管理员无法进入「特殊:注册」，注册接口 403。
+      - key: wikikernel.features.typescript
+        type: boolean
+        default: false
+        description: TypeScript 服务端编译：.ts / .tsx 页面用内置 tsc 编译成 JavaScript。
+      - key: wikikernel.features.typescript-compile-on-save
+        type: boolean
+        default: false
+        description: 保存 TypeScript 页面时立即编译（便于编辑后立刻看到语法诊断）。
+
+  # ---------------- TypeScript 服务端编译 ----------------
+  - prefix: wikikernel.typescript
+    comment: |-
+      TypeScript 服务端编译（.ts / .tsx 页面）的技术参数。
+      开关在 features.typescript / features.typescript-compile-on-save。
+      编译在 JVM 内完成（GraalJS 跑官方 typescript.js，自包含、不依赖主机安装 Node）。
+    items:
+      - key: wikikernel.typescript.target
+        type: string
+        default: ES2020
+        enum: [ES5, ES2015, ES2016, ES2017, ES2018, ES2019, ES2020, ES2021, ES2022, ESNext, Latest]
+        description: 输出语言级别（TS 的 ScriptTarget 名）。
+      - key: wikikernel.typescript.module
+        type: string
+        default: ESNext
+        enum: [None, CommonJS, AMD, UMD, System, ES2015, ES2020, ES2022, ESNext, Node16, NodeNext]
+        description: 模块形态（TS 的 ModuleKind 名）。
+      - key: wikikernel.typescript.jsx
+        type: string
+        default: ""
+        enum: ["", react, preserve]
+        description: .tsx 的 JSX 形态（react / preserve）；留空 = 只有 .tsx 时用 react。
+      - key: wikikernel.typescript.timeout-seconds
+        type: integer
+        default: 15
+        description: 单次编译超时（秒）；超时会中断引擎并重建，避免挂住请求。
+      - key: wikikernel.typescript.init-timeout-seconds
+        type: integer
+        default: 120
+        description: 编译器首次装载超时（秒）：要读入并求值约 8.7 MB 的 typescript.js。
+      - key: wikikernel.typescript.pool-size
+        type: integer
+        default: 1
+        description: 引擎池大小（并发编译数）；每个引擎是一份 GraalJS 上下文，常驻约 150–400 MB。
+      - key: wikikernel.typescript.warmup
+        type: boolean
+        default: true
+        description: 启动后后台预热引擎（把首次装载从请求路径挪走）。
+      - key: wikikernel.typescript.max-source-kilobytes
+        type: integer
+        default: 256
+        description: 单次编译的源码大小上限（KB）；-1 或 0 = 不限制。
+      - key: wikikernel.typescript.cache-limit
+        type: integer
+        default: 200
+        description: 编译产物缓存行数上限（每个页面 + 目标只保留最新一条）。
+
+  # ---------------- 页面导出 / 导入 ----------------
+  - prefix: wikikernel.transfer
+    comment: |-
+      页面导出 / 导入（特殊:导出页面 / 特殊:导入页面）的限额。
+      导出支持 MediaWiki XML、WikiKernel XML 与 WikiKernel JSON；导入自动识别三种格式。
+    items:
+      - key: wikikernel.transfer.export-max-pages
+        type: integer
+        default: 200
+        description: 单次导出最多页面数（含「包含所有引用的模板」带出的模板页）。
+      - key: wikikernel.transfer.export-max-revisions
+        type: integer
+        default: 5000
+        description: 单次导出最多版本数（勾选「包含完整历史」时的总上限）。
+      - key: wikikernel.transfer.import-max-pages
+        type: integer
+        default: 2000
+        description: 单次导入最多页面数（超出部分忽略并在结果里提示）。
+      - key: wikikernel.transfer.import-max-revisions
+        type: integer
+        default: 20000
+        description: 单次导入最多版本数（超出部分忽略并在结果里提示）。
+      - key: wikikernel.transfer.import-max-bytes
+        type: long
+        default: 10485760
+        description: 导入文件大小上限（字节；默认 10MB，Spring multipart 之上再校验一次）。
+
+  # ---------------- CORS 跨域 ----------------
+  - prefix: wikikernel.cors
+    comment: |-
+      CORS 跨域。
+      让其它站点的前端（如 https://example.com 的页面）用 fetch 调本站接口；默认关闭（不添加任何跨域响应头）。
+      enabled=true 且至少配置一个来源时才生效。
+    items:
+      - key: wikikernel.cors.enabled
+        type: boolean
+        default: false
+        description: 总开关；false = 不注册跨域过滤器（同源访问行为不变）。
+      - key: wikikernel.cors.allowed-origins
+        type: list
+        default: []
+        description: 允许的来源（精确匹配，如 https://example.com）；"*" = 任意来源。
+      - key: wikikernel.cors.allowed-origin-patterns
+        type: list
+        default: []
+        description: 允许的来源模式（如 https://*.example.com）；与 allowed-origins 至少配一个才生效。
+      - key: wikikernel.cors.allowed-methods
+        type: list
+        default: [GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS]
+        description: 允许的请求方法（预检 Access-Control-Allow-Methods）。
+      - key: wikikernel.cors.allowed-headers
+        type: list
+        default: ["*"]
+        description: 允许的请求头（"*" = 任意；预检 Access-Control-Allow-Headers）。
+      - key: wikikernel.cors.exposed-headers
+        type: list
+        default: []
+        description: 允许前端 JS 读取的响应头（Access-Control-Expose-Headers）。
+      - key: wikikernel.cors.allow-credentials
+        type: boolean
+        default: false
+        description: 是否允许携带凭据（Cookie / Authorization）；true 时不能用 "*" 作精确来源。
+      - key: wikikernel.cors.max-age
+        type: long
+        default: 3600
+        description: 预检（OPTIONS）结果缓存秒数；0 = 不缓存。
+      - key: wikikernel.cors.paths
+        type: list
+        default: []
+        description: 生效路径（Ant 风格；默认空 = 全部路径），如 /api/**。
+
+  # ---------------- 邮件发送 ----------------
+  - prefix: wikikernel.email
+    comment: |-
+      邮件发送（SMTP）。
+      适配多种常见 SMTP：587 + STARTTLS（默认）、465 + SSL、内网无验证 SMTP；
+      每种邮件类型（confirm-email / password-reset / user-to-user）可在 types 下单独开关，
+      未配置时用类型自身的默认值（启用）。邮箱确认成功后会自动授予「邮箱确认用户」权限。
+      password 是敏感项，不写进生成的文件。
+    items:
+      - key: wikikernel.email.enabled
+        type: boolean
+        default: false
+        description: 总开关；false = 所有邮件都不发送。
+      - key: wikikernel.email.host
+        type: string
+        default: ""
+        description: SMTP 服务器地址，如 smtp.qq.com。
+      - key: wikikernel.email.port
+        type: integer
+        default: 587
+        description: SMTP 端口（587 STARTTLS / 465 SSL / 25 明文）。
+      - key: wikikernel.email.username
+        type: string
+        default: ""
+        description: SMTP 登录用户名（QQ 邮箱就是邮箱地址）。
+      - key: wikikernel.email.password
+        type: string
+        default: ""
+        secret: true
+        description: SMTP 登录密码 / 授权码（敏感项，不写进生成的文件）。
+      - key: wikikernel.email.auth
+        type: boolean
+        default: true
+        description: 是否需要身份验证（内网 SMTP 可设 false）。
+      - key: wikikernel.email.starttls
+        type: boolean
+        default: true
+        description: 启用 STARTTLS（587 常用）。
+      - key: wikikernel.email.ssl
+        type: boolean
+        default: false
+        description: 启用 SSL（465 常用；开启后 STARTTLS 忽略）。
+      - key: wikikernel.email.from
+        type: string
+        default: ""
+        description: 发件人地址；留空 = 用 username。
+      - key: wikikernel.email.from-name
+        type: string
+        default: WikiKernel
+        description: 发件人显示名。
+      - key: wikikernel.email.token-expire-hours
+        type: integer
+        default: 24
+        description: 确认 / 重置等令牌的有效期（小时）。
+      - key: wikikernel.email.confirm-cooldown-seconds
+        type: integer
+        default: 60
+        description: 邮箱确认邮件的发送冷却（秒；0 = 不限制）。
+      - key: wikikernel.email.password-reset-cooldown-seconds
+        type: integer
+        default: 300
+        description: 密码重置邮件的发送冷却（秒；0 = 不限制）。
+      - key: wikikernel.email.base-url
+        type: string
+        default: ""
+        description: 站点基础地址（用于邮件里的链接）；留空 = 按请求自动推导。
+      - key: wikikernel.email.types
+        type: map
+        default: {}
+        write: false
+        description: 每种邮件类型的开关（id → 是否启用，如 confirm-email / password-reset / user-to-user）。
+
+  # ---------------- 安装向导自身 ----------------
+  - prefix: wikikernel.setup
+    comment: |-
+      安装向导（/init）自身。
+      mode：auto（配置文件不存在时进入安装模式）/ off（关闭）/ force（强制，测试用）。
+      initial-accounts 由向导写入（密码只存 MediaWiki 格式哈希，不落明文），启动时据此建号并授予用户组。
+    items:
+      - key: wikikernel.setup.mode
+        type: string
+        default: auto
+        enum: [auto, off, force]
+        description: 安装模式；auto = 配置文件不存在时进入安装模式。
+      - key: wikikernel.setup.file
+        type: string
+        default: LocalSettings.yaml
+        description: 生成的本地配置文件路径（相对启动目录）。
+      - key: wikikernel.setup.restart-enabled
+        type: boolean
+        default: true
+        description: 完成安装后是否自动重启进程（测试 / IDE 环境可关）。
+      - key: wikikernel.setup.key
+        type: string
+        default: ""
+        secret: true
+        description: /init 安装密钥（首次完成安装时随机生成；之后访问 /init 需要它）。
+      - key: wikikernel.setup.initial-accounts
+        type: list
+        default: []
+        write: false
+        description: 初始账号列表（username / password-hash / email / groups），由向导写入。
+
+  # ---------------- Spring 标准键（本项目用到的一项） ----------------
+  - prefix: spring.data.redis
+    comment: |-
+      Redis 连接（Spring Boot 标准键）。
+      页面正文缓存用 Redis 时填写；wikikernel.cache.page.redis.enabled=true 也可在没有本节时强制启用
+      （连不上仍会自动退回进程内 LRU）。密码是敏感项，不写进生成的文件。
+    items:
+      - key: spring.data.redis.host
+        type: string
+        default: 127.0.0.1
+        description: Redis 主机。
+      - key: spring.data.redis.port
+        type: integer
+        default: 6379
+        description: Redis 端口。
+      - key: spring.data.redis.database
+        type: integer
+        default: 0
+        description: Redis 库号（0–15）。
+      - key: spring.data.redis.password
+        type: string
+        default: ""
+        secret: true
+        description: Redis 密码（敏感项，不写进生成的文件）。

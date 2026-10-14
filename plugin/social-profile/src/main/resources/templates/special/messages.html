@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:私信 / Special:Messages 模板（从 core 迁出，模型键不变）
+     顶部是社交页统一导航条（本页高亮「私信」），下面 .messages-tabs 是本页自己的收件箱 / 发件箱 / 会话 / 写私信。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.messages}">
+        收发私信，并按对方查看往来记录。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」（头像上传 / 私信）。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and messagesLogin}">
+        <span th:text="#{messages.loginRequired}">请先登录再使用私信。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or messagesLogin}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" aria-current="page" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <!-- 四个入口：收件箱 / 发件箱 / 会话 / 写私信（与特殊页其余标签样式一致） -->
+        <ul class="messages-tabs">
+            <li th:classappend="${messagesMode == 'inbox'} ? 'selected'">
+                <a th:href="@{/wiki/特殊:私信}" th:text="#{messages.inbox}">收件箱</a>
+            </li>
+            <li th:classappend="${messagesMode == 'sent'} ? 'selected'">
+                <a th:href="@{/wiki/特殊:私信(box=sent)}" th:text="#{messages.sentBox}">发件箱</a>
+            </li>
+            <li th:classappend="${messagesMode == 'conversations' or messagesMode == 'thread'} ? 'selected'">
+                <a th:href="@{/wiki/特殊:私信(box=conversations)}" th:text="#{messages.conversations}">会话</a>
+            </li>
+            <li th:classappend="${messagesMode == 'compose'} ? 'selected'">
+                <a th:href="@{/wiki/特殊:私信(write=1)}" th:text="#{messages.compose}">写私信</a>
+            </li>
+        </ul>
+
+        <p class="wiki-warning" th:if="${messageNotFound}" th:text="#{messages.notFound}">
+            私信不存在，或你无权查看。
+        </p>
+
+        <!-- 阅读：正文按 wikitext 渲染；可回复 / 删除自己一侧 -->
+        <div class="message-view" th:if="${messageView}">
+            <div class="message-meta">
+                <span th:text="#{messages.from}">发件人：</span>
+                <a th:href="@{/wiki/{t}(t=${'用户:' + fromName})}" th:text="${fromName}">用户</a>
+                <span class="message-separator">·</span>
+                <span th:text="#{messages.to}">收件人：</span>
+                <a th:href="@{/wiki/{t}(t=${'用户:' + toName})}" th:text="${toName}">用户</a>
+                <span class="message-separator">·</span>
+                <span class="message-time" th:text="${messageTime}">时间</span>
+            </div>
+            <div class="message-body" th:utext="${messageHtml}">内容</div>
+            <div class="message-actions">
+                <a class="wiki-button sp-button-primary" th:href="@{/wiki/特殊:私信(write=1,to=${messageOther})}"
+                   th:text="#{messages.reply}">回复</a>
+                <a class="wiki-button" th:href="@{/wiki/特殊:私信(with=${messageOther})}"
+                   th:text="#{messages.openThread}">进入会话</a>
+                <button type="button" class="wiki-button message-delete" th:attr="data-id=${messageId}"
+                        th:aria-label="#{messages.delete}"
+                        th:text="#{messages.delete}">删除</button>
+                <a th:if="${messageInbox}" th:href="@{/wiki/特殊:私信}" th:text="#{messages.backInbox}">返回收件箱</a>
+                <a th:unless="${messageInbox}" th:href="@{/wiki/特殊:私信(box=sent)}"
+                   th:text="#{messages.backSent}">返回发件箱</a>
+            </div>
+        </div>
+
+        <!-- 会话：与某人的往来（两个方向按时间拼在一起），底部可直接继续写 -->
+        <div class="message-thread" th:if="${messagesMode == 'thread'}">
+            <div class="message-thread-header">
+                <span th:text="#{messages.threadTitle(${threadPeer})}">与 某某 的往来私信</span>
+                <a th:href="${threadPeerUrl}" th:text="#{messages.threadUserPage}">用户页</a>
+                <a th:href="@{/wiki/特殊:私信(box=conversations)}" th:text="#{messages.backConversations}">返回会话列表</a>
+            </div>
+            <p class="messages-empty" th:if="${#lists.isEmpty(threadRows)}" th:text="#{messages.emptyThread}">
+                还没有往来私信，下面写第一条。
+            </p>
+            <ol class="message-thread-list" th:unless="${#lists.isEmpty(threadRows)}">
+                <li class="message-thread-item" th:each="row : ${threadRows}"
+                    th:classappend="${row['mine']} ? ' message-mine' : ' message-theirs'">
+                    <div class="message-thread-meta">
+                        <span th:text="${row['mine']} ? #{messages.me} : ${threadPeer}">我</span>
+                        <span class="message-separator">·</span>
+                        <span class="message-time" th:text="${row['timeText']}">时间</span>
+                    </div>
+                    <div class="message-thread-body" th:utext="${row['contentHtml']}">内容</div>
+                </li>
+            </ol>
+            <form id="message-form" class="wiki-form message-thread-form" method="post" action="/api/messages/send"
+                  th:attr="data-redirect=@{/wiki/特殊:私信(with=${threadPeer})}">
+                <input type="hidden" name="to" th:value="${threadPeer}"/>
+                <div class="form-field">
+                    <label for="message-content" th:text="#{messages.threadPlaceholder(${threadPeer})}">
+                        写给对方（支持 wikitext）：
+                    </label>
+                    <textarea id="message-content" name="content" rows="4" required="required"></textarea>
+                </div>
+                <div class="form-message" role="alert" hidden="hidden"></div>
+                <div class="form-actions sp-form-actions">
+                    <button type="submit" class="wiki-button sp-button-primary"
+                            th:aria-label="#{messages.send}" th:text="#{messages.send}">发送</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 会话列表：按对方聚合的收件 + 发件 -->
+        <div th:if="${messagesMode == 'conversations'}">
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(conversationRows)}">
+                <p class="messages-empty" th:text="#{messages.noConversations}">还没有与任何人的往来私信。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:私信(write=1)}" th:text="#{socialProfile.empty.messages.action}">写私信</a>
+                </p>
+            </div>
+            <table class="messages-table sp-messages-table" th:unless="${#lists.isEmpty(conversationRows)}">
+                <thead>
+                <tr>
+                    <th th:text="#{messages.peer}">对方</th>
+                    <th th:text="#{messages.colLastMessage}">最后一条</th>
+                    <th th:text="#{messages.colTime}">时间</th>
+                    <th th:text="#{messages.colCount}">条数</th>
+                    <th th:text="#{messages.colActions}">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${conversationRows}" th:classappend="${row['unread'] > 0} ? 'message-unread'">
+                    <td class="sp-message-peer" data-label="#{messages.peer}">
+                        <a th:href="${row['peerUrl']}" th:aria-label="${row['peer']}" th:text="${row['peer']}">用户</a>
+                    </td>
+                    <td class="message-excerpt" data-label="#{messages.colLastMessage}" th:text="${row['excerpt']}">摘要</td>
+                    <td class="message-time" data-label="#{messages.colTime}" th:text="${row['timeText']}">时间</td>
+                    <td th:text="${row['count']}">3</td>
+                    <td class="message-row-actions" data-label="#{messages.colActions}">
+                        <a th:href="@{/wiki/特殊:私信(with=${row['peer']})}"
+                           th:aria-label="#{messages.openThread}" th:text="#{messages.openThread}">进入会话</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 写私信：收件人用户名 + wikitext 内容 -->
+        <div th:if="${messagesMode == 'compose'}">
+            <form id="message-form" class="wiki-form" method="post" action="/api/messages/send">
+                <div class="form-field">
+                    <label for="message-to" th:text="#{messages.toLabel}">收件人：</label>
+                    <input type="text" id="message-to" name="to" th:value="${composeTo}" autofocus
+                           required="required"/>
+                    <p class="wiki-hint">
+                        <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.findFriends}">去随机用户找几位新朋友</a>
+                    </p>
+                </div>
+                <div class="form-field">
+                    <label for="message-content" th:text="#{messages.content}">内容（支持 wikitext）：</label>
+                    <textarea id="message-content" name="content" rows="8" required="required"></textarea>
+                </div>
+                <div class="form-message" role="alert" hidden="hidden"></div>
+                <div class="form-actions sp-form-actions">
+                    <button type="submit" class="wiki-button sp-button-primary"
+                            th:aria-label="#{messages.send}" th:text="#{messages.send}">发送</button>
+                    <a class="sp-secondary-link" th:href="@{/wiki/特殊:私信}"
+                       th:text="#{messages.backInbox}">返回收件箱</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 收件箱 / 发件箱列表 -->
+        <div th:if="${messagesMode == 'inbox' or messagesMode == 'sent'}">
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(messageRows) and messagesMode == 'inbox'}">
+                <p class="messages-empty" th:text="#{messages.emptyInbox}">收件箱没有私信。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:私信(write=1)}" th:text="#{socialProfile.empty.messages.inbox}">收件箱是空的，去给别人写一封</a>
+                </p>
+            </div>
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(messageRows) and messagesMode == 'sent'}">
+                <p class="messages-empty" th:text="#{messages.emptySent}">发件箱没有私信。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:私信(write=1)}" th:text="#{socialProfile.empty.messages.action}">写私信</a>
+                </p>
+            </div>
+            <table class="messages-table sp-messages-table" th:unless="${#lists.isEmpty(messageRows)}">
+                <thead>
+                <tr>
+                    <th th:text="${messagesMode == 'sent'} ? #{messages.toUser} : #{messages.fromUser}">对方</th>
+                    <th th:text="#{messages.colTime}">时间</th>
+                    <th th:text="#{messages.colExcerpt}">内容</th>
+                    <th th:text="#{messages.colActions}">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${messageRows}" th:classappend="${row['unread']} ? 'message-unread'">
+                    <td class="sp-message-peer"
+                        th:data-label="${messagesMode == 'sent'} ? #{messages.toUser} : #{messages.fromUser}">
+                        <a th:href="${row['otherUrl']}" th:aria-label="${row['other']}" th:text="${row['other']}">用户</a>
+                    </td>
+                    <td class="message-time" data-label="#{messages.colTime}" th:text="${row['timeText']}">时间</td>
+                    <td class="message-excerpt" data-label="#{messages.colExcerpt}" th:text="${row['excerpt']}">摘要</td>
+                    <td class="message-row-actions" data-label="#{messages.colActions}">
+                        <a th:href="@{/wiki/特殊:私信(id=${row['id']})}"
+                           th:aria-label="#{messages.view}" th:text="#{messages.view}">查看</a>
+                        <a th:href="@{/wiki/特殊:私信(with=${row['other']})}"
+                           th:aria-label="#{messages.associate}" th:text="#{messages.associate}">关联</a>
+                        <button type="button" class="message-delete" th:attr="data-id=${row['id']}"
+                                th:aria-label="#{messages.delete}" th:text="#{messages.delete}">删除</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </th:block>
+</section>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<!-- 特殊页统一外壳：给“直接返回 HTML”的实现用（contentHtml 是受信任的代码输出） -->
+<html lang="zh" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-content" th:utext="${contentHtml}">内容</div>
+</section>
+</body>
+</html>

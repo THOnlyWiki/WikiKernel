@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<!-- 特殊:重命名用户 / Special:RenameUser（仿 MediaWiki Renameuser 扩展；需要「重命名用户」权限） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:unless="${canRename}" th:text="#{renameUser.noPermission}">
+        需要「重命名用户」权限。
+    </p>
+
+    <th:block th:if="${canRename}">
+        <p th:text="#{renameUser.summary}">将某个用户的账号名改为新名字。</p>
+
+        <form id="rename-user-form" class="wiki-form" method="post" th:action="@{/api/user/rename}"
+              th:attr="data-confirm-template=#{renameUser.confirm('__OLD__','__NEW__')}">
+            <div class="form-field">
+                <label for="rename-user-old" th:text="#{renameUser.oldName}">原用户名：</label>
+                <input type="text" id="rename-user-old" name="oldName" required/>
+            </div>
+            <div class="form-field">
+                <label for="rename-user-new" th:text="#{renameUser.newName}">新用户名：</label>
+                <input type="text" id="rename-user-new" name="newName" required/>
+            </div>
+            <div class="form-field">
+                <label for="rename-user-reason" th:text="#{renameUser.reason}">原因（可选）：</label>
+                <input type="text" id="rename-user-reason" name="reason" maxlength="255"/>
+            </div>
+            <label class="pref-checkbox">
+                <input type="checkbox" id="rename-user-move" name="movePages" value="1" checked/>
+                <span th:text="#{renameUser.movePages}">同时重命名用户页 / 用户讨论页（含子页面）</span>
+            </label>
+            <div class="form-message" role="alert" hidden></div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{renameUser.submit}">重命名用户</button>
+            </div>
+        </form>
+
+        <!-- 最近的重命名（通用日志系统的 renameuser 类型） -->
+        <fieldset class="user-rights-fieldset">
+            <legend th:text="#{renameUser.recent}">最近的重命名</legend>
+            <p th:if="${#lists.isEmpty(logRows)}" th:text="#{userRights.logEmpty}">在日志中不存在匹配项。</p>
+            <ul class="rights-log" th:unless="${#lists.isEmpty(logRows)}">
+                <li th:each="row : ${logRows}">
+                    <span class="rights-log-time" th:text="${row.timeText}">时间</span>
+                    <span class="rights-log-actor">
+                        <a th:if="${row.actorUrl != null}" th:href="${row.actorUrl}"
+                           th:text="${row.actorName}">操作者</a>
+                        <span th:if="${row.actorUrl == null}" th:text="#{log.actor.system}">系统</span>
+                    </span>
+                    <span class="rights-log-action"><span th:text="${row.actionBefore}"></span><a
+                            th:if="${row.targetUrl != null}" th:href="${row.targetUrl}"
+                            th:text="${row.targetText}">目标</a><span
+                            th:if="${row.targetUrl == null}" th:text="${row.targetText}">目标</span><span
+                            th:text="${row.actionAfter}"></span></span>
+                    <span class="rights-log-detail" th:text="${row.detailText}">详情</span>
+                </li>
+            </ul>
+        </fieldset>
+    </th:block>
+</section>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<!-- 插件认领的「不存在的标题」页面（PageDisplayHook.renderMissingPage，如审核的「待审创建」页）：
+     core 只给通用外壳，正文 HTML 由插件生成 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-content plugin-claimed-page" th:utext="${pluginPageHtml}">插件生成的页面内容</div>
+</section>
+</body>
+</html>

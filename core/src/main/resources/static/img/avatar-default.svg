@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="180" height="180" role="img" aria-label="avatar">
+    <!-- 默认头像（未上传时使用）：浅灰背景 + 深灰人像剪影 -->
+    <rect width="120" height="120" fill="#eaecf0"/>
+    <circle cx="60" cy="45" r="22" fill="#a2a9b1"/>
+    <path d="M20 120c0-22 18-38 40-38s40 16 40 38z" fill="#a2a9b1"/>
+</svg>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- 特殊:最多浏览 / Special:PopularPages（HitCounters 扩展移植） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{hitcounters.intro}">按浏览量排序的页面（仿 MediaWiki 的 特殊:最多浏览 / Special:PopularPages）。</p>
+    <p th:if="${disabled}" class="wiki-form-error" th:text="#{hitcounters.disabled}">浏览计数已在插件设置里关闭（hit-counters.disabled = true）。</p>
+
+    <table class="wikitable hitcounters-table">
+        <tbody>
+        <tr>
+            <th>#</th>
+            <th th:text="#{hitcounters.table.page}">页面</th>
+            <th th:text="#{hitcounters.table.views}">浏览量</th>
+            <th th:if="${showLength}" th:text="#{hitcounters.table.length}">字节数</th>
+            <th th:if="${showPageId}" th:text="#{hitcounters.table.pageId}">页面 ID</th>
+        </tr>
+        <tr th:each="row, iter : ${rows}">
+            <td th:text="${iter.count}">1</td>
+            <td><a th:href="@{/wiki/{title}(title=${row['title']})}" th:text="${row['title']}">页面</a></td>
+            <td th:text="${row['viewsText']}">0</td>
+            <td th:if="${showLength}" th:text="${row['length']}">0</td>
+            <td th:if="${showPageId}" th:text="${row['pageId']}">0</td>
+        </tr>
+        </tbody>
+    </table>
+    <p th:if="${not disabled and #lists.isEmpty(rows)}" th:text="#{hitcounters.empty}">还没有浏览记录。</p>
+    <p><span th:text="#{hitcounters.total}">全站总浏览量：</span><strong th:text="${totalViewsText}">0</strong></p>
+</section>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!-- 公共片段：.js / .css 代码页面顶部的缓存提示（仿 MediaWiki:Clearyourcache） -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="wiki-warning code-cache-notice" th:fragment="notice">
+    <p><strong th:text="#{code.cacheNotice}">
+        注意：在发布之后，您可能需要清除浏览器缓存才能看到所作出的更改的影响。
+    </strong></p>
+    <ul>
+        <li th:text="#{code.cacheNoticeFirefox}">
+            Firefox 或 Safari：按住 Shift 的同时单击刷新，或按 Ctrl-F5 或 Ctrl-R（Mac 为 ⌘-R）
+        </li>
+        <li th:text="#{code.cacheNoticeChrome}">
+            Google Chrome：按 Ctrl-Shift-R（Mac 为 ⌘-Shift-R）
+        </li>
+        <li th:text="#{code.cacheNoticeEdge}">
+            Edge：按住 Ctrl 的同时单击刷新，或按 Ctrl-F5
+        </li>
+    </ul>
+</div>
+</body>
+</html>

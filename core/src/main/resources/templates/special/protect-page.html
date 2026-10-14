@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!-- 特殊:保护页面 / Special:ProtectPage -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="protect-intro" th:text="#{protect.intro}">保护后只有管理员可以编辑本页面。</p>
+
+    <form th:if="${sourcePage == null and pageNotFound != true}" id="wiki-protect-lookup" class="wiki-form wiki-form-inline"
+          th:action="@{/wiki/特殊:保护页面}" method="get">
+        <input type="text" name="page" th:value="${lookupName}" th:placeholder="#{move.fromPlaceholder}"
+               autofocus required/>
+        <button type="submit" class="wiki-button" th:text="#{userRights.load}">加载</button>
+    </form>
+    <p class="wiki-form-error" th:if="${pageNotFound}" th:text="#{permissions.userNotFound}">页面不存在。</p>
+
+    <th:block th:if="${sourcePage != null}">
+        <p class="move-from">
+            <span th:text="#{move.from}">原页面：</span>
+            <a th:href="@{/wiki/{t}(t=${sourcePage.title})}" th:text="${sourcePage.title}">标题</a>
+        </p>
+        <p class="wiki-form-error" th:if="${protectForbidden}" th:text="#{protect.forbidden}">
+            只有管理员可以更改保护状态。
+        </p>
+
+        <!-- 无权限 / 未登录（不渲染表单）时也要能返回原页面 -->
+        <p class="page-back" th:unless="${canProtect}">
+            <a class="wiki-button" th:href="@{/wiki/{t}(t=${sourcePage.title})}"
+               th:text="#{common.back}">返回</a>
+        </p>
+
+        <form th:if="${canProtect}" id="wiki-protect-form" class="wiki-form" method="post"
+              th:action="@{/api/pages/protect}">
+            <input type="hidden" name="title" th:value="${sourcePage.title}"/>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="radio" name="protected" value="true"
+                           th:checked="${sourcePage.protectedPage == true}"/>
+                    <span th:text="#{protect.levelProtected}">仅管理员可编辑</span>
+                </label>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="radio" name="protected" value="false"
+                           th:checked="${sourcePage.protectedPage != true}"/>
+                    <span th:text="#{protect.levelNone}">不保护（登录用户均可编辑）</span>
+                </label>
+            </div>
+            <div class="form-message" role="alert" hidden></div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{protect.submit}">确认</button>
+                <a class="wiki-button" th:href="@{/wiki/{t}(t=${sourcePage.title})}"
+                   th:text="#{common.back}">返回</a>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

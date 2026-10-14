@@ -1,0 +1,114 @@
+plugins {
+    id 'org.springframework.boot' version '4.1.1' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+}
+
+description = 'WikiKernel：common（通用）/ core（核心）/ plugin（可选插件，独立编译）'
+
+allprojects {
+    group = 'cc.thonly'
+    version = '0.0.1-SNAPSHOT'
+}
+
+subprojects {
+    plugins.withId('java') {
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
+            }
+        }
+
+        // 所有 Java 模块统一使用 Lombok（仅编译期，不打进产物；新增插件自动生效）
+        // 测试作用域不继承 compileOnly，所以这里一并声明 testCompileOnly / testAnnotationProcessor
+        dependencies {
+            compileOnly "org.projectlombok:lombok:${lombokVersion}"
+            annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+            testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+            testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        }
+
+        tasks.withType(JavaCompile).configureEach {
+            options.encoding = 'UTF-8'
+        }
+
+        tasks.withType(Test).configureEach {
+            useJUnitPlatform()
+            // 测试沙箱工作目录：隔离仓库根目录的 LocalSettings.yaml 与散落文件。
+            // application.yaml 里的 spring.config.import 是双路径（./ 与 ../，后者供 IDEA 识别 LocalSettings.yaml），
+            // 从 core/ 运行时 ../ 正好是仓库根、会把真实配置带进测试，因此测试统一在 build/test-working-dir 下运行；
+            // 少数依赖相对路径的测试通过下面两个系统属性拿到真实位置（IDE 里没有属性时用相对路径兜底）。
+            def testWorkDir = layout.buildDirectory.dir('test-working-dir')
+            workingDir = testWorkDir
+            doFirst {
+                testWorkDir.get().asFile.mkdirs()
+            }
+            systemProperty 'wk.setup.test.file',
+                    testWorkDir.get().asFile.toPath().resolve('setup-migrate-LocalSettings.yaml').toString()
+            systemProperty 'wk.templates.dir', file('src/main/resources/templates').absolutePath
+            // 已构建的插件 jar 目录（仓库根 plugins/，由 installPlugins 生成）：
+            // PluginRuntimeLoadTest 用它做「真实插件能否启动」的回归；目录不存在时该测试自动跳过
+            systemProperty 'wk.plugins.dir', rootProject.file('plugins').absolutePath
+        }
+
+        // 任何模块执行 check 时都先校验依赖方向，从机制上防止 core 与 plugin 互相依赖
+        tasks.named('check') {
+            dependsOn rootProject.tasks.named('checkPluginDependencies')
+        }
+    }
+}
+
+// ==================== 依赖方向校验 ====================
+// 唯一允许的依赖方向：common <- core、common <- plugin。
+// 禁止：core -> plugin、plugin -> core、plugin -> plugin，避免出现依赖循环。
+def dependencyViolations = []
+
+gradle.projectsEvaluated {
+    Set<List<String>> edges = new LinkedHashSet<>()
+    allprojects.each { p ->
+        p.configurations.each { configuration ->
+            configuration.dependencies.withType(ProjectDependency).each { dependency ->
+                edges << [p.path, dependency.path]
+            }
+        }
+    }
+    edges.each { from, to ->
+        def fromPlugin = from.startsWith(':plugin:')
+        def toPlugin = to.startsWith(':plugin:')
+        if (from == ':common' && to != ':common') {
+            dependencyViolations << "$from -> $to（common 必须保持零依赖）".toString()
+        } else if (to == ':core') {
+            dependencyViolations << "$from -> $to（禁止反向依赖 core）".toString()
+        } else if (from == ':core' && toPlugin) {
+            dependencyViolations << "$from -> $to（core 不能依赖具体插件，插件通过运行时加载）".toString()
+        } else if (fromPlugin && toPlugin) {
+            dependencyViolations << "$from -> $to（插件之间不能互相依赖，请通过 common 定义扩展点）".toString()
+        }
+    }
+}
+
+tasks.register('checkPluginDependencies') {
+    group = 'verification'
+    description = '校验模块依赖方向，从机制上避免依赖循环'
+    doLast {
+        if (!dependencyViolations.isEmpty()) {
+            throw new GradleException('发现非法依赖（会形成依赖循环）：\n  ' + dependencyViolations.join('\n  '))
+        }
+        println '依赖方向校验通过：common <- core，common <- plugin'
+    }
+}
+
+// ==================== 收集插件 jar ====================
+// gradlew installPlugins 之后，插件 jar 会出现在根目录 plugins/，core 默认从这里加载
+def pluginProjects = subprojects.findAll { it.path.startsWith(':plugin:') }
+
+tasks.register('installPlugins', Copy) {
+    group = 'build'
+    description = '构建 plugin/ 下的所有插件，并把 jar 复制到根目录 plugins/（*-demo 演示插件除外）'
+    dependsOn pluginProjects.collect { it.tasks.named('jar') }
+    from pluginProjects.collect { it.tasks.named('jar').flatMap { task -> task.archiveFile } }
+    // 演示 / 测试插件（目录名以 -demo 结尾，如 plugin/dep-demo）只用于回归与能力演示：
+    // 它们会被构建，但不进 plugins/ 发行目录，避免真实部署被演示行为（切面计数、客户端依赖告警等）影响。
+    // 需要它出现在 plugins/ 里时，手动复制 build/libs/*.jar 即可。
+    exclude '*-demo-*.jar'
+    into rootProject.layout.projectDirectory.dir('plugins')
+}

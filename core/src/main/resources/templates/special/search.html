@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!-- 特殊:搜索 / Special:Search -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <form class="wiki-form wiki-form-inline" th:action="@{/wiki/特殊:搜索}" method="get">
+        <input type="search" name="q" th:value="${q}" th:placeholder="#{search.placeholder}"
+               th:attr="aria-label=#{common.search}"/>
+        <button type="submit" class="wiki-button" th:text="#{common.search}">搜索</button>
+    </form>
+
+    <p class="search-summary" th:if="${!#strings.isEmpty(q)}"
+       th:text="#{search.summary(${q}, ${results.size()})}">0 条结果</p>
+
+    <ul class="search-results" th:if="${!#lists.isEmpty(results)}">
+        <li th:each="hit : ${results}">
+            <a th:href="${hit.url}" th:text="${hit.title}">标题</a>
+            <div class="search-snippet" th:text="${hit.snippet}">摘要</div>
+        </li>
+    </ul>
+    <p th:if="${!#strings.isEmpty(q) and #lists.isEmpty(results)}"
+       th:text="#{search.noResults}">没有找到匹配的词条。</p>
+</section>
+</body>
+</html>

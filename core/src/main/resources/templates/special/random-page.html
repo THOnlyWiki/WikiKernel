@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<!-- 特殊:随机页面 / Special:Random：正常情况下 302 跳转，这里只处理「没有可跳转的页面」 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{random.intro}">随机跳转到一个页面（仿 MediaWiki 的 特殊:随机页面）。</p>
+    <p class="wiki-warning" th:text="#{random.none}">没有可跳转的页面。</p>
+    <p><a th:href="@{/wiki/特殊:全部页面}" th:text="#{random.goAllPages}">查看全部页面</a></p>
+</section>
+</body>
+</html>

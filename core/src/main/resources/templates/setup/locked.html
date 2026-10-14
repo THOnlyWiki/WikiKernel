@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- 已安装后访问 /init 的密钥解锁页（密钥见 LocalSettings.yaml 的 wikikernel.setup.key） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{setup.locked.title} + ' - WikiKernel'">安装向导需要密钥</title>
+    <link rel="stylesheet" th:href="@{/css/base.css}">
+    <script th:inline="javascript">
+        window.SETUP_MESSAGES = {
+            operationFailed: /*[[#{setup.operationFailed}]]*/ '',
+            networkError: /*[[#{setup.networkError}]]*/ ''
+        };
+    </script>
+    <script th:src="@{/js/setup.js}" defer></script>
+</head>
+<body class="setup-body">
+<div class="setup-shell">
+    <h1 th:text="#{setup.locked.title}">安装向导需要密钥</h1>
+    <p class="setup-intro" th:text="#{setup.locked.intro}">
+        本站已完成初始化。输入安装密钥可以再次打开安装向导（用于初始化插件、把配置写回 LocalSettings.yaml）。
+    </p>
+
+    <div class="form-message" role="alert" th:if="${rateLimited == true}"
+         th:text="#{setup.locked.tooMany(${retryAfter})}">尝试次数过多，请稍后再试</div>
+    <div id="setup-message" class="form-message" role="alert"
+         th:hidden="${keyError != true}"
+         th:text="${keyError == true ? #messages.msg('setup.locked.wrong') : ''}">密钥不正确</div>
+
+    <form id="setup-unlock-form">
+        <div class="form-field">
+            <label for="setup-key" th:text="#{setup.locked.key}">安装密钥：</label>
+            <input type="password" id="setup-key" name="key" autofocus required>
+        </div>
+        <div class="setup-actions">
+            <button type="submit" class="wiki-button" th:text="#{setup.locked.submit}">解锁</button>
+        </div>
+    </form>
+
+    <p class="setup-note" th:text="#{setup.locked.hint}">
+        密钥保存在 LocalSettings.yaml 的 wikikernel.setup.key；也可以在网址后加 ?key=密钥 直接进入。
+    </p>
+</div>
+</body>
+</html>

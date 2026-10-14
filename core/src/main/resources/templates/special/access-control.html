@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<!-- 特殊:权限配置 / Special:AccessControl：配置「目标 + 动作 → 允许的用户组」（仿 MediaWiki LocalSettings 的 $wgGroupPermissions，网页版） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{access.intro}">
+        在这里配置「谁可以查看 / 编辑 / 创建 / 移动 / 保护 / 删除」页面，保存后立即生效。
+    </p>
+    <p class="wiki-hint" th:text="#{access.hint}">
+        匹配优先级：精确标题 &gt; 最长前缀（以 * 结尾，如 帮助:*）&gt; 全部（*）；命中后不再往下匹配。
+        「指定用户组」为任一即可；「所有人」包含匿名用户；「无人」表示禁止。
+    </p>
+    <p class="wiki-hint" th:text="#{access.hintLocalSettings}">
+        也可以在 LocalSettings.yaml 的 wikikernel.permissions.rules 写默认规则：每次启动导入并覆盖同一「目标 + 动作」的网页修改。
+    </p>
+    <p class="wiki-hint" th:text="#{access.hintUpsert}">
+        对同一「目标 + 动作」再次保存会覆盖旧规则，可用于修改。
+    </p>
+
+    <p id="access-message" class="form-message" hidden></p>
+
+    <h2 th:text="#{settings.section}">站点设置</h2>
+    <form id="site-settings-form" class="wiki-form" th:if="${canManage}" method="post">
+        <fieldset class="setup-group">
+            <legend th:text="#{setup.group.site}">站点信息</legend>
+            <div class="form-field form-field-inline">
+                <label for="settings-site-name" th:text="#{settings.siteName}">站点名称</label>
+                <input type="text" id="settings-site-name" name="siteName" maxlength="128"
+                       th:value="${siteNameValue}" placeholder="WikiKernel"/>
+            </div>
+            <div class="wiki-hint" th:text="#{settings.siteNameHint}">
+                显示在浏览器标题栏（「页面名 - 站点名称」）、页眉图标提示、页脚、搜索框占位符、邮件主题与 API 的 sitename 等；留空 = 默认 WikiKernel。
+            </div>
+        </fieldset>
+        <fieldset class="setup-group">
+            <legend th:text="#{setup.group.base}">基础功能</legend>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" name="allowOtherUserPageEdit" value="1"
+                               th:checked="${allowOtherUserPageEdit}"/>
+                        <span th:text="#{settings.allowOtherUserPageEdit}">允许编辑其他用户的用户页</span>
+                    </label>
+                </div>
+                <div class="wiki-hint" th:text="#{settings.allowOtherUserPageEditHint}">
+                    用户本人与管理员始终可以编辑；关闭时其他人点「编辑」只能查看源代码。
+                </div>
+                <div class="setup-feature">
+                    <div class="form-field form-field-inline">
+                        <label>
+                            <input type="checkbox" name="register" value="1"
+                                   th:checked="${registerEnabled}"/>
+                            <span th:text="#{settings.register}">启用注册（创建账号）</span>
+                        </label>
+                    </div>
+                    <div class="wiki-hint" th:text="#{settings.registerHint}">
+                        关闭后：只有管理员 / 行政员还能打开「特殊:注册」创建账号，其他人访问会提示注册已关闭。
+                    </div>
+                </div>
+        </fieldset>
+
+        <fieldset class="setup-group">
+            <legend th:text="#{setup.group.content}">内容与编辑器扩展</legend>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" name="typescript" value="1"
+                               th:checked="${typescriptFeatureEnabled}"/>
+                        <span th:text="#{settings.typescript}">TypeScript 服务端编译</span>
+                    </label>
+                </div>
+                <div class="wiki-hint" th:text="#{settings.typescriptHint}">
+                    启用后 .ts / .tsx 页面的内容会在服务端用内置 TypeScript 编译器编译（自包含，不依赖主机装 Node）。
+                </div>
+                <div class="setup-feature">
+                    <div class="form-field form-field-inline">
+                        <label>
+                            <input type="checkbox" name="typescriptCompileOnSave" value="1"
+                                   th:checked="${typescriptCompileOnSaveEnabled}"/>
+                            <span th:text="#{settings.typescriptCompileOnSave}">TypeScript 保存时编译</span>
+                        </label>
+                    </div>
+                    <div class="setup-options">
+                        <div class="wiki-hint" th:text="#{settings.typescriptCompileOnSaveHint}">
+                            保存 .ts / .tsx 页面后立刻编译，页面顶部直接显示语法诊断（不会阻止保存）。
+                        </div>
+                        <div class="form-field">
+                            <label for="settings-typescript-max-source"
+                                   th:text="#{settings.typescriptMaxSource}">源码大小上限（KB）</label>
+                            <input type="number" id="settings-typescript-max-source"
+                                   name="typescriptMaxSourceKilobytes" min="-1" step="1"
+                                   th:value="${typescriptMaxSourceKilobytes}"/>
+                            <span class="wiki-hint" th:text="#{settings.typescriptMaxSourceHint}">
+                                超过上限的 .ts / .tsx 源码会被拒绝编译（页面顶部显示诊断）；-1 或 0 表示不限制，留空则用配置文件里的默认值。改完立即生效，不需要重启。
+                            </span>
+                        </div>
+                        <div class="wiki-hint">
+                            <span th:text="#{settings.typescriptCompiler}">编译器</span>：
+                            <strong th:text="${typescriptCompilerAvailable}
+                                    ? ${typescriptCompilerVersion} : '—'">typescript/5.9.3</strong>
+                            <span> · </span>
+                            <span th:text="#{settings.typescriptMaxSource}">源码大小上限（KB）</span>：
+                            <strong th:text="${typescriptMaxSourceText}">256 KB</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="setup-feature">
+                </div>
+        </fieldset>
+
+
+        <fieldset class="setup-group">
+            <legend th:text="#{settings.cachePageGroup}">页面正文缓存（Redis 可选）</legend>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" name="cachePageEnabled" value="1" th:checked="${cachePageEnabled}"/>
+                        <span th:text="#{settings.cachePageEnabled}">启用页面正文缓存</span>
+                    </label>
+                </div>
+                <div class="form-field">
+                    <label for="settings-cache-page-backend" th:text="#{settings.cachePageBackend}">缓存后端</label>
+                    <select id="settings-cache-page-backend" name="cachePageBackend">
+                        <option value="auto" th:selected="${cachePageBackend == 'auto'}" th:text="#{settings.cachePageBackendAuto}">自动（能用 Redis 就用 Redis）</option>
+                        <option value="redis" th:selected="${cachePageBackend == 'redis'}" th:text="#{settings.cachePageBackendRedis}">只用 Redis</option>
+                        <option value="memory" th:selected="${cachePageBackend == 'memory'}" th:text="#{settings.cachePageBackendMemory}">只用进程内缓存</option>
+                        <option value="none" th:selected="${cachePageBackend == 'none'}" th:text="#{settings.cachePageBackendNone}">不缓存</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="settings-cache-page-ttl" th:text="#{settings.cachePageTtl}">缓存有效期（秒）</label>
+                    <input type="number" min="1" id="settings-cache-page-ttl" name="cachePageTtl" th:value="${cachePageTtl}"/>
+                </div>
+                <div class="form-field">
+                    <label for="settings-cache-page-max" th:text="#{settings.cachePageMaxEntries}">进程内缓存条数上限</label>
+                    <input type="number" min="1" id="settings-cache-page-max" name="cachePageMaxEntries" th:value="${cachePageMaxEntries}"/>
+                </div>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" name="cachePagePreload" value="1" th:checked="${cachePagePreload}"/>
+                        <span th:text="#{settings.cachePagePreload}">模板变更后自动预渲染受影响的页面</span>
+                    </label>
+                </div>
+                <div class="form-field">
+                    <label for="settings-cache-page-parallelism" th:text="#{settings.cachePageParallelism}">预渲染并发数（留空 = CPU 核数）</label>
+                    <input type="number" min="1" id="settings-cache-page-parallelism" name="cachePageParallelism" th:value="${cachePageParallelism}"/>
+                </div>
+                <div class="wiki-hint" th:text="#{settings.cachePageHint}">
+                    Redis 连不上会自动退回进程内缓存，不影响使用；配置改完立即生效，不用重启。
+                </div>
+        </fieldset>
+
+        <!-- 插件自己注册的设置分区（common.extension.SiteSettingsSection）：core 只渲染「键 → 值」，
+             不知道这些设置属于哪个功能；每个分区带一个隐藏的 plugin-section 标记，保存时按它写站点设置 -->
+        <fieldset class="setup-group" th:if="${pluginSettings != null and !pluginSettings.empty}">
+            <legend th:text="#{settings.pluginSections}">插件设置</legend>
+            <div class="wiki-hint" th:text="#{settings.pluginSectionsHint}">
+                下面的分区由已加载的插件自己提供；没加载的插件对应的设置不会出现。
+            </div>
+            <div class="setup-feature" th:each="section : ${pluginSettings}">
+                <input type="hidden" name="plugin-section" th:value="${section.id}"/>
+                <div class="setup-options-title" th:text="${section.title}">插件设置</div>
+                <div class="wiki-hint" th:if="${section.description != null and !section.description.isEmpty()}"
+                     th:text="${section.description}">说明</div>
+                <div class="form-field" th:each="field : ${section.fields}" th:switch="${field.type}">
+                    <label th:if="${field.type != 'checkbox'}" th:for="${field.inputId}"
+                           th:text="${field.label}">字段</label>
+                    <textarea th:case="'textarea'" th:id="${field.inputId}" th:name="${field.key}" rows="4"
+                              th:text="${field.value}"></textarea>
+                    <select th:case="'select'" th:id="${field.inputId}" th:name="${field.key}">
+                        <option th:each="option : ${field.options}" th:value="${option}"
+                                th:selected="${option == field.value}" th:text="${option}">选项</option>
+                    </select>
+                    <span th:case="'checkbox'" class="form-field-inline">
+                        <input type="checkbox" th:id="${field.inputId}" th:name="${field.key}" value="1"
+                               th:checked="${field.checked}"/>
+                        <span th:text="${field.label}">字段</span>
+                    </span>
+                    <input th:case="*" type="text" th:id="${field.inputId}" th:name="${field.key}"
+                           th:value="${field.value}"/>
+                </div>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{settings.save}">保存设置</button>
+        </div>
+    </form>
+    <fieldset class="setup-group" th:if="${!canManage}">
+        <legend th:text="#{setup.group.site}">站点信息</legend>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.siteName}">站点名称</span>
+            <strong th:text="${siteNameValue}">WikiKernel</strong>
+        </p>
+    </fieldset>
+    <fieldset class="setup-group" th:if="${!canManage}">
+        <legend th:text="#{setup.group.base}">基础功能</legend>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.allowOtherUserPageEdit}">允许编辑其他用户的用户页</span>
+            <strong th:text="${allowOtherUserPageEdit} ? #{settings.on} : #{settings.off}">关闭</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.register}">启用注册（创建账号）</span>
+            <strong th:text="${registerEnabled} ? #{settings.on} : #{settings.off}">开启</strong>
+        </p>
+    </fieldset>
+
+    <fieldset class="setup-group" th:if="${!canManage}">
+        <legend th:text="#{setup.group.content}">内容与编辑器扩展</legend>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.math}">数学公式（Math）</span>
+            <strong th:text="${mathFeatureEnabled} ? #{settings.on} : #{settings.off}">开启</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.timeline}">时间轴（EasyTimeline）</span>
+            <strong th:text="${timelineFeatureEnabled} ? #{settings.on} : #{settings.off}">开启</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.graph}">图形（Graph / Vega）</span>
+            <strong th:text="${graphFeatureEnabled} ? #{settings.on} : #{settings.off}">开启</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.typescript}">TypeScript 服务端编译</span>
+            <strong th:text="${typescriptFeatureEnabled} ? #{settings.on} : #{settings.off}">关闭</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.typescriptCompileOnSave}">TypeScript 保存时编译</span>
+            <strong th:text="${typescriptCompileOnSaveEnabled} ? #{settings.on} : #{settings.off}">关闭</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.typescriptMaxSource}">源码大小上限（KB）</span>
+            <strong th:text="${typescriptMaxSourceText}">256 KB</strong>
+        </p>
+    </fieldset>
+
+    <fieldset class="setup-group" th:if="${!canManage}">
+        <legend th:text="#{setup.group.media}">多媒体与阅读体验</legend>
+    </fieldset>
+
+    <fieldset class="setup-group" th:if="${!canManage}">
+        <legend th:text="#{setup.group.security}">管理与安全</legend>
+    </fieldset>
+    <h2 th:text="#{access.defaults}">默认规则（目标 *）</h2>
+    <table class="wikitable access-table">
+        <tr>
+            <th th:text="#{access.action}">动作</th>
+            <th th:text="#{access.current}">当前</th>
+            <th th:if="${canManage}" th:text="#{access.change}">修改</th>
+        </tr>
+        <tr th:each="item : ${defaults}">
+            <td th:text="${item.actionName}">查看</td>
+            <td th:text="${item.groupsText}">所有人</td>
+            <td th:if="${canManage}">
+                <form class="access-rule-form access-inline-form" method="post">
+                    <input type="hidden" name="target" value="*"/>
+                    <input type="hidden" name="action" th:value="${item.action}"/>
+                    <th:block th:replace="~{fragments/access-rule-scope :: scope(item=${item}, prefix=${'def-' + item.action}, groups=${groups})}"/>
+                    <button type="submit" class="wiki-button" th:text="#{access.save}">保存</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{access.rules}">页面的访问规则</h2>
+    <p th:if="${#lists.isEmpty(rules)}" th:text="#{access.empty}">暂无自定义规则，全部走默认规则。</p>
+    <table class="wikitable access-table" th:unless="${#lists.isEmpty(rules)}">
+        <tr>
+            <th th:text="#{access.target}">目标</th>
+            <th th:text="#{access.action}">动作</th>
+            <th th:text="#{access.scope}">允许范围</th>
+            <th th:if="${canManage}" th:text="#{access.delete}">删除</th>
+        </tr>
+        <tr th:each="item : ${rules}">
+            <td>
+                <a th:if="${!#strings.startsWith(item.target, '*')}"
+                   th:href="@{/wiki/{title}(title=${item.target})}" th:text="${item.target}">首页</a>
+                <span th:if="${#strings.startsWith(item.target, '*')}" th:text="${item.target}">帮助:*</span>
+            </td>
+            <td th:text="${item.actionName}">查看</td>
+            <td th:text="${item.groupsText}">管理员</td>
+            <td th:if="${canManage}">
+                <button type="button" class="link-button access-rule-delete"
+                        th:attr="data-id=${item.id}" th:text="#{access.delete}">删除</button>
+            </td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{access.add}">添加规则</h2>
+    <form id="access-new-form" class="wiki-form access-rule-form" th:if="${canManage}" method="post">
+        <div class="form-field">
+            <label for="access-target" th:text="#{access.target}">目标</label>
+            <input type="text" id="access-target" name="target" list="access-target-list" required
+                   th:placeholder="#{access.targetPlaceholder}"/>
+            <datalist id="access-target-list">
+                <option th:each="option : ${pageOptions}" th:value="${option.title}"></option>
+            </datalist>
+            <div class="wiki-hint" th:text="#{access.targetHint}">
+                页面标题 / 特殊:页面名 / 前缀（以 * 结尾，如 帮助:*）/ *（全部）
+            </div>
+        </div>
+        <div class="form-field">
+            <label for="access-action" th:text="#{access.action}">动作</label>
+            <select id="access-action" name="action">
+                <option th:each="action : ${actions}" th:value="${action.id}"
+                        th:text="${action.name}">查看</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <span th:text="#{access.scope}">允许范围</span>
+            <th:block th:replace="~{fragments/access-rule-scope :: scope(item=${newRule}, prefix=${'new'}, groups=${groups})}"/>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{access.saveRule}">保存规则</button>
+        </div>
+    </form>
+    <p class="wiki-hint" th:unless="${canManage}" th:text="#{access.forbidden}">
+        只有管理员或行政员可以配置权限规则。
+    </p>
+</section>
+</body>
+</html>

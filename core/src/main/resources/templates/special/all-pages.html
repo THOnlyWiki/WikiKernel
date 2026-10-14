@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:全部页面 / Special:AllPages（命名空间 + 标题范围 + 隐藏重定向 + 翻页，仿 MediaWiki） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{allPages.intro}">本 wiki 的全部页面：按命名空间筛选、按标题范围浏览（仿 MediaWiki）。</p>
+
+    <form class="wiki-form allpages-form" method="get" th:action="@{/wiki/特殊:全部页面}">
+        <div class="allpages-fields">
+            <div class="allpages-row">
+                <label for="allpages-from" th:text="#{allPages.from}">显示页面开始于：</label>
+                <input type="text" id="allpages-from" name="from" th:value="${fromValue}"/>
+            </div>
+
+            <div class="allpages-row">
+                <label for="allpages-to" th:text="#{allPages.to}">显示页面结束于：</label>
+                <input type="text" id="allpages-to" name="to" th:value="${toValue}"/>
+            </div>
+
+            <div class="allpages-row">
+                <label for="allpages-namespace" th:text="#{allPages.namespaceLabel}">命名空间：</label>
+                <select id="allpages-namespace" name="namespace">
+                    <option th:each="opt : ${namespaceOptions}" th:value="${opt.id}" th:text="${opt.label}"
+                            th:selected="${opt.selected}">全部命名空间</option>
+                </select>
+            </div>
+
+            <div class="allpages-row">
+                <label class="allpages-hide">
+                    <input type="checkbox" name="hideredirects" value="1" th:checked="${hideRedirects}"/>
+                    <span th:text="#{allPages.hideRedirects}">隐藏重定向</span>
+                </label>
+                <button type="submit" class="wiki-button" th:text="#{allPages.submit}">提交</button>
+            </div>
+        </div>
+    </form>
+
+    <th:block th:replace="~{fragments/allpages-nav :: nav}"/>
+
+    <p th:if="${#lists.isEmpty(pages)}"
+       th:text="${fromValue == '' and toValue == '' and selectedNamespace == 'all'} ? #{allPages.empty} : #{allPages.noMatch}">
+        暂无页面。
+    </p>
+    <ul class="allpages-chunk" th:unless="${#lists.isEmpty(pages)}">
+        <li th:each="page : ${pages}">
+            <a th:href="${page.url}" th:text="${page.title}">页面标题</a>
+        </li>
+    </ul>
+
+    <th:block th:replace="~{fragments/allpages-nav :: nav}"/>
+</section>
+</body>
+</html>

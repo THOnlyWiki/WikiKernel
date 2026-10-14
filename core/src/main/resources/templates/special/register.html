@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!-- 特殊:注册 / Special:CreateAccount -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-auth">
+        <p class="wiki-warning" th:if="${adminCreate and registerDisabled}" th:text="#{auth.registerAdminHint}">
+            注册功能当前已关闭；您可以在此代为创建账号（不会切换您当前的登录状态）。
+        </p>
+        <p class="auth-subtitle">
+            <span th:text="#{auth.haveAccount}">已有账号？</span>
+            <a th:href="@{/wiki/特殊:登录}" th:text="#{auth.login}">登录</a>
+        </p>
+
+        <form id="wiki-register-form" class="wiki-form" th:action="@{/api/user/register}" method="post"
+              th:attr="data-admin-create=${adminCreate}">
+            <input type="hidden" name="returnto" th:value="${returnto}"/>
+            <!-- 注册时记录浏览器时区（由 auth.js 填入；禁用 JS 时为空 = 跟随服务器时区） -->
+            <input type="hidden" name="timeZone" id="wpTimeZone"/>
+
+            <div class="form-field">
+                <label for="wpName2" th:text="#{auth.username}">用户名</label>
+                <input type="text" id="wpName2" name="username" autocomplete="username" autofocus required/>
+                <div class="wiki-hint" th:text="#{auth.usernameHint}">用户名会公开显示，建议使用易于识别的昵称。</div>
+            </div>
+
+            <div class="form-field">
+                <label for="wpPassword2" th:text="#{auth.password}">密码</label>
+                <input type="password" id="wpPassword2" name="password" autocomplete="new-password" required/>
+                <div class="wiki-hint" th:text="#{auth.passwordHint}">建议使用 8 个以上字符，并混合字母、数字与符号。</div>
+            </div>
+
+            <div class="form-field">
+                <label for="wpConfirmPassword" th:text="#{auth.confirmPassword}">确认密码</label>
+                <input type="password" id="wpConfirmPassword" name="confirmPassword" autocomplete="new-password" required/>
+            </div>
+
+            <div class="form-field">
+                <label for="wpEmail" th:text="#{auth.email}">电子邮件（可选）</label>
+                <input type="email" id="wpEmail" name="email" autocomplete="email"/>
+                <div class="wiki-hint" th:text="#{auth.emailHint}">用于找回密码，不会公开显示。</div>
+            </div>
+
+            <!-- 插件注册页字段（RegistrationFormField）：注册问答这类验证的题目 + 输入框 -->
+            <th:block th:each="field : ${registerFormFields}" th:utext="${field}"></th:block>
+
+            <div class="form-message" role="alert" hidden></div>
+
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{auth.registerButton}">注册</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

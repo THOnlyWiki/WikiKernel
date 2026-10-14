@@ -1,0 +1,131 @@
+
+
+spring:
+  application:
+    name: WikiKernel
+  config:
+    # 本地配置（类似 MediaWiki 的 LocalSettings.php）：工作目录下存在 LocalSettings.yaml 即生效
+    # 模板见仓库根目录 LocalSettings.example.yaml；不创建时使用内置默认（SQLite ./data/wiki.db）
+    # 双路径都是 optional：运行时从仓库根目录启动（./ 命中）；IDEA 里相对 core 模块解析（../ 命中，
+    # 这样 IDEA 才会把 LocalSettings.yaml 当成 Spring 配置文件并补全 / 跳转 wikikernel.* 字段）。
+    # 单元测试由 Gradle 的 systemProperty 覆盖为只导入 ./LocalSettings.yaml，避免把真实配置带进测试。
+    import: "optional:file:./LocalSettings.yaml,optional:file:../LocalSettings.yaml"
+  servlet:
+    multipart:
+      # 文件上传大小限制（wikikernel.max-file-size-mb 还会在服务层再校验一次）
+      max-file-size: 20MB
+      max-request-size: 25MB
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # 静态资源（logo / CSS / JS）缓存：页面内跳转直接命中本地缓存，不会闪；
+          # 开发期用 1h（改了资源最迟 1 小时生效，Ctrl+F5 可立即刷新）；生产可调大（如 365d）
+          max-age: 1h
+          cache-public: true
+
+
+mybatis-plus:
+  global-config:
+    # 关闭 MyBatis-Plus 启动 banner
+    banner: false
+
+wikikernel:
+  # 运行文件目录（上传文件存放位置，相对启动目录；LocalSettings.yaml 里可改）
+  run-path: ./run/files
+  # 单个上传文件大小上限（MB）
+  max-file-size-mb: 20
+  # 皮肤：默认 vector（内置），可禁用；fallback 始终可用（不可禁用）
+  skins:
+    default-skin: vector
+    disabled: [ ]
+  # 认证：持久登录令牌（勾选“记住登录状态”时签发，存数据库，重启不掉线）
+  auth:
+    # 令牌有效期（天）；0 = 永不过期（当前默认），浏览器 Cookie 按 10 年设置
+    token-expire-days: 0
+    # 持久登录 Cookie 名
+    token-cookie-name: wiki_token
+  # 侧边栏：由该页面控制（不存在或为空时用内置默认）
+  sidebar:
+    page: WikiKernel:Sidebar
+  # 标题规则（仿 MediaWiki）
+  title:
+    # 首字母自动大写（$wgCapitalLinks）：java 开发教程 与 Java 开发教程 是同一页；
+    # false = 标题完全区分大小写
+    capitalize-first-letter: true
+  # Wikitext 渲染：模板命名空间与嵌套深度
+  wikitext:
+    template-prefixes:
+      - "模板:"
+      - "Template:"
+    max-template-depth: 20
+  # 特殊页面前缀（Special:XXX / 特殊:XXX），可增删
+  special-page:
+    prefixes:
+      - "特殊:"
+      - "Special:"
+  # 权限（用户组）：内置类型见 PermissionTypeSeeder（用户/自动确定用户/管理员/行政员）
+  permissions:
+    # 首次搭建：这些用户名在启动时自动获得“管理员 + 行政员”（可分配权限）
+    # 只提升、不降权；留空表示不生效
+    bootstrap-admins: [ ]
+    # 是否允许编辑其他用户的用户页（用户本人 / 管理员始终可以）；不写 = 不改动网页上的设置
+    # allow-other-user-page-edit: false
+  # 页面正文缓存（渲染后的正文 HTML）：默认关闭，开箱即安全。
+  # 这里写的是「站点设置（wiki_setting）里没有同名键时」的兜底默认值；
+  # 站点设置 cache.page.* 优先，在「特殊:权限配置 → 站点设置」改完立即生效、无需重启。
+  cache:
+    page:
+      # 总开关（默认 false）
+      enabled: false
+      # 后端：auto（配了 Redis 且连得上就用 Redis，否则进程内 LRU）/ redis / memory / none
+      backend: auto
+      # 条目有效期（秒）
+      ttl-seconds: 300
+      # 进程内 LRU 的条目上限；不写 = 500
+      max-entries: 500
+      # 模板变更后是否用虚拟线程批量预渲染受影响页面（预热）
+      preload-on-template-change: true
+      # 预渲染并发上限；不写 = CPU 核数
+      # preload-parallelism: 8
+      # 单批预渲染页面数；不写或 0 = 自动（并发上限 × 8）
+      preload-batch-size: 0
+      # Redis：spring.data.redis.* 没配置时，用它强制使用 Redis（连不上仍会自动退回内存）
+      redis:
+        enabled: false
+  plugins:
+    # 运行时扫描的插件 jar 目录（相对启动时的工作目录）
+    # gradlew :core:bootRun 与 java -jar 都会把工作目录设为仓库根目录
+    dir: plugins
+    # 是否同时扫描 classpath 上的插件（IDE 调试 / 单元测试时方便）
+    classpath-scan: true
+    # 插件白名单：为空 = 启用扫描到的全部插件
+    enabled: [ ]
+    # enabled:
+    #   - your-plugin
+    # 各插件的私有配置，键为插件 id
+    settings: { }
+
+logging:
+  # 控制台：紧凑彩色格式（支持 ANSI 的终端自动上色）；文件：完整日期 + 滚动归档
+  pattern:
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%15.15t]){magenta} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%15.15t] %-40.40logger{39} : %m%n%wEx"
+  charset:
+    file: UTF-8
+  file:
+    # 运行日志（随工作目录，run/ 已忽略；滚动归档见下）
+    name: run/logs/wikikernel.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 200MB
+  level:
+    cc.thonly.wikikernel: info
+    # 降噪：这些框架组件在 INFO 下太吵（需要排查时临时改成 debug/info）
+    com.zaxxer.hikari: warn
+    org.mybatis.spring: warn
+    org.springframework.boot.web.embedded: warn
+    org.springframework.web.servlet.DispatcherServlet: warn
+

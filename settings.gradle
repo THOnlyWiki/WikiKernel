@@ -1,0 +1,20 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'WikiKernel'
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
+include 'common'
+include 'core'
+
+file('plugin')
+        .listFiles()
+        ?.findAll { it.directory && new File(it, 'build.gradle').exists() }
+        ?.sort { it.name }
+        ?.each { include "plugin:${it.name}" }

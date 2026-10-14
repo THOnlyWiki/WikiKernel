@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<!-- 通用错误页（404 以外的状态码）：状态码 + 本地化提示 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${errorTitle}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-error-page">
+        <p class="wiki-error-code" th:text="${status}">500</p>
+        <p class="wiki-error-default" th:text="${errorMessage}">服务器返回了错误。</p>
+    </div>
+</section>
+</body>
+</html>

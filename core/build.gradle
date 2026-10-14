@@ -1,0 +1,69 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+description = '核心代码：Web 服务 + 插件加载器（编译期禁止依赖任何 plugin，插件运行时装配）'
+
+dependencies {
+    // 只允许依赖 common；不要添加任何 plugin 子项目依赖！
+    implementation project(':common')
+
+    // MyBatis-Plus（Boot 4 官方 starter），Auto-DDL 基于它的 TableInfo 元数据
+    implementation "com.baomidou:mybatis-plus-spring-boot4-starter:${mybatisPlusVersion}"
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    // 邮件发送（SMTP；本项目的配置在 wikikernel.email.*，不直接使用 spring.mail.*）
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    // 页面正文缓存的可选后端：Redis（spring.data.redis.* + wikikernel.cache.page.redis.enabled）
+    // 连不上 / 没装 Redis 时自动退回进程内 LRU，不影响启动与页面渲染
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // 可视化编辑器：解析渲染后的 HTML 并安全地序列化回 Wikitext
+    implementation 'org.jsoup:jsoup:1.17.2'
+
+    // Markdown 渲染（AI 代理回复、界面展示）：CommonMark + GFM 表格 / 删除线
+    implementation 'org.commonmark:commonmark:0.24.0'
+    implementation 'org.commonmark:commonmark-ext-gfm-tables:0.24.0'
+    implementation 'org.commonmark:commonmark-ext-gfm-strikethrough:0.24.0'
+
+    // Lua 模块（仿 MediaWiki Scribunto）：纯 Java 的 Lua 虚拟机
+    implementation 'org.luaj:luaj-jse:3.0.1'
+
+    // TypeScript 服务端编译（自包含，不依赖主机装 Node）：GraalJS 跑官方 typescript.js
+    // （tsc 本体作为资源内置在 resources/typescript/，见 TypeScriptCompiler 实现）
+    // 编译期只需要 polyglot API；运行时由 js-community（GraalJS 引擎 + Truffle）补齐
+    implementation "org.graalvm.polyglot:polyglot:${graalJsVersion}"
+    runtimeOnly "org.graalvm.polyglot:js-community:${graalJsVersion}"
+
+    // 生成 META-INF/spring-configuration-metadata.json：
+    // IDEA 在 application.yaml / LocalSettings.yaml 里补全并跳转 wikikernel.* 字段（与 Spring 内置键同等待遇）
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // 数据库驱动：运行时可切换（默认 sqlite，见 application-{sqlite,mysql,h2}.yaml）
+    runtimeOnly 'org.xerial:sqlite-jdbc'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.h2database:h2'
+
+    // Lombok 的 compileOnly / annotationProcessor 由根构建脚本统一添加（所有模块一致）
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-thymeleaf-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-jdbc-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('bootRun') {
+    // 让默认的 plugins/ 目录指向仓库根目录，与 java -jar 运行时的行为保持一致
+    workingDir = rootProject.projectDir
+    // Windows 控制台中文输出统一使用 UTF-8
+    jvmArgs = ['-Dfile.encoding=UTF-8', '-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8']
+}

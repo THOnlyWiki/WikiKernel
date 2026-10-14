@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- 查看源代码（未登录 / 受保护页面点击“编辑”时显示） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-warning source-warning" th:if="${sourceProtected}" th:text="#{source.protected}">
+        本页面已被保护，只有管理员可以编辑。
+    </div>
+    <p class="wiki-warning source-warning" th:if="${gadgetPage}" th:text="#{source.gadgetProtected}">
+        本页面属于 Gadgets 命名空间，只有小部件管理员可以编辑。
+    </p>
+    <p class="wiki-warning source-warning" th:if="${widgetPage}" th:text="#{source.widgetProtected}">
+        本页面属于「微件」命名空间，只有小部件编辑者可以编辑。
+    </p>
+    <p class="wiki-warning source-warning" th:if="${sourceMissing}" th:text="#{source.missing}">
+        本页面还不存在。
+    </p>
+    <p class="wiki-warning source-warning" th:if="${sourceLogin}">
+        <span th:text="#{source.notLoggedIn}">您尚未登录。您可以登录后编辑此页面。</span>
+        <a th:href="@{/wiki/特殊:登录(returnto=${pageUrl + '?action=edit'})}" th:text="#{source.login}">登录</a>
+    </p>
+    <p class="wiki-warning source-warning" th:if="${sourceNotice != null}" th:text="${sourceNotice}">
+        您没有权限编辑本页面，只能查看源代码。
+    </p>
+
+    <p class="source-intro" th:text="#{source.intro}">下面显示的是本页面的源代码。</p>
+    <!-- JS/CSS 页面：缓存提示 + 高亮代码预览；其余页面：等宽源码 -->
+    <th:block th:if="${codeLanguage != null and !widgetPage}">
+        <th:block th:replace="~{fragments/code-cache-notice :: notice}"/>
+    </th:block>
+    <pre th:if="${codeLanguage != null}" class="wiki-code" th:attr="data-language=${codeLanguage}"
+         th:text="${sourceText}">代码</pre>
+    <pre th:unless="${codeLanguage != null}" class="wiki-source" th:text="${sourceText}">源代码</pre>
+</section>
+</body>
+</html>

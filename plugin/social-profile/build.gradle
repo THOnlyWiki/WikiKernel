@@ -1,0 +1,34 @@
+plugins {
+    id 'java'
+}
+
+description = '用户交互移植：用户页头像上传（仿 SocialProfile）+ 用户间私信（特殊:私信）'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.slf4j:slf4j-api'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.slf4j:slf4j-api'
+    testImplementation 'com.h2database:h2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties（pluginName / pluginVersion / pluginDescription），
+// 构建时展开进 META-INF/wiki-plugin.properties；给人看的本地化名称与描述在 i18n/messages*.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- 特殊:链入页面 / Special:WhatLinksHere（仿 MediaWiki：筛选表单 + 统计与翻页 + 标记列表） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <form class="wiki-form mw-whatlinkshere-form" method="get" th:action="${formAction}">
+        <fieldset>
+            <legend th:text="#{whatLinksHere.formLegend}">链入页面</legend>
+
+            <div class="form-field">
+                <label for="wlh-target" th:text="#{whatLinksHere.targetLabel}">页面：</label>
+                <input type="text" id="wlh-target" name="page" th:value="${target}"/>
+            </div>
+
+            <div class="form-field">
+                <label for="wlh-namespace" th:text="#{whatLinksHere.namespaceLabel}">命名空间：</label>
+                <select id="wlh-namespace" name="namespace">
+                    <option th:each="ns : ${namespaceOptions}" th:value="${ns['id']}" th:text="${ns['label']}"
+                            th:selected="${ns['selected']}">所有</option>
+                </select>
+            </div>
+
+            <div class="form-field mw-whatlinkshere-filters">
+                <label>
+                    <input type="checkbox" name="hidetrans" value="1" th:checked="${hideTrans}"/>
+                    <span th:text="#{whatLinksHere.hideTrans}">隐藏嵌入</span>
+                </label>
+                <label>
+                    <input type="checkbox" name="hidelinks" value="1" th:checked="${hideLinks}"/>
+                    <span th:text="#{whatLinksHere.hideLinks}">隐藏链入</span>
+                </label>
+                <label>
+                    <input type="checkbox" name="hideredirs" value="1" th:checked="${hideRedirects}"/>
+                    <span th:text="#{whatLinksHere.hideRedirects}">隐藏重定向</span>
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{whatLinksHere.submit}">提交</button>
+            </div>
+        </fieldset>
+    </form>
+
+    <th:block th:if="${target != null and !target.isEmpty()}">
+        <p th:text="#{whatLinksHere.links(${target})}">以下页面链接至 …：</p>
+        <p th:text="#{whatLinksHere.showing(${total})}">显示 N 项。</p>
+
+        <!-- 翻页与每页条数（仿 MediaWiki：上50条 | 下50条）（20 | 50 | 100 | 250 | 500） -->
+        <p class="mw-whatlinkshere-nav" th:if="${prevUrl != null or nextUrl != null}">
+            <span th:text="#{whatLinksHere.limit}">查看</span>（<a th:if="${prevUrl != null}" th:href="${prevUrl}"
+                th:text="#{whatLinksHere.prev(${limit})}">上50条</a><span
+                th:if="${prevUrl != null and nextUrl != null}"> | </span><a th:if="${nextUrl != null}"
+                th:href="${nextUrl}" th:text="#{whatLinksHere.next(${limit})}">下50条</a>）（<th:block
+                th:each="option, iter : ${limitOptions}"><a th:href="${option['url']}"
+                th:text="${option['value']}">50</a><span th:if="${!iter.last}"> | </span></th:block>）
+        </p>
+
+        <p th:if="${#lists.isEmpty(rows)}" th:text="#{whatLinksHere.none}">没有页面链接到此页面。</p>
+        <ul id="mw-whatlinkshere-list" th:unless="${#lists.isEmpty(rows)}">
+            <li th:each="row : ${rows}">
+                <a th:href="${row['url']}" th:classappend="${row['class']}" th:text="${row['title']}">页面</a>
+                <span th:if="${row['redirect']}" th:text="#{whatLinksHere.redirect}">（重定向页面）</span>
+                <span th:if="${row['transclusion']}" th:text="#{whatLinksHere.transclusion}">（嵌入）</span>
+                <span class="mw-whatlinkshere-tools">（<a th:href="${row['toolsUrl']}"
+                    th:text="#{whatLinksHere.linkTool}">←链接</a>）</span>
+            </li>
+        </ul>
+
+        <p class="mw-whatlinkshere-nav" th:if="${prevUrl != null or nextUrl != null}">
+            <span th:text="#{whatLinksHere.limit}">查看</span>（<a th:if="${prevUrl != null}" th:href="${prevUrl}"
+                th:text="#{whatLinksHere.prev(${limit})}">上50条</a><span
+                th:if="${prevUrl != null and nextUrl != null}"> | </span><a th:if="${nextUrl != null}"
+                th:href="${nextUrl}" th:text="#{whatLinksHere.next(${limit})}">下50条</a>）（<th:block
+                th:each="option, iter : ${limitOptions}"><a th:href="${option['url']}"
+                th:text="${option['value']}">50</a><span th:if="${!iter.last}"> | </span></th:block>）
+        </p>
+    </th:block>
+</section>
+</body>
+</html>

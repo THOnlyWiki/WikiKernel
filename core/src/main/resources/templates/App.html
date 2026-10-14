@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout('WikiKernel', ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-content">
+        <p>首页示例模板。可以在 Controller 里用 <code>new ModelAndView("App")</code> 渲染本模板。</p>
+        <p><a th:href="@{/wiki/首页}">进入首页词条</a></p>
+    </div>
+</section>
+</body>
+</html>

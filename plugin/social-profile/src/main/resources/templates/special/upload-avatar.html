@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:上传头像 / Special:UploadAvatar 模板（从 core 迁出，模型键不变）
+     顶部导航条与其它社交页一致（本页高亮「上传头像」）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.uploadAvatar}">
+        换一张头像，会同步显示在你的用户页与留言、好友列表里。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」（头像上传 / 私信）。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and avatarLogin}">
+        <span th:text="#{avatar.loginRequired}">请先登录后上传头像。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or avatarLogin}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" aria-current="page" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <p class="wiki-hint" th:text="#{avatar.hint}">
+            只接受 PNG / JPEG / GIF / WebP 图片，最大 2 MB；上传后立即生效。
+        </p>
+
+        <!-- 当前头像 + 上传按钮（/plugins/social-profile/avatar.js 绑定 #avatar-input / #avatar-upload / .wiki-avatar） -->
+        <div class="avatar-page">
+            <div class="avatar-page-image">
+                <img class="wiki-avatar" th:src="${avatarUrl}" th:alt="${avatarUserName}"/>
+            </div>
+            <div class="avatar-page-actions">
+                <div class="wiki-avatar-upload">
+                    <input type="file" id="avatar-input" class="wiki-avatar-input"
+                           accept="image/png,image/jpeg,image/gif,image/webp" hidden="hidden"/>
+                    <button type="button" id="avatar-upload" class="wiki-button sp-button-primary"
+                            th:aria-label="#{avatar.upload}" th:text="#{avatar.upload}">上传头像</button>
+                    <div id="avatar-message" class="form-message" hidden="hidden"></div>
+                </div>
+                <p>
+                    <a th:href="${avatarUserPageUrl}" th:text="#{avatar.backToUserPage}">返回我的用户页</a>
+                </p>
+            </div>
+        </div>
+    </th:block>
+</section>
+</body>
+</html>

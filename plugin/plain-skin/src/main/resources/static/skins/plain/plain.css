@@ -1,0 +1,93 @@
+/* ============================================================
+   Plain 皮肤（由 plain-skin 插件提供）：居中卡片、无侧栏
+   通用组件样式在 core 的 /css/base.css，这里只写外壳
+   ============================================================ */
+
+body.skin-plain {
+    background: #eef1f4;
+}
+
+.skin-plain .plain-shell {
+    max-width: 62em;
+    margin: 0 auto;
+    padding: 0 1em 2em;
+}
+
+.skin-plain .plain-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.8em;
+    padding: 0.9em 0;
+    border-bottom: 1px solid #c8ccd1;
+}
+
+.skin-plain .plain-brand {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.skin-plain .plain-nav {
+    display: flex;
+    gap: 0.9em;
+    flex: 1;
+}
+
+.skin-plain .plain-search {
+    display: flex;
+    gap: 0.25em;
+}
+
+.skin-plain .plain-search input {
+    padding: 0.35em 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.skin-plain .plain-personal {
+    display: flex;
+    gap: 0.7em;
+}
+
+.skin-plain .plain-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9em;
+    padding: 0.5em 0;
+    border-bottom: 1px solid #eaecf0;
+    font-size: 0.95em;
+}
+
+.skin-plain .plain-tabs .selected {
+    color: #202122;
+    font-weight: bold;
+}
+
+.skin-plain #content {
+    margin-top: 1em;
+    padding: 1em 1.25em 1.5em;
+    border: 1px solid #c8ccd1;
+    border-radius: 4px;
+    background: #ffffff;
+}
+
+.skin-plain h1.firstHeading {
+    margin-top: 0;
+}
+
+.skin-plain #footer {
+    margin-top: 1em;
+    color: #54595d;
+    font-size: 0.85em;
+}
+
+.skin-plain #footer ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5em;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}

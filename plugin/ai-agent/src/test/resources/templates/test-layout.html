@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<!--
+  测试替身：core 皮肤布局（skin.layout）的最小片段，只在测试里用。
+  特殊页模板 th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}"，
+  这里同签名接收 (title, content)，把页面自己的 <section> 插回去，
+  于是 AiAgentPluginTest 能拿到**真正渲染出来的 HTML**（含 th:text / th:attr 的结果）。
+-->
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="layout(title, content)">
+    <h1 class="test-layout-title" th:text="${title}">标题</h1>
+    <div class="test-layout-body" th:replace="${content}">
+        <p>页面正文</p>
+    </div>
+</div>
+</body>
+</html>

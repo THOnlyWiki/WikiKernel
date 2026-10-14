@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:积分排行 / Special:TopUsers（仿 MediaWiki SocialProfile 的 Special:TopUsers）
+     按积分倒序，含头像 / 等级 / 积分；?offset=N 分页（上一页 / 下一页由服务端生成，保留其它查询参数）；
+     前三名整行加 is-top1 / is-top2 / is-top3 便于在 CSS 里给金银铜底色。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.topUsers}">
+        按积分看排名，前三名会高亮。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+
+    <th:block th:unless="${featureDisabled}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" aria-current="page" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <p class="wiki-hint" th:text="#{socialProfile.topUsers.hint}">按积分排序。</p>
+        <p class="sp-board-count" th:text="#{socialProfile.topUsers.total(${topRankedCount})}">共 0 位用户有积分</p>
+
+        <div class="sp-empty-block" th:if="${#lists.isEmpty(topUsers)}">
+            <p class="sp-empty" th:text="#{socialProfile.topUsers.empty}">还没有人获得积分。</p>
+            <p class="sp-empty-next">
+                <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.earnPoints}">去随机用户逗逗，活跃一下就有积分</a>
+            </p>
+        </div>
+        <table class="messages-table sp-top-table" th:unless="${#lists.isEmpty(topUsers)}">
+            <thead>
+            <tr>
+                <th th:text="#{socialProfile.topUsers.colRank}">名次</th>
+                <th th:text="#{socialProfile.topUsers.colUser}">用户</th>
+                <th th:text="#{socialProfile.topUsers.colLevel}">等级</th>
+                <th th:text="#{socialProfile.topUsers.colPoints}">积分</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${topUsers}" th:classappend="${row['rank'] < 4} ? ' is-top' + ${row['rank']}">
+                <td class="sp-rank" th:text="${row['rank']}">1</td>
+                <td class="sp-top-user">
+                    <img class="sp-avatar-tiny" th:src="${row['avatarUrl']}" th:alt="${row['username']}"
+                         aria-hidden="true"/>
+                    <a th:href="${row['userUrl']}" th:text="${row['username']}">用户</a>
+                </td>
+                <td class="sp-top-level" th:text="${row['level']} + ' · ' + ${row['levelName']}">等级</td>
+                <td class="sp-top-points" th:text="${row['points']}">0</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <p class="sp-pager">
+            <a class="sp-pager-button" th:if="${topPrevUrl != null}" th:href="${topPrevUrl}"
+               th:text="#{socialProfile.topUsers.prev}">上一页</a>
+            <a class="sp-pager-button" th:if="${topNextUrl != null}" th:href="${topNextUrl}"
+               th:text="#{socialProfile.topUsers.next}">下一页</a>
+            <a th:href="${topRandomUsersUrl}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a>
+        </p>
+
+        <h2 class="sp-heading" th:text="#{socialProfile.topUsers.levels}">等级阈值</h2>
+        <ul class="sp-level-list">
+            <li th:each="level : ${pointsLevels}"
+                th:text="#{socialProfile.topUsers.levelsItem(${level.level}, ${level.minPoints})}">等级 1：0 分起</li>
+        </ul>
+    </th:block>
+</section>
+</body>
+</html>

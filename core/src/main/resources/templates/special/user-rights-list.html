@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- 特殊:权限列表 / Special:ListUserRights：谁有什么权限 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="rights-list-intro" th:text="#{userRights.listIntro}">
+        按用户列出权限，点击用户名进入用户页。
+    </p>
+
+    <p class="rights-list-groups">
+        <span th:text="#{userRights.filterByGroup}">按权限筛选：</span>
+        <a th:href="@{/wiki/特殊:权限列表}" th:classappend="${#strings.isEmpty(selectedGroup)} ? 'selected'"
+           th:text="#{userRights.allGroups}">全部</a>
+        <a th:each="type : ${permissionTypes}"
+           th:href="@{/wiki/特殊:权限列表(group=${type.name})}"
+           th:classappend="${selectedGroup == type.name} ? 'selected'"
+           th:text="${@permissionGroupLabels.label(type.name)}">管理员</a>
+    </p>
+
+    <p th:if="${#lists.isEmpty(rows)}" th:text="#{userRights.noUsers}">没有符合条件的用户。</p>
+
+    <table class="wikitable rights-table" th:unless="${#lists.isEmpty(rows)}">
+        <tr>
+            <th th:text="#{userRights.username}">用户名</th>
+            <th th:text="#{userPage.permissions}">权限</th>
+        </tr>
+        <tr th:each="row : ${rows}" th:object="${row}" th:with="username=*{user.username}">
+            <td>
+                <a th:href="@{/wiki/{t}(t=${'用户:' + username})}" th:text="${username}">用户</a>
+            </td>
+            <td>
+                <th:block th:each="name, iter : *{names}">
+                    <a th:href="@{/wiki/特殊:权限列表(group=${name})}"
+                       th:text="${@permissionGroupLabels.label(name)}">权限</a><span
+                        class="group-separator" th:if="${!iter.last}" th:text="#{common.listSeparator}">、</span>
+                </th:block>
+                <span class="permission-none" th:if="*{names.isEmpty()}"
+                      th:text="#{userPage.noPermissions}">（无）</span>
+            </td>
+        </tr>
+    </table>
+</section>
+</body>
+</html>

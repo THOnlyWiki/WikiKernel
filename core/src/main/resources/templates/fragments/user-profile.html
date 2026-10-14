@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- 公共片段：用户页资料卡（仿 MediaWiki SocialProfile 的 #profile-top）与资料卡下方的插件面板。
+     profile 片段：顶部双栏 —— 左栏大头像，右栏大号用户名、用户组徽章（只列显式组，最多 3 个 + 「+N」）、
+        注册时间 / 编辑数统计，以及 **core 自己的**快捷链接（贡献 / 用户页 / 讨论页）；
+        **社交入口一律不在资料卡里**（私信 / 留言板 / 好友 / 礼物 / 积分排行 / 编辑资料 / 上传头像
+        全部在下方插件面板的操作按钮行（.sp-card-actions）—— 面板由 UserProfileHook.panelHtml 贡献，
+        见 profile-panel 注释）；头像地址与额外链接可由插件 UserProfileHook 提供
+        （模型键 userAvatarUrl / userProfileLinks，见 web/UserProfileAdvice），没有插件时用默认头像；
+        末尾 clear，正文从资料卡下方开始。
+     profile-panel 片段：资料卡下方、正文之前的整宽插件面板（模型键 userProfilePanelHtml，
+        由 UserProfileHook.panelHtml 贡献：SocialProfile 的「操作按钮行 / 关于 / 统计栏 / 内嵌留言板」）；
+        用户页与「尚未创建的用户页」共用这两个片段。 -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="profile" class="wiki-profile"
+     th:classappend="${userProfileTopHtml != null} ? ' wiki-profile-plugin'" th:if="${userPageName != null}">
+    <!--/* 插件接管资料卡整体（SocialProfile 版式）：userProfileTopHtml（UserProfileHook.profileTopHtml 贡献）；
+           没有插件时回退下面的内置资料卡 */-->
+    <th:block th:if="${userProfileTopHtml != null}" th:utext="${userProfileTopHtml}"></th:block>
+    <th:block th:unless="${userProfileTopHtml != null}">
+    <div class="wiki-profile-image">
+        <img class="wiki-avatar" th:src="${userAvatarUrl}" th:alt="${userPageName}"/>
+    </div>
+    <div class="wiki-profile-body">
+        <div class="wiki-profile-name" th:text="${userPageName}">用户名</div>
+        <!-- 账号不存在（尚未创建的用户页）：一句话说明，操作按钮仍由插件面板提供 -->
+        <div class="wiki-profile-missing" th:if="${userExists != true}"
+             th:text="#{view.userPageMissing}">此用户页尚未创建。</div>
+        <!-- 用户组徽章 + 注册时间 / 编辑数（账号存在时才有）
+             组徽章：core 已过滤隐式组（用户 / 自动确定用户 / 邮箱确认用户 …）并限 3 个，
+             超出的折成「+N」（全量列表在徽章行的 data-summary，见 web/UserGroupBadges）；
+             一个显式组都没有时这一段整块不渲染。 -->
+        <div class="wiki-profile-meta" th:if="${userExists == true}">
+            <div class="wiki-profile-groups" th:if="${userGroupBadges != null and !userGroupBadges.empty}">
+                <span class="wiki-profile-group" th:each="badge : ${userGroupBadges.badges}"
+                      th:text="${badge.label}">管理员</span>
+                <span class="wiki-profile-group wiki-profile-group-more" th:if="${userGroupBadges.hiddenCount > 0}"
+                      th:text="#{socialProfile.card.groupsMore(${userGroupBadges.hiddenCount})}"
+                      th:title="#{socialProfile.card.groupsMoreTitle(${userGroupBadges.summary})}"
+                      th:attr="data-summary=${userGroupBadges.summary}">+2</span>
+            </div>
+            <span class="wiki-profile-stat" th:if="${userRegisteredAt != null}"
+                  th:text="#{personal.registeredAt(${@wikiTime.format(userRegisteredAt)})}">注册于 2024-01-01</span>
+            <span class="wiki-profile-stat" th:if="${userEditCount != null}"
+                  th:text="#{personal.editCount(${userEditCount})}">编辑数 12</span>
+        </div>
+        <!-- 资料卡的快捷链接：只有 core 自己的东西（贡献 + 需要时用户页 / 讨论页）。
+             社交入口（由插件提供的那几个特殊页 / 编辑入口）一律只在下方插件面板的操作按钮行，
+             不在资料卡里重复；插件经 UserProfileHook.linksHtml 仍可追加。 -->
+        <div class="wiki-profile-links"
+             th:if="${userExists == true or (userProfileLinks != null and userProfileLinks != '')}">
+            <a th:href="@{/wiki/特殊:用户贡献(name=${userPageName})}"
+               th:text="#{personal.contributions}">贡献</a>
+            <!--/* 本人看自己的用户页：不重复「用户页」链接（就是这个页面）；别人看时给一个回用户页的入口。
+                   讨论页由皮肤顶部的标签提供，这里不重复。 */-->
+            <th:block th:if="${userSelf != true}">
+                <span class="wiki-profile-sep">|</span><a th:href="@{/wiki/{t}(t=${'用户:' + userPageName})}"
+                   th:text="#{view.userPage}">用户页</a>
+            </th:block>
+            <!--/* 插件贡献的额外链接（含分隔符），由 UserProfileHook.linksHtml 生成；内置插件已留空 */-->
+            <th:block th:if="${userProfileLinks != null}" th:utext="${userProfileLinks}"></th:block>
+        </div>
+    </div>
+    <div class="wiki-profile-clear" aria-hidden="true"></div>
+    </th:block>
+</div>
+<!-- 资料卡下方、正文之前的整宽插件面板（SocialProfile 式的「操作按钮行 / 关于 / 统计栏 / 内嵌留言板」） -->
+<div th:fragment="profile-panel" class="wiki-profile-panel"
+     th:if="${userPageName != null and userProfilePanelHtml != null}" th:utext="${userProfilePanelHtml}"></div>
+</body>
+</html>

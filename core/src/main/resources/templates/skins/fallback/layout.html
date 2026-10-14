@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--/*
+  回退皮肤（fallback）：极简布局，但功能与 Vector 对齐——
+  用户栏（登录/注册/参数设置/外观，保证能切换回其它皮肤）、搜索框、页面页签、侧边导航、页脚。
+  当 wikikernel.skins.default-skin 指向的皮肤不可用、或 Vector 被禁用且没有其它皮肤时自动生效；
+  样式只依赖 core 的 /css/base.css（含 .skin-fallback 的少量补全样式）。
+*/-->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(pageTitle, content)">
+<head th:replace="~{fragments/head :: head(${pageTitle} + ' - ' + (${siteName} ?: 'WikiKernel'))}">
+    <title>WikiKernel</title>
+</head>
+<body class="skin-fallback" th:classappend="${printableView} ? ' wiki-printable'">
+<div class="fallback-bar" th:unless="${printableView}">
+    <a class="fallback-brand" th:href="@{/}" th:title="#{common.home}"
+       th:text="${siteName} ?: 'WikiKernel'">WikiKernel</a>
+    <span class="fallback-separator">·</span>
+    <span class="fallback-title" th:text="${pageTitle}">页面标题</span>
+    <div id="p-personal" class="fallback-personal">
+        <!--/* 用户栏（共享片段）：匿名有登录/注册；登录用户有参数设置、外观（切回其它皮肤）与退出 */-->
+        <th:block th:replace="~{fragments/personal-tools :: personal}"/>
+    </div>
+    <form class="fallback-search" th:action="@{/wiki/特殊:搜索}" method="get">
+        <input type="search" name="q" th:placeholder="#{common.searchPlaceholder(${siteName} ?: 'WikiKernel')}" th:value="${q}"
+               th:attr="aria-label=#{common.search}"/>
+        <button type="submit" class="wiki-button" th:text="#{common.search}">搜索</button>
+    </form>
+</div>
+
+<!-- 页签：特殊页显示「特殊页面」；普通页面显示 阅读 / 编辑（或查看源代码）/ 查看历史（+ 移动 / 保护） -->
+<nav class="fallback-tabs" th:if="${isSpecialPage}" th:unless="${printableView}">
+    <ul>
+        <li class="selected"><span th:text="#{common.specialPage}">特殊页面</span></li>
+    </ul>
+</nav>
+<nav class="fallback-tabs" th:if="${wikiTitle != null}" th:unless="${printableView}">
+    <ul>
+        <li th:classappend="${activeTab == null or activeTab == 'view'} ? 'selected'">
+            <a th:href="${pageUrl}" th:text="#{common.view}">阅读</a>
+        </li>
+        <li th:if="${canVisualEdit}" th:classappend="${veMode} ? 'selected'">
+            <a th:href="${pageUrl + '?veaction=edit'}" th:text="#{common.edit}">编辑</a>
+        </li>
+        <li th:classappend="${activeTab == 'edit' and !veMode} ? 'selected'">
+            <a th:if="${canVisualEdit}" th:href="${pageUrl + '?action=edit'}"
+               th:text="#{common.editSource}">编辑源代码</a>
+            <a th:unless="${canVisualEdit}" th:href="${pageUrl + '?action=edit'}"
+               th:text="${canEditPage} ? #{common.edit} : #{common.viewSource}">编辑</a>
+        </li>
+        <li th:classappend="${activeTab == 'history'} ? 'selected'">
+            <a th:href="${pageUrl + '?action=history'}" th:text="#{common.history}">查看历史</a>
+        </li>
+        <li th:if="${canMove}">
+            <a th:href="@{/wiki/特殊:移动页面(page=${wikiTitle})}" th:text="#{common.move}">移动</a>
+        </li>
+        <li th:if="${canProtect}">
+            <a th:href="@{/wiki/特殊:保护页面(page=${wikiTitle})}"
+               th:text="${page != null and page.protectedPage == true} ? #{common.unprotect} : #{common.protect}">保护</a>
+        </li>
+        <!-- 监视 / 取消监视（仿 MediaWiki 的监视星标；只有内容页显示） -->
+        <li class="watch-tab" th:if="${wikiTitle != null and watched != null}" id="watch-tab">
+            <a th:if="${currentUser != null}" href="#" id="watch-toggle"
+               th:attr="data-title=${wikiTitle},data-watched=${watched}"
+               th:text="${watched} ? #{watch.unwatch} : #{watch.watch}">监视</a>
+            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录}"
+               th:text="#{watch.watch}">监视</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- 侧边导航（WikiKernel:Sidebar，与 Vector 同源） -->
+<aside class="fallback-sidebar" th:if="${sidebar != null}" th:unless="${printableView}">
+    <div class="portal" th:each="section : ${sidebar}">
+        <h3 th:if="${!#strings.isEmpty(section.title)}" th:text="${section.title}">导航</h3>
+        <ul>
+            <li th:each="item : ${section.items}">
+                <a th:href="${item.href}" th:text="${item.label}"
+                   th:target="${item.external} ? '_blank' : null"
+                   th:rel="${item.external} ? 'nofollow' : null">条目</a>
+            </li>
+        </ul>
+    </div>
+</aside>
+
+<main id="content">
+    <!-- 页面横幅（页面标题上方）：由插件页面显示钩子（PageDisplayHook.beforeTitle）提供 -->
+    <div id="page-banner" th:if="${pageBeforeTitleHtml != null}">
+        <th:block th:each="fragment : ${pageBeforeTitleHtml}" th:utext="${fragment}"></th:block>
+    </div>
+    <h1 id="firstHeading" class="firstHeading" th:if="${hideTitle == null || !hideTitle}" th:text="${pageTitle}">页面标题</h1>
+    <!-- 所有页面统一的内容容器：#bodyContent + .wiki-content（正文排版与词条一致） -->
+    <div id="bodyContent" class="wiki-content" th:insert="${content}">
+        <p>页面内容</p>
+    </div>
+</main>
+
+<div id="footer" th:unless="${printableView}">
+    <th:block th:replace="~{fragments/footer :: footer}"/>
+</div>
+</body>
+</html>

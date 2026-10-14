@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- 特殊:页面信息 / Special:PageInfo / 页面上的 ?action=info（仿 MediaWiki 的「页面信息」） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:if="${pageRequired}" th:text="#{pageInfo.pageRequired}">
+        请输入要查询的页面标题。
+    </p>
+    <p th:if="${pageNotFound}" th:text="#{pageInfo.notFound}">页面不存在。</p>
+    <p class="wiki-form-error" th:if="${pageForbidden}" th:text="#{error.readForbidden}">
+        您没有权限查看此页面。
+    </p>
+
+    <!-- 基本信息（仿 MediaWiki action=info） -->
+    <table class="wikitable mw-page-info" th:if="${basicInfo != null}">
+        <tbody>
+        <tr th:each="row : ${basicInfo}">
+            <td th:text="${row['label']}">标签</td>
+            <td th:utext="${row['html']}">值</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 文件信息（文件页 / 文件说明页） -->
+    <table class="wikitable mw-page-info" th:if="${fileInfo != null and !#lists.isEmpty(fileInfo)}">
+        <tbody>
+        <tr th:each="row : ${fileInfo}">
+            <td th:text="${row['label']}">标签</td>
+            <td th:utext="${row['html']}">值</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 历史统计 -->
+    <table class="wikitable mw-page-info" th:if="${historyInfo != null and !#lists.isEmpty(historyInfo)}">
+        <tbody>
+        <tr th:each="row : ${historyInfo}">
+            <td th:text="${row['label']}">标签</td>
+            <td th:utext="${row['html']}">值</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 使用的模板 / 所属分类 -->
+    <table class="wikitable mw-page-info" th:if="${extraInfo != null and !#lists.isEmpty(extraInfo)}">
+        <tbody>
+        <tr th:each="row : ${extraInfo}">
+            <td th:text="${row['label']}">标签</td>
+            <td th:utext="${row['html']}">值</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <th:block th:if="${user != null}">
+        <p th:text="#{pageInfo.userPage}">这是用户页，用户资料见：</p>
+        <ul class="page-info-list">
+            <li>
+                <a th:href="@{/wiki/{t}(t=${'用户:' + user.username})}" th:text="#{special.user}">用户页</a>
+                <span th:text="' · ' + #{pageInfo.userId} + ${user.id}"> · 用户 ID：1</span>
+            </li>
+            <li>
+                <span th:text="#{userPage.permissions}">权限：</span>
+                <th:block th:each="name, iter : ${userGroups}">
+                    <a th:href="@{/wiki/特殊:权限列表(group=${name})}"
+                       th:text="${@permissionGroupLabels.label(name)}">管理员</a><span
+                        class="group-separator" th:if="${!iter.last}" th:text="#{common.listSeparator}">、</span>
+                </th:block>
+                <span class="permission-none" th:if="${#sets.isEmpty(userGroups)}"
+                      th:text="#{userPage.noPermissions}">（无）</span>
+            </li>
+            <li>
+                <span th:text="#{contributions.intro(${user.username})}">用户 … 的编辑贡献：</span>
+                <strong th:text="${editCount}">0</strong>
+            </li>
+        </ul>
+    </th:block>
+</section>
+</body>
+</html>

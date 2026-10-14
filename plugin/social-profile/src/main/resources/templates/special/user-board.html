@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:留言板 / Special:UserBoard（版式对齐 MediaWiki SocialProfile 的 Special:UserBoard）
+     ?user=用户名 看某人的板；?all=1 看全站最近留言；留言 / 回复 / 删除走 /api/social-profile/board/*
+     页面顺序：社交页导航（= 原版页面 tab 的替代）→ 返回用户页 + 条数/全部留言 → 资料头 → 发表框 → 留言列表 →
+     空态提示。发表框在列表之前（与原版一致），匿名用户也能只读浏览（输入框位置换成登录提示）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:if="${!boardAll}" th:text="#{socialProfile.desc.board}">
+        看大家给你的留言，也可以去别人的留言板回上一句。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+
+    <th:block th:unless="${featureDisabled}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" aria-current="page" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <!-- 匿名且没有指定用户：没有「自己的留言板」可看——只给登录提示 + 公开入口 -->
+        <th:block th:if="${boardNoTarget}">
+            <p class="wiki-form-error">
+                <span th:text="#{permissions.loginRequired}">请先登录。</span>
+                <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+            </p>
+            <div class="sp-empty-block">
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="${boardAllUrl}" th:text="#{socialProfile.board.allTitle}">全站最近留言</a>
+                    <span class="sp-sep">·</span>
+                    <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.randomUsers}">去随机用户看看谁在活跃</a>
+                </p>
+            </div>
+        </th:block>
+
+        <!-- ==================== 某个用户的留言板 ==================== -->
+        <th:block th:if="${!boardNoTarget and !boardAll}">
+            <!-- 工具栏：左边「« 返回用户页」，右边「共 N 条留言 · 全部留言」 -->
+            <div class="sp-board-toolbar" th:unless="${boardTargetNotFound}">
+                <a class="sp-board-back" th:href="${targetUserUrl}"
+                   th:text="#{socialProfile.board.backProfile(${targetUser})}">« 返回 用户 的用户页</a>
+                <span class="sp-board-toolbar-right">
+                    <span class="sp-board-count" th:text="#{socialProfile.board.count(${boardTotal})}">共 0 条留言</span>
+                    <span class="sp-sep">·</span>
+                    <a th:href="${boardAllUrl}" th:text="#{socialProfile.board.allLink}">全部留言</a>
+                </span>
+            </div>
+
+            <p class="wiki-warning" th:if="${boardTargetNotFound}" th:text="#{socialProfile.error.userNotFound}">
+                用户不存在。
+            </p>
+
+            <th:block th:unless="${boardTargetNotFound}">
+                <div class="sp-profile-head">
+                    <img class="wiki-avatar sp-avatar-small" th:src="${targetAvatarUrl}" th:alt="${targetUser}"/>
+                    <div>
+                        <div class="sp-profile-name" th:text="${targetUser}">用户名</div>
+                        <p>
+                            <a th:href="${targetUserUrl}" th:text="#{messages.threadUserPage}">用户页</a>
+                            <span class="sp-sep">·</span>
+                            <a th:href="${boardFriendsUrl}" th:text="#{socialProfile.friends.title}">好友</a>
+                            <span class="sp-sep">·</span>
+                            <a th:href="@{/wiki/特殊:送礼物(user=${targetUser})}"
+                               th:text="#{socialProfile.gifts.send}">送礼物</a>
+                            <th:block th:if="${boardEditProfileUrl != null}">
+                                <span class="sp-sep">·</span>
+                                <a th:href="${boardEditProfileUrl}" th:text="#{socialProfile.editProfile}">编辑资料</a>
+                            </th:block>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 发表框在列表之前（与原版 Special:UserBoard 一致）：能留言时给表单 -->
+                <form class="sp-board-form" th:if="${boardCanPost}" method="post"
+                      action="/api/social-profile/board/post" th:attr="data-to=${targetUser}">
+                    <input type="hidden" name="to" th:value="${targetUser}"/>
+                    <input type="hidden" name="parent" value=""/>
+                    <div class="form-field">
+                        <label for="sp-board-content" th:text="#{socialProfile.board.placeholder(${targetUser})}">
+                            给对方留言（支持 wikitext）：
+                        </label>
+                        <textarea id="sp-board-content" name="content" rows="4" required="required"></textarea>
+                    </div>
+                    <div class="form-message" role="alert" hidden="hidden"></div>
+                    <div class="form-actions">
+                        <button type="submit" class="wiki-button sp-button-primary"
+                                th:aria-label="#{socialProfile.board.submit}"
+                                th:text="#{socialProfile.board.submit}">发布留言</button>
+                    </div>
+                </form>
+
+                <!-- 不能留言时，输入框位置给一句说明 -->
+                <p class="sp-hint" th:if="${!boardCanPost and boardSelf}"
+                   th:text="#{socialProfile.board.selfHint}">这是你自己的留言板：别人的留言会显示在这里。</p>
+                <p class="sp-hint" th:if="${!boardCanPost and !boardSelf and !boardAllowBoard}"
+                   th:text="#{socialProfile.board.closedHint}">该用户已关闭留言板，无法发表留言。</p>
+                <p class="sp-hint" th:if="${!boardCanPost and !boardSelf and boardAllowBoard}">
+                    <span th:text="#{socialProfile.board.loginHint}">登录后即可留言。</span>
+                    <a th:if="${loginRequired}" th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+                </p>
+
+                <!-- 留言列表 / 空态 -->
+                <ol class="sp-board-list" th:unless="${#lists.isEmpty(boardRows)}">
+                    <li class="sp-board-item" th:each="row : ${boardRows}" th:id="'sp-board-' + ${row['id']}">
+                        <div class="sp-board-meta">
+                            <span class="sp-user-avatar" aria-hidden="true"
+                                  th:text="${#strings.isEmpty(row['author']) ? '·' : #strings.substring(row['author'], 0, 1)}">用</span>
+                            <a class="sp-board-author" th:href="${row['authorUrl']}"
+                               th:text="${row['author']}">作者</a>
+                            <span class="sp-sep">·</span>
+                            <span class="sp-board-time" th:text="${row['timeText']}">时间</span>
+                        </div>
+                        <div class="sp-board-deleted" th:if="${row['deleted']}"
+                             th:text="#{socialProfile.board.deleted}">（这条留言已被删除）</div>
+                        <div class="sp-board-body" th:unless="${row['deleted']}" th:utext="${row['contentHtml']}">正文</div>
+                        <div class="sp-board-actions" th:unless="${row['deleted']}">
+                            <button type="button" class="sp-reply-button" th:attr="data-parent=${row['id']}"
+                                    th:if="${boardCanPost}" th:aria-label="#{socialProfile.board.reply}"
+                                    th:text="#{socialProfile.board.reply}">回复</button>
+                            <button type="button" class="sp-delete-button" th:attr="data-id=${row['id']}"
+                                    th:if="${row['canDelete']}" th:aria-label="#{socialProfile.board.delete}"
+                                    th:text="#{socialProfile.board.delete}">删除</button>
+                        </div>
+
+                        <!-- 一层回复 -->
+                        <ol class="sp-board-replies" th:if="${boardReplyRows.containsKey(row['id'])}">
+                            <li class="sp-board-item sp-board-reply"
+                                th:each="reply : ${boardReplyRows.get(row['id'])}"
+                                th:id="'sp-board-' + ${reply['id']}">
+                                <div class="sp-board-meta">
+                                    <span class="sp-user-avatar" aria-hidden="true"
+                                          th:text="${#strings.isEmpty(reply['author']) ? '·' : #strings.substring(reply['author'], 0, 1)}">用</span>
+                                    <a class="sp-board-author" th:href="${reply['authorUrl']}"
+                                       th:text="${reply['author']}">作者</a>
+                                    <span class="sp-sep">·</span>
+                                    <span class="sp-board-time" th:text="${reply['timeText']}">时间</span>
+                                </div>
+                                <div class="sp-board-deleted" th:if="${reply['deleted']}"
+                                     th:text="#{socialProfile.board.deleted}">（这条留言已被删除）</div>
+                                <div class="sp-board-body" th:unless="${reply['deleted']}"
+                                     th:utext="${reply['contentHtml']}">正文</div>
+                                <div class="sp-board-actions" th:unless="${reply['deleted']}">
+                                    <button type="button" class="sp-reply-button" th:attr="data-parent=${reply['id']}"
+                                            th:if="${boardCanPost}" th:aria-label="#{socialProfile.board.reply}"
+                                            th:text="#{socialProfile.board.reply}">回复</button>
+                                    <button type="button" class="sp-delete-button" th:attr="data-id=${reply['id']}"
+                                            th:if="${reply['canDelete']}" th:aria-label="#{socialProfile.board.delete}"
+                                            th:text="#{socialProfile.board.delete}">删除</button>
+                                </div>
+                            </li>
+                        </ol>
+                    </li>
+                </ol>
+
+                <div class="sp-empty-block" th:if="${#lists.isEmpty(boardRows)}">
+                    <p class="sp-empty" th:if="${boardCanPost}" th:text="#{socialProfile.board.emptyFirst}">
+                        还没有留言，来写第一条吧。
+                    </p>
+                    <p class="sp-empty" th:unless="${boardCanPost}" th:text="#{socialProfile.board.empty}">
+                        还没有留言。
+                    </p>
+                    <p class="sp-empty-next">
+                        <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                        <a href="#sp-board-content" th:if="${boardCanPost}"
+                           th:text="#{socialProfile.board.submit}">发布留言</a>
+                        <span class="sp-sep" th:if="${boardCanPost}">·</span>
+                        <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.randomUsers}">去随机用户看看谁在活跃</a>
+                    </p>
+                </div>
+            </th:block>
+        </th:block>
+
+        <!-- ==================== 全站最近留言 ==================== -->
+        <th:block th:if="${!boardNoTarget and boardAll}">
+            <div class="sp-board-toolbar">
+                <span class="sp-board-count" th:text="#{socialProfile.board.allCount(${#lists.size(boardRows)})}">
+                    最近 0 条全站留言
+                </span>
+                <span class="sp-board-toolbar-right">
+                    <a th:if="${!loginRequired}" th:href="@{/wiki/特殊:留言板}"
+                       th:text="#{socialProfile.board.title}">留言板</a>
+                    <th:block th:if="${loginRequired}">
+                        <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a>
+                    </th:block>
+                </span>
+            </div>
+
+            <ol class="sp-board-list" th:unless="${#lists.isEmpty(boardRows)}">
+                <li class="sp-board-item" th:each="row : ${boardRows}" th:id="'sp-board-' + ${row['id']}">
+                    <div class="sp-board-meta">
+                        <span class="sp-user-avatar" aria-hidden="true"
+                              th:text="${#strings.isEmpty(row['author']) ? '·' : #strings.substring(row['author'], 0, 1)}">用</span>
+                        <a class="sp-board-author" th:href="${row['authorUrl']}"
+                           th:text="${row['author']}">作者</a>
+                        <span class="sp-sep">·</span>
+                        <span class="sp-board-time" th:text="${row['timeText']}">时间</span>
+                        <span class="sp-sep">·</span>
+                        <a th:href="@{/wiki/特殊:留言板(user=${row['toUser']})}"
+                           th:text="${row['toUser']}">收件人</a>
+                    </div>
+                    <div class="sp-board-deleted" th:if="${row['deleted']}"
+                         th:text="#{socialProfile.board.deleted}">（这条留言已被删除）</div>
+                    <div class="sp-board-body" th:unless="${row['deleted']}" th:utext="${row['contentHtml']}">正文</div>
+                </li>
+            </ol>
+
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(boardRows)}">
+                <p class="sp-empty" th:text="#{socialProfile.board.empty}">还没有留言。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.board.all}">全站还没有留言，去随机用户找人聊聊</a>
+                </p>
+            </div>
+        </th:block>
+    </th:block>
+</section>
+</body>
+</html>

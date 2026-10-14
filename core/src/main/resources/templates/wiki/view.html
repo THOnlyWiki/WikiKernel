@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${displayTitle != null ? displayTitle : page.title}, ~{:: section})}">
+<body>
+<section>
+    <!-- 用户页资料卡（头像 + 用户名 + 用户组 / 等级 / 注册时间 + 贡献/发私信；本人可上传头像） -->
+    <th:block th:replace="~{fragments/user-profile :: profile}"/>
+    <!-- 资料卡下方、正文之前的插件面板（SocialProfile 的「关于 / 统计栏 / 内嵌留言板」） -->
+    <th:block th:replace="~{fragments/user-profile :: profile-panel}"/>
+    <!-- 「重定向自 X」提示：从 #REDIRECT 页跳转过来时显示（链接带 ?redirect=no 查看重定向页本身） -->
+    <div class="redirect-note" th:if="${redirectFrom != null and oldRevision == null}">
+        <span th:text="#{redirect.note}">重定向自</span>
+        <a th:href="@{/wiki/{t}(t=${redirectFrom},redirect=no)}" th:text="${redirectFrom}">页面</a>
+    </div>
+    <!-- 查看旧版本时的提示（?oldid=N） -->
+    <div class="wiki-warning old-revision-warning" th:if="${oldRevision != null}">
+        <span th:if="${oldRevision.userId == null}"
+              th:with="time=${@wikiTime.format(oldRevision.createAt)}"
+              th:text="#{view.oldRevisionAnon(${time})}">这是本页面于 … 的旧版本（由匿名用户编辑）。</span>
+        <th:block th:if="${oldRevision.userId != null}" th:with="time=${@wikiTime.format(oldRevision.createAt)}">
+            <th:block th:if="${oldRevisionUserName != null}"><span
+                    th:text="#{view.oldRevisionUserPrefix(${time})}">这是本页面于 … 的旧版本（由</span><a
+                    th:href="@{/wiki/{t}(t=${'用户:' + oldRevisionUserName})}"
+                    th:text="${oldRevisionUserName}">用户</a><span
+                    th:text="#{view.oldRevisionUserSuffix}">编辑）。</span></th:block>
+            <span th:if="${oldRevisionUserName == null}"
+                  th:text="#{view.oldRevisionUser(${time}, ${oldRevision.userId})}">这是本页面于 … 的旧版本（由用户 #… 编辑）。</span>
+        </th:block>
+        <a th:href="${pageUrl}" th:text="#{view.current}">查看当前版本</a>
+        <span class="language-separator">|</span>
+        <a th:href="${pageUrl + '?diff=cur&oldid=' + oldRevision.id}"
+           th:text="#{view.diffCurrent}">与当前版本的差异</a>
+    </div>
+    <!-- 插件正文之前的片段（PageDisplayHook.beforeContent：审核的待审提示条等） -->
+    <th:block th:each="fragment : ${pageBeforeContentHtml}" th:utext="${fragment}"></th:block>
+    <!-- 保存前钩子（EditGuard）的 WARN 提示：保存成功后显示一次 -->
+    <div class="wiki-warning edit-hook-warning" th:if="${editGuardWarnings != null}" th:each="warning : ${editGuardWarnings}">
+        <span th:text="${warning}">保存提示</span>
+    </div>
+    <!-- 微件（Widget）页面提示：调用方式与编辑限制 -->
+    <div class="wiki-warning widget-note" th:if="${widgetPage}" th:text="#{view.widgetInfo}">
+        本页是微件代码页，只有小部件编辑者可以编辑。
+    </div>
+    <!-- JS/CSS 代码页面：缓存提示 + 只读高亮预览（code-editor.js 初始化 CodeMirror） -->
+    <th:block th:if="${codeLanguage != null and !widgetPage}">
+        <th:block th:replace="~{fragments/code-cache-notice :: notice}"/>
+    </th:block>
+    <pre th:if="${codeLanguage != null}" class="wiki-code" th:attr="data-language=${codeLanguage}"
+         th:text="${codeText}">代码</pre>
+    <!-- TypeScript 编译状态（.ts / .tsx 页面，仿 MediaWiki 的脚本页面提示） -->
+    <th:block th:if="${typeScriptEnabled}">
+        <div class="wiki-warning typescript-error" th:if="${typeScriptDiagnostics != null and !#lists.isEmpty(typeScriptDiagnostics)}">
+            <p><strong th:text="#{typescript.compileFailed}">TypeScript 编译失败：</strong></p>
+            <ul>
+                <li th:each="diagnostic : ${typeScriptDiagnostics}" th:text="${diagnostic}">3:12 …</li>
+            </ul>
+            <p class="wiki-hint" th:text="#{typescript.compileFailedHint}">
+                浏览器里加载这段脚本会失败（返回的是说明用的注释），请修正后重新保存。
+            </p>
+        </div>
+        <p class="wiki-hint typescript-compiled" th:if="${typeScriptCompiled == true}"
+           th:text="#{typescript.compiled(${typeScriptCompiler})}">已编译（typescript/5.9.3）。</p>
+        <p class="wiki-hint typescript-pending"
+           th:if="${typeScriptCompiled == null and !typeScriptCompileOnSave}"
+           th:text="#{typescript.notCompiledYet}">
+            尚未编译：脚本第一次被加载时才会编译；也可以开启「保存时编译」立刻检查语法。
+        </p>
+    </th:block>
+    <!-- Wikitext 渲染结果（已经过转义与 HTML 白名单过滤） -->
+    <div th:unless="${codeLanguage != null}" class="wiki-content" th:utext="${contentHtml}">页面内容</div>
+    <!-- 评论区（<comment />）已迁到插件 comments：由 PageDisplayHook.afterContent 注入（槽位在下面） -->
+    <th:block th:replace="~{fragments/catlinks :: catlinks(${pageCategories})}"/>
+    <!-- 插件正文下方片段（PageDisplayHook.afterContent：评论区等） -->
+    <th:block th:each="fragment : ${pageAfterContentHtml}" th:utext="${fragment}"></th:block>
+    <!-- AI 代理协助编辑的隐藏水印：词条最底部的不可见元素（不占位、不干扰阅读；
+         数据可通过 HTML 源码 / 开发者工具查看，供审计与追溯）。 -->
+    <div class="mw-ai-watermark" hidden th:if="${aiAssisted}" aria-hidden="true"
+         th:attr="data-ai-assisted='1',data-ai-model=${aiModel},data-ai-revision=${aiRevisionId}"
+         th:title="#{aiAgent.watermarkTitle}"></div>
+</section>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- 片段：访问规则的「允许范围」控件（所有人 / 无人 / 指定用户组）
+     参数：item（含 scope/groupSet）、prefix（唯一 id 前缀）、groups（全部用户组名） -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="scope(item, prefix, groups)" class="access-scope">
+    <label th:for="${prefix + '-everyone'}" class="access-scope-option">
+        <input type="radio" th:id="${prefix + '-everyone'}" name="scope" value="everyone"
+               th:checked="${item.scope == 'everyone'}"/>
+        <span th:text="#{access.scope.everyone}">所有人（含匿名）</span>
+    </label>
+    <label th:for="${prefix + '-nobody'}" class="access-scope-option">
+        <input type="radio" th:id="${prefix + '-nobody'}" name="scope" value="nobody"
+               th:checked="${item.scope == 'nobody'}"/>
+        <span th:text="#{access.scope.nobody}">无人（禁止）</span>
+    </label>
+    <label th:for="${prefix + '-groups'}" class="access-scope-option">
+        <input type="radio" th:id="${prefix + '-groups'}" name="scope" value="groups"
+               th:checked="${item.scope == 'groups'}"/>
+        <span th:text="#{access.scope.groups}">指定用户组</span>
+    </label>
+    <span class="access-group-list">
+        <label th:each="group : ${groups}" th:for="${prefix + '-g-' + group}" class="access-group-option">
+            <input type="checkbox" name="groups" th:id="${prefix + '-g-' + group}" th:value="${group}"
+                   th:checked="${item.groupSet.contains(group)}"/>
+            <span th:text="${@permissionGroupLabels.label(group)}">管理员</span>
+        </label>
+    </span>
+</div>
+</body>
+</html>

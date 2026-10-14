@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!-- 特殊:日志 / Special:Log：通用操作日志（类型来自注册中心，可被插件扩展） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <form class="log-filter-form" method="get" th:action="@{/wiki/特殊:日志}">
+        <div class="wiki-filter">
+            <select name="type" th:attr="aria-label=#{log.filter}">
+                <option value="" th:selected="${#strings.isEmpty(selectedType)}"
+                        th:text="#{log.filter.all}">全部公开日志</option>
+                <option th:each="type : ${logTypes}" th:value="${type.id}"
+                        th:selected="${selectedType == type.id}" th:text="${type.name}">创建页面</option>
+            </select>
+            <input type="text" name="name" th:value="${selectedName}" list="log-user-list"
+                   th:placeholder="#{log.filter.userPlaceholder}" th:attr="aria-label=#{log.filter.user}"/>
+            <input type="text" name="page" th:value="${selectedPage}"
+                   th:placeholder="#{log.filter.pagePlaceholder}" th:attr="aria-label=#{log.filter.page}"/>
+            <button type="submit" class="wiki-button" th:text="#{log.filter.search}">搜索</button>
+        </div>
+        <div class="wiki-filter">
+            <label>
+                <span th:text="#{log.filter.start}">起始时间</span>
+                <input type="datetime-local" name="start" th:value="${startValue}" step="1"/>
+            </label>
+            <label>
+                <span th:text="#{log.filter.end}">结束时间</span>
+                <input type="datetime-local" name="end" th:value="${endValue}" step="1"/>
+            </label>
+        </div>
+        <datalist id="log-user-list">
+            <option th:each="userOption : ${userOptions}" th:value="${userOption}"></option>
+        </datalist>
+    </form>
+
+    <p class="wiki-form-error" th:if="${userNotFound}" th:text="#{permissions.userNotFound}">用户不存在。</p>
+    <p class="wiki-form-error" th:if="${timeError}" th:text="#{log.filter.timeError}">
+        时间格式无效，该条件已被忽略。
+    </p>
+
+    <p id="log-message" class="form-message" hidden></p>
+
+    <!-- 分页：每页 10 / 50 / 100 / 500 + 最新 / 上一页 / 下一页（仿 MediaWiki Special:Log；链接保留筛选条件） -->
+    <div class="log-pager" th:if="${!#lists.isEmpty(rows) or prevUrl != null}">
+        <span class="log-pager-sizes">
+            <span th:text="#{log.page.perPage}">每页：</span><th:block
+                th:each="option, iter : ${limitOptions}"><span th:if="${iter.index > 0}"
+                    class="log-pager-sep">·</span><strong th:if="${option.selected}"
+                    th:text="${option.size}">50</strong><a th:unless="${option.selected}"
+                    th:href="${option.url}" th:text="${option.size}">10</a></th:block>
+        </span>
+        <span class="log-pager-nav">
+            <a th:if="${newestUrl != null}" th:href="${newestUrl}" th:text="#{log.page.newest}">最新</a>
+            <span th:if="${newestUrl != null}" class="log-pager-sep">|</span>
+            <a th:if="${prevUrl != null}" th:href="${prevUrl}" th:text="#{log.page.prev}">上一页</a>
+            <span th:if="${prevUrl == null}" class="log-pager-disabled" th:text="#{log.page.prev}">上一页</span>
+            <span class="log-pager-sep">|</span>
+            <a th:if="${nextUrl != null}" th:href="${nextUrl}" th:text="#{log.page.next}">下一页</a>
+            <span th:if="${nextUrl == null}" class="log-pager-disabled" th:text="#{log.page.next}">下一页</span>
+        </span>
+    </div>
+
+    <p th:if="${#lists.isEmpty(rows) and !userNotFound}" th:text="#{userRights.logEmpty}">
+        在日志中不存在匹配项。
+    </p>
+
+    <table class="wikitable log-table" th:unless="${#lists.isEmpty(rows)}">
+        <!-- 固定列宽（table-layout: fixed）：翻页 / 切每页条数时列不随内容长短跳变 -->
+        <colgroup>
+            <col class="log-col-time"/>
+            <col class="log-col-actor"/>
+            <col class="log-col-action"/>
+            <col class="log-col-detail"/>
+            <col class="log-col-status" th:if="${canManage}"/>
+        </colgroup>
+        <tr>
+            <th th:text="#{contributions.time}">时间</th>
+            <th th:text="#{log.table.actor}">操作者</th>
+            <th th:text="#{log.table.action}">操作</th>
+            <th th:text="#{log.table.detail}">详情</th>
+            <th th:if="${canManage}" th:text="#{log.table.status}">状态</th>
+        </tr>
+        <tr th:each="row : ${rows}" th:classappend="${row.log.hided} ? 'log-hided'">
+            <td class="log-time" th:text="${@wikiTime.format(row.log.time)}">时间</td>
+            <td>
+                <a th:if="${row.actorName != null}"
+                   th:href="@{/wiki/{t}(t=${'用户:' + row.actorName})}" th:text="${row.actorName}">用户</a>
+                <span th:if="${row.actorName == null}" th:text="#{common.anonymous}">匿名用户</span>
+            </td>
+            <td>
+                <span th:text="${row.actionBefore}"></span><a
+                    th:if="${row.targetUrl != null}" th:href="${row.targetUrl}"
+                    th:text="${row.targetText}">目标</a><span
+                    th:if="${row.targetUrl == null}" th:text="${row.targetText}">目标</span><span
+                    th:text="${row.actionAfter}"></span>
+            </td>
+            <td th:text="${row.detailText}">详情</td>
+            <td th:if="${canManage}" class="log-actions">
+                <span th:if="${row.log.hided}" class="log-hidden-mark" th:text="#{log.hiddenMark}">（已隐藏）</span>
+                <form class="log-hide-form" method="post" th:action="@{/api/logs/hide}">
+                    <input type="hidden" name="id" th:value="${row.log.id}"/>
+                    <input type="hidden" name="hidden" th:value="${!row.log.hided}"/>
+                    <button type="submit" class="link-button"
+                            th:text="${row.log.hided} ? #{log.unhide} : #{log.hide}">隐藏</button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 底部分页（与顶部一致） -->
+    <div class="log-pager" th:if="${!#lists.isEmpty(rows) or prevUrl != null}">
+        <span class="log-pager-sizes">
+            <span th:text="#{log.page.perPage}">每页：</span><th:block
+                th:each="option, iter : ${limitOptions}"><span th:if="${iter.index > 0}"
+                    class="log-pager-sep">·</span><strong th:if="${option.selected}"
+                    th:text="${option.size}">50</strong><a th:unless="${option.selected}"
+                    th:href="${option.url}" th:text="${option.size}">10</a></th:block>
+        </span>
+        <span class="log-pager-nav">
+            <a th:if="${newestUrl != null}" th:href="${newestUrl}" th:text="#{log.page.newest}">最新</a>
+            <span th:if="${newestUrl != null}" class="log-pager-sep">|</span>
+            <a th:if="${prevUrl != null}" th:href="${prevUrl}" th:text="#{log.page.prev}">上一页</a>
+            <span th:if="${prevUrl == null}" class="log-pager-disabled" th:text="#{log.page.prev}">上一页</span>
+            <span class="log-pager-sep">|</span>
+            <a th:if="${nextUrl != null}" th:href="${nextUrl}" th:text="#{log.page.next}">下一页</a>
+            <span th:if="${nextUrl == null}" class="log-pager-disabled" th:text="#{log.page.next}">下一页</span>
+        </span>
+    </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<!-- 公共片段：页脚语言切换（Vector / fallback / 插件皮肤共用） -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<li class="footer-languages" th:fragment="languages">
+    <span th:text="#{site.language}">语言：</span>
+    <a th:href="${currentPath + '?uselang=zh'}"
+       th:classappend="${#locale.language == 'zh'} ? 'selected'">中文</a>
+    <span class="language-separator">·</span>
+    <a th:href="${currentPath + '?uselang=en'}"
+       th:classappend="${#locale.language == 'en'} ? 'selected'">English</a>
+</li>
+</body>
+</html>

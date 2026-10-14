@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:AI代理 / Special:AiAgent（插件 ai-agent）：
+     默认 = AI 协作编辑（对话 → 渲染预览 / 差异 / 可改正文 → 用户核对确认 → 直接保存，均以用户本人名义）；
+     ?keys=1 = 站点级 AI 厂商密钥与「允许普通用户使用」开关（管理员 / 行政员，原来在 core 的站点设置里）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="ai-agent-page">
+    <p class="wiki-warning" th:unless="${enabled}" th:text="#{aiAgent.disabledHint}">
+        AI 代理功能未启用：可在 /init 安装向导或 特殊:权限配置 → 站点设置 里打开。
+    </p>
+    <p class="wiki-warning" th:if="${enabled and !loggedIn}" th:text="#{aiAgent.loginRequired}">
+        AI 代理需要登录后使用。
+    </p>
+    <p class="wiki-warning" th:if="${enabled and loggedIn and !allowed and !keysPanel}"
+       th:text="#{aiAgent.notAllowedHint(${agentGroup})}">
+        你没有使用 AI 代理的权限：需要「AI代理用户」用户组，或由管理员放开普通用户。
+    </p>
+    <p class="wiki-warning" th:if="${chatVisible and !hasProvider}" th:text="#{aiAgent.noProviderHint}">
+        还没有可用的 AI 厂商：内置的「演示模式（固定回复）」随时可用（回复是固定示例，不是真实 AI）；要接入真实模型请先填密钥。
+    </p>
+
+    <!-- ==================== 站点密钥面板（管理员：特殊:AI代理?keys=1） ==================== -->
+    <th:block th:if="${keysPanel}">
+        <h2 th:text="#{settings.aiVendors}">AI 厂商（站点密钥）</h2>
+        <p class="wiki-hint" th:text="#{settings.aiVendorsHint}">
+            给「特殊:AI代理」配置站点共用的 AI 厂商密钥（网页保存、即时生效）。
+        </p>
+        <p class="wiki-hint">
+            <a th:href="@{/wiki/特殊:AI代理}" th:text="#{aiAgent.backToChat}">返回对话界面</a>
+        </p>
+        <form id="site-ai-keys-form" class="wiki-form" data-keys-scope="site"
+              th:attr="data-keys-confirm-clear=#{preferences.ai.clearConfirm}, data-keep-label=#{preferences.ai.keyKeep}, data-default-placeholder=#{preferences.ai.keyPlaceholder}">
+            <details class="ai-key-row" th:each="vendor : ${siteVendors}" th:attr="data-provider=${vendor.id},
+                     data-configured-label=#{preferences.ai.configured('{0}')},
+                     data-missing-label=#{preferences.ai.notConfigured}">
+                <summary>
+                    <span class="ai-key-chevron" aria-hidden="true"></span>
+                    <strong class="ai-key-name" th:text="${vendor.label}">DeepSeek</strong>
+                    <span class="ai-key-state" th:classappend="${vendor.siteConfigured} ? ' ok'"
+                          th:text="${vendor.siteConfigured} ? #{preferences.ai.configured(${vendor.siteMask})} : #{preferences.ai.notConfigured}">未配置</span>
+                    <span class="ai-key-hint" th:text="${vendor.hint}">说明</span>
+                    <span class="ai-key-hint" th:if="${vendor.yamlHasKey}"
+                          th:text="#{settings.aiVendorsYaml}">（LocalSettings.yaml 里已写密钥，未填站点密钥时生效）</span>
+                </summary>
+                <div class="ai-key-body">
+                <div class="form-field form-field-inline">
+                    <label th:attr="for=${'site-ai-key-' + vendor.id}" th:text="#{preferences.ai.key}">API 密钥</label>
+                    <input type="password" class="ai-key-input" th:id="${'site-ai-key-' + vendor.id}" autocomplete="off"
+                           th:placeholder="${vendor.siteConfigured} ? #{preferences.ai.keyKeep} : #{preferences.ai.keyPlaceholder}"/>
+                </div>
+                <div class="form-field form-field-inline">
+                    <label th:attr="for=${'site-ai-base-' + vendor.id}" th:text="#{preferences.ai.baseUrl}">API 地址（可选）</label>
+                    <input type="text" class="ai-base-input" th:id="${'site-ai-base-' + vendor.id}"
+                           th:value="${vendor.siteBaseUrl}" th:placeholder="${vendor.defaultBaseUrl}"/>
+                </div>
+                <div class="form-field form-field-inline">
+                    <label th:attr="for=${'site-ai-model-' + vendor.id}" th:text="#{preferences.ai.model}">模型（可选）</label>
+                    <input type="text" class="ai-model-input" th:id="${'site-ai-model-' + vendor.id}"
+                           th:value="${vendor.siteModel}" th:placeholder="${vendor.defaultModel}"/>
+                </div>
+                <div class="form-field form-field-inline">
+                    <label th:attr="for=${'site-ai-proxy-' + vendor.id}" th:text="#{preferences.ai.proxy}">代理（可选）</label>
+                    <input type="text" class="ai-proxy-input" th:id="${'site-ai-proxy-' + vendor.id}"
+                           th:value="${vendor.siteProxy}" th:placeholder="#{preferences.ai.proxyPlaceholder}"/>
+                </div>
+                <div class="ai-key-actions">
+                    <button type="button" class="wiki-button ai-key-save" th:text="#{preferences.ai.save}">保存</button>
+                    <button type="button" class="wiki-button ai-key-clear" th:text="#{preferences.ai.clear}">清除</button>
+                </div>
+                </div>
+            </details>
+            <p class="form-message ai-keys-message" hidden></p>
+        </form>
+
+        <form id="site-ai-allow-normal" class="wiki-form pref-section" data-allow-normal="1"
+              th:action="@{/api/ai-keys/allow-normal}" method="post">
+            <h2 th:text="#{settings.aiAgentAllowNormal}">允许普通用户使用</h2>
+            <label class="pref-checkbox">
+                <input type="checkbox" name="allowNormal" value="1" th:checked="${allowNormalUsers}"/>
+                <span th:text="#{settings.aiAgentAllowNormalLabel}">允许任何登录用户使用 AI 代理</span>
+            </label>
+            <div class="wiki-hint" th:text="#{settings.aiAgentAllowNormalHint(${agentGroup})}">
+                不勾选时只有「AI代理用户」组、管理员 / 行政员可用。
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{preferences.ai.save}">保存</button>
+            </div>
+            <p class="form-message" hidden></p>
+        </form>
+    </th:block>
+
+    <!-- ==================== 对话界面 ==================== -->
+    <th:block th:if="${!keysPanel}">
+        <p th:if="${chatVisible}" th:text="#{aiAgent.intro}">
+            AI 代理可以阅读词条与模板、按你的要求起草或修改内容；**任何编辑都要你核对预览与差异后确认**才会保存，
+            保存以你的名义进行、不经审核队列，词条底部会带一枚不可见的 AI 水印。
+        </p>
+        <p class="wiki-hint" th:if="${canManage}">
+            <a th:href="@{/wiki/特殊:AI代理(keys=1)}" th:text="#{aiAgent.siteKeysLink}">站点密钥与「允许普通用户使用」（管理员）</a>
+        </p>
+
+        <div id="ai-agent-root" class="ai-agent-root" th:if="${chatVisible and hasProvider}"
+             th:attr="data-agent-group=${agentGroup},
+                      data-demo-providers=${demoProviders},
+                      data-msg-thinking=#{aiAgent.thinking},
+                      data-msg-failed=#{aiAgent.sendFailed},
+                      data-msg-conflict=#{aiAgent.conflictBanner},
+                      data-msg-applied=#{aiAgent.applied},
+                      data-msg-discarded=#{aiAgent.discarded},
+                      data-msg-apply-this=#{aiAgent.applyThis},
+                      data-msg-proposal-count-text=#{aiAgent.proposalCountText},
+                      data-msg-proposal-conflict-short=#{aiAgent.proposalConflictShort},
+                      data-msg-proposal-missing-short=#{aiAgent.proposalMissingShort},
+                      data-msg-apply-all-confirm=#{aiAgent.applyAllConfirm},
+                      data-msg-steps-count=#{aiAgent.stepsCount},
+                      data-msg-preview-refreshed=#{aiAgent.previewRefreshed},
+                      data-msg-preview-failed=#{aiAgent.previewFailed},
+                      data-msg-confirm-discard=#{aiAgent.confirmDiscard},
+                      data-msg-regenerate=#{aiAgent.regenerateMessage},
+                      data-msg-new=#{aiAgent.creating},
+                      data-msg-edit=#{aiAgent.editing},
+                      data-msg-base=#{aiAgent.baseRevision},
+                      data-msg-current=#{aiAgent.currentRevision},
+                      data-msg-bytes=#{aiAgent.bytes},
+                      data-msg-pending=#{aiAgent.pendingCount},
+                      data-msg-kind-model=#{aiAgent.kindModel},
+                      data-msg-kind-tool=#{aiAgent.kindTool},
+                      data-msg-kind-notice=#{aiAgent.kindNotice},
+                      data-msg-kind-final=#{aiAgent.kindFinal},
+                      data-msg-no-old-version=#{aiAgent.noOldVersion},
+                      data-msg-list-separator=#{aiAgent.listSeparator},
+                      data-msg-label-separator=#{aiAgent.labelSeparator},
+                      data-msg-demo-lock-notice=#{aiAgent.demoLockNotice},
+                      data-msg-demo-lock-placeholder=#{aiAgent.demoLockPlaceholder},
+                      data-msg-you=#{aiAgent.you}">
+            <div class="ai-agent-toolbar">
+                <label for="ai-agent-provider" th:text="#{aiAgent.provider}">AI 厂商</label>
+                <select id="ai-agent-provider">
+                    <option th:each="provider : ${providers}" th:value="${provider.id}"
+                            th:selected="${provider.id == defaultProvider}"
+                            th:text="#{aiAgent.providerOption(${provider.label}, ${provider.model}, ${provider.sourceLabel})}">deepseek · deepseek-chat（我的密钥）</option>
+                </select>
+                <span class="wiki-hint"
+                      th:text="${maxStepsUnlimited} ? #{aiAgent.maxStepsUnlimited} : #{aiAgent.maxStepsHint(${maxSteps})}">一次对话最多 12 轮工具调用</span>
+                <span class="wiki-hint" th:text="#{aiAgent.selfReviewHintShort}">
+                    AI 只起草：确认前请核对（可以直接改正文），确认后以你的名义直接保存。
+                </span>
+                <span class="wiki-hint">
+                    <a th:href="@{/wiki/特殊:参数设置(hash='ai')}" th:text="#{aiAgent.keysHint}">填自己的密钥</a>
+                </span>
+            </div>
+
+            <div class="ai-agent-chat">
+                <div id="ai-agent-messages" class="ai-agent-messages">
+                    <div class="ai-agent-message ai-agent-message-system"
+                         th:text="#{aiAgent.welcome}">告诉代理你想做什么…</div>
+                </div>
+                <p id="ai-agent-status" class="form-message" hidden></p>
+                <div class="ai-agent-input">
+                    <!-- 演示厂商（data-demo-providers）：提示条默认隐藏，选中演示厂商时由 ai-agent.js 显示并锁住输入 -->
+                    <p id="ai-agent-demo-notice" class="form-message" hidden
+                       th:text="#{aiAgent.demoLockNotice}">演示模式（固定回复）：回复是固定示例，不是真实 AI，输入已锁定。</p>
+                    <textarea id="ai-agent-input" rows="3" th:placeholder="#{aiAgent.inputPlaceholder}"></textarea>
+                    <div class="ai-agent-input-actions">
+                        <button type="button" id="ai-agent-send" class="wiki-button" th:text="#{aiAgent.send}">发送</button>
+                        <span class="wiki-hint" th:text="#{aiAgent.exampleHint}">
+                            例：帮我把「首页」的导语改得更简洁；或：给「沙盒」新建一节介绍本站
+                        </span>
+                    </div>
+                </div>
+                <details class="ai-agent-steps" id="ai-agent-steps">
+                    <summary>
+                        <span class="ai-agent-steps-icon" aria-hidden="true"></span>
+                        <span class="ai-agent-steps-title" th:text="#{aiAgent.steps}">执行过程（工具调用）</span>
+                        <span class="ai-agent-steps-count" id="ai-agent-step-count"></span>
+                        <span class="wiki-hint ai-agent-steps-toggle" th:text="#{aiAgent.stepsToggleHint}">点击展开 / 收起</span>
+                    </summary>
+                    <ol id="ai-agent-step-list"></ol>
+                </details>
+            </div>
+
+            <div id="ai-agent-proposal-list" class="ai-agent-proposal-list" hidden>
+                <div class="ai-agent-proposal-list-head">
+                    <strong th:text="#{aiAgent.proposalList}">待确认提案（可多条目）</strong>
+                    <span class="wiki-hint" id="ai-agent-proposal-count"></span>
+                    <button type="button" id="ai-agent-apply-all" class="wiki-button"
+                            th:text="#{aiAgent.applyAll}">全部确认提交</button>
+                </div>
+                <ul id="ai-agent-proposal-items"></ul>
+            </div>
+
+            <div id="ai-agent-proposal" class="ai-agent-proposal" hidden>
+                <h2>
+                    <span th:text="#{aiAgent.proposal}">待确认的编辑</span>：
+                    <span id="ai-agent-proposal-title"></span>
+                </h2>
+                <p class="wiki-hint" id="ai-agent-proposal-meta"></p>
+                <p class="wiki-warning" id="ai-agent-conflict" hidden></p>
+
+                <div class="ai-agent-tabs" role="tablist">
+                    <button type="button" class="ai-agent-tab selected" data-tab="preview"
+                            th:text="#{aiAgent.tabPreview}">预览</button>
+                    <button type="button" class="ai-agent-tab" data-tab="diff"
+                            th:text="#{aiAgent.tabDiff}">与当前版本差异</button>
+                    <button type="button" class="ai-agent-tab" data-tab="source"
+                            th:text="#{aiAgent.tabSource}">Wikitext</button>
+                </div>
+                <div class="ai-agent-panel" data-panel="preview"></div>
+                <div class="ai-agent-panel" data-panel="diff" hidden></div>
+                <div class="ai-agent-panel" data-panel="source" hidden>
+                    <p class="wiki-hint" th:text="#{aiAgent.sourceEditHint}">
+                        可以直接改下面的正文（错别字、语气、补充说明都行）：保存的就是你看到并确认的版本。
+                    </p>
+                    <textarea id="ai-agent-source" class="ai-agent-source" rows="14" spellcheck="false"></textarea>
+                    <div class="ai-agent-source-actions">
+                        <button type="button" id="ai-agent-refresh-preview" class="wiki-button"
+                                th:text="#{aiAgent.refreshPreview}">用当前正文刷新预览</button>
+                        <span class="wiki-hint" id="ai-agent-source-status" hidden></span>
+                    </div>
+                </div>
+
+                <div class="ai-agent-submit">
+                    <label for="ai-agent-comment" th:text="#{aiAgent.comment}">编辑摘要（可选）</label>
+                    <input type="text" id="ai-agent-comment" maxlength="200"/>
+                    <button type="button" id="ai-agent-apply" class="wiki-button" th:text="#{aiAgent.apply}">确认提交</button>
+                    <button type="button" id="ai-agent-regenerate" class="wiki-button"
+                            th:text="#{aiAgent.regenerate}">让 AI 重新生成</button>
+                    <button type="button" id="ai-agent-discard" class="wiki-button" th:text="#{aiAgent.discard}">放弃</button>
+                </div>
+                <p class="wiki-hint" th:text="#{aiAgent.selfReviewHint}">
+                    确认后以你的名义直接保存（AI 的内容由你负责核对；会带隐藏的 AI 水印）。
+                </p>
+            </div>
+
+            <h2 th:text="#{aiAgent.howtoTitle}">使用说明</h2>
+            <ul class="ai-agent-howto">
+                <li th:text="#{aiAgent.howtoRead}">代理可以 read 词条、search 搜索、list 列举（含模板/模块命名空间）、info 看模板与分类、history 看历史。</li>
+                <li th:text="#{aiAgent.howtoConfirm}">代理只能 propose（生成提案）：你必须看到预览与差异并点「确认提交」，编辑才落库。</li>
+                <li th:text="#{aiAgent.howtoMultiPage}">一次会话可以改多个页面（例如正文 + 它引用的模板）：提案会在上方列成列表，可以逐个确认，也可以一键全部提交；引用了不存在的模板时代理会被告知一并创建，没覆盖的会标「缺模板」。</li>
+                <li th:text="#{aiAgent.howtoWatermark}">AI 协助的版本会带一枚隐藏水印（词条底部不可见元素，阅读不受影响）。</li>
+                <li th:text="#{aiAgent.howtoConcurrency}">代理读取过页面后会记住版本号：期间若有他人提交，确认时会被拒绝并提示重新生成。</li>
+                <li th:text="#{aiAgent.howtoConfig}">厂商密钥在网页上填：参数设置 → AI 代理（我的密钥）；站点共用密钥由管理员在 特殊:AI代理?keys=1 里填。也可以写在 LocalSettings.yaml 的 wikikernel.ai.providers 里。</li>
+            </ul>
+        </div>
+    </th:block>
+</section>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!-- 特殊:分类树 / Special:CategoryTree（CategoryTree 扩展移植：输入分类名后用树形结构浏览） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <!-- 本页不走解析渲染（没有页面属性），所以 JS / CSS 直接写在模板里 -->
+    <script th:utext="'window.CategoryTreeMessages = ' + ${messagesJson} + ';'"></script>
+    <link rel="stylesheet" href="/plugins/category-tree/category-tree.css">
+    <script defer src="/plugins/category-tree/ext.categoryTree.js"></script>
+
+    <p th:text="${intro}">请输入一个分类名称以使用树形结构查看其内容。（需要 JavaScript。）</p>
+
+    <form class="wiki-form categorytree-form" method="get" th:action="@{/wiki/特殊:分类树}">
+        <fieldset>
+            <legend th:text="${legend}">显示分类树</legend>
+            <div class="categorytree-fields">
+                <div class="categorytree-row">
+                    <label for="categorytree-target" th:text="${categoryLabel}">分类：</label>
+                    <input type="text" id="categorytree-target" name="target" th:value="${target}"/>
+                </div>
+
+                <div class="categorytree-row">
+                    <label for="categorytree-mode" th:text="${modeLabel}">模式：</label>
+                    <select id="categorytree-mode" name="mode">
+                        <option th:each="option : ${modeOptions}" th:value="${option.value}"
+                                th:text="${option.label}" th:selected="${option.selected}">仅分类</option>
+                    </select>
+                </div>
+
+                <div class="categorytree-row">
+                    <label for="categorytree-namespaces" th:text="${namespacesLabel}">命名空间：</label>
+                    <input type="text" id="categorytree-namespaces" name="namespaces" th:value="${namespaces}"
+                           placeholder="0|14"/>
+                </div>
+
+                <div class="categorytree-row categorytree-showcount">
+                    <label>
+                        <input type="checkbox" name="showcount" value="1" th:checked="${showcount}"/>
+                        <span th:text="${showCountLabel}">显示成员计数</span>
+                    </label>
+                    <button type="submit" class="wiki-button" th:text="${goLabel}">显示分类树</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+
+    <div th:if="${noticeHtml != null}" th:utext="${noticeHtml}">分类不存在。</div>
+    <div th:if="${parentsHtml != null}" class="CategoryTreeParents" th:utext="${parentsHtml}">上级分类：…</div>
+    <div th:if="${treeHtml != null}" th:utext="${treeHtml}">分类树</div>
+</section>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:编辑资料 / Special:EditProfile（仿 MediaWiki SocialProfile 的 Special:EditProfile）
+     表单提交到 POST /api/social-profile/profile（脚本 /plugins/social-profile/social-profile.js）。
+     字段分三组：基本信息 / 社交信息 / 隐私开关（第二个表单，走 /api/social-profile/preferences）；
+     保存按钮是主操作（.sp-button-primary），返回用户页是次要操作（.sp-secondary-link）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.editProfile}">
+        在这里填写你的个人资料，并决定哪些内容公开给别人看。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and loginRequired}">
+        <span th:text="#{permissions.loginRequired}">请先登录。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or loginRequired}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" aria-current="page" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <div class="sp-profile-head">
+            <img class="wiki-avatar sp-avatar-small" th:src="${avatarUrl}" th:alt="${currentUser.username}"/>
+            <div>
+                <div class="sp-profile-name" th:text="${currentUser.username}">用户名</div>
+                <p class="wiki-hint" th:text="#{socialProfile.profile.hint}">生日只保存月-日。</p>
+                <p>
+                    <a class="sp-secondary-link" th:href="${userPageUrl}"
+                       th:text="#{socialProfile.profile.back}">返回我的用户页</a>
+                    <span class="sp-sep">·</span>
+                    <a class="sp-secondary-link" th:href="@{/wiki/特殊:上传头像}"
+                       th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a>
+                </p>
+            </div>
+        </div>
+
+        <form id="social-profile-form" class="wiki-form" method="post" action="/api/social-profile/profile">
+            <fieldset class="sp-field-group">
+                <legend class="sp-group-title" th:text="#{socialProfile.group.basic}">基本信息</legend>
+                <div class="sp-group-body">
+                    <div class="form-field">
+                        <label for="sp-gender" th:text="#{socialProfile.field.gender}">性别</label>
+                        <select id="sp-gender" name="gender">
+                            <option th:each="option : ${genders}" th:value="${option['value']}"
+                                    th:text="${option['label']}" th:selected="${option['selected']}">未指定</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="sp-birthday" th:text="#{socialProfile.field.birthday}">生日</label>
+                        <input type="text" id="sp-birthday" name="birthday" placeholder="03-09"
+                               maxlength="10" th:value="${profile.birthday}"/>
+                    </div>
+                    <div class="form-field">
+                        <label for="sp-location" th:text="#{socialProfile.field.location}">现居地</label>
+                        <input type="text" id="sp-location" name="location" maxlength="100"
+                               th:value="${profile.location}"/>
+                    </div>
+                    <div class="form-field">
+                        <label for="sp-hometown" th:text="#{socialProfile.field.hometown}">家乡</label>
+                        <input type="text" id="sp-hometown" name="hometown" maxlength="100"
+                               th:value="${profile.hometown}"/>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="sp-field-group">
+                <legend class="sp-group-title" th:text="#{socialProfile.group.social}">社交信息</legend>
+                <div class="sp-group-body">
+                    <div class="form-field">
+                        <label for="sp-occupation" th:text="#{socialProfile.field.occupation}">职业</label>
+                        <input type="text" id="sp-occupation" name="occupation" maxlength="100"
+                               th:value="${profile.occupation}"/>
+                    </div>
+                    <div class="form-field">
+                        <label for="sp-interests" th:text="#{socialProfile.field.interests}">兴趣</label>
+                        <input type="text" id="sp-interests" name="interests" maxlength="255"
+                               th:value="${profile.interests}"/>
+                    </div>
+                    <div class="form-field">
+                        <label for="sp-website" th:text="#{socialProfile.field.website}">个人网站</label>
+                        <input type="url" id="sp-website" name="website" maxlength="255" placeholder="https://"
+                               th:value="${profile.website}"/>
+                    </div>
+                    <div class="form-field">
+                        <label for="sp-about" th:text="#{socialProfile.field.about}">关于我</label>
+                        <textarea id="sp-about" name="about" rows="8" maxlength="5000"
+                                  th:text="${profile.about}"></textarea>
+                        <p class="wiki-hint" th:text="#{socialProfile.profile.aboutHint}">「关于我」支持 wikitext。</p>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="form-message" role="alert" hidden="hidden"></div>
+            <div class="form-actions sp-form-actions">
+                <button type="submit" class="wiki-button sp-button-primary"
+                        th:aria-label="#{socialProfile.profile.save}"
+                        th:text="#{socialProfile.profile.save}">保存资料</button>
+                <a class="sp-secondary-link" th:href="${userPageUrl}"
+                   th:text="#{socialProfile.profile.back}">返回我的用户页</a>
+                <a class="sp-secondary-link" th:href="${userPageUrl}"
+                   th:text="#{socialProfile.profile.previewLink}">在用户页看效果</a>
+            </div>
+        </form>
+
+        <!-- 社交偏好（与 特殊:参数设置 → 社交资料 分区读写同一批键） -->
+        <h2 class="sp-heading" th:text="#{socialProfile.preferences.title}">社交资料</h2>
+        <p class="wiki-hint" th:text="#{socialProfile.preferences.hint}">这些偏好只影响别人看到的资料卡与留言权限。</p>
+        <form id="social-profile-preferences-form" class="wiki-form" method="post"
+              action="/api/social-profile/preferences" data-api="/api/social-profile/preferences">
+            <fieldset class="sp-field-group">
+                <legend class="sp-group-title" th:text="#{socialProfile.group.privacy}">隐私开关</legend>
+                <div class="sp-group-body">
+                    <div class="sp-preferences">
+                        <label class="pref-checkbox">
+                            <input type="checkbox" name="showBirthday" value="1"
+                                   th:checked="${preferences.showBirthday}"/>
+                            <span th:text="#{socialProfile.preferences.showBirthday}">在资料卡显示生日</span>
+                        </label>
+                        <label class="pref-checkbox">
+                            <input type="checkbox" name="showLocation" value="1"
+                                   th:checked="${preferences.showLocation}"/>
+                            <span th:text="#{socialProfile.preferences.showLocation}">在资料卡显示现居地</span>
+                        </label>
+                        <label class="pref-checkbox">
+                            <input type="checkbox" name="allowBoard" value="1" th:checked="${preferences.allowBoard}"/>
+                            <span th:text="#{socialProfile.preferences.allowBoard}">允许其他人在我的留言板留言</span>
+                        </label>
+                        <label class="pref-checkbox">
+                            <input type="checkbox" name="showGifts" value="1" th:checked="${preferences.showGifts}"/>
+                            <span th:text="#{socialProfile.preferences.showGifts}">在资料卡显示礼物清单</span>
+                        </label>
+                        <label class="pref-checkbox">
+                            <input type="checkbox" name="showAwards" value="1" th:checked="${preferences.showAwards}"/>
+                            <span th:text="#{socialProfile.preferences.showAwards}">在资料卡显示勋章</span>
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+            <div class="form-message" role="alert" hidden="hidden"></div>
+            <div class="form-actions sp-form-actions">
+                <button type="submit" class="wiki-button sp-button-primary"
+                        th:aria-label="#{socialProfile.preferences.save}"
+                        th:text="#{socialProfile.preferences.save}">保存偏好</button>
+                <a class="sp-secondary-link" th:href="${boardUrl}"
+                   th:text="#{socialProfile.board.title}">留言板</a>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

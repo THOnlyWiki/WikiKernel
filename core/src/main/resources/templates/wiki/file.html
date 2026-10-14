@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!-- 文件页（文件:X）：预览 / 元信息 / 说明 / 文件历史（仿 MediaWiki 的 File 命名空间） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <!-- 已删除提示 + 恢复 / 彻底删除（删除权限者可见） -->
+    <div class="wiki-warning file-deleted-note" th:if="${deleted}">
+        <p th:text="#{files.deletedNotice}">此文件已被删除。</p>
+        <p th:if="${deletedByName != null}" th:text="#{files.deletedBy(${deletedByName})}">由 X 删除</p>
+        <p th:if="${deletedAt != null}"
+           th:text="${@wikiTime.format(deletedAt)}">删除时间</p>
+    </div>
+
+    <!-- 预览：已删除文件仅删除权限者可见；音视频在启用多媒体预览时显示播放器 -->
+    <div class="file-preview" th:if="${not deleted or canDelete}">
+        <div th:if="${mediaPlayerHtml != null}" th:utext="${mediaPlayerHtml}"></div>
+        <a th:if="${mediaPlayerHtml == null and file.image}" th:href="${file.url}">
+            <img class="wiki-media-image" th:src="${file.url}" th:alt="${file.name}"
+                 th:attr="data-file=${'文件:' + file.name},data-caption=${file.description}"/>
+        </a>
+        <p th:if="${mediaPlayerHtml == null and not file.image}">
+            <a class="wiki-button" th:href="${file.url}" th:text="#{files.download}">下载文件</a>
+        </p>
+    </div>
+
+    <table class="wikitable file-info" th:if="${not deleted or canDelete}">
+        <tr>
+            <th th:text="#{files.infoName}">文件名</th>
+            <td th:text="${file.name}">示例.png</td>
+        </tr>
+        <tr>
+            <th th:text="#{files.version}">版本</th>
+            <td th:text="${file.version}">1</td>
+        </tr>
+        <tr>
+            <th th:text="#{files.size}">大小</th>
+            <td th:text="${file.sizeText}">1.0 KB</td>
+        </tr>
+        <tr>
+            <th th:text="#{files.type}">类型</th>
+            <td th:text="${file.contentType}">image/png</td>
+        </tr>
+        <tr>
+            <th th:text="#{files.uploader}">上传者</th>
+            <td>
+                <a th:if="${file.uploaderName != null}"
+                   th:href="@{/wiki/{t}(t=${'用户:' + file.uploaderName})}"
+                   th:text="${file.uploaderName}">用户</a>
+                <span th:if="${file.uploaderName == null}" th:text="#{common.anonymous}">匿名用户</span>
+            </td>
+        </tr>
+        <tr>
+            <th th:text="#{files.uploadTime}">上传时间</th>
+            <td th:text="${@wikiTime.format(file.createdAt)}">时间</td>
+        </tr>
+    </table>
+
+    <p class="file-actions" th:if="${not deleted}">
+        <a th:if="${canUpload}" class="wiki-button" th:href="@{/wiki/特殊:上传文件(name=${file.name})}"
+           th:text="#{files.uploadNewVersion}">上传新版本</a>
+        <a th:href="@{/wiki/特殊:文件列表}" th:text="#{files.list}">文件列表</a>
+    </p>
+
+    <!-- 删除（可勾选彻底删除）；已删除时显示恢复 / 彻底删除 -->
+    <div class="file-delete-form" th:if="${canDelete and not deleted}">
+        <label class="file-delete-hard">
+            <input type="checkbox" name="hard"/>
+            <span th:text="#{files.hardDelete}">彻底删除（不可恢复）</span>
+        </label>
+        <button type="button" class="wiki-button file-delete"
+                th:attr="data-id=${file.id},data-name=${file.name}" th:text="#{files.delete}">删除</button>
+    </div>
+    <p class="file-actions" th:if="${deleted and canDelete}">
+        <button type="button" class="wiki-button file-restore" th:attr="data-id=${file.id}"
+                th:text="#{files.restore}">恢复</button>
+        <button type="button" class="wiki-button file-purge"
+                th:attr="data-id=${file.id},data-name=${file.name}" th:text="#{files.purge}">彻底删除</button>
+    </p>
+
+    <!-- 说明（文件:X 描述页正文：可编辑、看历史、分类、讨论） -->
+    <div class="wiki-content" th:utext="${contentHtml}">说明</div>
+
+    <!-- 文件历史：当前版本 + 旧版本（可查看 / 回滚） -->
+    <h2 th:text="#{files.history}">文件历史</h2>
+    <table class="wikitable file-history" th:if="${not deleted or canDelete}">
+        <tr>
+            <th th:text="#{files.version}">版本</th>
+            <th th:text="#{files.uploadTime}">上传时间</th>
+            <th th:text="#{files.size}">大小</th>
+            <th th:text="#{files.uploader}">上传者</th>
+            <th th:text="#{files.versionComment}">说明</th>
+            <th th:text="#{files.actions}">操作</th>
+        </tr>
+        <tr class="file-history-current">
+            <td th:text="#{files.currentVersion} + '（' + ${file.version} + '）'">当前版本（1）</td>
+            <td th:text="${@wikiTime.format(file.createdAt)}">时间</td>
+            <td th:text="${file.sizeText}">大小</td>
+            <td>
+                <a th:if="${file.uploaderName != null}" th:href="@{/wiki/{t}(t=${'用户:' + file.uploaderName})}"
+                   th:text="${file.uploaderName}">上传者</a>
+                <span th:if="${file.uploaderName == null}" th:text="#{common.anonymous}">匿名用户</span>
+            </td>
+            <td th:text="${file.description}">说明</td>
+            <td><a th:href="${file.url}" th:text="#{files.viewVersion}">查看</a></td>
+        </tr>
+        <tr th:each="version : ${versions}">
+            <td th:text="${version.version}">1</td>
+            <td th:text="${@wikiTime.format(version.createdAt)}">时间</td>
+            <td th:text="${version.sizeText}">大小</td>
+            <td>
+                <a th:if="${version.uploaderName != null}" th:href="@{/wiki/{t}(t=${'用户:' + version.uploaderName})}"
+                   th:text="${version.uploaderName}">上传者</a>
+                <span th:if="${version.uploaderName == null}" th:text="#{common.anonymous}">匿名用户</span>
+            </td>
+            <td th:text="${version.comment}">说明</td>
+            <td>
+                <a th:href="${version.url}" th:text="#{files.viewVersion}">查看</a>
+                <button th:if="${canUpload}" type="button" class="file-revert"
+                        th:attr="data-name=${file.name},data-version=${version.version}"
+                        th:text="#{files.revert}">恢复此版本</button>
+            </td>
+        </tr>
+    </table>
+
+    <p id="file-message" class="form-message" hidden></p>
+
+    <!-- 文件用途（引用追溯，仿 MediaWiki）：哪些页面嵌入了本文件 -->
+    <h2 th:text="#{files.usage}">文件用途</h2>
+    <p th:if="${#lists.isEmpty(fileUsage)}" th:text="#{files.usageNone}">本文件未被任何页面使用。</p>
+    <th:block th:unless="${#lists.isEmpty(fileUsage)}">
+        <p th:text="#{files.usageIntro}">以下页面使用本文件：</p>
+        <ul class="file-usage">
+            <li th:each="usage : ${fileUsage}">
+                <a th:href="${usage.url}" th:text="${usage.title}">页面</a>
+            </li>
+        </ul>
+    </th:block>
+
+    <!-- 分类栏固定在内容容器最底部（放在文件历史之后，仿 MediaWiki 文件页） -->
+    <th:block th:replace="~{fragments/catlinks :: catlinks(${pageCategories})}"/>
+</section>
+</body>
+</html>

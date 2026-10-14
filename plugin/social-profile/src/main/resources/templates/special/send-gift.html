@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:送礼物 / Special:SendGift（仿 MediaWiki SocialProfile 的 Special:SendGift）
+     礼物清单内置，名称走 socialProfile.gift.<id>、说明走 socialProfile.gift.desc.<id>（都不写死中文）；
+     礼物选择是可点选的卡片式 radio（label + input.sp-gift-radio），提交到 POST /api/social-profile/gift/send。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.sendGift}">
+        选一份礼物送给别人，附上一句话。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and loginRequired}">
+        <span th:text="#{permissions.loginRequired}">请先登录。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or loginRequired}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" aria-current="page" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <p class="wiki-hint" th:text="#{socialProfile.gifts.publicHint}">礼物清单是公开的。</p>
+
+        <form id="sp-gift-form" class="wiki-form" method="post" action="/api/social-profile/gift/send">
+            <div class="form-field">
+                <label for="sp-gift-user" th:text="#{socialProfile.gifts.toLabel}">收礼人：</label>
+                <input type="text" id="sp-gift-user" name="user" required="required"
+                       autofocus="autofocus" th:value="${giftTo}"/>
+            </div>
+
+            <fieldset class="sp-gift-picker">
+                <legend th:text="#{socialProfile.gifts.chooseLabel}">选择礼物：</legend>
+                <p class="wiki-hint sp-gift-picker-hint" th:text="#{socialProfile.gifts.cardHint}">
+                    点一下卡片就能选中礼物。
+                </p>
+                <div class="sp-gift-grid">
+                    <label class="sp-gift-card" th:each="gift, iter : ${giftCatalog}">
+                        <input class="sp-gift-radio" type="radio" name="gift" th:value="${gift['id']}"
+                               th:checked="${iter.index == 0}"/>
+                        <span class="sp-gift-card-name" th:text="${gift['name']}">礼物</span>
+                        <span class="sp-gift-card-desc"
+                              th:text="#{'socialProfile.gift.desc.' + ${gift['id']}}">礼物说明</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <div class="form-field">
+                <label for="sp-gift-message" th:text="#{socialProfile.gifts.commentLabel}">附言：</label>
+                <input type="text" id="sp-gift-message" name="message" th:maxlength="${giftMessageLimit}"/>
+            </div>
+            <div class="form-message" role="alert" hidden="hidden"></div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button sp-button-primary"
+                        th:aria-label="#{socialProfile.gifts.submit}"
+                        th:text="#{socialProfile.gifts.submit}">送出礼物</button>
+                <a th:href="${giftsUrl}" th:text="#{socialProfile.gifts.receivedBox}">收到的礼物</a>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

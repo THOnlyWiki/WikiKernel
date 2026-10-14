@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!-- 特殊:外观 / Special:Appearance：选择皮肤（用户偏好） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{appearance.intro}">
+        选择界面皮肤：「预览」临时查看不保存，保存后立即生效。
+    </p>
+    <p class="wiki-warning" th:if="${loginRequired}">
+        <span th:text="#{appearance.loginRequired}">登录后才能保存皮肤偏好。</span>
+        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:外观'})}" th:text="#{source.login}">登录</a>
+    </p>
+    <p class="wiki-hint" th:if="${loginRequired}" th:text="#{appearance.loginHint}">
+        未登录时使用站点默认皮肤。
+    </p>
+
+    <form id="skin-preference-form" class="wiki-form" th:unless="${loginRequired}" method="post">
+        <div class="skin-options">
+            <label class="skin-option" th:each="item : ${skins}">
+                <input type="radio" name="skin" th:value="${item.id}"
+                       th:checked="${item.id == selected}"/>
+                <span class="skin-option-name" th:text="${item.name}">Vector</span>
+                <span class="skin-option-default" th:if="${item.isDefault}"
+                      th:text="#{appearance.defaultMark}">（站点默认）</span>
+                <span class="skin-option-desc" th:text="${item.description}">说明</span>
+                <a th:href="@{/wiki/特殊:外观(useskin=${item.id})}" th:text="#{appearance.preview}">预览</a>
+            </label>
+            <label class="skin-option">
+                <input type="radio" name="skin" value="" th:checked="${selected == ''}"/>
+                <span class="skin-option-name" th:text="#{appearance.siteDefault}">站点默认</span>
+                <span class="skin-option-desc" th:text="#{appearance.siteDefaultDesc(${defaultSkinId})}">
+                    跟随站点配置
+                </span>
+            </label>
+        </div>
+        <div class="form-message" role="alert" hidden></div>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{permissions.save}">保存</button>
+        </div>
+    </form>
+</section>
+</body>
+</html>

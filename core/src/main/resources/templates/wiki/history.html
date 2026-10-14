@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!-- 版本历史（GET ?action=history） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <p class="history-summary">
+        <span th:text="#{history.summaryBefore}">本页面共有</span>
+        <strong th:text="${#lists.size(revisions)}">0</strong>
+        <span th:text="#{history.summaryAfter}">个版本。</span>
+    </p>
+
+    <ul class="history-list">
+        <li th:each="rev : ${revisions}" th:classappend="${rev.deleted == true} ? 'history-deleted'"
+            th:with="time=${@wikiTime.format(rev.createAt)}">
+            <span class="history-date" th:text="${time}">2026年10月05日 12:00</span>
+            <span class="history-user">
+                <th:block th:if="${rev.userId == null}" th:text="#{common.anonymous}">匿名用户</th:block>
+                <th:block th:if="${rev.userId != null}" th:with="name=${userNames[rev.userId]}">
+                    <a th:if="${name != null}" th:href="@{/wiki/{t}(t=${'用户:' + name})}"
+                       th:text="${name}">用户名</a>
+                    <th:block th:if="${name == null}" th:text="#{common.userNumber(${rev.userId})}">用户#</th:block>
+                </th:block>
+            </span>
+            <span class="history-comment"
+                  th:text="${#strings.isEmpty(rev.comment) ? #messages.msg('common.noSummary') : rev.comment}">摘要</span>
+            <b class="rc-bot" th:if="${rev.bot}" th:title="#{recentChanges.legendBot}"
+               th:text="#{recentChanges.botMark}">机</b>
+            <b class="rc-minor" th:if="${rev.minor}" th:title="#{recentChanges.legendMinor}"
+               th:text="#{recentChanges.minorMark}">小</b>
+            <span class="rc-tag" th:if="${!#strings.isEmpty(rev.tags)}"
+                  th:each="tag : ${#strings.arraySplit(rev.tags, ',')}" th:text="${#strings.trim(tag)}">标签</span>
+            <span class="history-actions">
+                <span th:if="${rev.id == page.latestRevisionId}" class="history-current"
+                      th:text="#{common.current}">当前</span>
+                <a th:if="${rev.deleted != true}"
+                   th:href="${pageUrl + '?diff=prev&oldid=' + rev.id}" th:text="#{recentChanges.diff}">差异</a>
+                <a th:if="${rev.deleted != true and rev.id != page.latestRevisionId}"
+                   th:href="${pageUrl + '?diff=cur&oldid=' + rev.id}" th:text="#{history.diffCur}">当前</a>
+                <a th:if="${rev.deleted != true}"
+                   th:href="${pageUrl + '?oldid=' + rev.id}" th:text="#{history.view}">查看</a>
+                <a th:if="${rev.deleted != true}"
+                   th:href="${pageUrl + '?action=edit&oldid=' + rev.id}" th:text="#{common.edit}">编辑</a>
+                <span th:if="${rev.deleted == true}" class="history-deleted-mark"
+                      th:text="#{common.deletedRevision}">（已删除的版本）</span>
+            </span>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

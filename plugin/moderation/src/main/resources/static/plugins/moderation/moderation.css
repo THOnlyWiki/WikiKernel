@@ -1,0 +1,141 @@
+/*
+ * 审核（特殊:审核，仿 MediaWiki Moderation）：队列页样式 + 页面提示条 / 待审创建页 / 编辑页提示。
+ * 从 core 的 base.css「审核」一节迁出（插件 moderation）；插件加载且开启审核时经 head 扩展注入。
+ */
+/* ===== 提示条（PageDisplayHook.beforeContent）与待审创建页 ===== */
+.moderation-note-link {
+    margin-left: 0.5em;
+}
+
+.moderation-submitted {
+    margin-bottom: 0.6em;
+}
+
+.moderation-edit-notice {
+    display: inline-block;
+}
+
+.moderation-preview {
+    margin-top: 0.4em;
+    padding: 0.6em 0.9em;
+    border: 1px dashed #c8ccd1;
+    background: #fff;
+}
+
+/* ===== 队列页（特殊:审核） ===== */
+.moderation-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    margin: 0.4em 0 0.8em;
+}
+
+.moderation-tabs a {
+    padding: 0.2em 0.8em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    text-decoration: none;
+}
+
+.moderation-tabs a.selected {
+    background: #fff;
+    border-color: #36c;
+    color: #202122;
+    font-weight: bold;
+}
+
+.moderation-tab-count {
+    color: #72777d;
+    font-weight: normal;
+}
+
+.moderation-row {
+    margin-bottom: 1em;
+    padding: 0.6em 0.9em;
+    border: 1px solid #c8ccd1;
+    border-radius: 2px;
+    background: #f8f9fa;
+}
+
+.moderation-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5em;
+}
+
+.moderation-type {
+    padding: 0.05em 0.5em;
+    border-radius: 2px;
+    background: #eaecf0;
+    font-size: 0.875em;
+}
+
+.moderation-author,
+.moderation-time {
+    color: #54595d;
+    font-size: 0.875em;
+}
+
+.moderation-status {
+    margin-left: auto;
+    font-size: 0.875em;
+    color: #72777d;
+}
+
+.moderation-comment,
+.moderation-file-description {
+    margin-top: 0.35em;
+    color: #202122;
+}
+
+.moderation-diff table.diff {
+    margin-top: 0.3em;
+}
+
+.moderation-image {
+    display: block;
+    max-width: 320px;
+    max-height: 240px;
+    margin-top: 0.4em;
+    border: 1px solid #c8ccd1;
+    background: #fff;
+}
+
+.moderation-file {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: 0.4em;
+}
+
+.moderation-hard {
+    padding: 0.05em 0.5em;
+    border-radius: 2px;
+    background: #fee7e6;
+    color: #b32424;
+    font-size: 0.875em;
+}
+
+.moderation-result {
+    margin-top: 0.4em;
+    color: #54595d;
+    font-size: 0.875em;
+}
+
+.moderation-result span + span {
+    margin-left: 0.6em;
+}
+
+.moderation-actions {
+    display: flex;
+    gap: 0.5em;
+    margin-top: 0.5em;
+}
+
+.moderation-comment-input {
+    flex: 1;
+    min-width: 12em;
+}

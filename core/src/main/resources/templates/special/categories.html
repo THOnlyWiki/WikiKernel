@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<!-- 特殊:分类列表 / Special:Categories：全部分类与成员数 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{categories.intro}">本 wiki 的全部分类（点击查看成员）：</p>
+    <p th:if="${#lists.isEmpty(categories)}" th:text="#{categories.empty}">还没有任何分类。</p>
+    <ul class="cat-members" th:unless="${#lists.isEmpty(categories)}">
+        <li th:each="item : ${categories}">
+            <a th:href="${item.url}" th:text="${item.label}">分类</a>
+            <span class="cat-sort-key" th:text="#{categories.memberCount(${item.count})}">（0 个页面）</span>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

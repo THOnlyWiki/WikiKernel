@@ -1,0 +1,348 @@
+/*
+ * 插件 social-profile 的样式（原在 core 的 base.css，键名 / 类名不变）：
+ *  - 用户页资料卡（.wiki-profile / .wiki-avatar / .wiki-profile-*）：仿 MediaWiki SocialProfile；
+ *  - 头像上传页（.avatar-page*）与上传按钮（.wiki-avatar-upload）；
+ *  - 特殊:私信（.messages-tabs / .messages-table / .message-*）。
+ * 由插件经 HtmlHeadProvider（siteWide）注入所有页面：/plugins/social-profile/social-profile-base.css
+ */
+
+/* ===== 用户页资料卡（仿 SocialProfile：左栏大头像 + 右栏用户名 / 用户组 / 等级 / 统计 + 快捷链接） ===== */
+.wiki-profile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.9em 1.2em;
+    margin: 0 0 0.8em;
+    padding: 0.9em 1em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+.wiki-profile-image {
+    float: none;
+    width: 150px;
+    flex: 0 0 auto;
+    margin: 0;
+    text-align: center;
+}
+
+.wiki-avatar {
+    display: block;
+    width: 150px;
+    height: 150px;
+    max-width: 150px;
+    max-height: 150px;
+    margin: 0 auto;
+    border: 1px solid var(--wiki-border);
+    border-radius: 6px;
+    background: #eaecf0;
+    object-fit: cover;
+    transition: opacity 0.25s ease;
+}
+
+.wiki-profile-body {
+    flex: 1 1 20em;
+    min-width: 0;
+}
+
+.wiki-profile-right {
+    min-height: 1.2em;
+}
+
+.wiki-profile-name {
+    font-size: 1.7em;
+    font-weight: bold;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+/* 用户组徽章 + 等级 / 积分 + 注册时间 / 编辑数（一行统计，窄屏自动换行） */
+.wiki-profile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35em 0.6em;
+    margin-top: 0.35em;
+    font-size: 0.875em;
+    color: var(--wiki-text-muted);
+}
+
+/* 组徽章行：core 已过滤隐式组并限 3 个（+N），这里只负责间距 —— 徽章之间 0.4em，
+   与后面的「等级 · 积分 / 注册于 / 编辑数」统计之间隔 0.6em（.wiki-profile-meta 的 gap） */
+.wiki-profile-groups {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25em 0.4em;
+}
+
+.wiki-profile-group {
+    display: inline-block;
+    padding: 0 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 0.7em;
+    background: #eaecf0;
+    color: #202122;
+    font-weight: bold;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+/* 「+N」：全量组名在 title / data-summary 里（core 模板给），样式比普通徽章弱一点 */
+.wiki-profile-group-more {
+    background: #ffffff;
+    color: var(--wiki-text-muted);
+    font-weight: normal;
+    border-style: dashed;
+    cursor: help;
+}
+
+.wiki-profile-stat {
+    overflow-wrap: anywhere;
+}
+
+.wiki-profile-missing {
+    margin-top: 0.3em;
+    color: var(--wiki-text-muted);
+}
+
+.wiki-profile-links {
+    margin-top: 0.4em;
+    font-size: 1em;
+}
+
+.wiki-profile-sep {
+    margin: 0 0.4em;
+    color: var(--wiki-text-muted);
+}
+
+/* 上传头像：按钮在头像正下方（点击后选图片，选中即上传） */
+.wiki-avatar-upload {
+    margin-top: 0.45em;
+}
+
+.wiki-avatar-upload .form-message {
+    margin-top: 0.3em;
+    text-align: left;
+}
+
+/* 本人资料卡：头像下方**不放**「上传头像」小链接了（入口只在面板操作按钮行的 .sp-button-avatar，
+   避免同一页出现两个入口）；这个类名留给仍想放小链接的皮肤 / 插件复用。 */
+.wiki-profile-avatar-link {
+    margin: 0.4em 0 0;
+    font-size: 0.8125em;
+}
+
+/* 资料卡下方的插件面板（UserProfileHook.panelHtml）：操作按钮行**就在面板第一块里**，
+   不再靠脚本搬进资料卡（社交入口只在面板出现一次，见 social-profile.js 的说明）。 */
+.wiki-profile-panel .sp-card-actions {
+    margin-top: 0;
+}
+
+.wiki-profile-clear {
+    clear: both;
+}
+
+/* 特殊:上传头像（独立上传页） */
+.avatar-page {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2em;
+    margin: 0.8em 0;
+}
+
+.avatar-page-image .wiki-avatar {
+    max-width: 240px;
+    max-height: 240px;
+    margin: 0;
+}
+
+.avatar-page-actions {
+    min-width: 12em;
+}
+
+.avatar-page-actions .wiki-avatar-upload {
+    margin-top: 0;
+}
+
+/* ===== 特殊:私信（wiki_message） ===== */
+.messages-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em;
+    margin: 0 0 1em;
+    padding: 0;
+    list-style: none;
+    border-bottom: 1px solid var(--wiki-border);
+}
+
+.messages-tabs li a {
+    display: block;
+    padding: 0.4em 0.9em;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: var(--wiki-link);
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.12s ease, text-decoration-color 0.12s ease;
+}
+
+.messages-tabs li a:hover {
+    text-decoration: underline;
+}
+
+.messages-tabs li.selected a {
+    border-color: var(--wiki-border);
+    background: #ffffff;
+    color: #202122;
+    font-weight: bold;
+}
+
+.messages-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5em;
+}
+
+.messages-table th,
+.messages-table td {
+    border: 1px solid var(--wiki-border);
+    padding: 0.35em 0.5em;
+    text-align: left;
+    vertical-align: top;
+}
+
+.messages-table th {
+    background: #eaecf0;
+    font-weight: bold;
+}
+
+.messages-table tbody tr {
+    transition: background-color 0.12s ease;
+}
+
+.messages-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.messages-table tbody tr.message-unread:hover {
+    background-color: #fdf0d8;
+}
+
+.message-unread td {
+    background: #fef6e7;
+}
+
+.message-excerpt {
+    color: var(--wiki-text-muted);
+}
+
+.message-unread .message-excerpt {
+    color: inherit;
+}
+
+.message-row-actions {
+    white-space: nowrap;
+}
+
+.message-delete {
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.12s ease, text-decoration-color 0.12s ease;
+}
+
+.message-view {
+    margin-top: 0.5em;
+}
+
+.message-meta {
+    margin-bottom: 0.6em;
+    color: var(--wiki-text-muted);
+}
+
+.message-separator {
+    margin: 0 0.35em;
+}
+
+.message-body {
+    padding: 0.6em 0.8em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+.message-body > :first-child {
+    margin-top: 0;
+}
+
+.message-body > :last-child {
+    margin-bottom: 0;
+}
+
+.message-actions {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-top: 0.9em;
+}
+
+.messages-empty {
+    color: var(--wiki-text-muted);
+}
+
+/* 会话视图（与某人的往来：收件 + 发件按时间拼在一起） */
+.message-thread {
+    margin-top: 0.5em;
+}
+
+.message-thread-header {
+    margin-bottom: 0.6em;
+    color: var(--wiki-text-muted);
+}
+
+.message-thread-header a {
+    margin-left: 0.8em;
+}
+
+.message-thread-list {
+    margin: 0.4em 0 0.8em;
+    padding: 0;
+    list-style: none;
+}
+
+.message-thread-item {
+    max-width: 80%;
+    margin: 0.5em 0;
+    padding: 0.5em 0.7em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+/* 自己发的靠右（淡蓝），对方发的靠左（淡灰） */
+.message-thread-item.message-mine {
+    margin-left: auto;
+    background: #eaf3ff;
+}
+
+.message-thread-item.message-theirs {
+    margin-right: auto;
+    background: #f8f9fa;
+}
+
+.message-thread-meta {
+    margin-bottom: 0.25em;
+    color: var(--wiki-text-muted);
+    font-size: 0.8125em;
+}
+
+.message-thread-body > :first-child {
+    margin-top: 0;
+}
+
+.message-thread-body > :last-child {
+    margin-bottom: 0;
+}
+
+.message-thread-form {
+    margin-top: 0.8em;
+}

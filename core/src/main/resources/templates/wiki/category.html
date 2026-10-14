@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- 分类页（分类:X）：可选说明 + 子分类 / 成员列表（仿 MediaWiki Category 页面） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <!-- 分类说明（分类:X 页面本身的正文；不存在时提示可创建） -->
+    <div th:if="${descriptionHtml != null and !#strings.isEmpty(descriptionHtml)}"
+         class="wiki-content" th:utext="${descriptionHtml}">分类说明</div>
+    <p class="wiki-hint" th:if="${page == null}">
+        <span th:text="#{category.noDescription}">此分类还没有说明。</span>
+        <a th:href="${pageUrl + '?action=edit'}" th:text="#{category.createDescription}">创建分类说明</a>
+    </p>
+
+    <h2 th:text="#{category.subcategories}">子分类</h2>
+    <p th:if="${#lists.isEmpty(subcategories)}" th:text="#{category.noSubcategories}">没有子分类。</p>
+    <ul class="cat-members" th:unless="${#lists.isEmpty(subcategories)}">
+        <li th:each="item : ${subcategories}">
+            <a th:href="${item.url}" th:text="${item.label}">子分类</a>
+        </li>
+    </ul>
+
+    <h2 th:text="#{category.pages}">页面</h2>
+    <p th:if="${#lists.isEmpty(members)}" th:text="#{category.noPages}">此分类当前没有页面。</p>
+    <ul class="cat-members" th:unless="${#lists.isEmpty(members)}">
+        <li th:each="item : ${members}">
+            <a th:href="${item.url}" th:text="${item.label}">页面</a>
+            <span class="cat-sort-key" th:if="${item.sortKey != null and !item.sortKey.isEmpty()}"
+                  th:text="'[' + ${item.sortKey} + ']'">[排序键]</span>
+        </li>
+    </ul>
+
+    <!-- 分类说明自己的分类（分类页也可以归类） -->
+    <th:block th:replace="~{fragments/catlinks :: catlinks(${pageCategories})}"/>
+</section>
+</body>
+</html>

@@ -1,0 +1,831 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wikikernel-config-schema.json",
+  "title": "WikiKernel 本地配置（LocalSettings.yaml）",
+  "description": "由 core/src/main/resources/config-catalog.yaml 生成；请勿手工编辑，改配置目录后运行 ConfigCatalogConsistencyTest 重新生成。",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "wikikernel": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "database": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "sqlite",
+                "mysql",
+                "h2"
+              ],
+              "default": "sqlite",
+              "description": "数据库引擎；sqlite（默认，零安装）/ mysql / h2。"
+            },
+            "file": {
+              "type": "string",
+              "default": "./data/wiki.db",
+              "description": "type=sqlite 时的数据文件（type=h2 时是数据文件前缀，默认 ./data/wiki）。"
+            },
+            "auto-ddl": {
+              "type": "boolean",
+              "default": true,
+              "description": "启动时根据实体自动建表 / 补字段（类 JPA ddl-auto=update，只增不减）。"
+            },
+            "host": {
+              "type": "string",
+              "default": "127.0.0.1",
+              "description": "type=mysql 时的数据库主机。"
+            },
+            "port": {
+              "type": "integer",
+              "default": 3306,
+              "description": "type=mysql 时的数据库端口。"
+            },
+            "name": {
+              "type": "string",
+              "default": "wikikernel",
+              "description": "type=mysql 时的数据库名。"
+            },
+            "user": {
+              "type": "string",
+              "default": "root",
+              "description": "数据库用户名（type=mysql 默认 root；type=h2 默认 sa）。"
+            },
+            "password": {
+              "type": "string",
+              "description": "数据库密码；支持 ${环境变量:默认值} 语法，建议走环境变量而不是写明文。（敏感项：建议走环境变量，本项不提供默认值）",
+              "writeOnly": true
+            },
+            "pool-size": {
+              "type": "integer",
+              "default": 10,
+              "description": "连接池大小（MySQL / H2 生效；SQLite 固定为 1）。"
+            }
+          }
+        },
+        "site": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "name": {
+              "type": "string",
+              "default": "WikiKernel",
+              "description": "站点名称；留空 / 不写 = 使用默认名 WikiKernel。"
+            }
+          }
+        },
+        "run-path": {
+          "type": "string",
+          "default": "./run/files",
+          "description": "上传文件的存放目录（相对启动目录）。"
+        },
+        "max-file-size-mb": {
+          "type": "integer",
+          "default": 20,
+          "description": "单个上传文件大小上限（MB）；同时受 spring.servlet.multipart 限制。"
+        },
+        "sidebar": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "page": {
+              "type": "string",
+              "default": "WikiKernel:Sidebar",
+              "description": "控制侧边栏内容的页面标题。"
+            }
+          }
+        },
+        "title": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "capitalize-first-letter": {
+              "type": "boolean",
+              "default": true,
+              "description": "首字母自动大写；false = 标题完全区分大小写（仿 $wgCapitalLinks=false）。"
+            }
+          }
+        },
+        "wikitext": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "template-prefixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "模板命名空间前缀（按顺序查找）。"
+            },
+            "max-template-depth": {
+              "type": "integer",
+              "default": 20,
+              "description": "模板最大嵌套深度（防递归炸弹）。"
+            }
+          }
+        },
+        "special-page": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "prefixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "特殊页前缀（默认中英双前缀，可增删）。"
+            }
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "bootstrap-admins": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "启动时自动获得「管理员 + 行政员」的用户名列表；留空 = 不生效。"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "访问控制默认规则（每项含 target / action / groups）；每次启动写入数据库。"
+            },
+            "allow-other-user-page-edit": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否允许编辑其他用户的用户页；不写 = 不改动数据库里的设置。"
+            }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "token-expire-days": {
+              "type": "integer",
+              "default": 0,
+              "description": "令牌有效期（天）；0 = 永不过期（当前默认，浏览器 Cookie 按 10 年设置）。"
+            },
+            "token-cookie-name": {
+              "type": "string",
+              "default": "wiki_token",
+              "description": "持久登录 Cookie 名。"
+            }
+          }
+        },
+        "http": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "trust-proxy-headers": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否信任代理 / CDN 的转发头；false = 直接使用连接来源地址。"
+            }
+          }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "rate-limit": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "总开关；false = 不限制。"
+                },
+                "login": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "max-attempts": {
+                      "type": "integer",
+                      "default": 5,
+                      "description": "登录接口：窗口内允许的失败次数（按 IP + 用户名）。"
+                    },
+                    "window-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "登录接口：统计窗口（秒）。"
+                    },
+                    "lock-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "登录接口：触发后的锁定时长（秒）。"
+                    }
+                  }
+                },
+                "setup": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "max-attempts": {
+                      "type": "integer",
+                      "default": 5,
+                      "description": "/init 安装密钥：窗口内允许的失败次数（按 IP）。"
+                    },
+                    "window-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "/init 安装密钥：统计窗口（秒）。"
+                    },
+                    "lock-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "/init 安装密钥：触发后的锁定时长（秒）。"
+                    }
+                  }
+                },
+                "password-reset": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "max-attempts": {
+                      "type": "integer",
+                      "default": 10,
+                      "description": "密码重置请求：窗口内允许的失败次数（按 IP）。"
+                    },
+                    "window-seconds": {
+                      "type": "integer",
+                      "default": 3600,
+                      "description": "密码重置请求：统计窗口（秒）。"
+                    },
+                    "lock-seconds": {
+                      "type": "integer",
+                      "default": 900,
+                      "description": "密码重置请求：触发后的锁定时长（秒）。"
+                    }
+                  }
+                },
+                "ai-agent": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "max-attempts": {
+                      "type": "integer",
+                      "default": 30,
+                      "description": "AI 代理对话：窗口内允许的次数（每用户）。"
+                    },
+                    "window-seconds": {
+                      "type": "integer",
+                      "default": 3600,
+                      "description": "AI 代理对话：统计窗口（秒）。"
+                    },
+                    "lock-seconds": {
+                      "type": "integer",
+                      "default": 600,
+                      "description": "AI 代理对话：触发后的锁定时长（秒）。"
+                    }
+                  }
+                },
+                "fingerprint-login": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "max-attempts": {
+                      "type": "integer",
+                      "default": 5,
+                      "description": "指纹登录（插件 fingerprint-login）：窗口内允许的失败次数（按 IP + 指纹摘要）。"
+                    },
+                    "window-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "指纹登录：统计窗口（秒）。"
+                    },
+                    "lock-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "指纹登录：触发后的锁定时长（秒）。"
+                    }
+                  }
+                },
+                "fingerprint-login-ip": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "max-attempts": {
+                      "type": "integer",
+                      "default": 10,
+                      "description": "指纹登录（仅按 IP 兜底）：窗口内允许的失败次数。"
+                    },
+                    "window-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "指纹登录（仅按 IP 兜底）：统计窗口（秒）。"
+                    },
+                    "lock-seconds": {
+                      "type": "integer",
+                      "default": 300,
+                      "description": "指纹登录（仅按 IP 兜底）：触发后的锁定时长（秒）。"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "cache": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "page": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "页面正文缓存总开关（默认关闭）。"
+                },
+                "backend": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "redis",
+                    "memory",
+                    "none"
+                  ],
+                  "default": "auto",
+                  "description": "缓存后端；auto = 配了 Redis 且连得上就用 Redis，否则进程内 LRU。"
+                },
+                "ttl-seconds": {
+                  "type": "integer",
+                  "default": 300,
+                  "description": "条目有效期（秒）。"
+                },
+                "max-entries": {
+                  "type": "integer",
+                  "default": 500,
+                  "description": "进程内 LRU 的条目上限。"
+                },
+                "preload-on-template-change": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "模板变更后是否用虚拟线程批量预渲染受影响页面（预热）。"
+                },
+                "preload-parallelism": {
+                  "type": "integer",
+                  "default": 0,
+                  "description": "预渲染并发上限；不写或 0 = CPU 核数。"
+                },
+                "preload-batch-size": {
+                  "type": "integer",
+                  "default": 0,
+                  "description": "单批预渲染页面数；0 = 自动（并发上限 × 8）。"
+                },
+                "redis": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "spring.data.redis.* 没配置时，用它强制使用 Redis（连不上仍自动退回内存）。"
+                    },
+                    "key-prefix": {
+                      "type": "string",
+                      "default": "wikikernel:pagecache:",
+                      "description": "Redis 键前缀（条目键与「纪元」键都用它）；结尾没有冒号时会自动补一个。"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "plugins": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "dir": {
+              "type": "string",
+              "default": "plugins",
+              "description": "运行时扫描的插件 jar 目录（相对启动时的工作目录）。"
+            },
+            "runtime-dir": {
+              "type": "string",
+              "default": "run/.plugins",
+              "description": "插件运行时副本目录：加载的是内容哈希副本，源 jar 不被锁定（可替换 / 删除后调 POST /api/plugins/reload 动态装卸）。"
+            },
+            "classpath-scan": {
+              "type": "boolean",
+              "default": true,
+              "description": "是否同时扫描 classpath 上的插件（IDE 调试 / 单元测试时方便）。"
+            },
+            "enabled": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "插件白名单；为空 = 启用扫描到的全部插件。"
+            },
+            "aop-bridge": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "true",
+                "false"
+              ],
+              "default": "auto",
+              "description": "插件 AOP 桥；auto = 只有插件声明了 plugin.aop=true 时才对 core Bean 套代理。"
+            },
+            "settings": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "各插件的私有配置（键为插件 id，值结构由插件决定）。"
+            }
+          }
+        },
+        "skins": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "default-skin": {
+              "type": "string",
+              "default": "vector",
+              "description": "默认皮肤 id（内置 vector / fallback，或插件皮肤 id）。"
+            },
+            "disabled": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "禁用的皮肤 id（Vector 可禁用；内置 fallback 始终可用）。"
+            }
+          }
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "register": {
+              "type": "boolean",
+              "default": true,
+              "description": "注册；关闭后非管理员无法进入「特殊:注册」，注册接口 403。"
+            },
+            "typescript": {
+              "type": "boolean",
+              "default": false,
+              "description": "TypeScript 服务端编译：.ts / .tsx 页面用内置 tsc 编译成 JavaScript。"
+            },
+            "typescript-compile-on-save": {
+              "type": "boolean",
+              "default": false,
+              "description": "保存 TypeScript 页面时立即编译（便于编辑后立刻看到语法诊断）。"
+            }
+          }
+        },
+        "typescript": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "target": {
+              "type": "string",
+              "enum": [
+                "ES5",
+                "ES2015",
+                "ES2016",
+                "ES2017",
+                "ES2018",
+                "ES2019",
+                "ES2020",
+                "ES2021",
+                "ES2022",
+                "ESNext",
+                "Latest"
+              ],
+              "default": "ES2020",
+              "description": "输出语言级别（TS 的 ScriptTarget 名）。"
+            },
+            "module": {
+              "type": "string",
+              "enum": [
+                "None",
+                "CommonJS",
+                "AMD",
+                "UMD",
+                "System",
+                "ES2015",
+                "ES2020",
+                "ES2022",
+                "ESNext",
+                "Node16",
+                "NodeNext"
+              ],
+              "default": "ESNext",
+              "description": "模块形态（TS 的 ModuleKind 名）。"
+            },
+            "jsx": {
+              "type": "string",
+              "enum": [
+                "",
+                "react",
+                "preserve"
+              ],
+              "default": "",
+              "description": ".tsx 的 JSX 形态（react / preserve）；留空 = 只有 .tsx 时用 react。"
+            },
+            "timeout-seconds": {
+              "type": "integer",
+              "default": 15,
+              "description": "单次编译超时（秒）；超时会中断引擎并重建，避免挂住请求。"
+            },
+            "init-timeout-seconds": {
+              "type": "integer",
+              "default": 120,
+              "description": "编译器首次装载超时（秒）：要读入并求值约 8.7 MB 的 typescript.js。"
+            },
+            "pool-size": {
+              "type": "integer",
+              "default": 1,
+              "description": "引擎池大小（并发编译数）；每个引擎是一份 GraalJS 上下文，常驻约 150–400 MB。"
+            },
+            "warmup": {
+              "type": "boolean",
+              "default": true,
+              "description": "启动后后台预热引擎（把首次装载从请求路径挪走）。"
+            },
+            "max-source-kilobytes": {
+              "type": "integer",
+              "default": 256,
+              "description": "单次编译的源码大小上限（KB）；-1 或 0 = 不限制。"
+            },
+            "cache-limit": {
+              "type": "integer",
+              "default": 200,
+              "description": "编译产物缓存行数上限（每个页面 + 目标只保留最新一条）。"
+            }
+          }
+        },
+        "transfer": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "export-max-pages": {
+              "type": "integer",
+              "default": 200,
+              "description": "单次导出最多页面数（含「包含所有引用的模板」带出的模板页）。"
+            },
+            "export-max-revisions": {
+              "type": "integer",
+              "default": 5000,
+              "description": "单次导出最多版本数（勾选「包含完整历史」时的总上限）。"
+            },
+            "import-max-pages": {
+              "type": "integer",
+              "default": 2000,
+              "description": "单次导入最多页面数（超出部分忽略并在结果里提示）。"
+            },
+            "import-max-revisions": {
+              "type": "integer",
+              "default": 20000,
+              "description": "单次导入最多版本数（超出部分忽略并在结果里提示）。"
+            },
+            "import-max-bytes": {
+              "type": "integer",
+              "format": "int64",
+              "default": 10485760,
+              "description": "导入文件大小上限（字节；默认 10MB，Spring multipart 之上再校验一次）。"
+            }
+          }
+        },
+        "cors": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "总开关；false = 不注册跨域过滤器（同源访问行为不变）。"
+            },
+            "allowed-origins": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "允许的来源（精确匹配，如 https://example.com）；\"*\" = 任意来源。"
+            },
+            "allowed-origin-patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "允许的来源模式（如 https://*.example.com）；与 allowed-origins 至少配一个才生效。"
+            },
+            "allowed-methods": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "允许的请求方法（预检 Access-Control-Allow-Methods）。"
+            },
+            "allowed-headers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "允许的请求头（\"*\" = 任意；预检 Access-Control-Allow-Headers）。"
+            },
+            "exposed-headers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "允许前端 JS 读取的响应头（Access-Control-Expose-Headers）。"
+            },
+            "allow-credentials": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否允许携带凭据（Cookie / Authorization）；true 时不能用 \"*\" 作精确来源。"
+            },
+            "max-age": {
+              "type": "integer",
+              "format": "int64",
+              "default": 3600,
+              "description": "预检（OPTIONS）结果缓存秒数；0 = 不缓存。"
+            },
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "生效路径（Ant 风格；默认空 = 全部路径），如 /api/**。"
+            }
+          }
+        },
+        "email": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "总开关；false = 所有邮件都不发送。"
+            },
+            "host": {
+              "type": "string",
+              "default": "",
+              "description": "SMTP 服务器地址，如 smtp.qq.com。"
+            },
+            "port": {
+              "type": "integer",
+              "default": 587,
+              "description": "SMTP 端口（587 STARTTLS / 465 SSL / 25 明文）。"
+            },
+            "username": {
+              "type": "string",
+              "default": "",
+              "description": "SMTP 登录用户名（QQ 邮箱就是邮箱地址）。"
+            },
+            "password": {
+              "type": "string",
+              "description": "SMTP 登录密码 / 授权码（敏感项，不写进生成的文件）。（敏感项：建议走环境变量，本项不提供默认值）",
+              "writeOnly": true
+            },
+            "auth": {
+              "type": "boolean",
+              "default": true,
+              "description": "是否需要身份验证（内网 SMTP 可设 false）。"
+            },
+            "starttls": {
+              "type": "boolean",
+              "default": true,
+              "description": "启用 STARTTLS（587 常用）。"
+            },
+            "ssl": {
+              "type": "boolean",
+              "default": false,
+              "description": "启用 SSL（465 常用；开启后 STARTTLS 忽略）。"
+            },
+            "from": {
+              "type": "string",
+              "default": "",
+              "description": "发件人地址；留空 = 用 username。"
+            },
+            "from-name": {
+              "type": "string",
+              "default": "WikiKernel",
+              "description": "发件人显示名。"
+            },
+            "token-expire-hours": {
+              "type": "integer",
+              "default": 24,
+              "description": "确认 / 重置等令牌的有效期（小时）。"
+            },
+            "confirm-cooldown-seconds": {
+              "type": "integer",
+              "default": 60,
+              "description": "邮箱确认邮件的发送冷却（秒；0 = 不限制）。"
+            },
+            "password-reset-cooldown-seconds": {
+              "type": "integer",
+              "default": 300,
+              "description": "密码重置邮件的发送冷却（秒；0 = 不限制）。"
+            },
+            "base-url": {
+              "type": "string",
+              "default": "",
+              "description": "站点基础地址（用于邮件里的链接）；留空 = 按请求自动推导。"
+            },
+            "types": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "每种邮件类型的开关（id → 是否启用，如 confirm-email / password-reset / user-to-user）。"
+            }
+          }
+        },
+        "setup": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "false",
+                "force"
+              ],
+              "default": "auto",
+              "description": "安装模式；auto = 配置文件不存在时进入安装模式。"
+            },
+            "file": {
+              "type": "string",
+              "default": "LocalSettings.yaml",
+              "description": "生成的本地配置文件路径（相对启动目录）。"
+            },
+            "restart-enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "完成安装后是否自动重启进程（测试 / IDE 环境可关）。"
+            },
+            "key": {
+              "type": "string",
+              "description": "/init 安装密钥（首次完成安装时随机生成；之后访问 /init 需要它）。（敏感项：建议走环境变量，本项不提供默认值）",
+              "writeOnly": true
+            },
+            "initial-accounts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "初始账号列表（username / password-hash / email / groups），由向导写入。"
+            }
+          }
+        }
+      }
+    },
+    "spring": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "redis": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "host": {
+                  "type": "string",
+                  "default": "127.0.0.1",
+                  "description": "Redis 主机。"
+                },
+                "port": {
+                  "type": "integer",
+                  "default": 6379,
+                  "description": "Redis 端口。"
+                },
+                "database": {
+                  "type": "integer",
+                  "default": 0,
+                  "description": "Redis 库号（0–15）。"
+                },
+                "password": {
+                  "type": "string",
+                  "description": "Redis 密码（敏感项，不写进生成的文件）。（敏感项：建议走环境变量，本项不提供默认值）",
+                  "writeOnly": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

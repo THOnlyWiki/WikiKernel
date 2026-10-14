@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${htmlTitle != null && !htmlTitle.isEmpty() ? htmlTitle : title}">WikiKernel</title>
+    <!-- 插件 <head> 扩展（HtmlHeadProvider：WikiSEO 的 meta / OpenGraph / canonical / 站点验证等） -->
+    <th:block th:each="headItem : ${headItems}" th:utext="${headItem}"></th:block>
+    <!-- 静态资源放在 core/src/main/resources/static/ 下 -->
+    <!-- 基础样式（全皮肤共用）+ 当前皮肤样式（base 之后加载，可覆盖） -->
+    <link rel="stylesheet" th:href="@{/css/base.css(v=${assetVersion})}">
+    <link th:each="skinSheet : ${skin.stylesheets}" rel="stylesheet"
+          th:href="@{${skinSheet}(v=${assetVersion})}">
+    <!-- 页面自定义样式（Wiki.css + {title}/XXX.css），服务端已转义 <，不会提前闭合 style -->
+    <style th:each="css : ${pageCss}" th:utext="${css}">/* 页面自定义样式 */</style>
+    <script th:inline="javascript">
+        /* 站点级前端配置：各功能插件自己往 window.WIKI_CONFIG 里加自己的键（core 不再内置功能开关） */
+        window.WIKI_CONFIG = {
+        };
+        /* /js/auth.js 用到的本地化文案（Thymeleaf 内联，随语言切换） */
+        window.WIKI_MESSAGES = {
+            networkError: /*[[#{auth.networkError}]]*/ '',
+            operationFailed: /*[[#{auth.operationFailed}]]*/ '',
+            passwordMismatch: /*[[#{auth.passwordMismatch}]]*/ '',
+            uploadEmpty: /*[[#{files.empty}]]*/ '',
+            deleteConfirm: /*[[#{files.deleteConfirm}]]*/ '',
+            hardDeleteConfirm: /*[[#{files.hardDeleteConfirm}]]*/ '',
+            revertConfirm: /*[[#{files.revertConfirm}]]*/ '',
+            prefResetConfirm: /*[[#{preferences.resetConfirm}]]*/ '',
+            timeZoneUnavailable: /*[[#{preferences.timezoneUnavailable}]]*/ '',
+            prefCountrySearch: /*[[#{preferences.countrySearch}]]*/ '',
+            prefCountrySearchPlaceholder: /*[[#{preferences.countrySearchPlaceholder}]]*/ '',
+            prefCountrySearchCount: /*[[#{preferences.countrySearchCount}]]*/ '',
+            prefCountrySearchNone: /*[[#{preferences.countrySearchNone}]]*/ '',
+            draftRestored: /*[[#{edit.draftRestored}]]*/ '',
+            draftSaved: /*[[#{edit.draftSaved}]]*/ '',
+            draftConflict: /*[[#{edit.draftConflict}]]*/ '',
+            draftViewLatest: /*[[#{edit.draftViewLatest}]]*/ '',
+            draftDiscard: /*[[#{edit.draftDiscard}]]*/ '',
+            toolbarBoldSample: /*[[#{toolbar.boldSample}]]*/ '',
+            toolbarItalicSample: /*[[#{toolbar.italicSample}]]*/ '',
+            toolbarLinkSample: /*[[#{toolbar.linkSample}]]*/ '',
+            toolbarExternalSample: /*[[#{toolbar.externalSample}]]*/ '',
+            toolbarHeadingSample: /*[[#{toolbar.headingSample}]]*/ '',
+            toolbarTableHeader: /*[[#{toolbar.tableHeader}]]*/ '',
+            toolbarTableCell: /*[[#{toolbar.tableCell}]]*/ '',
+            uploadTitle: /*[[#{toolbar.fileTitle}]]*/ '',
+            uploadChoose: /*[[#{toolbar.fileChoose}]]*/ '',
+            uploadName: /*[[#{toolbar.fileName}]]*/ '',
+            uploadConfirm: /*[[#{toolbar.fileUpload}]]*/ '',
+            uploadCancel: /*[[#{common.cancel}]]*/ '',
+            uploading: /*[[#{toolbar.uploading}]]*/ '',
+            toolbarFileEmpty: /*[[#{toolbar.fileEmpty}]]*/ '',
+            uploadFailed: /*[[#{toolbar.uploadFailed}]]*/ '',
+            previewLoading: /*[[#{edit.previewLoading}]]*/ '',
+            previewFailed: /*[[#{edit.previewFailed}]]*/ '',
+            blockUnblockConfirm: /*[[#{block.unblockConfirm}]]*/ '',
+            liveOnTitle: /*[[#{recentChanges.liveOnTitle}]]*/ '',
+            liveOffTitle: /*[[#{recentChanges.liveOffTitle}]]*/ '',
+            interwikiDeleteConfirm: /*[[#{interwiki.deleteConfirm}]]*/ '',
+            interwikiSaved: /*[[#{interwiki.saved}]]*/ '',
+            printablePrint: /*[[#{printable.print}]]*/ '',
+            printableBack: /*[[#{printable.back}]]*/ '',
+            veApplied: /*[[#{edit.visualApplied}]]*/ '',
+            veFailed: /*[[#{edit.visualFailed}]]*/ '',
+            veApplying: /*[[#{edit.visualApplying}]]*/ '',
+            veLoading: /*[[#{edit.visualLoading}]]*/ '',
+            veTokenTitle: /*[[#{edit.visualTokenEdit}]]*/ '',
+            veTemplatePrefix: /*[[#{veTemplatePrefix}]]*/ '',
+            codeCopy: /*[[#{code.copy}]]*/ '',
+            codeCopied: /*[[#{code.copied}]]*/ '',
+            codeCopyFailed: /*[[#{code.copyFailed}]]*/ '',
+            veDialogParams: /*[[#{veDialogParams}]]*/ '',
+            veDialogSource: /*[[#{veDialogSource}]]*/ '',
+            veDialogPreview: /*[[#{veDialogPreview}]]*/ '',
+            veDialogPreviewTitle: /*[[#{veDialogPreviewTitle}]]*/ '',
+            veDialogApply: /*[[#{veDialogApply}]]*/ '',
+            veDialogCancel: /*[[#{veDialogCancel}]]*/ '',
+            veDialogClose: /*[[#{veDialogClose}]]*/ '',
+            veDialogAddParam: /*[[#{veDialogAddParam}]]*/ '',
+            veDialogParamName: /*[[#{veDialogParamName}]]*/ '',
+            veDialogParamKnown: /*[[#{veDialogParamKnown}]]*/ '',
+            veDialogParamRemove: /*[[#{veDialogParamRemove}]]*/ '',
+            veDialogParamUnset: /*[[#{veDialogParamUnset}]]*/ '',
+            veDialogParamHint: /*[[#{veDialogParamHint}]]*/ '',
+            veDialogTemplateMissing: /*[[#{veDialogTemplateMissing}]]*/ '',
+            veDialogPreviewFailed: /*[[#{veDialogPreviewFailed}]]*/ '',
+            veDiscardConfirm: /*[[#{edit.visualDiscardConfirm}]]*/ '',
+            watchWatch: /*[[#{watch.watch}]]*/ '',
+            watchUnwatch: /*[[#{watch.unwatch}]]*/ ''
+        };
+        /* MediaWiki 兼容：页面配置（mw.config 的 RLCONF）与模块启动队列（RLQ，由 /js/mediawiki.js 处理） */
+        window.RLCONF = /*[[${mwConfig}]]*/ {};
+        window.RLQ = window.RLQ || [];
+        /* mw.messages 的初始集合（页面脚本可用 mw.message('common.cancel').text() 等） */
+        window.wgMessages = {
+            'common.search': /*[[#{common.search}]]*/ '',
+            'common.page': /*[[#{common.page}]]*/ '',
+            'common.talk': /*[[#{common.talk}]]*/ '',
+            'common.view': /*[[#{common.view}]]*/ '',
+            'common.edit': /*[[#{common.edit}]]*/ '',
+            'common.editSource': /*[[#{common.editSource}]]*/ '',
+            'common.history': /*[[#{common.history}]]*/ '',
+            'common.viewSource': /*[[#{common.viewSource}]]*/ '',
+            'common.move': /*[[#{common.move}]]*/ '',
+            'common.protect': /*[[#{common.protect}]]*/ '',
+            'common.unprotect': /*[[#{common.unprotect}]]*/ '',
+            'common.cancel': /*[[#{common.cancel}]]*/ '',
+            'common.back': /*[[#{common.back}]]*/ '',
+            'common.current': /*[[#{common.current}]]*/ '',
+            'common.anonymous': /*[[#{common.anonymous}]]*/ '',
+            'common.listSeparator': /*[[#{common.listSeparator}]]*/ ''
+        };
+    </script>
+    <!-- 前端基础库（本地内置，不依赖 CDN）：同步加载（与 MediaWiki 在 head 里加载 jQuery/startup 一致），
+         保证正文里的内联 <script> 也能立即使用 mw / mw.loader / $ / axios；页面脚本与 Gadgets 均可用这些全局对象 -->
+    <script th:src="@{/vendor/jquery/jquery.min.js(v=${assetVersion})}"></script>
+    <script th:src="@{/vendor/axios/axios.min.js(v=${assetVersion})}"></script>
+    <!-- MediaWiki JS API 兼容层（mw / mw.loader / mw.Api 等；配置来自上面的 window.RLCONF） -->
+    <script th:src="@{/js/mediawiki.js(v=${assetVersion})}"></script>
+    <!-- 引用用户脚本页面（mw.wikiImport / mw.wikiPreload / mw.wikiModule）：把 wiki 页面当 ES 模块加载 -->
+    <script th:src="@{/js/wiki-modules.js(v=${assetVersion})}"></script>
+    <!-- 注册问答（问题 / 答案两个等长数组）行编辑器：站点设置页用 -->
+    <script th:src="@{/js/auth.js(v=${assetVersion})}" defer></script>
+    <!-- 可打印版（?printable=yes）：自动打开打印窗口（可另存为 PDF）+ 顶部打印 / 返回工具条 -->
+    <script th:if="${printableView}" th:src="@{/js/printable.js(v=${assetVersion})}" defer></script>
+    <!-- 表单提示自动淡出（全局）：成功 3 秒、其它 8 秒后丝滑消失 -->
+    <script th:src="@{/js/feedback.js(v=${assetVersion})}" defer></script>
+    <!-- 数学公式（Math）、页面预览（Popups）、图形（Graph）、用户交互（头像 / 私信）：已迁到插件
+         math / popups / graph / social-profile（插件经 head 扩展注入脚本与样式） -->
+    <script th:src="@{/js/permissions.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/logs.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/recent-changes.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/page-actions.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/access-control.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/file-upload.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/block.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/skin-preference.js(v=${assetVersion})}" defer></script>
+    <!-- JS 兼容性：mw.loader 未内置模块的显式提示（特殊:Gadgets 的依赖标记 + #js-compat-report 报告容器） -->
+    <script th:src="@{/js/js-compat.js(v=${assetVersion})}" defer></script>
+    <script th:src="@{/js/preferences.js(v=${assetVersion})}" defer></script>
+    <!-- 皮肤附加脚本（可选，如插件皮肤自带 JS） -->
+    <script th:each="skinScript : ${skin.scripts}" th:src="@{${skinScript}(v=${assetVersion})}" defer></script>
+    <!-- JS/CSS 代码页面：代码预览 / 编辑器（CodeMirror 本地内置，仅代码页加载） -->
+    <th:block th:if="${codeLanguage != null}">
+        <link rel="stylesheet" th:href="@{/vendor/codemirror/codemirror.min.css(v=${assetVersion})}">
+        <link rel="stylesheet" th:href="@{/vendor/codemirror/addon-show-hint.min.css(v=${assetVersion})}">
+        <script th:src="@{/vendor/codemirror/codemirror.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/mode-javascript.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/mode-css.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/mode-xml.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/mode-htmlmixed.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/mode-lua.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/addon-show-hint.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/addon-javascript-hint.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/addon-anyword-hint.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/addon-matchbrackets.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/addon-closebrackets.min.js(v=${assetVersion})}" defer></script>
+    </th:block>
+    <script th:src="@{/js/code-editor.js(v=${assetVersion})}" defer></script>
+    <!-- 滥用过滤器（特殊:滥用过滤器 / 特殊:滥用日志）：已迁到插件 abuse-filter
+         （条件编辑器脚本 / 样式与测试表格文案由插件经 head 扩展注入） -->
+    <!-- 编辑辅助工具栏（仿 MediaWiki WikiEditor，仅 Wikitext 编辑页加载） -->
+    <script th:if="${showEditToolbar}" th:src="@{/js/edit-toolbar.js(v=${assetVersion})}" defer></script>
+    <!-- 编辑预览（仿 MediaWiki「显示预览」，仅 Wikitext 编辑页加载） -->
+    <script th:if="${showEditToolbar}" th:src="@{/js/edit-preview.js(v=${assetVersion})}" defer></script>
+    <!-- 编辑页本地草稿保护（自动保存 / 关闭确认 / 恢复草稿） -->
+    <script th:src="@{/js/edit-draft.js(v=${assetVersion})}" defer></script>
+    <!-- 可视化编辑器（仅 Wikitext 整页编辑：从编辑框源码出发，目录等生成内容不会进入） -->
+    <script th:if="${showEditToolbar}" th:src="@{/js/visual-editor.js(v=${assetVersion})}" defer></script>
+    <!-- 特殊:导入页面（上传导出文件） -->
+    <script th:src="@{/js/import.js(v=${assetVersion})}" defer></script>
+    <!-- 特殊:特殊页面（搜索过滤） -->
+    <script th:src="@{/js/special-pages.js(v=${assetVersion})}" defer></script>
+    <!-- 目录折叠（TOC） -->
+    <script th:src="@{/js/toc.js(v=${assetVersion})}" defer></script>
+    <!-- 监视 / 取消监视（页面页签里的「监视」与监视列表） -->
+    <script th:src="@{/js/watch.js(v=${assetVersion})}" defer></script>
+    <!-- 特殊:大量删除（Nuke，管理员批量删除页面） -->
+    <script th:src="@{/js/nuke.js(v=${assetVersion})}" defer></script>
+    <!-- 特殊:跨Wiki（Interwiki：前缀 → 另一个 wiki 的 URL 模板） -->
+    <script th:src="@{/js/interwiki.js(v=${assetVersion})}" defer></script>
+    <!-- 特殊:替换文本（ReplaceText，管理员） -->
+    <script th:src="@{/js/replace-text.js(v=${assetVersion})}" defer></script>
+    <!-- 插件站点级脚本 / 样式（HtmlHeadProvider.siteWide()=true：Gadgets、多媒体预览、评论区等；
+         放在这里是为了能直接用上面已同步加载的 mw / $ / axios 与 window.WIKI_CONFIG） -->
+    <th:block th:each="headItem : ${pluginHeadItems}" th:utext="${headItem}"></th:block>
+    <!-- 站点 / 页面自定义脚本：WikiKernel:Wiki.js + {标题}/任意.js（?action=raw 原样输出） -->
+    <script th:each="scriptUrl : ${scriptUrls}" th:src="${scriptUrl}" defer></script>
+</head>
+</html>

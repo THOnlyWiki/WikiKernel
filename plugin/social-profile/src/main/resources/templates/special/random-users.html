@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:随机用户 / Special:RandomUsersWithAvatars
+     （仿 MediaWiki SocialProfile 的 Special:RandomUsersWithAvatars）：随机抽有头像的用户。
+     顶部导航条（.sp-nav）与其它社交页一致，模板里内联，便于每页自己高亮当前项。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.randomUsers}">
+        随机认识几位活跃用户，点头像或用户名就能去他们的用户页。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+
+    <th:block th:unless="${featureDisabled}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" aria-current="page" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <p class="wiki-hint" th:text="#{socialProfile.randomUsers.hint}">随机抽取几位上传过头像的用户。</p>
+        <p class="sp-pager">
+            <a class="sp-pager-button" th:href="${randomUsersReloadUrl}" th:text="#{socialProfile.randomUsers.reload}">换一批</a>
+            <a th:href="${topUsersUrl}" th:text="#{socialProfile.nav.topUsers}">积分排行</a>
+        </p>
+
+        <div class="sp-empty-block" th:if="${#lists.isEmpty(randomUsers)}">
+            <p class="sp-empty" th:text="#{socialProfile.randomUsers.empty}">还没有用户上传头像。</p>
+            <p class="sp-empty-next">
+                <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                <a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.empty.next.uploadAvatar}">去上传一张头像</a>
+                <span class="sp-sep">·</span>
+                <a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.empty.next.earnPoints}">活跃一下就有积分</a>
+            </p>
+        </div>
+        <ul class="sp-random-list" th:unless="${#lists.isEmpty(randomUsers)}">
+            <li class="sp-random-item" th:each="row : ${randomUsers}">
+                <a class="sp-random-avatar" th:href="${row['userUrl']}"
+                   th:aria-label="${row['username']}">
+                    <img class="wiki-avatar sp-avatar-medium" th:src="${row['avatarUrl']}"
+                         th:alt="${row['username']}"/>
+                </a>
+                <div class="sp-random-name">
+                    <a th:href="${row['userUrl']}" th:text="${row['username']}">用户</a>
+                </div>
+                <div class="sp-random-meta">
+                    <span th:text="#{socialProfile.friends.count(${row['friendCount']})}">0 位好友</span>
+                    <span class="sp-sep">·</span>
+                    <span th:text="#{socialProfile.gifts.received(${row['giftCount']})}">收到 0 个礼物</span>
+                </div>
+                <div class="sp-random-actions">
+                    <a th:href="${row['boardUrl']}" th:aria-label="#{socialProfile.board.title}"
+                       th:text="#{socialProfile.board.title}">留言板</a>
+                    <a th:href="${row['giftUrl']}" th:aria-label="#{socialProfile.gifts.send}"
+                       th:text="#{socialProfile.gifts.send}">送礼物</a>
+                    <a th:href="${row['friendAddUrl']}" th:aria-label="#{socialProfile.friends.title}"
+                       th:text="#{socialProfile.friends.title}">好友</a>
+                </div>
+            </li>
+        </ul>
+    </th:block>
+</section>
+</body>
+</html>

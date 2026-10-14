@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!-- 特殊:用户权限 / Special:UserRights：仿 MediaWiki 的权限管理页 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="user-rights">
+    <!-- 选择用户 -->
+    <fieldset class="user-rights-fieldset">
+        <legend th:text="#{userRights.selectUser}">选择用户</legend>
+        <form id="wiki-rights-lookup" class="wiki-form wiki-form-inline" th:action="@{/wiki/特殊:用户权限}" method="get">
+            <label for="wpUsername" th:text="#{userRights.usernameLabel}">输入用户名：</label>
+            <input type="text" id="wpUsername" name="name" th:value="${lookupName}" autofocus required/>
+            <button type="submit" class="wiki-button" th:text="#{userRights.loadGroups}">加载用户组</button>
+        </form>
+        <p class="wiki-form-error" th:if="${nameRequired}" th:text="#{userRights.usernameRequired}">
+            请输入用户名。
+        </p>
+        <p class="wiki-form-error" th:if="${userNotFound}" th:text="#{permissions.userNotFound}">
+            用户不存在。
+        </p>
+    </fieldset>
+
+    <th:block th:if="${user != null}">
+        <!--/* 您可以更改的用户组（有权限）/ 查看用户组（只读，仿 MediaWiki 的复选框 + 期限选择） */-->
+        <fieldset class="user-rights-fieldset">
+            <legend th:if="${canEdit}" th:text="#{userRights.changeGroups}">您可以更改的用户组</legend>
+            <legend th:unless="${canEdit}" th:text="#{userRights.viewGroups}">查看用户组</legend>
+            <p class="user-rights-caption">
+                <span th:if="${canEdit}"
+                      th:text="#{userRights.changeGroupsTitle(${user.username})}">更改用户 的用户组</span>
+                <span th:unless="${canEdit}"
+                      th:text="#{userRights.viewGroupsTitle(${user.username})}">查看用户 的用户组</span>
+                <span class="user-rights-links">
+                    （<a th:href="${talkUrl}" th:text="#{userRights.talk}">留言</a>
+                    <span class="language-separator">|</span>
+                    <a th:href="${contributionsUrl}" th:text="#{userRights.contributions}">贡献</a>）
+                </span>
+            </p>
+
+            <form id="wiki-permissions-form" class="wiki-permissions" method="post"
+                  action="/api/user/permissions" th:attr="data-can-edit=${canEdit}">
+                <input type="hidden" name="username" th:value="${user.username}"/>
+
+                <ul class="permission-list">
+                    <li class="permission-item" th:each="row : ${rightsRows}">
+                        <label class="permission-choice">
+                            <input type="checkbox" class="permission-check" name="permissions" th:value="${row.name}"
+                                   th:checked="${row.checked}" th:disabled="${!canEdit}"/>
+                            <span th:text="${@permissionGroupLabels.label(row.name)}">管理员</span>
+                            <span class="permission-expired" th:if="${row.expired}"
+                                  th:text="#{userRights.expired}">（已过期）</span>
+                        </label>
+                        <!--/* 期限：勾选后显示（不会过期 / 1天 / 1周 / 1个月 / 3个月 / 6个月 / 1年 / 其他时间） */-->
+                        <div class="permission-expiry" th:if="${canEdit}" th:hidden="${!row.checked}">
+                            <label>
+                                <span th:text="#{userRights.expiry}">期限：</span>
+                                <select class="permission-expiry-select">
+                                    <option value="" th:selected="${#strings.isEmpty(row.expiry)}"
+                                            th:text="#{userRights.expiryNever}">不会过期</option>
+                                    <option value="1d" th:text="#{userRights.expiry1Day}">1天</option>
+                                    <option value="1w" th:text="#{userRights.expiry1Week}">1周</option>
+                                    <option value="1m" th:text="#{userRights.expiry1Month}">1个月</option>
+                                    <option value="3m" th:text="#{userRights.expiry3Months}">3个月</option>
+                                    <option value="6m" th:text="#{userRights.expiry6Months}">6个月</option>
+                                    <option value="1y" th:text="#{userRights.expiry1Year}">1年</option>
+                                    <option value="other" th:selected="${!#strings.isEmpty(row.expiry)}"
+                                            th:text="#{userRights.expiryOther}">其他时间：</option>
+                                </select>
+                                <input type="datetime-local" class="permission-expiry-other" th:value="${row.expiry}"
+                                       th:hidden="${#strings.isEmpty(row.expiry)}"/>
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+
+                <p class="user-rights-autogroups">
+                    <span th:text="#{userRights.autoGroups}">自动用户组：</span>
+                    <th:block th:if="${!#sets.isEmpty(automaticGroups)}">
+                        <th:block th:each="group, iter : ${automaticGroups}"><span
+                                th:text="${@permissionGroupLabels.label(group)}">自动确定用户</span><span
+                                th:if="${!iter.last}" th:text="#{common.listSeparator}">、</span></th:block>
+                    </th:block>
+                    <span class="permission-none" th:if="${#sets.isEmpty(automaticGroups)}"
+                          th:text="#{userRights.autoGroupsNone}">（无）</span>
+                </p>
+                <p class="wiki-hint" th:text="#{userRights.autoConfirmHint(${autoConfirmEdits})}">
+                    编辑满 50 次后自动获得「自动确定用户」（管理员也可手动授予 / 移除）。
+                </p>
+
+                <div class="permission-reason" th:if="${canEdit}">
+                    <label>
+                        <span th:text="#{userRights.reason}">原因：</span>
+                        <input type="text" name="reason" class="permission-reason-input" maxlength="255"/>
+                    </label>
+                </div>
+
+                <p class="wiki-hint" th:if="${canEdit}" th:text="#{userRights.expiryHint}">
+                    选择「不会过期」= 永久；其它选项从保存时起算，到期后该权限自动失效。
+                </p>
+
+                <div class="form-message" role="alert" hidden></div>
+
+                <div class="form-actions" th:if="${canEdit}">
+                    <button type="submit" class="wiki-button" th:text="#{userRights.saveGroups}">保存用户组</button>
+                </div>
+                <p class="wiki-hint" th:unless="${canEdit}" th:text="#{permissions.readonlyHint}">
+                    只有管理员或行政员可以修改权限。
+                </p>
+            </form>
+        </fieldset>
+
+        <!-- 用户权限日志（通用日志系统的 rights 类型） -->
+        <fieldset class="user-rights-fieldset">
+            <legend th:text="#{userRights.log}">用户权限日志</legend>
+            <p th:if="${#lists.isEmpty(logRows)}" th:text="#{userRights.logEmpty}">在日志中不存在匹配项。</p>
+            <ul class="rights-log" th:unless="${#lists.isEmpty(logRows)}">
+                <li th:each="row : ${logRows}">
+                    <span class="rights-log-time"
+                          th:text="${@wikiTime.format(row.log.time)}">时间</span>
+                    <span class="rights-log-actor">
+                        <a th:if="${row.actorName != null}" th:href="@{/wiki/{t}(t=${'用户:' + row.actorName})}"
+                           th:text="${row.actorName}">操作者</a>
+                        <span th:if="${row.actorName == null}" th:text="#{log.actor.system}">系统</span>
+                    </span>
+                    <span class="rights-log-action" th:text="${row.detailText}">已授予「管理员」</span>
+                </li>
+            </ul>
+        </fieldset>
+    </th:block>
+</section>
+</body>
+</html>

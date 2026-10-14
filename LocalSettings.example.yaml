@@ -1,0 +1,319 @@
+# yaml-language-server: $schema=core/src/main/resources/static/schemas/wikikernel-config-schema.json
+# ============================================================
+# WikiKernel 本地配置（类似 MediaWiki 的 LocalSettings.php）
+#
+# 用法：复制本文件为 LocalSettings.yaml，放在启动目录（仓库根目录）即可，
+#      程序启动时自动读取；该文件不会被打进 jar、也不需要提交到仓库。
+#      不创建时使用内置默认：SQLite 文件库 ./data/wiki.db。
+#      首次部署也可以直接启动应用后访问 /init，由安装向导生成该文件（推荐）。
+#
+# 优先级：命令行参数 > 环境变量 > LocalSettings.yaml > 内置默认
+#
+# 上面第一行的 $schema 指向配置项的 JSON Schema：IDEA Ultimate 自带的 YAML 插件、
+# VS Code 的 YAML 扩展会据此给出键补全、类型校验与中文说明（改动 key 后 IDE 会立刻提示）。
+# 全部可配置项（含默认值与说明）见 core/src/main/resources/config-catalog.yaml。
+# ============================================================
+
+wikikernel:
+  # ---------------- 侧边栏 ----------------
+  sidebar:
+    # 控制侧边栏内容的页面标题（不存在时用内置默认侧边栏）
+    page: WikiKernel:Sidebar
+
+  # ---------------- Wikitext 渲染 ----------------
+  wikitext:
+    # 模板命名空间（按顺序查找），{{abc模板|a=1}} 会找 "模板:abc模板"
+    template-prefixes:
+      - "模板:"
+      - "Template:"
+    # 模板最大嵌套深度
+    max-template-depth: 20
+
+  # ---------------- 特殊页面 ----------------
+  special-page:
+    # 特殊页前缀（Special:XXX / 特殊:XXX），可增删
+    prefixes:
+      - "特殊:"
+      - "Special:"
+
+  # ---------------- 权限（用户组） ----------------
+  permissions:
+    # 首次搭建：填写自己的用户名，启动后自动获得“管理员 + 行政员”（可分配权限）
+    # 只提升、不降权；留空表示不生效
+    # bootstrap-admins:
+    #   - 你的用户名
+    bootstrap-admins: [ ]
+    # 是否允许编辑其他用户的用户页（用户本人 / 管理员始终可以）
+    # allow-other-user-page-edit: false
+
+  # ---------------- 功能开关 ----------------
+  # 用户交互（头像上传 + 私信）与评论可在 特殊:权限配置 → 站点设置 里随时改；
+  # 这里写了值则每次启动覆盖数据库设置（不写 = 不改动）。
+  features:
+    # 旧键：插件 user-interaction 已改名 social-profile，这里保留旧键不删（两个键读取时都生效，新键优先）
+    # 新键写法（二选一即可）：social-profile: true
+    # 关闭后：用户页资料卡整体隐藏，「特殊:上传头像」「特殊:私信」不可用，评论里的头像也不再显示
+    user-interaction: true
+    # 关闭后：所有页面都不再显示评论区，评论接口停用
+    comments: true
+    # 勾选后：特殊:上传文件与编辑器上传对话框可一次选择多个文件（逐个上传，默认关闭）
+    multi-upload: false
+    # 关闭后：所有页面里的 {{#widget:…}} 都不生效（显示「未启用」提示，微件页本身仍保留）
+    widgets: true
+    # 关闭后不加载 MediaWiki Gadgets，也不显示个人 Gadget 设置（默认开启）
+    gadgets: true
+    # 关闭后：非管理员无法进入「特殊:注册」，注册接口 403（管理员 / 行政员仍可代为创建账号）
+    register: true
+    # 注册问答验证（默认关闭）：两个等长数组（registration.questions / registration.answers），
+    # 注册页每次随机抽一题；可在 /init 或 站点设置 里动态增删题目、随时开关
+    registration-quiz: false
+    # 勾选后启用滥用过滤器并自动创建系统账号「滥用过滤器」（机器人；默认关闭）
+    abuse-filter: false
+    # 勾选后启用多媒体预览：音视频（WebM / Ogg / MP3 / WAV / M4A / MP4 / FLAC）在文件页与词条里播放（默认关闭）
+    media-viewer: false
+    # 勾选后启用审核（仿 MediaWiki Moderation）：没有豁免权的用户提交的页面编辑 / 创建、文件上传与
+    # 文件删除进入「特殊:审核」队列，核查员 / 管理员通过后才生效（默认关闭）
+    moderation: false
+    # 输入框（仿 MediaWiki InputBox 扩展）：词条里的 <inputbox> 标签生成「创建页面 / 搜索」表单（默认开启）
+    input-box: true
+    # 页面横幅（仿 MediaWiki WikidataPageBanner 扩展）：标题上方显示横幅图片（默认开启）
+    page-banner:
+      # 开关（图片池为空时不显示任何横幅）
+      enabled: true
+      # 横幅图片池：站内已存在的图片文件页名称
+      files: [ "示例横幅.png", "示例横幅2.png" ]
+      # 白名单模式：只对下列页面显示横幅（关闭则所有页面都显示）
+      whitelist-enabled: true
+      # 横幅白名单页面标题
+      whitelist: [ "首页" ]
+      # 轮换机制：stable（默认，按标题哈希固定）/ random（每次浏览随机）/ rotate（每次浏览顺序轮换）
+      #          / daily（每天换一张）/ hourly（每小时换一张）
+      rotation: stable
+      # 逐页配置：每项「页面标题 = 横幅文件名」（只写标题 = 该页从图片池按轮换机制取；
+      # 配过的页面自动视为要显示横幅，无需再加进白名单；页面里的 {{PAGEBANNER:…}} 优先级更高）
+      per-page: [ "帮助:首页=示例横幅2.png" ]
+    # 编辑验证码（仿 MediaWiki ConfirmEdit 扩展）：未豁免用户保存编辑 / 创建页面时回答一道算术题（默认关闭）
+    confirm-edit:
+      enabled: false
+      # 免验证码用户组（权限组名；| 分隔写在一个字符串里也可以）
+      bypass-groups: [ "管理员", "行政员", "自动确定用户", "机器人" ]
+    # 页面预览（仿 MediaWiki Popups / Page Previews 扩展）：桌面端悬停页面链接显示摘要（默认开启）
+    popups: true
+    # Flash 播放器（Ruffle WASM）：<flash-player> 标签播放老 Flash 动画（默认开启；wasm 只在用到时才下载）
+    flash-player: true
+    # 数学公式（Math）：<math>/<chem> 标签用 KaTeX 渲染 TeX（默认开启；KaTeX 只在用到时才下载）
+    math: true
+    # 时间轴（EasyTimeline）：<timeline> 标签用 EasyTimeline 语法，服务端生成内联 SVG（默认开启）
+    timeline: true
+    # 图形（Graph）：<graph> 标签与「图表:」命名空间整页图（Vega / Vega-Lite 规范，默认开启；
+    # 绘图库 vega / vega-lite / vega-embed 本地内置在 /vendor/vega/，不走 CDN）
+    graph: true
+    # TypeScript 服务端编译：.ts / .tsx 页面在服务端用内置 TypeScript 编译器（GraalJS + 官方 tsc）
+    # 编译成 JavaScript，供 ?action=raw&ctype=text/javascript（页面脚本 / Gadget 资源）加载。
+    # 自包含、不依赖主机安装 Node；默认关闭（不启用时 .ts 页面只是带高亮的代码页）。
+    typescript: false
+    # 保存 TypeScript 页面时立即编译（便于编辑后立刻看到语法诊断；默认关闭）
+    typescript-compile-on-save: false
+    # AI 代理（AI Agent，特殊:AI代理）：让 AI 阅读词条 / 模板并起草编辑；用户核对预览与差异后确认，
+    # 确认后以用户本人名义直接保存（不经审核队列；AI 内容由用户负责核对），词条底部带隐藏 AI 水印。默认关闭。
+    ai-agent: true
+
+  # ---------------- TypeScript 服务端编译（.ts / .tsx 页面） ----------------
+  # 开关在 features.typescript / features.typescript-compile-on-save；这里只放技术参数。
+  typescript:
+    target: ES2020        # 输出语言级别（TS 的 ScriptTarget 名：ES5 / ES2020 / ESNext…）
+    module: ESNext        # 模块形态（TS 的 ModuleKind 名：None / CommonJS / ESNext…）
+    jsx: ""               # .tsx 的 JSX 形态（react / preserve）；留空 = 只有 .tsx 时用 react
+    timeout-seconds: 15   # 单次编译超时（超时即中断并重建编译器引擎，避免挂住请求）
+    init-timeout-seconds: 120  # 编译器首次装载超时（读入并求值 8.7 MB tsc，约 4 秒）
+    pool-size: 1          # 引擎池大小（并发编译数）；每个引擎是一份 GraalJS 上下文，常驻约 150–400 MB
+    warmup: true          # 启动后后台预热引擎（把首次装载从请求路径挪走）
+    max-source-kilobytes: 256  # 单次编译的源码大小上限（KB）；-1 或 0 = 不限制（也可在 站点设置 里动态改）
+    cache-limit: 200      # 编译产物缓存行数上限（每个页面 + 目标只保留最新一条）
+
+  # ---------------- AI 代理（特殊:AI代理） ----------------
+  # 厂商与密钥；keys 只留在服务端。/init 与 站点设置 里可以调开关与「允许普通用户使用」。
+  ai:
+    # 站点设置里的「允许普通用户使用」默认值（文件里写了则每次启动导入）
+    allow-normal-users: false
+    # 一次对话最多几轮工具调用（**0 = 不限制**，默认不限制：一直做到代理给出结论）；
+    # 单次模型请求超时（秒）
+    max-steps: 0
+    timeout-seconds: 180
+    # 可选代理：socks5://127.0.0.1:10808 / http://127.0.0.1:7890（单个厂商里也能覆盖）
+    proxy: ""
+    providers:
+      # 演示厂商（不需要密钥）：跑通「阅读 → 提案 → 预览/差异 → 确认提交 → 水印」的完整流程
+      mock: { type: mock }
+      # 真实厂商示例（取消注释并填 key；可同时配多个，界面上下拉切换）：
+      # groq:       { type: openai, base-url: https://api.groq.com/openai/v1, model: llama-3.3-70b-versatile, api-key: gsk_… }
+      # deepseek:   { type: openai, base-url: https://api.deepseek.com/v1, model: deepseek-chat, api-key: sk-… }
+      # openrouter: { type: openai, base-url: https://openrouter.ai/api/v1, model: "deepseek/deepseek-chat-v3-0324:free", api-key: sk-or-… }
+      # gemini:     { type: gemini, model: gemini-2.0-flash, api-key: …, proxy: socks5://127.0.0.1:10808 }
+      # claude:     { type: anthropic, model: claude-3-5-sonnet-latest, api-key: sk-ant-… }
+      # ollama:     { type: openai, base-url: http://127.0.0.1:11434/v1, model: llama3.1 }
+
+  # ---------------- 页面导出 / 导入（特殊:导出页面 / 特殊:导入页面） ----------------
+  # 限额可调；不写则用内置默认（导出 200 页 / 5000 版本；导入 2000 页 / 20000 版本 / 10MB）。
+  # 导出支持 MediaWiki XML、WikiKernel XML 与 WikiKernel JSON；导入自动识别三种格式。
+  # transfer:
+  #   export-max-pages: 200
+  #   export-max-revisions: 5000
+  #   import-max-pages: 2000
+  #   import-max-revisions: 20000
+  #   import-max-bytes: 10485760
+
+  # ---------------- 注册问答验证（可选验证码） ----------------
+  # 两个**等长数组**：questions（问题）与 answers（答案）按下标一一对应；
+  # 注册页每次随机抽一题，答对该题答案才能注册（答案不区分大小写、忽略首尾空白）。
+  # 总开关是 features.registration-quiz（也可在 /init 或 特殊:权限配置 → 站点设置 里改）；
+  # 上面的 questions / answers 同样可在网页里动态增删（行编辑器）。
+  # registration:
+  #   questions: [ "1 + 1 = ?", "本 wiki 叫什么名字？" ]
+  #   answers:   [ "2",          "WikiKernel" ]
+  #
+  # 兼容旧格式（单个问题 + 同一题的多个可接受答案，| 分隔）：
+  # registration:
+  #   question: "1 + 1 = ?"
+  #   answers: "2|二"
+
+  # ---------------- 数据库（切换只改这里） ----------------
+  database:
+    # sqlite（默认，零安装）| mysql | h2
+    type: sqlite
+
+    # type=sqlite 时的数据文件（默认 ./data/wiki.db）
+    # type=h2 时的数据文件（默认 ./data/wiki）
+    file: ./data/wiki.db
+
+    # 启动时根据实体自动建表 / 补字段（类 JPA ddl-auto=update，只增不减）
+    auto-ddl: true
+
+    # type=mysql 时使用；支持 ${环境变量:默认值} 语法，密码建议走环境变量
+    host: 127.0.0.1
+    port: 3306
+    name: wikikernel
+    user: root
+    password: "${MYSQL_PASSWORD:root}"
+    # 连接池大小（MySQL/H2 生效；SQLite 固定为 1）
+    pool-size: 10
+
+  # ---------------- 插件（类似 wfLoadExtension） ----------------
+  plugins:
+    # 插件 jar 扫描目录（相对启动时工作目录）
+    dir: plugins
+    # 运行时副本目录：启动时把 plugins/ 里的 jar 按内容哈希复制到这里再加载，
+    # 源 jar 不被 JVM 锁定（可随时替换 / 删除 / 新增），改完调用 POST /api/plugins/reload 动态装卸
+    runtime-dir: run/.plugins
+    # 是否同时扫描 classpath 上的插件（IDE 调试用）
+    classpath-scan: true
+    # 插件白名单：为空 = 全部启用；填了则只启用列表中的插件
+    enabled: [ ]
+    # enabled:
+    #   - your-plugin
+    # 每个插件的私有配置，键为插件 id
+    settings: { }
+    # settings:
+    #   # HitCounters 扩展移植（浏览计数）
+    #   hit-counters:
+    #     disabled: false
+    #     footer: true
+    #     enable-add-page-id: false
+    #     enable-add-text-length: false
+    #     exempt-groups: ""
+    #   # WikiSEO 扩展移植（见 plugin/wiki-seo/README.md）
+    #   wiki-seo:
+    #     metadata-generators: OpenGraph,Twitter,SchemaOrg
+    #     twitter-card-type: summary_large_image
+    #     google-site-verification-key: ""
+    #   # CategoryTree 扩展移植（见 plugin/category-tree/README.md）
+    #   category-tree:
+    #     allow-tag: true
+    #     max-children: 200
+    #     default-mode: categories
+
+  # ---------------- 站点（预留） ----------------
+  # site:
+  #   name: WikiKernel
+
+  # ---------------- 文件上传 ----------------
+  # 运行文件目录：上传文件存放位置（相对启动目录；通过 /files/<存储名> 访问）
+  run-path: ./run/files
+  # 单个上传文件大小上限（MB）
+  max-file-size-mb: 20
+
+
+  # ---------------- 认证 ----------------
+  # 持久登录令牌（记住登录状态时签发，存数据库，重启不掉线）
+  auth:
+    # 令牌有效期（天）；0 = 永不过期
+    token-expire-days: 0
+
+
+  # ---------------- 反向代理 / CDN ----------------
+  # 部署在 Cloudflare 等 CDN / 反向代理后面时设为 true：
+  # 日志（及用户核查）会用真实客户端 IP（依次读 CF-Connecting-IP / True-Client-IP / X-Real-IP / X-Forwarded-For）
+  http:
+    trust-proxy-headers: false
+
+
+  # ---------------- CORS 跨域 ----------------
+  # 让其它站点的前端（如 https://example.com 的页面）用 fetch 调本站接口；
+  # 默认关闭（不添加任何跨域响应头）。enabled=true 且至少配置一个来源时才生效。
+  cors:
+    enabled: false
+    # 允许的来源（精确匹配）；"*" = 任意来源
+    allowed-origins: []
+    #   - https://example.com
+    # 允许的来源模式（支持通配）；可与 allowed-origins 二选一或同时配
+    # allowed-origin-patterns:
+    #   - https://*.example.com
+    # 允许的方法 / 请求头 / 允许前端读取的响应头（一般用默认即可）
+    # allowed-methods: [ GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS ]
+    # allowed-headers: [ "*" ]
+    # exposed-headers: [ ]
+    # 是否允许携带凭据（Cookie / Authorization）；true 时不能用 "*" 作精确来源（会自动改为按 Origin 回显）
+    # allow-credentials: false
+    # 预检（OPTIONS）结果缓存秒数
+    # max-age: 3600
+    # 生效路径（默认全部；如只对接口放开：["/api/**"]）
+    # paths: [ ]
+
+
+  # ---------------- 邮件发送（SMTP） ----------------
+  # 支持多种邮件类型（邮箱确认 / 重置密码 / 用户间邮件），可在 types 下逐个开关；
+  # 邮箱确认成功后会自动授予「邮箱确认用户」权限。
+  email:
+    # 总开关：false = 所有邮件都不发送
+    enabled: false
+    # SMTP 服务器与端口（587 用 STARTTLS；465 用 ssl: true；内网可 auth: false）
+    host: smtp.example.com
+    port: 587
+    username: ""
+    password: ""
+    auth: true
+    starttls: true
+    ssl: false
+    # 发件人（留空 = 用 username）
+    from: ""
+    from-name: WikiKernel
+    # 确认 / 重置等令牌的有效期（小时）
+    token-expire-hours: 24
+    # 邮箱确认邮件的发送冷却（秒；0 = 不限制），防止被用来反复刷别人的邮箱
+    confirm-cooldown-seconds: 60
+    # 站点基础地址（用于邮件里的链接，如 https://wiki.example.com；留空 = 按请求自动推导）
+    # base-url: https://wiki.example.com
+    # 每种邮件类型的开关（未配置时用类型默认值 = 启用）
+    types:
+      confirm-email: true
+      password-reset: true
+      user-to-user: true
+
+
+  # ---------------- 皮肤 ----------------
+  # 默认皮肤：内置 vector / fallback，或插件皮肤 id
+  skins:
+    default-skin: vector
+    # 禁用的皮肤 id（Vector 可禁用；fallback 始终可用）
+    disabled: [ ]
+

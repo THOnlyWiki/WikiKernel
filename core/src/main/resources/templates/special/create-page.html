@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<!-- 特殊:创建页面 / Special:CreatePage -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{createPage.intro}">输入页面标题，点击“创建”进入对应页面的编辑界面。</p>
+
+    <form id="wiki-create-page-form" class="wiki-form wiki-form-inline" th:action="@{/wiki/特殊:创建页面}" method="get">
+        <input type="text" name="pagename" th:value="${pagename}" th:placeholder="#{createPage.placeholder}"
+               autofocus required/>
+        <button type="submit" class="wiki-button" th:text="#{createPage.button}">创建</button>
+    </form>
+
+    <p class="wiki-form-error" th:if="${pagenameRequired}" th:text="#{createPage.titleRequired}">
+        请输入页面标题。
+    </p>
+    <p class="wiki-form-error" th:if="${titleInvalid != null}" th:text="${titleInvalid}">
+        标题无效。
+    </p>
+</section>
+</body>
+</html>

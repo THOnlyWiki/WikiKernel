@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<!-- 安装向导（/init）：独立页面（不套皮肤）。核心未完成时插件 tab 锁定。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="#{setup.title} + ' - WikiKernel'">WikiKernel 安装</title>
+    <link rel="stylesheet" th:href="@{/css/base.css}">
+    <script th:inline="javascript">
+        window.SETUP_MESSAGES = {
+            saved: /*[[#{setup.saved}]]*/ '',
+            operationFailed: /*[[#{setup.operationFailed}]]*/ '',
+            networkError: /*[[#{setup.networkError}]]*/ '',
+            finishing: /*[[#{setup.finishing}]]*/ '',
+            finished: /*[[#{setup.finished}]]*/ '',
+        };
+        window.SETUP_CORE_COMPLETED = /*[[${coreCompleted or postSetup}]]*/ false;
+    </script>
+    <script th:src="@{/js/setup.js}" defer></script>
+</head>
+<body class="setup-body">
+<div class="setup-shell">
+    <h1 th:text="#{setup.title}">WikiKernel 安装</h1>
+    <p class="setup-intro" th:text="#{setup.intro}">
+        首次部署：选择数据库引擎、创建初始账号（管理员 / 行政员），可选配置邮件发送与插件。
+    </p>
+    <p class="setup-note" th:if="${postSetup}" th:text="#{setup.postSetupNote}">
+        核心设置已完成：可以在这里初始化 / 重新初始化插件。
+    </p>
+    <p class="setup-note" th:if="${postSetup and !hasKey}" th:text="#{setup.noKeyNote}">
+        当前配置还没有 /init 密钥：点击「写入配置并重启」会生成一个随机密钥并显示，请妥善保存。
+    </p>
+
+    <div id="setup-message" class="form-message" role="alert" hidden></div>
+
+    <div class="setup-tabs" role="tablist">
+        <button type="button" class="setup-tab active" data-tab="core" th:text="#{setup.tab.core}">核心</button>
+        <button type="button" class="setup-tab" th:each="plugin : ${plugins}"
+                th:attr="data-tab=${'plugin:' + plugin.id},title=${plugin.hasStep ? plugin.stepDescription : #messages.msg('setup.plugin.noStep')}"
+                th:text="${plugin.name} + ' ' + ${plugin.version}">插件</button>
+    </div>
+
+    <!-- 核心设置 -->
+    <section class="setup-panel" data-panel="core">
+        <p class="setup-note" th:if="${postSetup}" th:text="#{setup.postSetupCoreNote}">
+            核心设置已完成：数据库与初始账号如需修改请直接编辑 LocalSettings.yaml；邮件与功能开关可以在这里修改。
+        </p>
+        <form id="setup-core-form">
+            <h2 th:text="#{setup.section.site}">站点信息</h2>
+            <div class="form-field">
+                <label for="setup-site-name" th:text="#{setup.siteName}">站点名称：</label>
+                <input type="text" id="setup-site-name" name="siteName" maxlength="128"
+                       th:value="${currentSiteName}" placeholder="WikiKernel"/>
+            </div>
+            <div class="wiki-hint" th:text="#{setup.siteNameHint}">
+                显示在浏览器标题栏（「页面名 - 站点名称」）、页眉图标提示、页脚、搜索框占位符、邮件主题与 API 的 sitename 等；留空 = 默认 WikiKernel。
+            </div>
+            <th:block th:if="${!postSetup}">
+            <h2 th:text="#{setup.section.database}">数据库</h2>
+            <div class="form-field">
+                <label for="setup-db-type" th:text="#{setup.db.type}">数据库引擎：</label>
+                <select id="setup-db-type" name="databaseType">
+                    <option value="sqlite" th:text="#{setup.db.sqlite}">SQLite</option>
+                    <option value="h2" th:text="#{setup.db.h2}">H2</option>
+                    <option value="mysql" th:text="#{setup.db.mysql}">MySQL</option>
+                </select>
+            </div>
+            <div class="form-field" data-db="sqlite h2">
+                <label for="setup-db-file" th:text="#{setup.db.file}">数据文件路径：</label>
+                <input type="text" id="setup-db-file" name="databaseFile" value="./data/wiki.db">
+            </div>
+            <div class="form-field" data-db="mysql">
+                <label for="setup-db-host" th:text="#{setup.db.host}">主机：</label>
+                <input type="text" id="setup-db-host" name="host" value="127.0.0.1">
+            </div>
+            <div class="form-field" data-db="mysql">
+                <label for="setup-db-port" th:text="#{setup.db.port}">端口：</label>
+                <input type="number" id="setup-db-port" name="port" value="3306" min="1" max="65535">
+            </div>
+            <div class="form-field" data-db="mysql">
+                <label for="setup-db-name" th:text="#{setup.db.name}">数据库名：</label>
+                <input type="text" id="setup-db-name" name="name" value="wikikernel">
+            </div>
+            <div class="form-field" data-db="mysql">
+                <label for="setup-db-user" th:text="#{setup.db.user}">用户名：</label>
+                <input type="text" id="setup-db-user" name="user" value="root">
+            </div>
+            <div class="form-field" data-db="mysql">
+                <label for="setup-db-password" th:text="#{setup.db.password}">密码：</label>
+                <input type="password" id="setup-db-password" name="password">
+            </div>
+
+            <h2 th:text="#{setup.section.accounts}">初始账号</h2>
+            <p class="setup-note" th:text="#{setup.account.rolesNote}">
+                该账号会同时获得「管理员 + 行政员」权限。
+            </p>
+            <p class="setup-note" th:text="#{setup.account.note}">
+                密码以 MediaWiki 格式哈希（pbkdf2）写入配置文件；登录后请尽快修改密码。
+            </p>
+            <div class="form-field">
+                <label for="setup-admin-username" th:text="#{setup.account.username}">用户名：</label>
+                <input type="text" id="setup-admin-username" name="adminUsername" maxlength="50" required>
+            </div>
+            <div class="form-field">
+                <label for="setup-admin-password" th:text="#{setup.account.password}">密码：</label>
+                <input type="password" id="setup-admin-password" name="adminPassword" required>
+            </div>
+            <div class="form-field">
+                <label for="setup-admin-email" th:text="#{setup.account.email}">电子邮件（可选）：</label>
+                <input type="email" id="setup-admin-email" name="adminEmail">
+            </div>
+            </th:block>
+
+            <h2 th:text="#{setup.section.email}">邮件发送（可选）</h2>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="setup-email-enabled" name="emailEnabled" value="true"
+                           th:checked="${currentEmailEnabled}">
+                    <span th:text="#{setup.email.enabled}">启用邮件发送（SMTP）</span>
+                </label>
+            </div>
+            <div class="form-field" data-email hidden>
+                <label for="setup-email-host" th:text="#{setup.email.host}">SMTP 服务器：</label>
+                <input type="text" id="setup-email-host" name="emailHost" th:value="${currentEmailHost}">
+            </div>
+            <div class="form-field" data-email hidden>
+                <label for="setup-email-port" th:text="#{setup.email.port}">端口：</label>
+                <input type="number" id="setup-email-port" name="emailPort" min="1" max="65535"
+                       th:value="${currentEmailPort} ?: 587">
+            </div>
+            <div class="form-field" data-email hidden>
+                <label for="setup-email-username" th:text="#{setup.email.username}">账号：</label>
+                <input type="text" id="setup-email-username" name="emailUsername" th:value="${currentEmailUsername}">
+            </div>
+            <div class="form-field" data-email hidden>
+                <label for="setup-email-password" th:text="#{setup.email.password}">密码 / 授权码：</label>
+                <input type="password" id="setup-email-password" name="emailPassword"
+                       th:placeholder="${hasEmailPassword} ? #{setup.email.passwordKeep} : ''">
+            </div>
+            <div class="form-field" data-email hidden>
+                <label for="setup-email-from" th:text="#{setup.email.from}">发件人（留空 = 用账号）：</label>
+                <input type="text" id="setup-email-from" name="emailFrom" th:value="${currentEmailFrom}">
+            </div>
+            <div class="form-field" data-email hidden>
+                <label for="setup-email-base-url" th:text="#{setup.email.baseUrl}">站点地址（用于邮件里的链接，可留空）：</label>
+                <input type="text" id="setup-email-base-url" name="emailBaseUrl" th:value="${currentEmailBaseUrl}">
+            </div>
+
+            <h2 th:text="#{setup.section.cache}">缓存（可选）</h2>
+            <p class="setup-note" th:text="#{setup.cache.intro}">
+                页面正文缓存默认关闭；开启后渲染结果按「标题 + 版本号」缓存，页面一改版本号就变，不会返回旧内容。
+            </p>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="setup-cache-enabled" name="cacheEnabled" value="true"
+                           th:checked="${currentCacheEnabled}">
+                    <span th:text="#{setup.cache.enabled}">启用页面正文缓存</span>
+                </label>
+            </div>
+            <div class="form-field" data-cache hidden>
+                <label for="setup-cache-backend" th:text="#{setup.cache.backend}">缓存后端：</label>
+                <select id="setup-cache-backend" name="cacheBackend">
+                    <option value="auto" th:selected="${currentCacheBackend == 'auto'}"
+                            th:text="#{settings.cachePageBackendAuto}">自动（能用 Redis 就用 Redis）</option>
+                    <option value="redis" th:selected="${currentCacheBackend == 'redis'}"
+                            th:text="#{settings.cachePageBackendRedis}">只用 Redis</option>
+                    <option value="memory" th:selected="${currentCacheBackend == 'memory'}"
+                            th:text="#{settings.cachePageBackendMemory}">只用进程内缓存</option>
+                    <option value="none" th:selected="${currentCacheBackend == 'none'}"
+                            th:text="#{settings.cachePageBackendNone}">不缓存</option>
+                </select>
+            </div>
+            <div class="wiki-hint" data-cache hidden th:text="#{setup.cache.backendHint}">
+                auto（默认）：配了 Redis 且连得上就用 Redis，否则用进程内缓存。
+            </div>
+            <div class="form-field" data-cache-redis hidden>
+                <label for="setup-cache-redis-host" th:text="#{setup.cache.redis.host}">Redis 主机：</label>
+                <input type="text" id="setup-cache-redis-host" name="cacheRedisHost"
+                       th:value="${currentCacheRedisHost}">
+            </div>
+            <div class="form-field" data-cache-redis hidden>
+                <label for="setup-cache-redis-port" th:text="#{setup.cache.redis.port}">Redis 端口：</label>
+                <input type="number" id="setup-cache-redis-port" name="cacheRedisPort" min="1" max="65535"
+                       th:value="${currentCacheRedisPort}">
+            </div>
+            <div class="form-field" data-cache-redis hidden>
+                <label for="setup-cache-redis-database" th:text="#{setup.cache.redis.database}">Redis 库号（0-15）：</label>
+                <input type="number" id="setup-cache-redis-database" name="cacheRedisDatabase" min="0" max="15"
+                       th:value="${currentCacheRedisDatabase}">
+            </div>
+            <div class="form-field" data-cache-redis hidden>
+                <label for="setup-cache-redis-password" th:text="#{setup.cache.redis.password}">Redis 密码（可选）：</label>
+                <input type="password" id="setup-cache-redis-password" name="cacheRedisPassword"
+                       th:placeholder="${hasCacheRedisPassword} ? #{setup.cache.redis.passwordKeep} : ''">
+            </div>
+            <div class="form-field" data-cache-redis hidden>
+                <label for="setup-cache-redis-key-prefix" th:text="#{setup.cache.redis.keyPrefix}">键前缀（留空 = 默认）：</label>
+                <input type="text" id="setup-cache-redis-key-prefix" name="cacheRedisKeyPrefix" maxlength="128"
+                       th:value="${currentCacheRedisKeyPrefix}">
+            </div>
+            <div class="wiki-hint" th:text="#{setup.cache.hint}">
+                Redis 连不上会自动退回进程内缓存（页面照常渲染，不报错），日志里留一条警告。
+            </div>
+
+            <h2 th:text="#{setup.section.features}">功能开关</h2>
+            <p class="setup-note" th:text="#{setup.featuresIntro}">
+                按功能分组；一个功能有多个选项时，子配置缩进显示在开关下方（开关关闭后子配置不生效，但设置会保留）。
+            </p>
+            <fieldset class="setup-group">
+                <legend th:text="#{setup.group.base}">基础功能</legend>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" id="setup-register" name="register" value="true"
+                               th:checked="${currentRegister}">
+                        <span th:text="#{setup.register}">启用注册（创建账号）</span>
+                    </label>
+                </div>
+                <div class="wiki-hint" th:text="#{setup.registerHint}">
+                    关闭后新用户不能自行注册；管理员 / 行政员仍可在 特殊:注册 创建账号。
+                </div>
+            </fieldset>
+
+            <fieldset class="setup-group">
+                <legend th:text="#{setup.group.content}">内容与编辑器扩展</legend>
+                <div class="setup-feature">
+                    <div class="form-field form-field-inline">
+                        <label>
+                            <input type="checkbox" id="setup-typescript" name="typescript" value="true"
+                                   th:checked="${currentTypescript}">
+                            <span th:text="#{setup.typescript}">TypeScript 服务端编译</span>
+                        </label>
+                    </div>
+                    <div class="setup-options">
+                        <div class="setup-options-title" th:text="#{setup.options}">配置项</div>
+                        <div class="wiki-hint" th:text="#{setup.typescriptHint}">
+                            启用后 .ts / .tsx 页面的内容在服务端用内置 TypeScript 编译器编译（自包含，不依赖主机装 Node）。
+                        </div>
+                        <div class="form-field form-field-inline">
+                            <label>
+                                <input type="checkbox" id="setup-typescript-compile-on-save"
+                                       name="typescriptCompileOnSave" value="true"
+                                       th:checked="${currentTypescriptCompileOnSave}">
+                                <span th:text="#{settings.typescriptCompileOnSave}">TypeScript 保存时编译</span>
+                            </label>
+                        </div>
+                        <div class="wiki-hint" th:text="#{setup.typescriptCompileOnSaveHint}">
+                            保存 .ts / .tsx 页面后立刻编译，页面顶部直接显示语法诊断（不会阻止保存）。
+                        </div>
+                    </div>
+                </div>
+                <div class="setup-feature">
+                </div>
+            </fieldset>
+
+
+            <div class="wiki-hint" th:text="#{setup.featuresHint}">
+                之后也可以在 特殊:权限配置 → 站点设置 里修改。
+            </div>
+
+            <div class="setup-actions">
+                <button type="submit" class="wiki-button" th:text="#{setup.saveCore}">保存核心设置</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- 插件 tab -->
+    <section class="setup-panel" th:each="plugin : ${plugins}" th:attr="data-panel=${'plugin:' + plugin.id}" hidden>
+        <h2 th:text="${plugin.name} + ' ' + ${plugin.version}">插件</h2>
+        <p class="setup-note" th:text="${plugin.description}">说明</p>
+        <p class="setup-note" th:if="${plugin.hasStep and !plugin.stepDescription.isEmpty()}"
+           th:text="${plugin.stepDescription}">插件设置说明</p>
+        <p class="setup-note" th:unless="${plugin.hasStep}" th:text="#{setup.plugin.noStep}">
+            该插件无需初始化设置。
+        </p>
+        <form class="setup-plugin-form" th:attr="data-plugin-id=${plugin.id}">
+            <div class="form-field" th:each="field : ${plugin.fields}">
+                <label th:attr="for=${'setup-' + plugin.id + '-' + field.key}" th:text="${field.label}">字段</label>
+                <input th:if="${field.type == 'text'}" type="text"
+                       th:id="${'setup-' + plugin.id + '-' + field.key}" th:name="${field.key}"
+                       th:value="${field.defaultValue}"/>
+                <input th:if="${field.type == 'password'}" type="password"
+                       th:id="${'setup-' + plugin.id + '-' + field.key}" th:name="${field.key}"
+                       th:value="${field.defaultValue}"/>
+                <input th:if="${field.type == 'checkbox'}" type="checkbox"
+                       th:id="${'setup-' + plugin.id + '-' + field.key}" th:name="${field.key}"
+                       value="true" th:checked="${field.defaultValue == 'true'}"/>
+                <select th:if="${field.type == 'select'}"
+                        th:id="${'setup-' + plugin.id + '-' + field.key}" th:name="${field.key}">
+                    <option th:each="option : ${field.options}" th:value="${option}" th:text="${option}"
+                            th:selected="${option == field.defaultValue}"></option>
+                </select>
+                <textarea th:if="${field.type == 'textarea'}"
+                          th:id="${'setup-' + plugin.id + '-' + field.key}" th:name="${field.key}"
+                          rows="5" th:text="${field.defaultValue}"></textarea>
+            </div>
+            <div class="setup-actions" th:if="${plugin.hasStep}">
+                <button type="submit" class="wiki-button" th:text="#{setup.savePlugin}">保存插件设置</button>
+            </div>
+        </form>
+    </section>
+
+    <div class="setup-actions">
+        <button type="button" id="setup-finish" class="wiki-button" disabled
+                th:text="${postSetup} ? #{setup.finishPost} : #{setup.finish}">完成初始化并重启</button>
+        <p class="setup-note" th:text="#{setup.finishNote}">
+            点击后生成 LocalSettings.yaml；启用自动重启时页面会自动回到首页。
+        </p>
+    </div>
+
+    <!--
+      完整配置模板（全部配置项 + 默认值 + 中文说明）不铺开在向导里，改成按需下载：
+      内容由 core/src/main/resources/config-catalog.yaml 生成（敏感项留空），
+      与向导写到 LocalSettings.yaml 的「精简配置」互不影响。
+    -->
+    <div class="setup-actions" id="setup-config-template-block">
+        <h2 th:text="#{setup.configTemplate}">下载完整配置</h2>
+        <a class="wiki-button" id="setup-config-template" download
+           th:href="@{/api/setup/config-template}"
+           th:text="#{setup.configTemplateButton}">下载完整配置（LocalSettings.full.yaml）</a>
+        <p class="setup-note" th:text="#{setup.configTemplateHint}">
+            下载的是「全部配置项 + 默认值 + 中文说明」的模板（敏感项留空），可以照着它补写 LocalSettings.yaml。
+        </p>
+    </div>
+</div>
+</body>
+</html>

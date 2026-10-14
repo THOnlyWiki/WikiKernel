@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!-- 特殊:版本 / Special:Version：软件版本、入口点、皮肤、插件与扩展点（仿 MediaWiki Special:Version） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{version.intro(${wikiKernelVersion})}">
+        本 wiki 由 WikiKernel 驱动，版本 0.0.1-SNAPSHOT。
+    </p>
+
+    <h2 th:text="#{version.installedSoftware}">已安装的软件</h2>
+    <table class="wikitable">
+        <tr>
+            <th th:text="#{version.table.product}">产品</th>
+            <th th:text="#{version.table.version}">版本</th>
+        </tr>
+        <tr th:each="item : ${software}">
+            <td th:text="${item.product}">WikiKernel</td>
+            <td th:text="${item.version}">0.0.1-SNAPSHOT</td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{version.entryPoints}">入口点 URL</h2>
+    <table class="wikitable">
+        <tr>
+            <th th:text="#{version.table.entryPoint}">入口点</th>
+            <th th:text="#{version.table.url}">URL</th>
+        </tr>
+        <tr th:each="item : ${entryPoints}">
+            <td th:text="${item.name}">首页</td>
+            <td>
+                <a th:if="${item.link}" th:href="${item.path}" th:text="${item.path}">/</a>
+                <span th:unless="${item.link}" th:text="${item.path}">/wiki/$1</span>
+            </td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{version.skins}">已安装的皮肤</h2>
+    <table class="wikitable">
+        <tr>
+            <th th:text="#{version.table.skin}">皮肤</th>
+            <th th:text="#{version.table.version}">版本</th>
+            <th th:text="#{version.table.description}">说明</th>
+            <th th:text="#{version.table.source}">来源</th>
+        </tr>
+        <tr th:each="item : ${skins}">
+            <td>
+                <span th:text="${item.name}">Vector</span>
+                <span th:if="${item.active}" th:text="'（' + #{version.skin.active} + '）'">（使用中）</span>
+            </td>
+            <td th:text="${item.version}">1.0.0</td>
+            <td th:text="${item.description}">说明</td>
+            <td th:text="${item.source == 'core'} ? #{version.skin.builtin} : #{version.skin.plugin}">内置</td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{version.clientLibraries}">已安装的客户端库</h2>
+    <table class="wikitable">
+        <tr>
+            <th th:text="#{version.table.library}">库</th>
+            <th th:text="#{version.table.version}">版本</th>
+            <th th:text="#{version.table.description}">说明</th>
+            <th th:text="#{version.table.source}">来源</th>
+        </tr>
+        <tr th:each="item : ${clientLibraries}">
+            <td th:text="${item.name}">CodeMirror</td>
+            <td th:text="${item.version}">5.65.16</td>
+            <td th:text="${item.description}">说明</td>
+            <td th:text="${item.source}">来源</td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{version.extensions}">已安装的扩展</h2>
+    <p th:if="${#lists.isEmpty(plugins)}" th:text="#{version.noPlugins}">未安装任何插件。</p>
+    <p class="mw-version-plugins-intro" th:unless="${#lists.isEmpty(plugins)}"
+       th:text="#{version.pluginsIntro}">
+        下面是本 wiki 内置的 MediaWiki 扩展移植：说明列写的是原版扩展的用途，末尾的「（原插件）」可以打开原扩展页面。
+    </p>
+    <table class="wikitable mw-version-plugins" th:unless="${#lists.isEmpty(plugins)}">
+        <tr>
+            <th class="mw-version-plugins-extension" th:text="#{version.table.extension}">扩展</th>
+            <th class="mw-version-plugins-plugin-id" th:text="#{version.table.pluginId}">插件 ID</th>
+            <th class="mw-version-plugins-version" th:text="#{version.table.version}">版本</th>
+            <th class="mw-version-plugins-description" th:text="#{version.table.description}">说明</th>
+            <th class="mw-version-plugins-jar" th:text="#{version.table.jar}">JAR 包名</th>
+        </tr>
+        <tr th:each="item : ${plugins}">
+            <td class="mw-version-plugins-extension" th:text="${item.name}">扩展</td>
+            <td class="mw-version-plugins-plugin-id"><code th:text="${item.pluginId}">abuse-filter</code></td>
+            <td class="mw-version-plugins-version" th:text="${item.version}">1.0.0</td>
+            <td class="mw-version-plugins-description">
+                <span th:text="${item.description}">说明</span>
+                <a class="mw-version-plugins-original" th:if="${!#strings.isEmpty(item.originalUrl)}"
+                   th:href="${item.originalUrl}" target="_blank" rel="noopener noreferrer"
+                   th:text="#{version.extensionOriginal}">（原插件）</a>
+            </td>
+            <td class="mw-version-plugins-jar"><code th:text="${item.jar}">abuse-filter-0.0.1-SNAPSHOT.jar</code></td>
+        </tr>
+    </table>
+
+    <h2 th:text="#{version.extensionPoints}">扩展点</h2>
+    <table class="wikitable">
+        <tr>
+            <th th:text="#{version.table.interface}">接口</th>
+            <th th:text="#{version.table.description}">说明</th>
+        </tr>
+        <tr th:each="item : ${extensionPoints}">
+            <td th:text="${item.name}">PageRenderHook</td>
+            <td th:text="${item.description}">说明</td>
+        </tr>
+    </table>
+</section>
+</body>
+</html>

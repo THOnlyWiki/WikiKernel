@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!-- 特殊:文件列表 / Special:FileList：全部已上传文件（图片缩略图预览） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{files.listIntro}">本 wiki 已上传的文件（图片显示缩略图，点击进入文件页）。</p>
+    <p>
+        <a th:if="${canUpload}" class="wiki-button" th:href="@{/wiki/特殊:上传文件}"
+           th:text="#{files.uploadNew}">上传新文件</a>
+        <a th:if="${canViewDeleted}" th:href="@{/wiki/特殊:已删除文件}"
+           th:text="#{special.deletedFiles}">已删除文件</a>
+    </p>
+
+    <p th:if="${#lists.isEmpty(files)}" th:text="#{files.noFiles}">还没有上传任何文件。</p>
+    <ul class="file-gallery" th:unless="${#lists.isEmpty(files)}">
+        <li th:each="item : ${files}">
+            <a th:href="${item.pageUrl}" th:title="${item.name}">
+                <img th:if="${item.image}" th:src="${item.url}" th:alt="${item.name}"/>
+                <span th:unless="${item.image}" class="file-placeholder" th:text="${item.name}">文件</span>
+            </a>
+            <div class="file-gallery-name">
+                <a th:href="${item.pageUrl}" th:text="${item.name}">名称</a>
+            </div>
+            <div class="file-gallery-meta" th:text="${item.sizeText}">1.0 KB</div>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

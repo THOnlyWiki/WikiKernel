@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- 特殊:上传文件 / Special:Upload：上传文件 + 最近上传预览 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{files.intro}">上传文件后可以在词条中用 [[文件:名称.png]] 嵌入预览。</p>
+    <p class="wiki-hint" th:text="#{files.hint}">
+        支持图片（PNG / JPEG / GIF / WebP）与常见文件；单个文件最大 20 MB；不允许上传 HTML / JS / SVG 等会被浏览器执行的文件。
+    </p>
+    <p class="wiki-hint" th:if="${newVersion}" th:text="#{files.newVersionHint}">
+        已存在同名文件；上传后会创建新版本，旧版本保留在文件历史中。
+    </p>
+
+    <p class="wiki-warning" th:if="${loginRequired}" th:text="#{files.loginRequired}">
+        请先登录后再上传文件。
+    </p>
+    <p class="wiki-warning" th:if="${not loginRequired and not canUpload}" th:text="#{files.forbidden}">
+        您没有权限上传文件。
+    </p>
+
+    <!-- 单文件上传表单（多文件批量上传由插件 multi-upload 增强：文件框可多选 + 列表 + 逐个上传） -->
+    <form id="file-upload-form" class="wiki-form" th:if="${canUpload}" method="post">
+        <div class="form-field">
+            <label for="file-input" th:text="#{files.choose}">选择文件</label>
+            <input type="file" id="file-input" name="file" required/>
+            <img id="file-preview" alt="" hidden/>
+        </div>
+        <div class="form-field">
+            <label for="file-name" th:text="#{files.name}">目标文件名</label>
+            <input type="text" id="file-name" name="name" th:value="${prefillName}"
+                   th:placeholder="#{files.namePlaceholder}"/>
+        </div>
+        <div class="form-field">
+            <label for="file-description" th:text="#{files.description}">文件说明</label>
+            <textarea id="file-description" name="description" rows="3"></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{files.submit}">上传</button>
+            <a th:href="@{/wiki/特殊:文件列表}" th:text="#{files.list}">文件列表</a>
+        </div>
+    </form>
+
+    <p id="file-message" class="form-message" hidden></p>
+
+    <h2 th:text="#{files.recent}">最近上传</h2>
+    <p th:if="${#lists.isEmpty(recentFiles)}" th:text="#{files.noFiles}">还没有上传任何文件。</p>
+    <ul class="file-gallery" th:unless="${#lists.isEmpty(recentFiles)}">
+        <li th:each="item : ${recentFiles}">
+            <a th:href="${item.pageUrl}" th:title="${item.name}">
+                <img th:if="${item.image}" th:src="${item.url}" th:alt="${item.name}"/>
+                <span th:unless="${item.image}" class="file-placeholder" th:text="${item.name}">文件</span>
+            </a>
+            <div class="file-gallery-name">
+                <a th:href="${item.pageUrl}" th:text="${item.name}">名称</a>
+            </div>
+        </li>
+    </ul>
+</section>
+</body>
+</html>

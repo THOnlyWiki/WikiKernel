@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:跨Wiki / Special:Interwiki（仿 MediaWiki 的 Interwiki：前缀 → 另一个 wiki 的 URL 模板） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:unless="${canManage}" th:text="#{interwiki.noPermission}">
+        只有管理员 / 行政员可以修改跨 Wiki 前缀。
+    </p>
+
+    <p class="wiki-hint" th:text="#{interwiki.intro}">
+        跨 Wiki 前缀决定 [[前缀:页面]] 的走向：普通前缀 → 外部链接；填了语言码 → 跨语言链接（正文不显示，
+        收集到侧栏「语言」）；勾选「本地前缀」→ 本站内部链接。
+    </p>
+
+    <p class="wiki-success" th:if="${saved}" th:text="#{interwiki.savedNotice}">已保存。</p>
+    <p class="wiki-success" th:if="${deleted}" th:text="#{interwiki.deletedNotice}">已删除。</p>
+
+    <!-- 添加 / 编辑（管理员） -->
+    <form id="wiki-interwiki-form" class="wiki-form" th:if="${canManage}"
+          method="post" th:action="@{/api/interwiki/save}">
+        <fieldset class="interwiki-fieldset">
+            <legend th:text="${editingId != ''} ? #{interwiki.editTitle} : #{interwiki.addTitle}">
+                添加前缀
+            </legend>
+            <input type="hidden" name="id" th:value="${editingId}"/>
+            <div class="form-field">
+                <label for="interwiki-prefix" th:text="#{interwiki.prefix}">前缀</label>
+                <input type="text" id="interwiki-prefix" name="prefix" th:value="${formPrefix}"
+                       maxlength="32" required/>
+                <span class="wiki-hint" th:text="#{interwiki.prefixHint}">
+                    不含空格 / 冒号 / 竖线；大小写不敏感。
+                </span>
+            </div>
+            <div class="form-field">
+                <label for="interwiki-url" th:text="#{interwiki.url}">URL 模板</label>
+                <input type="text" id="interwiki-url" name="url" th:value="${formUrl}"
+                       maxlength="512" required/>
+                <span class="wiki-hint" th:text="#{interwiki.urlHint}">
+                    用 $1 代表页面名，例如 https://example.org/wiki/$1（没有 $1 时追加到末尾）。
+                </span>
+            </div>
+            <div class="form-field">
+                <label for="interwiki-language" th:text="#{interwiki.language}">语言代码</label>
+                <input type="text" id="interwiki-language" name="language" th:value="${formLanguage}"
+                       maxlength="16" placeholder="en"/>
+                <span class="wiki-hint" th:text="#{interwiki.languageHint}">
+                    填写后 [[前缀:页面]] 变成跨语言链接（正文里不显示，出现在左侧「语言」区块）。
+                </span>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="interwiki-local" name="local" value="1"
+                           th:checked="${formLocal}"/>
+                    <span th:text="#{interwiki.local}">本地前缀</span>
+                </label>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="interwiki-trans" name="transcludable" value="1"
+                           th:checked="${formTranscludable}"/>
+                    <span th:text="#{interwiki.transcludable}">可嵌入</span>
+                </label>
+                <span class="wiki-hint" th:text="#{interwiki.transcludableHint}">
+                    仿 MediaWiki 的 iw_trans；目前只记录，尚未支持远端模板嵌入。
+                </span>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{interwiki.save}">保存</button>
+                <a th:if="${editingId != ''}" th:href="@{/wiki/特殊:跨Wiki}" th:text="#{common.cancel}">取消</a>
+            </div>
+            <p class="form-message" role="alert" hidden></p>
+        </fieldset>
+    </form>
+
+    <!-- 前缀表 -->
+    <p th:if="${#lists.isEmpty(rows)}" th:text="#{interwiki.empty}">还没有任何跨 Wiki 前缀。</p>
+    <table class="wikitable interwiki-table" th:unless="${#lists.isEmpty(rows)}">
+        <tr>
+            <th th:text="#{interwiki.prefix}">前缀</th>
+            <th th:text="#{interwiki.url}">URL 模板</th>
+            <th th:text="#{interwiki.language}">语言</th>
+            <th th:text="#{interwiki.flags}">标志</th>
+            <th th:if="${canManage}" th:text="#{interwiki.actions}">操作</th>
+        </tr>
+        <tr th:each="row : ${rows}">
+            <td><code th:text="${row.prefix}">w</code></td>
+            <td class="interwiki-url"><code th:text="${row.url}">https://example.org/wiki/$1</code></td>
+            <td>
+                <span th:if="${row.language != ''}"
+                      th:text="${row.languageName} + '（' + ${row.language} + '）'">英语（en）</span>
+                <span th:if="${row.language == ''}">—</span>
+            </td>
+            <td>
+                <span class="interwiki-flag" th:if="${row.local == 'true'}"
+                      th:text="#{interwiki.local}">本地前缀</span>
+                <span class="interwiki-flag" th:if="${row.transcludable == 'true'}"
+                      th:text="#{interwiki.transcludable}">可嵌入</span>
+                <span th:if="${row.local != 'true' and row.transcludable != 'true'}">—</span>
+            </td>
+            <td th:if="${canManage}">
+                <a th:href="@{/wiki/特殊:跨Wiki(edit=${row.id})}" th:text="#{common.edit}">编辑</a>
+                <button type="button" class="wiki-button interwiki-delete"
+                        th:attr="data-id=${row.id},data-prefix=${row.prefix}"
+                        th:text="#{interwiki.delete}">删除</button>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 导出 / 导入（管理员；每行：前缀 + URL + 本地 + 可嵌入 + 语言码） -->
+    <form id="wiki-interwiki-import-form" class="wiki-form" th:if="${canManage}"
+          method="post" th:action="@{/api/interwiki/import}">
+        <fieldset class="interwiki-fieldset">
+            <legend th:text="#{interwiki.exportImport}">导出 / 导入</legend>
+            <div class="form-field">
+                <label for="interwiki-export" th:text="#{interwiki.export}">导出（可直接复制）</label>
+                <textarea id="interwiki-export" class="interwiki-textarea" rows="6" readonly
+                          th:text="${exportText}"></textarea>
+            </div>
+            <div class="form-field">
+                <label for="interwiki-import" th:text="#{interwiki.import}">导入（每行一条，覆盖同名前缀）</label>
+                <textarea id="interwiki-import" class="interwiki-textarea" name="text" rows="6"
+                          th:placeholder="#{interwiki.importPlaceholder}"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{interwiki.importButton}">导入</button>
+            </div>
+            <p class="form-message" role="alert" hidden></p>
+        </fieldset>
+    </form>
+</section>
+</body>
+</html>

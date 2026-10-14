@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!--
+  Vector 皮肤（经典版）布局，模板名 skins/vector/layout：
+    顶部渐变区 5em（80px，与 MediaWiki 一致）：左上 logo 区块 160px 高（探出渐变区）、
+    右上个人工具；页签行与搜索框整行上移 2em，探进渐变区下半部（页签 40px–80px），
+    内容框顶边正好落在渐变区下沿 80px；侧栏 176px，顶部让出 logo 区块（首个分组从 176px 处开始）
+    内容框：标签栏在框上方，白底蓝框，标题为衬线体 firstHeading
+  页面模板统一用 ~{__${skin.layout}__ :: layout(...)} 套用当前皮肤；
+  通用组件在 /css/base.css，本皮肤的样式在 /skins/vector/vector.css。
+-->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(pageTitle, content)">
+<head th:replace="~{fragments/head :: head(${pageTitle} + ' - ' + (${siteName} ?: 'WikiKernel'))}">
+    <title>WikiKernel</title>
+</head>
+<body th:classappend="${printableView} ? ' wiki-printable'">
+<!-- 手机端折叠菜单开关：必须放在 body 下，才能和 .wiki-layout 成为兄弟节点（label 在头部即可） -->
+<input type="checkbox" id="wiki-menu-checkbox" class="wiki-menu-checkbox" aria-hidden="true"
+       th:unless="${printableView}"/>
+<div id="wiki-head" th:unless="${printableView}">
+    <label for="wiki-menu-checkbox" id="wiki-menu-toggle" th:title="#{common.menuToggle}">
+        <span class="wiki-menu-bars"></span><span th:text="#{common.menu}">菜单</span>
+    </label>
+    <a id="p-logo" th:href="@{/}" th:title="#{common.home}">
+        <img th:src="${skin.logoUrl}" th:alt="${siteName} ?: 'WikiKernel'"/>
+    </a>
+    <div id="p-personal">
+        <!--/* 用户栏（共享片段）：登录/注册/用户名/讨论/参数设置/外观/私信/贡献/退出 */-->
+        <th:block th:replace="~{fragments/personal-tools :: personal}"/>
+    </div>
+</div>
+
+<div class="wiki-layout">
+    <aside id="wiki-panel" class="wiki-sidebar" th:if="${sidebar != null}" th:unless="${printableView}">
+        <div class="portal" th:each="section : ${sidebar}">
+            <h3 th:if="${!#strings.isEmpty(section.title)}" th:text="${section.title}">导航</h3>
+            <ul>
+                <li th:each="item : ${section.items}">
+                    <a th:href="${item.href}" th:text="${item.label}"
+                       th:target="${item.external} ? '_blank' : null"
+                       th:rel="${item.external} ? 'nofollow' : null">条目</a>
+                </li>
+            </ul>
+        </div>
+    </aside>
+
+    <div class="wiki-column">
+        <!-- 页签行（仿 Vector 经典版）：左侧命名空间页签、右侧操作页签，最右是搜索框；始终渲染（保证搜索框在） -->
+        <div class="wiki-tabs-row" th:unless="${printableView}">
+            <ul class="tabs-left" th:if="${wikiTitle != null}">
+                <li th:classappend="${!isTalkPage} ? 'selected'">
+                    <a th:href="${isTalkPage ? subjectPageUrl : pageUrl}" th:text="#{common.page}">页面</a>
+                </li>
+                <li th:classappend="${isTalkPage} ? 'selected'">
+                    <a th:if="${talkPageUrl != null}" th:href="${talkPageUrl}"
+                       th:text="#{common.talk}">讨论</a>
+                    <span th:if="${talkPageUrl == null}" th:text="#{common.talk}">讨论</span>
+                </li>
+            </ul>
+
+            <!-- 特殊页：仿 MediaWiki 的「特殊页面」（ca-nstab-special）页签 -->
+            <ul class="tabs-left" th:if="${isSpecialPage}">
+                <li class="selected"><span th:text="#{common.specialPage}">特殊页面</span></li>
+            </ul>
+
+            <span class="tabs-spacer" aria-hidden="true"></span>
+
+            <ul class="tabs-right" th:if="${wikiTitle != null}">
+                <li th:classappend="${activeTab == null or activeTab == 'view'} ? 'selected'">
+                    <a th:href="${pageUrl}" th:text="#{common.view}">阅读</a>
+                </li>
+                <li th:if="${canVisualEdit}" th:classappend="${veMode} ? 'selected'">
+                    <a th:href="${pageUrl + '?veaction=edit'}" th:text="#{common.edit}">编辑</a>
+                </li>
+                <li th:classappend="${activeTab == 'edit' and !veMode} ? 'selected'">
+                    <a th:if="${canVisualEdit}" th:href="${pageUrl + '?action=edit'}"
+                       th:text="#{common.editSource}">编辑源代码</a>
+                    <a th:unless="${canVisualEdit}" th:href="${pageUrl + '?action=edit'}"
+                       th:text="${canEditPage} ? #{common.edit} : #{common.viewSource}">编辑</a>
+                </li>
+                <li th:classappend="${activeTab == 'history'} ? 'selected'">
+                    <a th:href="${pageUrl + '?action=history'}" th:text="#{common.history}">查看历史</a>
+                </li>
+                <li th:if="${canMove}">
+                    <a th:href="@{/wiki/特殊:移动页面(page=${wikiTitle})}" th:text="#{common.move}">移动</a>
+                </li>
+                <li th:if="${canProtect}">
+                    <a th:href="@{/wiki/特殊:保护页面(page=${wikiTitle})}"
+                       th:text="${page != null and page.protectedPage == true} ? #{common.unprotect} : #{common.protect}">保护</a>
+                </li>
+                <!-- 监视 / 取消监视（仿 MediaWiki 的监视星标；只有内容页显示） -->
+                <li class="watch-tab" th:if="${wikiTitle != null and watched != null}" id="watch-tab">
+                    <a th:if="${currentUser != null}" href="#" id="watch-toggle"
+                       th:attr="data-title=${wikiTitle},data-watched=${watched}"
+                       th:text="${watched} ? #{watch.unwatch} : #{watch.watch}">监视</a>
+                    <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录}"
+                       th:text="#{watch.watch}">监视</a>
+                </li>
+            </ul>
+
+            <!-- 搜索框（Vector 经典版和页签同一行、贴右） -->
+            <form id="p-search" th:action="@{/wiki/特殊:搜索}" method="get">
+                <input type="search" name="q" th:placeholder="#{common.searchPlaceholder(${siteName} ?: 'WikiKernel')}" th:value="${q}"
+                       th:attr="aria-label=#{common.search}"/>
+                <button type="submit" th:title="#{common.search}">
+                    <svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true">
+                        <circle cx="8" cy="8" r="5.5" fill="none" stroke="#54595d" stroke-width="2.5"/>
+                        <line x1="12" y1="12" x2="18" y2="18" stroke="#54595d" stroke-width="2.5"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <main id="content">
+            <!-- 页面横幅（页面标题上方）：由插件页面显示钩子（PageDisplayHook.beforeTitle）提供 -->
+            <div id="page-banner" th:if="${pageBeforeTitleHtml != null}">
+                <th:block th:each="fragment : ${pageBeforeTitleHtml}" th:utext="${fragment}"></th:block>
+            </div>
+            <h1 id="firstHeading" class="firstHeading" th:if="${hideTitle == null || !hideTitle}" th:text="${pageTitle}">页面标题</h1>
+            <!-- 所有页面统一的内容容器：#bodyContent + .wiki-content（正文排版与词条一致） -->
+            <div id="bodyContent" class="wiki-content" th:insert="${content}">
+                <p>页面内容</p>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div id="footer" th:unless="${printableView}">
+    <th:block th:replace="~{fragments/footer :: footer}"/>
+</div>
+</body>
+</html>

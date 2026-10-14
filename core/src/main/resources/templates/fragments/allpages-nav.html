@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<!-- 公共片段：特殊:全部页面 的翻页链接（上一页 / 下一页；列表上下各渲染一次） -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="allpages-nav" th:fragment="nav">
+    <a th:if="${prevFrom != null}"
+       th:href="@{/wiki/特殊:全部页面(namespace=${selectedNamespace}, from=${prevFrom}, to=${#strings.isEmpty(toValue) ? null : toValue}, hideredirects=${hideRedirects ? '1' : null})}"
+       th:text="#{allPages.prev(${prevFrom})}">上一页（标题）</a>
+    <a th:if="${nextFrom != null}"
+       th:href="@{/wiki/特殊:全部页面(namespace=${selectedNamespace}, from=${nextFrom}, to=${#strings.isEmpty(toValue) ? null : toValue}, hideredirects=${hideRedirects ? '1' : null})}"
+       th:text="#{allPages.next(${nextFrom})}">下一页（标题）</a>
+</div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+/*
+ * CategoryTree 样式（移植自 MediaWiki 扩展 CategoryTree 的 modules/ext.categoryTree.styles.less）。
+ *
+ * 与原版的差异：不使用 Codex 图标字体，展开箭头用纯 CSS 三角（border）实现；
+ * 也不依赖 .client-nojs / mediawiki.skin.variables 这类 MediaWiki 环境变量。
+ */
+
+/* 每层子节点左缩进 1.25em（原版 .margin-inline(1.25em, 0)） */
+.CategoryTreeChildren {
+    margin-left: 1.25em;
+}
+
+/* 箭头 / 占位符不参与选中，且与文字基线对齐 */
+.CategoryTreeBullet,
+.CategoryTreeEmptyBullet,
+.CategoryTreePageBullet {
+    user-select: none;
+    -webkit-user-select: none;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* 展开箭头：默认（aria-expanded=true 或未标注）指向下，折叠时旋转成指向右 */
+.CategoryTreeToggle::before {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-top: 5px solid #3366cc;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    transition: transform 250ms ease;
+}
+
+.CategoryTreeToggle[aria-expanded='false']::before {
+    transform: rotate(-90deg);
+}
+
+.CategoryTreeToggle:hover::before {
+    border-top-color: #2a4b8d;
+}
+
+/* 空分类：不可展开的灰色箭头 */
+.CategoryTreeEmptyBullet::before {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-top: 5px solid #c8ccd1;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+/* 非分类成员：占位宽度与箭头一致，保证同级标题左对齐 */
+.CategoryTreePageBullet {
+    width: 12px;
+}
+
+.CategoryTreeLabelPage {
+    font-style: italic;
+}
+
+.CategoryTreeParents {
+    margin-top: 1.5ex;
+    font-style: italic;
+}
+
+.CategoryTreeTag {
+    margin-top: 0.5ex;
+    margin-bottom: 0.5ex;
+}
+
+.CategoryTreeResult {
+    margin-top: 1.5ex;
+}
+
+.CategoryTreeNotice {
+    font-style: italic;
+}
+
+/* 「特殊:分类树」的表单：与 core 的 .wiki-form 风格保持一致 */
+.categorytree-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75em 1.5em;
+    align-items: flex-end;
+}
+
+.categorytree-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+}
+
+.categorytree-row input[type='text'] {
+    min-width: 16em;
+}
+
+.categorytree-showcount {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4em;
+}

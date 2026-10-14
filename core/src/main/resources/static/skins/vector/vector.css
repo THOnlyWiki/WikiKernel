@@ -1,0 +1,561 @@
+/* ============================================================
+   Vector 皮肤（仿 MediaWiki Vector 经典版 2010）：顶部 / 两栏 / 页签 / 内容框 / 页脚 / 手机端
+   通用组件在 /css/base.css，本文件只负责页面外壳
+   ============================================================ */
+
+/* ---------- 顶部渐变区（5em = 80px，与 MediaWiki Vector 相同：白色 50% → #f6f6f6，下沿即内容框顶边） ---------- */
+#wiki-head {
+    position: relative;
+    height: 5em;
+    background: #f6f6f6;
+    background-image: linear-gradient(to bottom, #ffffff 50%, #f6f6f6 100%);
+}
+
+.tabs-left, .tabs-right {
+    overflow-y: hidden;
+}
+
+/* Logo 区块（仿 MediaWiki #p-logo 的 10em × 160px）：与内容列同宽、从页面顶端起 160px 高，
+   向下探出渐变区占住侧栏顶部；侧栏用 padding-top 让出这块（见 #wiki-panel） */
+#p-logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 176px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#p-logo img {
+    width: 108px;
+    height: 108px;
+}
+
+/* 个人工具（仿 MediaWiki：@top-personal-tools 6px、右缘与内容框对齐） */
+#p-personal {
+    position: absolute;
+    top: 6px;
+    right: 1em;
+    font-size: 0.75em;
+    line-height: 1.4;
+    color: #54595d;
+}
+
+#p-personal ul {
+    list-style: none;
+    display: flex;
+    gap: 0.75em;
+    margin: 0;
+    padding: 0;
+}
+
+#p-personal li {
+    white-space: nowrap;
+}
+
+#p-personal a,
+#p-personal span {
+    color: #0645ad;
+}
+
+/* ---------- 两栏：左侧 176px 面板 + 内容（贴右边缘） ---------- */
+.wiki-layout {
+    display: flex;
+    align-items: flex-start;
+    padding-right: 0;
+}
+
+/* 侧栏：与内容列之间 176px 中缝（同 MediaWiki 的 11em 内容列）；
+   顶部让出 Logo 区块：Logo 高 160px + 与下方 1em 间距，从渐变区下沿（5em = 80px）算起，
+   所以 padding-top = 160px + 1em - 80px = 96px = 6em（首个分组因此从 176px 处开始，与 MediaWiki 一致） */
+#wiki-panel {
+    flex: 0 0 176px;
+    width: 176px;
+    padding: 6em 1em 1em;
+}
+
+.portal {
+    margin-bottom: 0.6em;
+}
+
+.portal h3 {
+    margin: 0;
+    padding: 0.25em 0.4em;
+    font-size: 0.75em;
+    font-weight: normal;
+    line-height: 1.4;
+    color: #4d4d4d;
+    background: #f6f6f6;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.portal h3::before {
+    content: "▾";
+    margin-right: 0.4em;
+    color: #909090;
+    font-size: 0.9em;
+}
+
+.portal ul {
+    list-style: none;
+    margin: 0;
+    padding: 0.3em 0 0.6em 0.8em;
+    font-size: 0.75em;
+    line-height: 1.5;
+}
+
+.portal a {
+    display: block;
+    padding: 0.1em 0;
+}
+
+/* ---------- 页签行（仿 Vector 经典版）：左命名空间 + 右操作 + 搜索框 ---------- */
+.wiki-column {
+    flex: 1;
+    min-width: 0;
+    /* 整列上移 2em：页签行探进渐变区下半部（页签 40px–80px），
+       内容框顶边正好落在渐变区下沿 80px —— 与 MediaWiki Vector 的几何一致 */
+    margin-top: -2em;
+}
+
+/* 可打印版没有渐变区与页签，不上移 */
+.wiki-printable .wiki-column {
+    margin-top: 0;
+}
+
+.wiki-tabs-row {
+    display: flex;
+    align-items: flex-end;
+    height: 2em;
+    padding: 0 1em 0 0;
+}
+
+.tabs-spacer {
+    flex: 1 1 auto;
+}
+
+.wiki-tabs-row ul {
+    list-style: none;
+    display: flex;
+    align-items: stretch;
+    height: 2.5em;
+    margin: 0;
+    padding: 0 0 0 1px;
+}
+
+/* 未选中页签：底部 1px 深蓝线 + 白色主体（Vector 经典版的背景渐变） */
+.wiki-tabs-row li {
+    display: block;
+    margin: 0;
+    padding: 0;
+    line-height: 1.125em;
+    white-space: nowrap;
+    background-image: linear-gradient(to top, #77c1f6 0, #e8f2f8 1px, #ffffff 100%);
+    background-position: left bottom;
+    background-repeat: repeat-x;
+}
+
+/* 页签本体：文字贴底、左右 8px；左边 1px 竖线（下深上透明的分隔线） */
+.wiki-tabs-row li > a,
+.wiki-tabs-row li > span {
+    display: block;
+    box-sizing: border-box;
+    height: 3.07692308em;
+    position: relative;
+    padding: 1.25em 8px 0;
+    font-size: 0.8125em;
+    line-height: 1.125em;
+    color: #0645ad;
+    text-decoration: none;
+    background-image: linear-gradient(to bottom, rgba(167, 215, 249, 0) 0, #a7d7f9 100%);
+    background-repeat: no-repeat;
+    background-size: 1px 100%;
+}
+
+/* 选中页签：底部保持白色与内容框连体，向上渐渐过渡到透明（不再是一块硬白矩形） */
+.wiki-tabs-row li.selected {
+    position: relative;
+    z-index: 2;
+    margin-bottom: -1px;
+    background: transparent;
+    background-image: linear-gradient(to top, #ffffff 60%, rgba(255, 255, 255, 0) 100%);
+    background-repeat: no-repeat;
+}
+
+.wiki-tabs-row li.selected > a,
+.wiki-tabs-row li.selected > span {
+    color: #202122;
+    text-decoration: none;
+    background-image: none;
+}
+
+.wiki-tabs-row li > a:hover,
+.wiki-tabs-row li > span:hover {
+    text-decoration: underline;
+}
+
+.wiki-tabs-row li.disabled > span {
+    color: #a2a9b1;
+    cursor: not-allowed;
+}
+
+/* 搜索框：和页签同一行、贴右（Vector 经典版 #simpleSearch） */
+.wiki-tabs-row #p-search {
+    position: relative;
+    display: block;
+    margin: 0 0 0 0.6em;
+    align-self: flex-end;
+}
+
+.wiki-tabs-row #p-search input {
+    box-sizing: border-box;
+    width: 20vw;
+    min-width: 8em;
+    max-width: 20em;
+    height: 2.5em;
+    padding: 4px 2.3em 4px 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #ffffff;   /* Vector 经典版搜索框是不透明白底（与 MediaWiki 一致） */
+    font-family: inherit;
+    font-size: 0.8125em;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.wiki-tabs-row #p-search input::placeholder {
+    color: #72777d;
+    opacity: 1;
+}
+
+.wiki-tabs-row #p-search input:hover {
+    border-color: #72777d;
+}
+
+.wiki-tabs-row #p-search input:focus {
+    outline: 0;
+    border-color: #36c;
+    box-shadow: inset 0 0 0 1px #36c;
+}
+
+.wiki-tabs-row #p-search button {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    bottom: 1px;
+    width: 2.2em;
+    min-width: 26px;
+    border: 0;
+    border-radius: 0 2px 2px 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.wiki-tabs-row #p-search button:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.wiki-tabs-row #p-search button svg {
+    opacity: 0.67;
+}
+
+/* ---------- 内容框：白底蓝框（右边框省略，和 Vector 一样贴右边缘；内边距取 MediaWiki 宽屏值） ---------- */
+#content {
+    position: relative;
+    z-index: 1;
+    min-height: 60vh;
+    padding: 1.25em 1.5em 1.5em 1.5em;
+    border: 1px solid #a7d7f9;
+    border-right-width: 0;
+    background: #ffffff;
+    line-height: 1.6;
+}
+
+/* 页面横幅（WikidataPageBanner）：贴满内容框顶部（抵消 #content 的内边距） */
+#content > #page-banner {
+    margin: -1.25em -1.5em 1em;
+}
+
+h1.firstHeading {
+    font-family: "Linux Libertine", Georgia, "Times New Roman", serif;
+    font-size: 1.8em;
+    font-weight: normal;
+    line-height: 1.3;
+    margin: 0.25em 0 0.5em;
+    padding-bottom: 0.15em;
+    border-bottom: 1px solid #a2a9b1;
+}
+
+.wiki-content {
+    line-height: 1.6;
+}
+
+.wiki-content h2 {
+    font-family: "Linux Libertine", Georgia, "Times New Roman", serif;
+    font-size: 1.5em;
+    font-weight: normal;
+    line-height: 1.3;
+    margin: 1.2em 0 0.4em;
+    padding-bottom: 0.15em;
+    border-bottom: 1px solid #a2a9b1;
+}
+
+.wiki-content h3 {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin: 1em 0 0.4em;
+}
+/* ---------- 页脚（灰色，左边距与内容对齐） ---------- */
+#footer {
+    margin-left: 176px;
+    padding: 0.75em 1.5em 2em 0;
+    color: #54595d;
+    font-size: 0.75em;
+}
+
+#footer ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5em;
+    margin: 0;
+    padding: 0;
+}
+
+.footer-languages .selected {
+    font-weight: bold;
+}
+
+.footer-languages .language-separator {
+    color: #a2a9b1;
+}
+
+/* 最后编辑信息行（footer-info）与底部链接（footer-places）分开堆叠 */
+#footer ul#footer-info {
+    margin-bottom: 0.5em;
+}
+
+/* ---------- 手机端折叠菜单（桌面端隐藏） ---------- */
+.wiki-menu-checkbox {
+    display: none;
+}
+
+#wiki-menu-toggle {
+    display: none;
+}
+
+/* ============================================================
+   手机端适配（Vector 本身不响应式，这里做轻度适配）
+   ============================================================ */
+@media (max-width: 719px) {
+    #wiki-head {
+        height: auto;
+        padding: 0.6em 0.75em;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5em;
+    }
+
+    #p-logo {
+        position: static;
+        width: auto;
+        height: auto;
+    }
+
+    #p-logo img {
+        width: 48px;
+        height: 48px;
+    }
+
+    #p-personal {
+        position: static;
+        margin-left: auto;
+        font-size: 0.75em;
+    }
+
+    /* 折叠菜单按钮 */
+    #wiki-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35em;
+        order: -1;
+        padding: 0.35em 0.6em;
+        border: 1px solid #a2a9b1;
+        border-radius: 2px;
+        background: #f8f9fa;
+        font-size: 0.8125em;
+        line-height: 1.2;
+        color: #202122;
+        cursor: pointer;
+    }
+
+    #wiki-menu-toggle:hover {
+        background: #ffffff;
+    }
+
+    .wiki-menu-bars,
+    .wiki-menu-bars::before,
+    .wiki-menu-bars::after {
+        display: block;
+        width: 13px;
+        height: 2px;
+        background: #54595d;
+    }
+
+    .wiki-menu-bars {
+        position: relative;
+    }
+
+    .wiki-menu-bars::before,
+    .wiki-menu-bars::after {
+        content: "";
+        position: absolute;
+        left: 0;
+    }
+
+    .wiki-menu-bars::before {
+        top: -5px;
+    }
+
+    .wiki-menu-bars::after {
+        top: 5px;
+    }
+
+    .wiki-layout {
+        flex-direction: column;
+        padding: 0 0.5em;
+    }
+
+    /* 侧栏默认折叠，勾选后展开 */
+    #wiki-panel {
+        display: none;
+        width: 100%;
+        flex: none;
+        padding: 0.5em 0.25em;
+        border-bottom: 1px solid #e8e8e8;
+    }
+
+    .wiki-menu-checkbox:checked ~ .wiki-layout #wiki-panel {
+        display: block;
+    }
+
+    .portal ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.2em 1em;
+        padding: 0.2em 0 0.4em 0.2em;
+    }
+
+    .wiki-tabs-row {
+        height: auto;
+        flex-wrap: wrap;
+        padding: 0.5em 0 0 0;
+    }
+
+    .wiki-tabs-row ul {
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        overflow-x: auto;
+    }
+
+    .wiki-tabs-row li > a,
+    .wiki-tabs-row li > span {
+        padding: 1.25em 0.7em 0;
+    }
+
+    .wiki-tabs-row #p-search {
+        order: 10;
+        width: 100%;
+        margin: 0.4em 0 0;
+    }
+
+    .wiki-tabs-row #p-search input {
+        width: 100%;
+        max-width: none;
+    }
+
+    #content {
+        border-right-width: 1px;
+        padding: 0.75em;
+        min-height: 50vh;
+    }
+
+    h1.firstHeading {
+        font-size: 1.5em;
+    }
+
+    #footer {
+        margin-left: 0;
+        padding: 0.75em 0.75em 1.5em;
+    }
+}
+
+/* ==================== 移动端：布局改块级，避免 fit-content 把列宽按内容撑开 ==================== */
+@media (max-width: 719px) {
+    .wiki-layout {
+        display: block;
+    }
+
+    .wiki-column {
+        width: auto;
+        /* 移动端是纵向堆叠，取消桌面端“页签探进渐变区”的上移 */
+        margin-top: 0;
+    }
+
+    .wiki-tabs-row {
+        width: 100%;
+        padding-right: 0;
+    }
+
+    #wiki-panel {
+        width: 100%;
+    }
+
+    .wiki-tabs-row #p-search input {
+        min-width: 0;
+    }
+}
+
+/* ==================== 移动端：登录后的用户栏不要换行（单行横向滑动，全部链接保留） ==================== */
+@media (max-width: 719px) {
+    #wiki-head {
+        flex-wrap: nowrap;
+    }
+
+    #p-personal {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin-left: auto;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #p-personal::-webkit-scrollbar {
+        display: none;
+    }
+
+    #p-personal ul {
+        flex-wrap: nowrap;
+        margin-left: auto;
+    }
+
+    #p-personal li {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 719px) {
+    #wiki-menu-toggle {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    #p-logo {
+        flex: 0 0 auto;
+    }
+}

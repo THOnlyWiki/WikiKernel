@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- 特殊:相关更改 / Special:RelatedChanges -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:if="${pageRequired}" th:text="#{relatedChanges.pageRequired}">
+        请输入要查询的页面标题。
+    </p>
+    <th:block th:unless="${pageRequired}">
+        <p th:text="#{relatedChanges.intro(${target})}">链接到 … 的页面的最近更改：</p>
+        <p th:if="${#lists.isEmpty(changes)}" th:text="#{relatedChanges.none}">没有相关更改。</p>
+        <ul class="change-list" th:unless="${#lists.isEmpty(changes)}">
+            <li th:each="row : ${changes}">
+                <span class="history-date"
+                      th:text="${@wikiTime.format(row.revision.createAt)}">时间</span>
+                <a th:if="${row.page != null}" th:href="${row.pageUrl}" th:text="${row.page.title}">页面</a>
+                <span class="history-user">
+                    <a th:if="${row.userName != null}" th:href="@{/wiki/{t}(t=${'用户:' + row.userName})}"
+                       th:text="${row.userName}">用户</a>
+                    <span th:if="${row.userName == null}" th:text="#{common.anonymous}">匿名用户</span>
+                </span>
+                <span class="history-comment"
+                      th:text="${row.revision.comment == null or row.revision.comment.isEmpty()
+                              ? #messages.msg('common.noSummary') : row.revision.comment}">摘要</span>
+            </li>
+        </ul>
+    </th:block>
+</section>
+</body>
+</html>

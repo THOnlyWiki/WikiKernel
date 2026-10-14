@@ -1,0 +1,219 @@
+/*
+ * 评论区（<comment />，wiki_comments）：论坛 / 贴吧式紧凑样式。
+ * 从 core 的 base.css 迁出（插件 comments）；插件加载时经 head 扩展注入。
+ */
+/* ===== 评论区（<comment />，wiki_comments）：论坛 / 贴吧式紧凑样式 ===== */
+.wiki-comments {
+    margin-top: 1.2em;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.comments-title {
+    margin: 0 0 0.45em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid #eaecf0;
+    font-size: 1.05em;
+    font-weight: bold;
+}
+
+.comment-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* 每条评论：白底 + 细灰边框 + 极小内边距，没有大卡片感 */
+.comment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45em;
+    margin: 0 0 4px;
+    padding: 4px 8px 5px;
+    border: 1px solid #e3e5e8;
+    border-radius: 2px;
+    background: #ffffff;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.02);
+}
+
+/* 头像：缩小成评论信息的一部分（约 26px），不再是视觉主体；按原图比例自然缩放 */
+.comment-avatar {
+    flex: 0 0 auto;
+    max-width: 26px;
+    max-height: 26px;
+    width: auto;
+    height: auto;
+    margin-top: 2px;
+    border: 1px solid #e3e5e8;
+    background: #f0f2f4;
+}
+
+.comment-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* 多级评论：只用左侧缩进体现层级（每层 1.4em、最深 4 级），不再是层层大盒子 */
+.comment-item[data-depth="1"] {
+    margin-left: 1.4em;
+}
+
+.comment-item[data-depth="2"] {
+    margin-left: 2.8em;
+}
+
+.comment-item[data-depth="3"] {
+    margin-left: 4.2em;
+}
+
+.comment-item[data-depth="4"] {
+    margin-left: 5.6em;
+}
+
+.comment-item.comment-deleted {
+    background: #fafafa;
+}
+
+/* 刚发表的评论：短暂高亮后淡回普通背景（配合 comments.js 的定位滚动） */
+.comment-item.comment-new {
+    animation: wikiNewComment 3s ease-out;
+}
+
+/* 信息行：用户名（蓝）+ 时间（浅灰），小字、紧凑 */
+.comment-header {
+    margin-bottom: 0.05em;
+    color: #888888;
+    font-size: 0.8125em;
+    line-height: 1.55;
+}
+
+.comment-header .comment-author {
+    color: #36c;
+    font-weight: bold;
+}
+
+.comment-header a.comment-author:hover {
+    text-decoration: underline;
+}
+
+.comment-time {
+    margin-left: 0.45em;
+    color: #888888;
+}
+
+/* 正文：深色小字，紧贴信息行 */
+.comment-body {
+    overflow-wrap: anywhere;
+    color: #202122;
+    font-size: 0.9375em;
+    line-height: 1.65;
+}
+
+.comment-body > :first-child {
+    margin-top: 0;
+}
+
+.comment-body > :last-child {
+    margin-bottom: 0;
+}
+
+.comment-tombstone {
+    color: #888888;
+    font-style: italic;
+}
+
+/* 操作：回复（蓝）/ 删除（红），小字紧凑 */
+.comment-actions {
+    margin-top: 0.05em;
+    font-size: 0.8125em;
+    line-height: 1.6;
+}
+
+.comment-reply-link,
+.comment-delete-link,
+.message-delete {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    margin-right: 0.9em;
+    color: #36c;
+    font: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.comment-reply-link:hover,
+.comment-delete-link:hover,
+.message-delete:hover {
+    text-decoration: underline;
+}
+
+.comment-delete-link,
+.message-delete {
+    color: #d73333;
+}
+
+/* 输入区：移到评论区最上面；简洁紧凑的小输入框 */
+.comment-form {
+    max-width: 100%;
+    margin: 0 0 0.7em;
+    padding: 6px 8px;
+    border: 1px solid #e3e5e8;
+    border-radius: 2px;
+    background: #fafbfc;
+}
+
+.comment-form .form-field {
+    margin: 0 0 0.35em;
+}
+
+.comment-form .form-field > label {
+    color: #555555;
+    font-size: 0.8125em;
+}
+
+.comment-form textarea {
+    padding: 5px 6px;
+    font-size: 0.9375em;
+    line-height: 1.6;
+    /* 宽度自适应容器，只允许上下拖动调整高度 */
+    resize: vertical;
+    min-height: 3.2em;
+}
+
+.comment-form .form-actions {
+    margin-top: 0.3em;
+}
+
+.comment-form .wiki-button {
+    padding: 0.2em 1em;
+    font-size: 0.875em;
+}
+
+.comment-reply-note {
+    margin: 0.2em 0;
+    color: #666666;
+    font-size: 0.8125em;
+}
+
+.comment-reply-cancel {
+    margin-left: 0.6em;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #36c;
+    font: inherit;
+    font-size: 0.8125em;
+    cursor: pointer;
+}
+
+.comment-reply-cancel:hover {
+    text-decoration: underline;
+}
+
+.comment-empty,
+.comment-intro {
+    color: #888888;
+    font-size: 0.875em;
+}
+

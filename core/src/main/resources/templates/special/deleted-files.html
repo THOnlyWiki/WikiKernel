@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- 特殊:已删除文件 / Special:DeletedFiles：软删除文件回收站（恢复 / 彻底删除） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:unless="${canDelete}" th:text="#{files.deletedFilesForbidden}">
+        您没有权限查看已删除的文件。
+    </p>
+
+    <th:block th:if="${canDelete}">
+        <p th:text="#{files.deletedFilesIntro}">这里列出被删除的文件。</p>
+        <p th:if="${#lists.isEmpty(files)}" th:text="#{files.noDeletedFiles}">没有被删除的文件。</p>
+
+        <table class="wikitable" th:unless="${#lists.isEmpty(files)}">
+            <tr>
+                <th th:text="#{files.infoName}">文件名</th>
+                <th th:text="#{files.size}">大小</th>
+                <th th:text="#{files.uploader}">上传者</th>
+                <th th:text="#{files.deletedByLabel}">删除者</th>
+                <th th:text="#{files.deletedAtLabel}">删除时间</th>
+                <th th:text="#{files.actions}">操作</th>
+            </tr>
+            <tr th:each="item : ${files}">
+                <td><a th:href="${item.pageUrl}" th:text="${item.name}">文件名</a></td>
+                <td th:text="${item.sizeText}">大小</td>
+                <td>
+                    <a th:if="${item.uploaderName != null}" th:href="@{/wiki/{t}(t=${'用户:' + item.uploaderName})}"
+                       th:text="${item.uploaderName}">上传者</a>
+                    <span th:if="${item.uploaderName == null}" th:text="#{common.anonymous}">匿名用户</span>
+                </td>
+                <td>
+                    <a th:if="${item.deletedByName != null}" th:href="@{/wiki/{t}(t=${'用户:' + item.deletedByName})}"
+                       th:text="${item.deletedByName}">删除者</a>
+                    <span th:if="${item.deletedByName == null}">—</span>
+                </td>
+                <td th:if="${item.deletedAt != null}"
+                    th:text="${@wikiTime.format(item.deletedAt)}">时间</td>
+                <td th:unless="${item.deletedAt != null}">—</td>
+                <td>
+                    <button type="button" class="wiki-button file-restore" th:attr="data-id=${item.id}"
+                            th:text="#{files.restore}">恢复</button>
+                    <button type="button" class="wiki-button file-purge" th:if="${item.canPurge}"
+                            th:attr="data-id=${item.id},data-name=${item.name}"
+                            th:text="#{files.purge}">彻底删除</button>
+                </td>
+            </tr>
+        </table>
+    </th:block>
+
+    <p id="file-message" class="form-message" hidden></p>
+</section>
+</body>
+</html>

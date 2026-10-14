@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<!-- 特殊:用户 / Special:User：兼容入口（带 name 会 302 到 用户:<name> 命名空间页面） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{userPage.intro}">
+        用户页位于用户命名空间（用户:用户名），是普通 Wiki 页面，可以创建和编辑。
+    </p>
+    <form class="wiki-form wiki-form-inline" th:if="${lookupRequired}"
+          th:action="@{/wiki/特殊:用户}" method="get">
+        <input type="text" name="name" required autofocus
+               th:placeholder="#{userPage.namePlaceholder}"/>
+        <button type="submit" class="wiki-button" th:text="#{userPage.open}">进入用户页</button>
+    </form>
+</section>
+</body>
+</html>

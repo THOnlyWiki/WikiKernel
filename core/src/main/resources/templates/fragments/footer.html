@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!--/*
+  公共片段：页脚（MediaWiki 风格）——「此页面最后编辑于…」信息行 +
+  左侧区（默认：隐私政策 / 关于XXX / 免责声明）+ 右侧区（默认：语言切换）。
+  WikiKernel:Footer-Left / WikiKernel:Footer-Right 页面存在时分别替换左右两区：
+  左区内容左对齐、右区内容右对齐（仿 MediaWiki 的 footer-places / footer-icons）。
+  Vector、fallback 与插件皮肤共用本片段，保证所有页面页脚一致。
+  本文件注释均为解析级注释，不会输出到页面。
+*/-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="footer">
+    <!--/* 最后编辑信息（仿 MediaWiki 的 footer-info-lastmod）：只在有版本的页面显示，特殊页没有 */-->
+    <ul id="footer-info" th:if="${footerLastEdited != null}">
+        <li id="footer-info-lastmod"
+            th:text="#{footer.lastEdited(${@wikiTime.formatWeekday(footerLastEdited)})}">此页面最后编辑于 2026年10月7日 (星期三) 09:48。</li>
+    </ul>
+    <!--/* 底部左右两区：左区贴左、右区贴右（各自可被页脚页面替换） */-->
+    <div id="footer-places">
+        <div class="footer-left">
+            <ul class="footer-places-list" th:if="${footerLeftHtml == null}">
+                <li><a th:href="@{/wiki/WikiKernel:隐私政策}" th:text="#{footer.privacy}">隐私政策</a></li>
+                <li><a th:href="@{/wiki/WikiKernel:关于}" th:text="#{footer.about}">关于WikiKernel</a></li>
+                <li><a th:href="@{/wiki/WikiKernel:免责声明}" th:text="#{footer.disclaimers}">免责声明</a></li>
+            </ul>
+            <div class="footer-custom footer-custom-left" th:if="${footerLeftHtml != null}"
+                 th:utext="${footerLeftHtml}">页脚左侧（WikiKernel:Footer-Left）</div>
+        </div>
+        <div class="footer-right">
+            <ul class="footer-languages-list" th:if="${footerRightHtml == null}">
+                <th:block th:replace="~{fragments/footer-languages :: languages}"/>
+            </ul>
+            <div class="footer-custom footer-custom-right" th:if="${footerRightHtml != null}"
+                 th:utext="${footerRightHtml}">页脚右侧（WikiKernel:Footer-Right）</div>
+        </div>
+    </div>
+    <!--/* 页脚标识行（仿 MediaWiki 的 footer-icons）：「站点名称 · Powered by Spring Boot」；
+        站点名称可在 站点设置 / /init / wikikernel.site.name 配置 */-->
+    <ul id="footer-icons">
+        <li th:text="#{site.footer(${siteName} ?: 'WikiKernel')}">WikiKernel · Powered by Spring Boot</li>
+    </ul>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- 特殊:导出页面 / Special:Export -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="export-intro" th:text="#{export.intro}">
+        导出页面数据（Wikitext / 完整历史 / 引用模板），可用于备份、迁移或提供给 MediaWiki 导入。
+    </p>
+
+    <form id="wiki-export-form" class="wiki-form" method="post" th:action="@{/api/export}">
+        <div class="form-field">
+            <label for="wpPages" th:text="#{export.pagesLabel}">页面标题（每行一个）：</label>
+            <textarea id="wpPages" name="pages" rows="10" th:text="${pagesText}"
+                      th:placeholder="#{export.pagesPlaceholder}"></textarea>
+        </div>
+        <div class="form-field form-field-inline">
+            <label>
+                <input type="checkbox" name="history" value="1" checked/>
+                <span th:text="#{export.history}">包含完整历史（不勾选时只导出当前版本）</span>
+            </label>
+        </div>
+        <div class="form-field form-field-inline">
+            <label>
+                <input type="checkbox" name="templates" value="1"/>
+                <span th:text="#{export.templates}">包含所有引用的模板</span>
+            </label>
+        </div>
+        <div class="form-field">
+            <label for="wpFormat" th:text="#{export.format}">格式：</label>
+            <select id="wpFormat" name="format">
+                <option th:each="option : ${formatOptions}" th:value="${option.id}"
+                        th:text="${option.label}" th:selected="${option.selected}">MediaWiki XML</option>
+            </select>
+        </div>
+        <input type="hidden" name="download" value="1"/>
+        <p class="wiki-hint" th:text="#{export.limit(${maxPages}, ${maxRevisions})}">
+            单次最多导出 200 个页面、5000 个版本。
+        </p>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{export.download}">导出</button>
+        </div>
+    </form>
+
+    <form id="wiki-export-addns" class="wiki-form wiki-form-inline" method="get"
+          th:action="@{/wiki/特殊:导出页面}">
+        <label for="wpAddns" th:text="#{export.addNamespace}">添加命名空间全部页面：</label>
+        <select id="wpAddns" name="addns">
+            <option th:each="option : ${namespaceOptions}" th:value="${option.id}"
+                    th:text="${option.label}" th:selected="${option.selected}">主命名空间</option>
+        </select>
+        <button type="submit" class="wiki-button" th:text="#{export.addNamespaceButton}">添加</button>
+    </form>
+    <p class="wiki-hint" th:if="${addedNamespaceCount != null}"
+       th:text="#{export.addedCount(${addedNamespaceCount}, ${addedNamespaceName})}">
+        已添加 0 个页面。
+    </p>
+</section>
+</body>
+</html>

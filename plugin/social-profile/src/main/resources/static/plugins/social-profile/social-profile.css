@@ -1,0 +1,1301 @@
+/*
+ * 插件 social-profile 的 SocialProfile 样式（资料字段 / 留言板 / 好友 / 礼物 / 勋章 / 排行榜 /
+ * 随机用户 / 社交偏好），由 HtmlHeadProvider（siteWide）注入：
+ *   /plugins/social-profile/social-profile.css
+ * 类名统一以 sp- 开头（social profile），与 core 的 base.css 不冲突。
+ */
+
+/* ===== 社交页统一导航条（10 个社交特殊页顶部一致；当前页高亮 li > a[aria-current="page"]） ===== */
+.sp-nav {
+    margin: 0 0 1em;
+    border-bottom: 2px solid var(--wiki-border);
+}
+
+.sp-nav-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sp-nav-list li {
+    min-width: 0;
+}
+
+.sp-nav-list a {
+    display: block;
+    max-width: 100%;
+    padding: 0.45em 0.8em;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: var(--wiki-link);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow-wrap: break-word;
+}
+
+.sp-nav-list a:hover {
+    background: #eaecf0;
+    text-decoration: underline;
+}
+
+.sp-nav-list a[aria-current="page"] {
+    border-color: var(--wiki-border);
+    background: #ffffff;
+    color: #202122;
+    font-weight: bold;
+}
+
+/* 页面说明（<h1> 下面那行灰色文字） */
+.sp-page-desc {
+    margin: 0 0 0.8em;
+    color: var(--wiki-text-muted);
+}
+
+/* 空状态：一句说明 + 一个可点的下一步 */
+.sp-empty-block {
+    margin: 0.6em 0 1em;
+}
+
+.sp-empty-next {
+    margin: 0.3em 0 0;
+    color: var(--wiki-text-muted);
+}
+
+.sp-empty-next a {
+    font-weight: bold;
+}
+
+/* ===== 页面内的标签行（与 .messages-tabs 同一套观感） ===== */
+.sp-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em;
+    margin: 0 0 1em;
+    padding: 0;
+    list-style: none;
+    border-bottom: 1px solid var(--wiki-border);
+}
+
+.sp-tabs li a {
+    display: block;
+    padding: 0.4em 0.9em;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: var(--wiki-link);
+    text-decoration: none;
+}
+
+.sp-tabs li a:hover {
+    text-decoration: underline;
+}
+
+.sp-tabs li.selected a {
+    border-color: var(--wiki-border);
+    background: #ffffff;
+    color: #202122;
+    font-weight: bold;
+}
+
+.sp-badge {
+    display: inline-block;
+    margin-left: 0.25em;
+    padding: 0 0.35em;
+    border-radius: 0.6em;
+    background: #d73333;
+    color: #ffffff;
+    font-size: 0.75em;
+    font-weight: bold;
+}
+
+/* ===== 用户页资料卡：操作按钮行 / 关系状态 / 关于字段 / 统计栏 / 内嵌留言板 =====
+   面板由 UserProfileHook.panelHtml 贡献（资料卡下方、正文之前），顺序就是
+   「操作按钮行 → 关系状态 → 关于 → 统计栏 → 内嵌留言板」；资料卡本身只有 core 的东西、
+   不含任何社交入口（不在两处重复：脚本也不再搬家，见 social-profile.js 的说明）。 */
+.wiki-profile-panel {
+    margin: 0 0 1em;
+}
+
+.sp-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em 0.5em;
+    margin-top: 0.6em;
+}
+
+/* 统一大小的操作按钮（留言板 / 加好友 / 送礼物 / 发私信 / 编辑资料 / 提交留言） */
+.sp-button {
+    display: inline-block;
+    padding: 0.4em 0.9em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #f8f9fa;
+    color: var(--wiki-link);
+    font-size: 0.9375em;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.12s ease;
+}
+
+.sp-button:hover,
+.sp-button:focus {
+    border-color: var(--wiki-link);
+    background: #eaecf0;
+    color: var(--wiki-link);
+    text-decoration: none;
+}
+
+.sp-button-friend {
+    border-color: var(--wiki-link);
+    background: #eaf3ff;
+    font-weight: bold;
+}
+
+.sp-button-friend.is-on,
+.sp-button-friend.is-pending {
+    border-color: var(--wiki-border);
+    background: #f8f9fa;
+    color: var(--wiki-text-muted);
+    font-weight: normal;
+    cursor: default;
+}
+
+.sp-button-primary {
+    border-color: #36c;
+    background: #36c;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.sp-button-primary:hover,
+.sp-button-primary:focus {
+    border-color: #2a4b8d;
+    background: #2a4b8d;
+    color: #ffffff;
+}
+
+/* 关系状态行（已是好友 / 请求待处理 / 对方把我加为仇敌） */
+.sp-card-relation {
+    margin: 0.5em 0 0;
+    color: var(--wiki-text-muted);
+    font-size: 0.875em;
+}
+
+/* ===== 关于（资料字段：双栏 <dl>，字段名前有小图标） ===== */
+.sp-about-section {
+    margin: 0 0 1em;
+}
+
+.sp-fields {
+    display: grid;
+    grid-template-columns: 9.5em minmax(0, 1fr);
+    gap: 0.3em 1em;
+    margin: 0.3em 0 0.6em;
+}
+
+.sp-fields dt {
+    color: var(--wiki-text-muted);
+}
+
+.sp-field-icon {
+    display: inline-block;
+    width: 1.4em;
+}
+
+.sp-fields dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.sp-subheading {
+    margin: 0.9em 0 0.4em;
+    font-size: 1em;
+}
+
+/* ===== 统计栏（好友数 / 礼物数 / 勋章数 / 好友请求待处理数，每一项都能点） ===== */
+.sp-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin: 0 0 1em;
+}
+
+.sp-stat {
+    display: flex;
+    flex: 1 1 8em;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1em;
+    min-width: 0;
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sp-stat:hover {
+    border-color: var(--wiki-link);
+    background: #f8f9fa;
+    text-decoration: none;
+}
+
+.sp-stat-value {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #202122;
+}
+
+.sp-stat-label {
+    color: var(--wiki-text-muted);
+    font-size: 0.8125em;
+    text-align: center;
+}
+
+/* ===== 资料头部 / 字段表 ===== */
+.sp-profile-head {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin: 0.6em 0 1em;
+}
+
+/* 头像在 flex 行里要贴左：core 的 .wiki-avatar 带 `margin: 0 auto`，
+   在 flex 容器里会被当作自动外边距吸收剩余空间，把右边的名字挤到行尾 */
+.sp-profile-head .wiki-avatar {
+    flex: 0 0 auto;
+    margin: 0;
+    width: 96px;
+    height: 96px;
+}
+
+.sp-avatar-small {
+    max-width: 96px;
+    max-height: 96px;
+}
+
+.sp-avatar-medium {
+    max-width: 140px;
+    max-height: 140px;
+}
+
+.sp-avatar-tiny {
+    max-width: 24px;
+    max-height: 24px;
+    vertical-align: middle;
+    margin-right: 0.4em;
+}
+
+.sp-profile-name {
+    font-size: 1.35em;
+    font-weight: bold;
+}
+
+.sp-heading {
+    margin: 1.2em 0 0.5em;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid var(--wiki-border);
+    font-size: 1.15em;
+}
+
+.sp-fields-table {
+    border-collapse: collapse;
+    margin: 0.3em 0 0.6em;
+}
+
+.sp-fields-table th,
+.sp-fields-table td {
+    padding: 0.2em 0.6em 0.2em 0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.sp-field-label {
+    width: 8em;
+    color: var(--wiki-text-muted);
+    font-weight: normal;
+}
+
+.sp-about-body {
+    padding: 0.5em 0.7em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+.sp-about-body > :first-child,
+.sp-board-body > :first-child {
+    margin-top: 0;
+}
+
+.sp-about-body > :last-child,
+.sp-board-body > :last-child {
+    margin-bottom: 0;
+}
+
+.sp-edit-link {
+    margin: 0.4em 0 0;
+}
+
+.sp-summary {
+    color: var(--wiki-text-muted);
+}
+
+.sp-sep {
+    margin: 0 0.35em;
+    color: var(--wiki-text-muted);
+}
+
+.sp-empty,
+.sp-hint {
+    color: var(--wiki-text-muted);
+}
+
+.sp-board-count {
+    color: var(--wiki-text-muted);
+}
+
+/* ===== 留言板页面的工具栏（返回用户页 + 条数 / 全部留言）===== */
+.sp-board-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.4em 1em;
+    margin: 0.2em 0 0.8em;
+    padding-bottom: 0.4em;
+    border-bottom: 1px solid var(--wiki-border);
+}
+
+.sp-board-back {
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.sp-board-toolbar-right {
+    color: var(--wiki-text-muted);
+    font-size: 0.9375em;
+}
+
+/* ===== 留言板（内嵌在用户页：最近 N 条 + 回复缩进 + 内联输入框 + 查看全部） ===== */
+.sp-board {
+    margin-top: 1em;
+}
+
+.sp-board-list,
+.sp-board-replies {
+    margin: 0.4em 0 0.8em;
+    padding: 0;
+    list-style: none;
+}
+
+/* 顶层留言左侧留一条竖线（回复缩进在它下面，一眼能看出层级） */
+.sp-board-list > .sp-board-item {
+    border-left: 3px solid var(--wiki-border);
+}
+
+.sp-board-replies {
+    margin: 0.4em 0 0 1.2em;
+    padding-left: 0.8em;
+    border-left: 2px solid var(--wiki-border);
+}
+
+.sp-board-replies > .sp-board-item {
+    background: #f8f9fa;
+}
+
+.sp-board-reply {
+    list-style: none;
+}
+
+.sp-board-item {
+    margin: 0.5em 0;
+    padding: 0.5em 0.7em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+.sp-board-meta {
+    margin-bottom: 0.25em;
+    font-size: 0.875em;
+    color: var(--wiki-text-muted);
+}
+
+.sp-board-author {
+    font-weight: bold;
+}
+
+.sp-board-body {
+    line-height: 1.55;
+}
+
+.sp-board-deleted {
+    color: var(--wiki-text-muted);
+    font-style: italic;
+}
+
+.sp-board-actions {
+    display: flex;
+    gap: 0.8em;
+    margin-top: 0.35em;
+    font-size: 0.875em;
+}
+
+.sp-board-actions button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--wiki-link);
+    cursor: pointer;
+    font: inherit;
+}
+
+.sp-board-actions button:hover {
+    text-decoration: underline;
+}
+
+.sp-board-form {
+    margin-top: 0.9em;
+}
+
+.sp-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0.6em 0;
+}
+
+/* ===== 编辑资料页：字段分组（基本信息 / 社交信息 / 隐私开关） ===== */
+.sp-field-group {
+    margin: 0 0 1.1em;
+    padding: 0.6em 0.9em 0.3em;
+    border: 1px solid var(--wiki-border);
+}
+
+.sp-group-title {
+    padding: 0 0.4em;
+    color: var(--wiki-text-muted);
+    font-size: 0.95em;
+    font-weight: bold;
+}
+
+.sp-group-body {
+    min-width: 0;
+}
+
+/* 主操作（保存）与次要操作（返回 / 看效果）拉开层次 */
+.sp-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1em;
+}
+
+.sp-secondary-link {
+    color: var(--wiki-link);
+}
+
+.sp-button-primary {
+    font-weight: bold;
+}
+
+/* ===== 用户列表（好友 / 仇敌 / 请求） ===== */
+.sp-user-list {
+    margin: 0.4em 0 0.8em;
+    padding: 0;
+    list-style: none;
+}
+
+.sp-user-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em 0.8em;
+    padding: 0.35em 0;
+    border-bottom: 1px solid var(--wiki-border);
+    min-width: 0;
+}
+
+/* 列表项里的头像位（没有头像数据时用用户名首字，够窄也不会挤掉操作按钮） */
+.sp-user-avatar {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 1.8em;
+    height: 1.8em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 50%;
+    background: #eaecf0;
+    color: var(--wiki-text-muted);
+    font-size: 0.9em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.sp-user-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.sp-user-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7em;
+    font-size: 0.875em;
+}
+
+.sp-user-actions button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--wiki-link);
+    cursor: pointer;
+    font: inherit;
+}
+
+.sp-user-actions button:hover {
+    text-decoration: underline;
+}
+
+/* ===== 礼物 ===== */
+.sp-gift-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 1.2em;
+    margin: 0.3em 0 0.7em;
+    padding: 0;
+    list-style: none;
+}
+
+.sp-gift-icon,
+.sp-award-icon {
+    color: #d4a017;
+}
+
+.sp-gift-message {
+    color: var(--wiki-text-muted);
+}
+
+.sp-gift-table button,
+.sp-award-item button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--wiki-link);
+    cursor: pointer;
+    font: inherit;
+}
+
+.sp-gift-table button:hover,
+.sp-award-item button:hover {
+    text-decoration: underline;
+}
+
+/* 送礼物：可点选的礼物卡片（label + radio，选中态在 CSS 里） */
+.sp-gift-picker {
+    margin: 0 0 1em;
+    padding: 0.6em 0.9em 0.9em;
+    border: 1px solid var(--wiki-border);
+}
+
+.sp-gift-picker legend {
+    padding: 0 0.4em;
+    color: var(--wiki-text-muted);
+    font-weight: bold;
+}
+
+.sp-gift-picker-hint {
+    margin: 0 0 0.5em;
+}
+
+.sp-gift-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6em;
+}
+
+.sp-gift-card {
+    display: flex;
+    flex: 1 1 9.5em;
+    flex-direction: column;
+    gap: 0.15em;
+    min-width: 0;
+    padding: 0.55em 0.7em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sp-gift-card:hover {
+    border-color: var(--wiki-link);
+    background: #f8f9fa;
+}
+
+.sp-gift-radio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.sp-gift-card-name {
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.sp-gift-card-desc {
+    color: var(--wiki-text-muted);
+    font-size: 0.8125em;
+    overflow-wrap: anywhere;
+}
+
+/* 选中态：优先 :has()，老浏览器回退到键盘聚焦高亮 */
+.sp-gift-card:has(.sp-gift-radio:checked) {
+    border-color: #36c;
+    background: #eaf3ff;
+    box-shadow: inset 0 0 0 1px #36c;
+}
+
+.sp-gift-card:has(.sp-gift-radio:focus-visible) {
+    outline: 2px solid #36c;
+    outline-offset: 1px;
+}
+
+.sp-gift-card:focus-within {
+    border-color: var(--wiki-link);
+}
+
+/* ===== 勋章 ===== */
+.sp-award-list {
+    margin: 0.3em 0 0.8em;
+    padding: 0;
+    list-style: none;
+}
+
+.sp-award-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5em;
+    padding: 0.3em 0;
+    border-bottom: 1px solid var(--wiki-border);
+}
+
+.sp-award-name {
+    font-weight: bold;
+}
+
+.sp-award-meta {
+    color: var(--wiki-text-muted);
+    font-size: 0.875em;
+}
+
+/* ===== 排行榜 ===== */
+.sp-rank {
+    width: 3em;
+    color: var(--wiki-text-muted);
+    font-weight: bold;
+}
+
+.sp-top-user {
+    white-space: nowrap;
+}
+
+.sp-pager {
+    display: flex;
+    gap: 1em;
+    margin: 0.6em 0;
+}
+
+.sp-level-list {
+    margin: 0.3em 0 0.8em;
+    padding-left: 1.4em;
+    color: var(--wiki-text-muted);
+}
+
+/* ===== 随机用户 ===== */
+.sp-random-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    margin: 0.6em 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sp-random-item {
+    width: 180px;
+    padding: 0.6em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+    text-align: center;
+}
+
+.sp-random-avatar {
+    display: block;
+}
+
+.sp-random-avatar .wiki-avatar {
+    margin: 0 auto;
+}
+
+.sp-random-name {
+    margin-top: 0.4em;
+    font-weight: bold;
+}
+
+.sp-random-meta,
+.sp-random-actions {
+    margin-top: 0.3em;
+    font-size: 0.8125em;
+    color: var(--wiki-text-muted);
+}
+
+.sp-random-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.6em;
+}
+
+/* ===== 社交偏好（参数设置分区 / 编辑资料页） ===== */
+.sp-preferences {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+    margin: 0.5em 0;
+}
+
+/* ===== 操作成功提示（右上角，2.5 秒后消失） ===== */
+.sp-toast {
+    position: fixed;
+    top: 1em;
+    right: 1em;
+    z-index: 1000;
+    max-width: 20em;
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--wiki-border);
+    background: #d5fdf4;
+    color: #14866d;
+    opacity: 0;
+    transform: translateY(-0.5em);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.sp-toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===== 排行榜：前三名（淡金 / 淡银 / 淡铜） ===== */
+.sp-top-table tbody tr.is-top1 td {
+    background: #fdf3d0;
+}
+
+.sp-top-table tbody tr.is-top2 td {
+    background: #f0f1f3;
+}
+
+.sp-top-table tbody tr.is-top3 td {
+    background: #f7e6d8;
+}
+
+.sp-top-table tbody tr.is-top1 .sp-rank,
+.sp-top-table tbody tr.is-top2 .sp-rank,
+.sp-top-table tbody tr.is-top3 .sp-rank {
+    color: #202122;
+}
+
+.sp-top-points {
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+/* ===== 移动端（375px 宽不横向滚动；长用户名 / 长礼物名可换行） ===== */
+.sp-nav-list a,
+.sp-tabs li a,
+.messages-tabs li a {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.sp-page-desc,
+.wiki-hint,
+.sp-empty,
+.sp-empty-next,
+.sp-hint {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+    /* 用户页资料卡：双栏 → 单栏（头像居中、按钮换行、统计栏横排滚动） */
+    .wiki-profile {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.7em;
+        padding: 0.8em;
+        text-align: center;
+    }
+
+    .wiki-profile-image {
+        width: 150px;
+    }
+
+    .wiki-profile-body {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
+    .wiki-profile-meta {
+        justify-content: center;
+    }
+
+    /* 窄屏：组徽章与统计行居中，徽章不撑破一行（core 已限 3 个 + 「+N」） */
+    .wiki-profile-groups {
+        justify-content: center;
+    }
+
+    /* 窄屏：面板里的操作按钮行换行居中（社交入口只在这一处） */
+    .wiki-profile-panel .sp-card-actions {
+        justify-content: center;
+    }
+
+    .sp-button {
+        flex: 1 1 auto;
+        padding: 0.45em 0.8em;
+    }
+
+    .sp-card-relation {
+        text-align: center;
+    }
+
+    /* 关于字段：双栏 <dl> → 单栏 */
+    .sp-fields {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.15em 0;
+    }
+
+    .sp-fields dt {
+        margin-top: 0.35em;
+    }
+
+    /* 统计栏：横排滚动（不撑破页面、不横向滚动整页） */
+    .sp-stats {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.3em;
+    }
+
+    .sp-stat {
+        flex: 0 0 auto;
+        min-width: 6.5em;
+    }
+
+    .sp-board-replies {
+        margin-left: 0.5em;
+        padding-left: 0.5em;
+    }
+
+    .sp-nav-list {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .sp-nav-list a {
+        padding: 0.5em 0.7em;
+        white-space: nowrap;
+    }
+
+    .sp-profile-head {
+        flex-wrap: wrap;
+        gap: 0.6em;
+    }
+
+    .sp-random-item {
+        flex: 1 1 100%;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .sp-gift-card {
+        flex: 1 1 100%;
+    }
+
+    .sp-user-item {
+        align-items: flex-start;
+    }
+
+    .sp-user-actions {
+        flex: 1 1 100%;
+    }
+
+    .sp-top-user {
+        white-space: normal;
+    }
+
+    /* 排行榜在窄屏上把表头收起来，靠 data-label 提示字段名 */
+    .sp-top-table,
+    .sp-top-table tbody,
+    .sp-top-table tr,
+    .sp-top-table td {
+        display: block;
+        width: auto;
+    }
+
+    .sp-top-table thead {
+        display: none;
+    }
+
+    .sp-top-table tr {
+        margin-bottom: 0.6em;
+        border: 1px solid var(--wiki-border);
+    }
+
+    .sp-top-table td {
+        border: 0;
+        border-bottom: 1px solid var(--wiki-border);
+    }
+
+    .sp-top-table td:last-child {
+        border-bottom: 0;
+    }
+
+    .sp-gift-table td,
+    .sp-messages-table td,
+    .sp-award-item {
+        overflow-wrap: anywhere;
+    }
+
+    .sp-award-item {
+        gap: 0.3em;
+    }
+}
+
+/* ============================================================
+ * 用户页：像素级对齐 MediaWiki SocialProfile 原版
+ * 来源：UserProfile/resources/css/UserProfile.css、
+ *       UserBoard/resources/css/UserBoard.css（类名 / 结构 / 尺寸保持一致）
+ * ============================================================ */
+
+.visualClear {
+    clear: both;
+}
+
+.clearfix::after {
+    content: "";
+    display: block;
+    clear: both;
+}
+
+/* ---------- 资料卡顶部（#profile-top） ---------- */
+
+#profile-top {
+    border-bottom: 1px solid #d4dfd7;
+    padding: 10px 0;
+    margin: 0 0 10px 0;
+    position: relative;
+}
+
+#profile-image {
+    float: left;
+    margin: 0 8px 0 0;
+    position: relative;
+}
+
+#profile-image img {
+    background-color: #fff;
+    border: 1px solid #dcdcdc;
+    padding: 3px;
+    object-fit: cover;
+    display: block;
+}
+
+#profile-right {
+    float: left;
+    position: relative;
+}
+
+#profile-title-container {
+    padding: 0 0 6px 6px;
+}
+
+#profile-title {
+    font-size: 2em;
+    font-weight: 700;
+    line-height: 26px;
+    float: left;
+    margin: 0 15px 0 0;
+}
+
+#points-level {
+    background-color: #c00;
+    font-size: 11px;
+    text-align: center;
+    float: left;
+    padding: 1px 5px;
+    margin: 4px 8px 0 0;
+}
+
+#points-level a {
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+#honorific-level {
+    font-size: 12px;
+    float: left;
+    margin: 4px 0 0 0;
+}
+
+#honorific-level a {
+    text-decoration: none;
+}
+
+.profile-actions a {
+    text-decoration: none;
+    font-weight: 700;
+    margin: 0 6px;
+}
+
+/* ---------- 用户页两栏 ---------- */
+
+#user-page-left {
+    width: 35%;
+    float: left;
+}
+
+#user-page-right {
+    float: right;
+    width: 60%;
+}
+
+#user-page-left h2,
+#user-page-right h2 {
+    border-bottom: 1px solid #dcdcdc;
+    padding: 0 0 3px 0;
+    margin: 0 0 5px 0;
+    font-size: 17px;
+    letter-spacing: -1px;
+    color: #333;
+}
+
+.user-section-heading {
+    border-bottom: 1px solid #dcdcdc;
+    width: 100%;
+    line-height: 22px;
+    margin: 0 0 8px 0;
+}
+
+.user-section-title {
+    float: left;
+    font-size: 20px;
+    letter-spacing: -1px;
+    padding: 0 10px 0 0;
+}
+
+.user-section-actions {
+    position: relative;
+    right: 0;
+    top: -2px;
+}
+
+.action-right {
+    float: right;
+    font-size: 10px;
+    padding: 0 5px 0 0;
+}
+
+.action-left {
+    float: left;
+    font-size: 10px;
+}
+
+.user-section-actions a {
+    text-decoration: none;
+}
+
+.profile-info-container {
+    padding: 0 0 17px 0;
+}
+
+.no-info-container {
+    margin: 10px 0 20px 0;
+    background-color: #f2f4f7;
+    padding: 20px;
+    text-align: center;
+    color: #777;
+}
+
+/* ---------- 好友 / 仇敌头像列表 ---------- */
+
+.user-relationship-container {
+    padding: 0 0 25px 0;
+}
+
+.user-relationship-container a {
+    text-decoration: none;
+    float: left;
+    margin: 5px 10px 0 0;
+    display: block;
+}
+
+.user-relationship-container img {
+    background-color: #fff;
+    border: 1px solid #dcdcdc;
+    padding: 3px;
+    object-fit: cover;
+    display: block;
+}
+
+/* ---------- 礼物 / 勋章图标列表 ---------- */
+
+.user-gift-container {
+    padding: 0 0 25px 0;
+}
+
+.user-gift-container a {
+    text-decoration: none;
+    display: block;
+    float: left;
+    margin: 5px 10px 0 0;
+}
+
+.user-gift-container img {
+    background-color: #fff;
+    border: 1px solid #dcdcdc;
+    padding: 3px;
+}
+
+.sp-gift-icon {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    text-align: center;
+    font-size: 24px;
+    background-color: #fff;
+    border: 1px solid #dcdcdc;
+    color: #c00;
+}
+
+/* ---------- 用户墙（UserBoard） ---------- */
+
+#user-page-board {
+    margin: 5px 0 10px 0;
+}
+
+.user-page-message-form,
+.user-page-message-form-blocked {
+    margin: 5px 0 15px 0;
+    font-weight: 700;
+}
+
+.user-page-message-form-blocked {
+    color: #f00;
+}
+
+.user-page-message-form textarea {
+    width: 80%;
+}
+
+.user-page-message-box-button {
+    margin: 5px 0 0 0;
+}
+
+.user-board-message {
+    border: 1px solid #d4dfd7;
+    width: 550px;
+    max-width: 100%;
+    margin: 0 0 15px 0;
+}
+
+.user-board-message-from {
+    background-color: #eef3f0;
+    padding: 3px 0 5px 5px;
+}
+
+.user-board-message-from a {
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.user-board-message-time {
+    color: #797979;
+    font-size: 11px;
+    margin: 2px 0 0 5px;
+}
+
+.user-board-message-content {
+    padding: 5px;
+}
+
+.user-board-message-image {
+    float: left;
+    margin: 0 10px 0 0;
+}
+
+.user-board-message-image img {
+    border: 1px solid #dcdcdc;
+    object-fit: cover;
+    display: block;
+}
+
+.user-board-message-body {
+    float: left;
+    margin: 0 10px 0 0;
+    vertical-align: top;
+    width: 90%;
+}
+
+.user-board-message-body p {
+    margin: 0 0 0 0 !important;
+}
+
+.user-board-message-links {
+    padding: 0 0 5px 5px;
+}
+
+.user-board-message-links a {
+    font-size: 11px;
+    text-decoration: none;
+    margin: 0 10px 0 0;
+}
+
+.user-board-red a {
+    color: #f00;
+}
+
+/* ---------- 插件提供资料卡整体时的外层（core 的 .wiki-profile 卡片框去掉） ---------- */
+
+.wiki-profile-plugin {
+    display: block;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+}
+
+/* ---------- 原版 UserProfile.css：用户页隐藏皮肤大标题（#profile-title 显示用户名） ---------- */
+
+body:has(#profile-top) h1#firstHeading {
+    border-bottom: none;
+    margin: 0 !important;
+    display: none;
+}

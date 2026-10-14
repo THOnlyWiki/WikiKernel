@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!--
+  Plain 皮肤（由 plain-skin 插件提供）布局：templates/skins/plain/layout.html
+  居中卡片、无侧栏；通用组件样式来自 core 的 /css/base.css，皮肤样式 /skins/plain/plain.css。
+-->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(pageTitle, content)">
+<head th:replace="~{fragments/head :: head(${pageTitle} + ' - WikiKernel')}">
+    <title>WikiKernel</title>
+</head>
+<body class="skin-plain" th:classappend="${printableView} ? ' wiki-printable'">
+<div class="plain-shell">
+    <header class="plain-header" th:unless="${printableView}">
+        <a class="plain-brand" th:href="@{/}" th:text="#{common.home}">首页</a>
+        <nav class="plain-nav">
+            <a th:href="@{/wiki/特殊:最近更改}" th:text="#{special.recentChanges}">最近更改</a>
+            <a th:href="@{/wiki/特殊:特殊页面}" th:text="#{special.specialPages}">特殊页面</a>
+        </nav>
+        <form class="plain-search" th:action="@{/wiki/特殊:搜索}" method="get">
+            <input type="search" name="q" th:placeholder="#{common.searchPlaceholder}" th:value="${q}"
+                   th:attr="aria-label=#{common.search}"/>
+            <button type="submit" class="wiki-button" th:text="#{common.search}">搜索</button>
+        </form>
+        <div class="plain-personal">
+            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录}" th:text="#{auth.login}">登录</a>
+            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:注册}" th:text="#{auth.register}">注册</a>
+            <a th:if="${currentUser != null}"
+               th:href="@{/wiki/{t}(t=${'用户:' + currentUser.username})}"
+               th:text="${currentUser.username}">用户名</a>
+            <a th:if="${currentUser != null}"
+               th:href="@{/wiki/{t}(t=${'用户讨论:' + currentUser.username})}"
+               th:text="#{common.talk}">讨论</a>
+            <a th:if="${currentUser != null}"
+               th:href="@{/wiki/特殊:参数设置}" th:text="#{special.preferences}">参数设置</a>
+            <a th:if="${currentUser != null}"
+               th:href="@{/wiki/特殊:外观}" th:text="#{special.appearance}">外观</a>
+            <a th:if="${currentUser != null}"
+               th:href="@{/wiki/特殊:用户贡献(name=${currentUser.username})}"
+               th:text="#{personal.contributions}">贡献</a>
+            <a th:if="${currentUser != null}" th:href="@{/api/user/logout}" th:text="#{auth.logout}">退出</a>
+            <!-- 插件个人工具条目（PersonalToolbarHook：私信入口 + 未读计数等） -->
+            <th:block th:each="tool : ${pluginPersonalTools}" th:utext="${tool}"></th:block>
+        </div>
+    </header>
+
+    <!-- 页签：特殊页显示「特殊页面」；普通页面显示 阅读 / 编辑（或查看源代码）/ 查看历史 -->
+    <nav class="plain-tabs" th:if="${isSpecialPage}" th:unless="${printableView}">
+        <span class="selected" th:text="#{common.specialPage}">特殊页面</span>
+    </nav>
+    <nav class="plain-tabs" th:if="${wikiTitle != null}" th:unless="${printableView}">
+        <a th:href="${pageUrl}" th:text="#{common.view}">阅读</a>
+        <a th:href="${pageUrl + '?action=edit'}"
+           th:text="${canEditPage} ? #{common.edit} : #{common.viewSource}">编辑</a>
+        <a th:href="${pageUrl + '?action=history'}" th:text="#{common.history}">查看历史</a>
+    </nav>
+
+    <main id="content">
+        <h1 id="firstHeading" class="firstHeading" th:if="${hideTitle == null || !hideTitle}" th:text="${pageTitle}">页面标题</h1>
+        <!-- 所有页面统一的内容容器：#bodyContent + .wiki-content（正文排版与词条一致） -->
+        <div id="bodyContent" class="wiki-content" th:insert="${content}">
+            <p>页面内容</p>
+        </div>
+    </main>
+
+    <div id="footer" th:unless="${printableView}">
+        <th:block th:replace="~{fragments/footer :: footer}"/>
+    </div>
+</div>
+</body>
+</html>

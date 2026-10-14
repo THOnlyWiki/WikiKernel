@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!--/*
+  个人工具（用户栏）公共片段：Vector / 回退皮肤（fallback）/ 插件皮肤共用。
+  包含：登录 / 注册（匿名）、用户名 / 讨论 / 参数设置 / 外观 / 贡献 / 退出（登录），
+  以及插件贡献的额外条目（PersonalToolbarHook，如「私信（3）」，渲染在最后一项之后）。
+  注意：必须包含「外观」入口——否则使用回退皮肤或插件皮肤的登录用户没有页面内途径切换回其它皮肤。
+*/-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<ul th:fragment="personal" class="personal-tools">
+    <li th:if="${currentUser == null}">
+        <a th:href="@{/wiki/特殊:登录}" th:title="#{auth.login}" th:text="#{auth.login}">登录</a>
+    </li>
+    <li th:if="${currentUser == null and registerAvailable}">
+        <a th:href="@{/wiki/特殊:注册}" th:title="#{auth.registerTitle}" th:text="#{auth.register}">注册</a>
+    </li>
+    <li class="personal-user" th:if="${currentUser != null}">
+        <a th:href="@{/wiki/{t}(t=${'用户:' + currentUser.username})}"
+           th:text="${currentUser.username}" th:title="#{auth.currentUserTitle}">用户名</a>
+    </li>
+    <li th:if="${currentUser != null}">
+        <a th:href="@{/wiki/{t}(t=${'用户讨论:' + currentUser.username})}"
+           th:text="#{common.talk}" th:title="#{personal.talkTitle}">讨论</a>
+    </li>
+    <li th:if="${currentUser != null}">
+        <a th:href="@{/wiki/特殊:参数设置}" th:text="#{special.preferences}"
+           th:title="#{personal.preferencesTitle}">参数设置</a>
+    </li>
+    <li th:if="${currentUser != null}">
+        <a th:href="@{/wiki/特殊:外观}" th:text="#{special.appearance}"
+           th:title="#{personal.appearanceTitle}">外观</a>
+    </li>
+    <li th:if="${currentUser != null}">
+        <a th:href="@{/wiki/特殊:用户贡献(name=${currentUser.username})}"
+           th:text="#{personal.contributions}" th:title="#{personal.contributionsTitle}">贡献</a>
+    </li>
+    <li th:if="${currentUser != null}">
+        <a th:href="@{/api/user/logout}" th:title="#{auth.logoutTitle}" th:text="#{auth.logout}">退出</a>
+    </li>
+    <!--/* 插件个人工具条目（PersonalToolbarHook：私信入口 + 未读计数等），渲染在最后一项之后 */-->
+    <th:block th:each="tool : ${pluginPersonalTools}" th:utext="${tool}"></th:block>
+</ul>
+</body>
+</html>

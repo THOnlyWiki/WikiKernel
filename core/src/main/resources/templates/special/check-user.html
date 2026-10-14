@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:用户核查 / Special:CheckUser（按用户查 IP / 按 IP 查用户；核查员专用） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:unless="${canCheck}" th:text="#{checkUser.forbidden}">
+        只有核查员可以使用用户核查。
+    </p>
+
+    <th:block th:if="${canCheck}">
+        <p th:text="#{checkUser.intro}">按用户查 TA 最近用过的 IP / 设备（User-Agent），或按 IP / IPv4 CIDR 查是谁在使用。</p>
+
+        <form class="wiki-form wiki-form-inline" method="get" th:action="@{/wiki/特殊:用户核查}">
+            <label for="checkuser-user" th:text="#{checkUser.userLabel}">用户名：</label>
+            <input type="text" id="checkuser-user" name="user" th:value="${userQuery}"/>
+            <button type="submit" class="wiki-button" th:text="#{checkUser.query}">查询</button>
+        </form>
+
+        <th:block th:if="${userFound != null}">
+            <p class="wiki-form-error" th:unless="${userFound}" th:text="#{checkUser.noUser}">找不到该用户。</p>
+            <th:block th:if="${userFound}">
+                <h2 th:text="#{checkUser.userResultTitle(${userQuery})}">「…」的最近操作</h2>
+                <p th:if="${#lists.isEmpty(userRows)}" th:text="#{checkUser.empty}">没有记录。</p>
+                <table class="wikitable checkuser-table" th:unless="${#lists.isEmpty(userRows)}">
+                    <tr>
+                        <th th:text="#{checkUser.time}">时间</th>
+                        <th th:text="#{checkUser.ip}">IP</th>
+                        <th th:text="#{checkUser.userAgent}">User-Agent</th>
+                        <th th:text="#{checkUser.action}">操作</th>
+                        <th th:text="#{checkUser.detail}">详情</th>
+                    </tr>
+                    <tr th:each="row : ${userRows}">
+                        <td th:text="${@wikiTime.format(row.log.time)}">时间</td>
+                        <td th:text="${row.log.ip != null ? row.log.ip : '—'}">IP</td>
+                        <td class="checkuser-ua" th:text="${row.log.userAgent != null ? row.log.userAgent : '—'}">UA</td>
+                        <td>
+                            <span th:text="${row.actionBefore}"></span><a
+                                th:if="${row.targetUrl != null}" th:href="${row.targetUrl}"
+                                th:text="${row.targetText}">目标</a><span
+                                th:if="${row.targetUrl == null}" th:text="${row.targetText}">目标</span><span
+                                th:text="${row.actionAfter}"></span>
+                        </td>
+                        <td th:text="${row.detailText}">详情</td>
+                    </tr>
+                </table>
+            </th:block>
+        </th:block>
+
+        <form class="wiki-form wiki-form-inline" method="get" th:action="@{/wiki/特殊:用户核查}">
+            <label for="checkuser-ip" th:text="#{checkUser.ipLabel}">IP 地址 / CIDR：</label>
+            <input type="text" id="checkuser-ip" name="ip" th:value="${ipQuery}"/>
+            <button type="submit" class="wiki-button" th:text="#{checkUser.query}">查询</button>
+        </form>
+
+        <th:block th:if="${ipRows != null}">
+            <h2 th:text="#{checkUser.ipResultTitle(${ipQuery})}">来自 … 的最近操作</h2>
+            <p th:if="${#lists.isEmpty(ipRows)}" th:text="#{checkUser.empty}">没有记录。</p>
+            <table class="wikitable checkuser-table" th:unless="${#lists.isEmpty(ipRows)}">
+                <tr>
+                    <th th:text="#{checkUser.time}">时间</th>
+                    <th th:text="#{checkUser.user}">用户</th>
+                    <th th:text="#{checkUser.ip}">IP</th>
+                    <th th:text="#{checkUser.action}">操作</th>
+                    <th th:text="#{checkUser.detail}">详情</th>
+                    <th th:text="#{checkUser.userAgent}">User-Agent</th>
+                </tr>
+                <tr th:each="row : ${ipRows}">
+                    <td th:text="${@wikiTime.format(row.log.time)}">时间</td>
+                    <td>
+                        <a th:if="${row.actorName != null}"
+                           th:href="@{/wiki/{t}(t=${'用户:' + row.actorName})}"
+                           th:text="${row.actorName}">用户</a>
+                        <span th:if="${row.actorName == null}" th:text="#{common.anonymous}">匿名</span>
+                    </td>
+                    <td th:text="${row.log.ip != null ? row.log.ip : '—'}">IP</td>
+                    <td>
+                        <span th:text="${row.actionBefore}"></span><a
+                            th:if="${row.targetUrl != null}" th:href="${row.targetUrl}"
+                            th:text="${row.targetText}">目标</a><span
+                            th:if="${row.targetUrl == null}" th:text="${row.targetText}">目标</span><span
+                            th:text="${row.actionAfter}"></span>
+                    </td>
+                    <td th:text="${row.detailText}">详情</td>
+                    <td class="checkuser-ua" th:text="${row.log.userAgent != null ? row.log.userAgent : '—'}">UA</td>
+                </tr>
+            </table>
+        </th:block>
+    </th:block>
+</section>
+</body>
+</html>

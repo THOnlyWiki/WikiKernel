@@ -1,0 +1,58 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### WikiKernel ###
+# core 运行时加载的插件 jar（由 gradlew installPlugins 生成，仅仓库根目录）
+/plugins/
+# 插件/数据库运行数据目录（仅仓库根目录；注意别写成 data/，否则会忽略源码包 common/data/）
+/data/
+# LocalSettings 里自定义的运行目录（本项目当前配置为 ./run：数据库 + 插件 jar）
+/run/
+# 每个部署自己的本地配置（模板见 LocalSettings.example.yaml）
+/LocalSettings.yaml
+
+# 临时工作目录与解包产物（勿提交）
+__temp__/
+BOOT-INF/
+
+# 运行目录可能出现在任意模块下（例如从 core/ 启动时）
+core/run/
+**/run/logs/
+**/run/files/
+**/run/plugins/
+**/run/*.db

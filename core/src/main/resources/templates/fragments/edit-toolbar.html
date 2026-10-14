@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- 公共片段：编辑辅助工具栏（仿 MediaWiki WikiEditor 默认皮肤）：插入格式 / 列表 / 表格 / 快速上传图片 -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="toolbar" class="wiki-toolbar" id="wiki-editor-toolbar" role="toolbar"
+     th:attr="aria-label=#{toolbar.aria}">
+    <div class="toolbar-group">
+        <button type="button" class="toolbar-button" data-action="bold" th:title="#{toolbar.bold}">
+            <span class="toolbar-glyph toolbar-glyph-bold">B</span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="italic" th:title="#{toolbar.italic}">
+            <span class="toolbar-glyph toolbar-glyph-italic">I</span>
+        </button>
+    </div>
+    <div class="toolbar-group">
+        <button type="button" class="toolbar-button" data-action="link" th:title="#{toolbar.link}">
+            <span class="toolbar-icon tb-icon-link"></span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="external" th:title="#{toolbar.external}">
+            <span class="toolbar-icon tb-icon-external"></span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="file" th:title="#{toolbar.file}">
+            <span class="toolbar-icon tb-icon-image"></span>
+        </button>
+    </div>
+    <div class="toolbar-group">
+        <button type="button" class="toolbar-button" data-action="ref" th:title="#{toolbar.ref}">
+            <span class="toolbar-glyph toolbar-glyph-ref">[1]</span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="signature" th:title="#{toolbar.signature}">
+            <span class="toolbar-glyph">✎</span>
+        </button>
+    </div>
+    <div class="toolbar-group toolbar-dropdown" data-dropdown="heading">
+        <button type="button" class="toolbar-button toolbar-dropdown-toggle" data-action="heading-menu"
+                th:title="#{toolbar.heading}">
+            <span class="toolbar-glyph toolbar-glyph-heading">H</span><span class="toolbar-caret">▾</span>
+        </button>
+        <div class="toolbar-menu" hidden>
+            <button type="button" data-heading="2" th:text="#{toolbar.heading2}">二级标题</button>
+            <button type="button" data-heading="3" th:text="#{toolbar.heading3}">三级标题</button>
+            <button type="button" data-heading="4" th:text="#{toolbar.heading4}">四级标题</button>
+            <button type="button" data-heading="5" th:text="#{toolbar.heading5}">五级标题</button>
+        </div>
+    </div>
+    <div class="toolbar-group">
+        <button type="button" class="toolbar-button" data-action="bullets" th:title="#{toolbar.bullets}">
+            <span class="toolbar-icon tb-icon-bullets"></span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="numbers" th:title="#{toolbar.numbers}">
+            <span class="toolbar-glyph toolbar-glyph-numbers">1.</span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="indent" th:title="#{toolbar.indent}">
+            <span class="toolbar-glyph toolbar-glyph-indent">→</span>
+        </button>
+    </div>
+    <div class="toolbar-group">
+        <button type="button" class="toolbar-button" data-action="nowiki" th:title="#{toolbar.nowiki}">
+            <span class="toolbar-icon tb-icon-nowiki"></span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="line" th:title="#{toolbar.line}">
+            <span class="toolbar-glyph toolbar-glyph-line">—</span>
+        </button>
+        <button type="button" class="toolbar-button" data-action="table" th:title="#{toolbar.table}">
+            <span class="toolbar-icon tb-icon-table"></span>
+        </button>
+    </div>
+    <div class="toolbar-group toolbar-group-right">
+        <div class="toolbar-dropdown" data-dropdown="special">
+            <button type="button" class="toolbar-button toolbar-dropdown-toggle" data-action="special-menu"
+                    th:title="#{toolbar.special}">
+                <span class="toolbar-glyph">Ω</span>
+            </button>
+            <div class="toolbar-menu toolbar-menu-special" hidden></div>
+        </div>
+        <a class="toolbar-button toolbar-help" th:href="@{/wiki/帮助:编辑}" target="_blank"
+           th:title="#{toolbar.help}" rel="noopener"><span class="toolbar-glyph">?</span></a>
+    </div>
+</div>
+</body>
+</html>

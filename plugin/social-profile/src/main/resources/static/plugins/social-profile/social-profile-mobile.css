@@ -1,0 +1,71 @@
+/* ==========================================================================
+ * 插件 social-profile：社交页在窄屏（≤600px）的补充样式
+ *  - 私信 / 礼物列表：表格 → 卡片堆叠，字段名走模板里的 data-label；
+ *  - 保证 375px 宽不出现横向滚动（长用户名 / 长礼物名可换行）。
+ * 由 HtmlHeadProvider（siteWide）注入所有页面：/plugins/social-profile/social-profile-base.css
+ * ========================================================================== */
+
+@media (max-width: 600px) {
+    .sp-messages-table,
+    .sp-gift-table {
+        display: block;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .sp-messages-table thead,
+    .sp-gift-table thead {
+        display: none;
+    }
+
+    .sp-messages-table tbody,
+    .sp-gift-table tbody,
+    .sp-messages-table tr,
+    .sp-gift-table tr,
+    .sp-messages-table td,
+    .sp-gift-table td {
+        display: block;
+        width: auto;
+        min-width: 0;
+    }
+
+    .sp-messages-table tr,
+    .sp-gift-table tr {
+        margin-bottom: 0.6em;
+        border: 1px solid var(--wiki-border);
+        background: #ffffff;
+    }
+
+    .sp-messages-table td,
+    .sp-gift-table td {
+        border: 0;
+        border-bottom: 1px solid var(--wiki-border);
+        overflow-wrap: anywhere;
+    }
+
+    .sp-messages-table td:last-child,
+    .sp-gift-table td:last-child {
+        border-bottom: 0;
+    }
+
+    .sp-messages-table td[data-label]::before,
+    .sp-gift-table td[data-label]::before {
+        content: attr(data-label) " ";
+        color: var(--wiki-text-muted);
+        font-size: 0.875em;
+    }
+
+    .message-row-actions {
+        white-space: normal;
+    }
+
+    .message-actions {
+        flex-wrap: wrap;
+        gap: 0.6em;
+    }
+
+    /* 私信气泡：窄屏不再限宽，避免文字被压成一列 */
+    .message-thread-item {
+        max-width: 100%;
+    }
+}

@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+}
+
+description = 'AI 代理移植：多厂商对话 + 只读工具 + 待确认提案（特殊:AI代理 + /api/ai-agent/* + /api/ai-keys/*）'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc' // @RestController / @PostMapping
+    compileOnly 'org.slf4j:slf4j-api'
+    // 厂商协议用 Jackson 3 解析响应（运行时由 core 提供，插件 jar 不打包）
+    compileOnly 'tools.jackson.core:jackson-databind'
+    // AI 回复的 Markdown 渲染（CommonMark + GFM 表格 / 删除线；运行时由 core 提供）
+    compileOnly 'org.commonmark:commonmark:0.24.0'
+    compileOnly 'org.commonmark:commonmark-ext-gfm-tables:0.24.0'
+    compileOnly 'org.commonmark:commonmark-ext-gfm-strikethrough:0.24.0'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.slf4j:slf4j-api'
+    testImplementation 'tools.jackson.core:jackson-databind'
+    testImplementation 'org.commonmark:commonmark:0.24.0'
+    testImplementation 'org.commonmark:commonmark-ext-gfm-tables:0.24.0'
+    testImplementation 'org.commonmark:commonmark-ext-gfm-strikethrough:0.24.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    // 特殊页渲染测试：真模板 + 真 Thymeleaf（与 core 运行时同一个方言/实现；皮肤布局用测试替身片段）
+    testImplementation 'org.thymeleaf:thymeleaf-spring6'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties（pluginName / pluginVersion / pluginDescription），
+// 构建时展开进 META-INF/wiki-plugin.properties；给人看的本地化名称与描述在 i18n/messages*.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}

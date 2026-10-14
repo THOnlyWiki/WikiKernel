@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<!-- 编辑 / 创建页面（GET ?action=edit） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${editHeading}, ~{:: section})}">
+<body>
+<section>
+    <th:block th:unless="${editConflictNotice != null}">
+        <p class="edit-intro" th:if="${editSection != null}"
+           th:text="#{edit.introSection(${wikiTitle}, ${editSectionHeading})}">
+            您正在编辑本页面的一个段落；保存后只替换该段落。
+        </p>
+        <p class="edit-intro" th:if="${isNewPage}" th:text="#{edit.introNew}">
+            本页面还不存在。在下面输入内容并保存即可创建它。
+        </p>
+        <p class="edit-intro" th:if="${editingOldRevision != null}"
+           th:with="time=${@wikiTime.format(editingOldRevision.createAt)}"
+           th:text="#{edit.introOld(${time})}">
+            您正在编辑旧版本；保存后会生成一个新版本。
+        </p>
+        <p class="edit-intro" th:unless="${isNewPage or editingOldRevision != null or editSection != null}"
+           th:text="#{edit.introLatest(${wikiTitle})}">
+            您正在编辑最新版本。
+        </p>
+    </th:block>
+
+    <!-- 编辑冲突提示：你的基准版本已被他人推进；不自动合并，展示差异并保留你的文本 -->
+    <div class="wiki-warning edit-conflict-notice" th:if="${editConflictNotice != null}">
+        <p class="edit-conflict-intro" th:text="${editConflictNotice}">编辑冲突。</p>
+        <p class="edit-conflict-structure" th:if="${editConflictStructureChanged != null}"
+           th:text="${editConflictStructureChanged}">页面结构已改变。</p>
+        <ul class="edit-conflict-links">
+            <li><a th:href="${editConflictLatestUrl}" th:text="#{editConflict.viewLatest}">查看当前版本</a></li>
+            <li th:if="${editConflictDiffUrl != null}"><a th:href="${editConflictDiffUrl}"
+                    th:text="#{editConflict.viewDiff}">查看对方这次修改的差异</a></li>
+            <li><a th:href="${editConflictEditLatestUrl}" th:text="#{editConflict.editLatest}">放弃我的修改，编辑最新版本</a></li>
+        </ul>
+        <p class="edit-conflict-hint" th:text="#{editConflict.hint}">
+            你的文字完整保留在下面的编辑框中；请对照下方差异手动合并后再次保存。
+        </p>
+        <div class="edit-conflict-diff" th:unless="${#lists.isEmpty(editConflictDiffRows)}">
+            <div class="edit-conflict-diff-title" th:text="#{editConflict.diffTitle}">
+                差异对照（− 你的提交 / + 服务器最新版本）
+            </div>
+            <table class="diff">
+                <colgroup>
+                    <col class="diff-marker-col"/>
+                    <col class="diff-lineno-col"/>
+                    <col/>
+                    <col class="diff-marker-col"/>
+                    <col class="diff-lineno-col"/>
+                    <col/>
+                </colgroup>
+                <tr th:each="row : ${editConflictDiffRows}">
+                    <td class="diff-marker" th:text="${row.oldMarker}">-</td>
+                    <td class="diff-lineno" th:text="${row.oldNo}">1</td>
+                    <td th:class="${row.oldClass}"><span th:text="${row.oldBefore}"></span><span
+                            th:if="${row.oldChange != ''}" class="diffchange"
+                            th:text="${row.oldChange}"></span><span th:text="${row.oldAfter}"></span></td>
+                    <td class="diff-marker" th:text="${row.newMarker}">+</td>
+                    <td class="diff-lineno" th:text="${row.newNo}">1</td>
+                    <td th:class="${row.newClass}"><span th:text="${row.newBefore}"></span><span
+                            th:if="${row.newChange != ''}" class="diffchange"
+                            th:text="${row.newChange}"></span><span th:text="${row.newAfter}"></span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- 本地草稿恢复提示（edit-draft.js；有草稿时显示） -->
+    <div id="edit-draft-notice" class="wiki-warning edit-draft-notice" hidden>
+        <span id="edit-draft-notice-text"></span>
+        <a id="edit-draft-view-latest" th:text="#{edit.draftViewLatest}" hidden>查看最新版本</a>
+        <button type="button" id="edit-draft-discard" class="wiki-button"
+                th:text="#{edit.draftDiscard}">放弃草稿</button>
+    </div>
+
+    <form id="wiki-edit-form" class="wiki-form wiki-editor" method="post" th:action="${pageUrl}"
+          th:attr="data-title=${wikiTitle},data-revision=${page != null and page.latestRevisionId != null ? page.latestRevisionId : ''},data-section=${editSection != null ? editSection : ''}">
+        <th:block th:if="${codeLanguage != null and !widgetPage}">
+            <th:block th:replace="~{fragments/code-cache-notice :: notice}"/>
+        </th:block>
+        <!-- 段落编辑：只提交该段；baserevid 用于服务端冲突检测 -->
+        <input type="hidden" name="section" th:if="${editSection != null}" th:value="${editSection}"/>
+        <input type="hidden" name="baserevid" th:if="${baseRevisionId != null}" th:value="${baseRevisionId}"/>
+        <!-- 显示预览（仿 MediaWiki）：内容由 /api/pages/preview 服务端渲染，不保存 -->
+        <div id="wiki-preview" class="wiki-preview" th:if="${codeLanguage == null}" hidden>
+            <div class="wiki-warning preview-note" th:text="#{edit.previewNote}">
+                请记住，这只是预览。您的更改还没有保存！
+            </div>
+            <div id="wiki-preview-content" class="wiki-content"></div>
+        </div>
+        <!-- 编辑辅助工具栏（仿 MediaWiki WikiEditor；Wikitext 页面专用，代码页用 CodeMirror） -->
+        <th:block th:if="${codeLanguage == null}">
+            <th:block th:replace="~{fragments/edit-toolbar :: toolbar}"/>
+        </th:block>
+        <textarea name="content" rows="24" autofocus th:attr="data-language=${codeLanguage}"
+                  th:text="${editContent}">请输入 Wikitext 内容</textarea>
+
+        <!-- 可视化编辑器（仅 Wikitext 整页编辑；从编辑框源码出发，目录/分类栏等生成内容不会进入）
+             data-ve-auto=1 时（?veaction=edit）页面加载即打开；源代码编辑可点页签「编辑」进入 -->
+        <div id="visual-editor" class="visual-editor"
+             th:if="${codeLanguage == null and editSection == null}"
+             th:attr="data-ve-auto=${veMode} ? '1' : null" hidden>
+            <div class="visual-editor-toolbar">
+                <button type="button" data-ve-command="bold" th:title="#{toolbar.bold}" th:text="#{toolbar.bold}">粗体</button>
+                <button type="button" data-ve-command="italic" th:title="#{toolbar.italic}" th:text="#{toolbar.italic}">斜体</button>
+                <button type="button" data-ve-command="link" th:title="#{toolbar.link}" th:text="#{toolbar.link}">内部链接</button>
+                <button type="button" data-ve-command="h2" th:title="#{toolbar.heading2}" th:text="#{toolbar.heading2}">二级标题</button>
+                <button type="button" data-ve-command="h3" th:title="#{toolbar.heading3}" th:text="#{toolbar.heading3}">三级标题</button>
+                <button type="button" data-ve-command="ul" th:title="#{toolbar.bullets}" th:text="#{toolbar.bullets}">无序列表</button>
+                <button type="button" data-ve-command="ol" th:title="#{toolbar.numbers}" th:text="#{toolbar.numbers}">有序列表</button>
+                <button type="button" data-ve-command="hr" th:title="#{toolbar.rule}" th:text="#{toolbar.rule}">水平线</button>
+                <span class="visual-editor-spacer"></span>
+                <button type="button" id="ve-apply" class="wiki-button"
+                        th:text="#{edit.visualApply}">应用更改到源代码</button>
+                <button type="button" id="ve-exit" class="wiki-button"
+                        th:text="#{edit.visualExit}">返回源代码编辑</button>
+            </div>
+            <div id="visual-editor-surface" class="wiki-content visual-editor-surface"
+                 contenteditable="true"></div>
+            <p class="wiki-hint" th:text="#{edit.visualHint}">
+                可视化编辑：复杂内容显示为不可编辑的「源码块」；目录等生成内容不会进入编辑器。
+            </p>
+        </div>
+
+        <div class="edit-summary form-field">
+            <label for="wpSummary" th:text="#{edit.summaryLabel}">编辑摘要（可选，简要说明您的修改）：</label>
+            <input type="text" id="wpSummary" name="comment" maxlength="200" th:value="${editSummary}"
+                   th:placeholder="#{edit.summaryPlaceholder}" placeholder="例如：修正错别字"/>
+        </div>
+
+        <!-- 插件编辑页字段（EditFormField）：编辑框下方的额外字段（如验证码的题目 + 输入框） -->
+        <th:block th:if="${editHookError != null}">
+            <p class="wiki-error edit-hook-error" th:text="${editHookError}">验证答案不正确，请重试。</p>
+        </th:block>
+        <th:block th:each="field : ${editFormFields}" th:utext="${field}"></th:block>
+
+        <div class="edit-actions">
+            <label class="edit-watch-option" th:if="${showEditWatchOptions}">
+                <input type="checkbox" name="watch" value="1" th:checked="${editWatchChecked}"/>
+                <span th:text="#{edit.watchPage}">将此页面加入我的监视列表</span>
+            </label>
+            <label class="edit-minor-option" th:if="${currentUser != null}">
+                <input type="checkbox" name="minor" value="1"/>
+                <span th:text="#{edit.minorEdit}">这是一次小编辑</span>
+            </label>
+            <label class="edit-bot-option" th:if="${canBotEdit}">
+                <input type="checkbox" name="botEdit" value="1"/>
+                <span th:text="#{edit.botEdit}">标记此编辑为机器人编辑</span>
+            </label>
+        </div>
+        <!-- 插件编辑页提示（EditFormField.notice）：保存按钮附近（如「保存后进入审核队列」） -->
+        <th:block th:each="notice : ${editFormNotices}">
+            <div class="wiki-warning edit-hook-notice" th:utext="${notice}"></div>
+        </th:block>
+        <div class="edit-actions">
+            <br>
+            <button type="submit" class="wiki-button" th:text="#{edit.save}">保存更改</button>
+            <button type="button" id="wiki-preview-button" class="wiki-button" th:if="${codeLanguage == null}"
+                    th:text="#{edit.preview}">显示预览</button>
+            <a th:href="${pageUrl}" th:text="#{common.cancel}">取消</a>
+        </div>
+        <p id="visual-editor-message" class="form-message" hidden></p>
+
+        <p class="wiki-hint" th:if="${widgetPage}" th:text="#{edit.widgetHint}">
+            微件页：HTML + Smarty 子集语法，只有小部件编辑者可以编辑。
+        </p>
+        <p class="wiki-hint" th:if="${codeLanguage != null and !widgetPage}" th:text="#{edit.codeHint}">
+            代码页面：编辑器带语法高亮与自动补全。
+        </p>
+        <p class="wiki-hint" th:unless="${codeLanguage != null}" th:text="#{edit.hint}">
+            保存后本版本将立即对所有访问者可见。Wikitext 语法可参考首页的示例。
+        </p>
+    </form>
+</section>
+</body>
+</html>

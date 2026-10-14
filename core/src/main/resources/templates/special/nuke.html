@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:大量删除 / Special:Nuke（仿 MediaWiki Nuke：批量删除指定用户创建 / 标题带前缀的页面） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:unless="${canManage}" th:text="#{nuke.noPermission}">需要管理员权限。</p>
+
+    <th:block th:if="${canManage}">
+        <p th:text="#{nuke.summary}">批量删除由指定用户创建的页面，或标题匹配前缀的页面。</p>
+
+        <form id="nuke-search-form" class="wiki-form" method="get"
+              th:action="@{/wiki/特殊:大量删除}">
+            <div class="wiki-form-inline">
+                <div class="form-field">
+                    <label for="nuke-name" th:text="#{nuke.username}">用户名</label>
+                    <input type="text" id="nuke-name" name="name" th:value="${nameValue}"
+                           th:placeholder="#{nuke.usernameHint}"/>
+                </div>
+                <div class="form-field">
+                    <label for="nuke-prefix" th:text="#{nuke.prefix}">标题前缀</label>
+                    <input type="text" id="nuke-prefix" name="prefix" th:value="${prefixValue}"
+                           th:placeholder="#{nuke.prefixHint}"/>
+                </div>
+                <div class="form-field">
+                    <label for="nuke-limit" th:text="#{nuke.limit}">最多列出</label>
+                    <select id="nuke-limit" name="limit">
+                        <option th:each="option : ${limitOptions}" th:value="${option}"
+                                th:text="${option}" th:selected="${option == limitValue}">50</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="nuke-titles" th:text="#{nuke.titles}">直接指定页面标题（每行一个）</label>
+                <textarea id="nuke-titles" name="titles" rows="6" th:text="${titlesValue}"
+                          th:placeholder="#{nuke.titlesPlaceholder}"></textarea>
+            </div>
+            <div class="wiki-hint" th:text="#{nuke.titlesHint}">
+                每行一个标题（可粘贴 [[链接]] 形式）；填写后将忽略上面的用户名 / 前缀条件。
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{nuke.search}">列出页面</button>
+            </div>
+        </form>
+
+        <p class="wiki-form-error" th:if="${needCriteria}" th:text="#{nuke.needCriteria}">
+            请填写用户名或标题前缀后再列出页面。
+        </p>
+        <p class="wiki-form-error" th:if="${titleLimitExceeded}"
+           th:text="#{nuke.tooManyTitles(${maxTitles})}">一次最多处理 500 个标题，请分批提交。</p>
+        <p class="wiki-form-error" th:if="${!#lists.isEmpty(invalidTitles)}"
+           th:text="#{nuke.invalidTitles(${#strings.listJoin(invalidTitles, '、')})}">无效标题（已忽略）：</p>
+        <p class="wiki-hint" th:if="${!#lists.isEmpty(missingTitles)}"
+           th:text="#{nuke.missingTitles(${#strings.listJoin(missingTitles, '、')})}">以下标题不存在或已删除：</p>
+        <p th:if="${empty}" th:text="#{nuke.empty}">没有找到符合条件的页面。</p>
+
+        <form id="wiki-nuke-form" class="wiki-form" method="post" th:action="@{/api/nuke/delete}"
+              th:if="${!#lists.isEmpty(rows)}">
+            <div class="form-field">
+                <label for="nuke-reason" th:text="#{nuke.reason}">删除原因</label>
+                <input type="text" id="nuke-reason" name="reason" maxlength="500"
+                       th:value="#{nuke.reasonDefault}"/>
+            </div>
+
+            <table class="wikitable nuke-table">
+                <tr>
+                    <th>
+                        <label class="nuke-select-all">
+                            <input type="checkbox" id="nuke-select-all"/>
+                            <span th:text="#{nuke.selectAll}">全选</span>
+                        </label>
+                    </th>
+                    <th th:text="#{nuke.colPage}">页面</th>
+                    <th th:text="#{nuke.colUser}">最后编辑者</th>
+                    <th th:text="#{nuke.colTime}">最后编辑</th>
+                </tr>
+                <tr th:each="row : ${rows}">
+                    <td><input type="checkbox" name="titles" th:value="${row.title}"/></td>
+                    <td><a th:href="${row.url}" th:text="${row.title}">页面标题</a></td>
+                    <td>
+                        <a th:if="${row.userUrl != null}" th:href="${row.userUrl}" th:text="${row.userName}">最后编辑者</a>
+                        <span th:if="${row.userUrl == null}" th:text="${row.userName}">最后编辑者</span>
+                    </td>
+                    <td th:text="${@wikiTime.format(row.time)}">最后编辑时间</td>
+                </tr>
+            </table>
+
+            <div class="form-message" role="alert" hidden></div>
+            <div class="form-actions">
+                <button type="submit" id="nuke-delete-selected" class="wiki-button"
+                        th:attr="data-confirm-template=#{nuke.confirmSelected('__N__')}"
+                        th:text="#{nuke.deleteSelected}">删除所选页面</button>
+                <button type="submit" id="nuke-delete-all" class="wiki-button"
+                        th:attr="data-confirm-template=#{nuke.confirmAll('__N__')}"
+                        th:text="#{nuke.deleteAll}">删除全部匹配页面</button>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

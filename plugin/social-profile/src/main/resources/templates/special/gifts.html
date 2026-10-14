@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:礼物 / Special:ViewGifts（仿 MediaWiki SocialProfile 的 Special:ViewGifts）
+     ?box=sent 看送出的礼物；?user=某人 看别人公开的收礼清单；删除走 POST /api/social-profile/gift/delete
+     列表项统一为「礼物图标 + 礼物名 + 对方 + 时间 + 操作」，移动端换成卡片式（见 social-profile.css）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.gifts}">
+        查看收到与送出的礼物，送礼物在「送礼物」页。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and loginRequired}">
+        <span th:text="#{permissions.loginRequired}">请先登录。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or loginRequired}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" aria-current="page" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <p class="wiki-warning" th:if="${giftsTargetNotFound}"
+           th:text="#{socialProfile.error.userNotFound}">用户不存在。</p>
+
+        <th:block th:unless="${giftsTargetNotFound}">
+            <div class="sp-profile-head">
+                <img class="wiki-avatar sp-avatar-small" th:src="${targetAvatarUrl}" th:alt="${giftsOwner}"/>
+                <div>
+                    <div class="sp-profile-name" th:text="${giftsOwner}">用户名</div>
+                    <p>
+                        <a th:href="${targetUserUrl}" th:text="#{messages.threadUserPage}">用户页</a>
+                        <span class="sp-sep">·</span>
+                        <a th:href="@{/wiki/特殊:送礼物(user=${giftsOwner})}"
+                           th:text="#{socialProfile.gifts.send}">送礼物</a>
+                    </p>
+                </div>
+            </div>
+
+            <ul class="sp-tabs">
+                <li th:classappend="${!giftsSentBox} ? 'selected'">
+                    <a th:href="${giftsReceivedUrl + (giftsSelf ? '' : '?user=' + #uris.escapeQueryParam(giftsOwner))}"
+                       th:text="#{socialProfile.gifts.receivedBox}">收到的礼物</a>
+                </li>
+                <li th:if="${giftsSelf}" th:classappend="${giftsSentBox} ? 'selected'">
+                    <a th:href="${giftsSentUrl}" th:text="#{socialProfile.gifts.sentBox}">送出的礼物</a>
+                </li>
+            </ul>
+
+            <p class="sp-board-count" th:text="#{socialProfile.gifts.received(${giftTotal})}">收到 0 个礼物</p>
+            <ul class="sp-gift-list" th:unless="${#maps.isEmpty(giftTypeRows)}">
+                <li class="sp-gift-item" th:each="entry : ${giftTypeRows}">
+                    <span th:text="#{socialProfile.gifts.item(${entry.key}, ${entry.value})}">礼物 × 1</span>
+                </li>
+            </ul>
+
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(giftRows) and giftsSentBox}">
+                <p class="sp-empty" th:text="#{socialProfile.gifts.sentEmpty}">还没有送出过礼物。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.randomUsers}">去随机用户看看谁在活跃</a>
+                    <span class="sp-sep">·</span>
+                    <a th:href="${sendGiftUrl}" th:text="#{socialProfile.empty.next.pickGift}">去送礼物页选一份礼物</a>
+                </p>
+            </div>
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(giftRows) and !giftsSentBox}">
+                <p class="sp-empty" th:text="#{socialProfile.gifts.receivedEmpty}">还没有收到礼物。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.randomUsers}">去随机用户看看谁在活跃</a>
+                    <span class="sp-sep">·</span>
+                    <a th:href="${sendGiftUrl}" th:text="#{socialProfile.empty.next.pickGift}">去送礼物页选一份礼物</a>
+                </p>
+            </div>
+            <table class="messages-table sp-gift-table" th:unless="${#lists.isEmpty(giftRows)}">
+                <thead>
+                <tr>
+                    <th th:if="${giftsSentBox}" th:text="#{socialProfile.gifts.toUser}">收礼人</th>
+                    <th th:unless="${giftsSentBox}" th:text="#{socialProfile.gifts.fromUser}">送礼人</th>
+                    <th th:text="#{socialProfile.gifts.colGift}">礼物</th>
+                    <th th:text="#{socialProfile.gifts.colMessage}">附言</th>
+                    <th th:text="#{socialProfile.gifts.colTime}">时间</th>
+                    <th th:text="#{socialProfile.gifts.colActions}">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${giftRows}">
+                    <td class="sp-gift-other"
+                        th:data-label="${giftsSentBox} ? #{socialProfile.gifts.toUser} : #{socialProfile.gifts.fromUser}">
+                        <a class="sp-gift-other-link" th:href="${row['otherUrl']}"
+                           th:aria-label="${row['other']}" th:text="${row['other']}">用户</a>
+                    </td>
+                    <td class="sp-gift-name" data-label="#{socialProfile.gifts.colGift}"
+                        th:text="${row['giftName']}">礼物</td>
+                    <td class="sp-gift-message" data-label="#{socialProfile.gifts.colMessage}"
+                        th:text="${row['message']}">附言</td>
+                    <td class="message-time" data-label="#{socialProfile.gifts.colTime}"
+                        th:text="${row['timeText']}">时间</td>
+                    <td class="message-row-actions" data-label="#{socialProfile.gifts.colActions}">
+                        <button type="button" class="sp-gift-delete" th:if="${row['canDelete']}"
+                                th:attr="data-id=${row['id']}"
+                                th:aria-label="#{socialProfile.gifts.delete}"
+                                th:text="#{socialProfile.gifts.delete}">删除</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </th:block>
+    </th:block>
+</section>
+</body>
+</html>

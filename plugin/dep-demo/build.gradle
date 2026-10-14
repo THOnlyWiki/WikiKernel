@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+}
+
+description = '依赖演示插件：CoreAopHook（对 core Bean 加切面）+ plugin.clientRequires（前端资源依赖）'
+
+dependencies {
+    // common 由 core 在运行时提供（插件类加载器的父加载器），不打进插件 jar。
+    // 注意：插件只依赖 common —— 需要 core 的类名时用字符串（见 DepDemoAopHook 的类名过滤）
+    compileOnly project(':common')
+
+    // AOP 扩展点 CoreAopHook 的签名用到 Spring 的 Advisor / Pointcut 类型；
+    // 插件自己的 Bean 用 @Component（spring-context）。
+    // Spring 同样由 core 在运行时提供（compileOnly，不打包）
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-aop'
+    compileOnly 'org.springframework:spring-context'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-aop'
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties（pluginName / pluginVersion / pluginDescription），
+// 构建时展开进 META-INF/wiki-plugin.properties；给人看的本地化名称与描述在 i18n/messages*.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!-- 特殊:替换文本 / Special:ReplaceText：在全部页面正文中查找并替换文本（literal / 正则，管理员，仿 MediaWiki 的 ReplaceText 扩展） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:if="${canManage}" th:text="#{replaceText.summary}">
+        在所有页面正文中查找并替换文本（支持正则；仿 MediaWiki 的 ReplaceText 扩展；需要管理员权限）。
+    </p>
+
+    <p class="form-message" th:unless="${canManage}" th:text="#{replaceText.noPermission}">需要管理员权限。</p>
+
+    <!-- 查找步骤：GET，查询条件保留在 URL 里 -->
+    <form th:if="${canManage}" class="wiki-form" method="get" th:action="@{/wiki/特殊:替换文本}">
+        <div class="form-field">
+            <label for="replace-text-search" th:text="#{replaceText.search}">查找内容</label>
+            <input type="text" id="replace-text-search" name="search" th:value="${search}" autofocus required/>
+        </div>
+        <div class="form-field">
+            <label for="replace-text-replace" th:text="#{replaceText.replace}">替换为</label>
+            <input type="text" id="replace-text-replace" name="replace" th:value="${replace}"/>
+        </div>
+        <div class="form-field form-field-inline">
+            <label>
+                <input type="checkbox" name="regex" value="1" th:checked="${regex}"/>
+                <span th:text="#{replaceText.regex}">使用正则表达式（查找；替换中可用 $1 反向引用）</span>
+            </label>
+        </div>
+        <div class="form-field">
+            <label for="replace-text-prefix" th:text="#{replaceText.prefix}">限定标题前缀（可选）</label>
+            <input type="text" id="replace-text-prefix" name="prefix" th:value="${prefix}"/>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{replaceText.find}">查找匹配</button>
+        </div>
+    </form>
+
+    <p class="form-message" th:if="${regexError != null}"
+       th:text="#{replaceText.invalidRegex(${regexError})}">正则表达式无效</p>
+
+    <th:block th:if="${canManage and searched}">
+        <h2 th:text="#{replaceText.results(${resultCount})}">匹配结果（0 个页面）</h2>
+        <p class="wiki-hint" th:text="#{replaceText.limitNote(${maxScan})}">单次最多扫描 1000 个页面。</p>
+        <p th:if="${#lists.isEmpty(results)}" th:text="#{replaceText.empty}">没有找到匹配的页面。</p>
+
+        <!-- 应用步骤：勾选页面 → POST /api/replace-text/apply -->
+        <form th:unless="${#lists.isEmpty(results)}" id="wiki-replace-text-form" class="wiki-form"
+              method="post" th:action="@{/api/replace-text/apply}"
+              th:attr="data-confirm-template=#{replaceText.replaceSelected}">
+            <input type="hidden" name="search" th:value="${search}"/>
+            <input type="hidden" name="replace" th:value="${replace}"/>
+            <input type="hidden" name="regex" th:value="${regex} ? '1' : ''"/>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="replace-text-select-all"/>
+                    <span th:text="#{replaceText.selectAll}">全选</span>
+                </label>
+            </div>
+            <table class="wikitable">
+                <tr>
+                    <th></th>
+                    <th th:text="#{replaceText.colPage}">页面</th>
+                    <th th:text="#{replaceText.colCount}">匹配数</th>
+                    <th th:text="#{replaceText.colPreview}">预览</th>
+                </tr>
+                <tr th:each="row : ${results}">
+                    <td><input type="checkbox" name="titles" th:value="${row.title}"/></td>
+                    <td><a th:href="@{/wiki/{t}(t=${row.title})}" th:text="${row.title}">标题</a></td>
+                    <td th:text="${row.count}">1</td>
+                    <td th:utext="${row.preview}">预览</td>
+                </tr>
+            </table>
+            <div class="form-message" role="alert" hidden></div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{replaceText.replaceSelected}">替换所选页面</button>
+                <button type="button" id="replace-text-replace-all" class="wiki-button"
+                        th:text="#{replaceText.replaceAll}">替换全部匹配</button>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

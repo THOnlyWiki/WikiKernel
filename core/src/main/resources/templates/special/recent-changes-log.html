@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!-- 最近更改的日志行片段（时间 （日志名） 动作句 隐藏标记）；单条日志与折叠组内的日志共用 -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="rcLogLine(entry)">
+    <span class="rc-time" th:text="${entry.timeText}">21:34</span>
+    <span class="rc-log-label"><a th:href="${entry.labelUrl}" th:text="${entry.label}">（用户注册日志）</a></span>
+    <b class="rc-bot" th:if="${entry.bot}" th:title="#{recentChanges.legendBot}"
+       th:text="#{recentChanges.botMark}">机</b>
+    <span class="rc-log-text">
+        <span th:text="${entry.actionBefore}">注册了账号「</span><a
+            th:if="${entry.targetUrl != null}" th:href="${entry.targetUrl}"
+            th:text="${entry.targetText}">abcd</a><span
+            th:if="${entry.targetUrl == null}" th:text="${entry.targetText}">abcd</span><span
+            th:text="${entry.actionAfter}">」</span><span
+            th:if="${entry.detailText != null and !entry.detailText.isEmpty()}"
+            th:text="' ' + ${entry.detailText}"> 已授予「管理员」</span>
+    </span>
+    <span class="rc-hidden-mark" th:if="${entry.hided}" th:text="#{log.hiddenMark}">（已隐藏）</span>
+</th:block>
+</body>
+</html>

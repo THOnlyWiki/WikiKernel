@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- 特殊:导入页面 / Special:Import -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="import-intro" th:text="#{import.intro}">
+        从 MediaWiki XML、WikiKernel XML 或 WikiKernel JSON 导入页面与历史（自动识别格式）。
+        已存在的页面会追加缺失的版本，重复导入不会产生重复版本。
+    </p>
+
+    <form id="wiki-import-form" class="wiki-form" method="post" enctype="multipart/form-data"
+          th:action="@{/api/import}">
+        <div class="form-field">
+            <label for="wpImportFile" th:text="#{import.fileLabel}">导出文件（.xml / .json）：</label>
+            <input type="file" id="wpImportFile" name="file" required
+                   accept=".xml,.json,text/xml,application/xml,application/json"/>
+        </div>
+        <div class="form-field">
+            <label for="wpImportNamespace" th:text="#{import.namespace}">导入到命名空间：</label>
+            <select id="wpImportNamespace" name="namespace">
+                <option th:each="option : ${namespaceOptions}" th:value="${option.id}"
+                        th:text="${option.label}">保持原命名空间</option>
+            </select>
+        </div>
+        <p class="wiki-hint" th:text="#{import.limit(${maxPages}, ${maxRevisions}, ${maxMegabytes})}">
+            单次最多导入 2000 个页面、20000 个版本，文件不超过 10 MB。
+        </p>
+        <div class="form-message" role="alert" hidden></div>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{import.submit}">上传并导入</button>
+        </div>
+    </form>
+</section>
+</body>
+</html>

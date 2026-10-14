@@ -1,0 +1,227 @@
+/*
+ * 页面横幅（仿 MediaWiki WikidataPageBanner）的样式，从 core 的 base.css 迁出（插件 page-banner），
+ * 现在支持多图轮播（自动翻页 + 上一张 / 下一张 + 指示点）。
+ * 插件加载时由 PageBannerHook.headItems 注入（只在本页可能显示横幅时注入）。
+ *
+ * 无 JS 时的行为：所有 .page-banner-slide 都是普通文档流元素（只有第一张不带 --active，
+ * 但**不会**被隐藏），所以浏览器按顺序显示全部图片、看得见第一张；
+ * 只有脚本给容器加上 .page-banner-carousel--ready 之后，才只显示当前张。
+ *
+ * 说明：#page-banner 容器由 core 的皮肤布局提供（vector / fallback 的 layout.html），
+ * 容器自身的外边距与「贴满内容框顶部」的定位留在 core 的 base.css / vector.css 里，
+ * 这里只负责容器内部：固定宽高比的图片区域、轮播过渡、进度条、控件与说明文字。
+ */
+.page-banner {
+    position: relative;
+    display: block;
+    background: #eaecf0;
+    line-height: 0;
+}
+
+/* 图片区域固定宽高比：轮播切换不同尺寸的图片时不会引起布局抖动（CLS） */
+.page-banner-viewport {
+    position: relative;
+    aspect-ratio: 16 / 5;
+    overflow: hidden;
+    background: #eaecf0;
+}
+
+.page-banner-track {
+    position: absolute;
+    inset: 0;
+}
+
+.page-banner-slide {
+    position: absolute;
+    inset: 0;
+}
+
+/* 脚本启动后：只有当前张显示 */
+.page-banner-carousel--ready .page-banner-slide {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.page-banner-carousel--ready .page-banner-slide--active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 淡入淡出（默认过渡） */
+.page-banner-carousel--ready[data-transition="fade"] .page-banner-slide {
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+/* 横向滑动：当前张从右侧滑入、离开的往左滑出 */
+.page-banner-carousel--ready[data-transition="slide"] .page-banner-slide {
+    transform: translateX(4%);
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+}
+
+.page-banner-carousel--ready[data-transition="slide"] .page-banner-slide--active {
+    transform: translateX(0);
+}
+
+/* 减弱动态效果：不加过渡动画（脚本也不再自动翻页） */
+@media (prefers-reduced-motion: reduce) {
+    .page-banner-carousel--ready .page-banner-slide {
+        transition: none;
+    }
+}
+
+.page-banner img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 自动翻页进度条：每轮从左走到右，鼠标悬停 / 获得焦点时停在原地 */
+.page-banner-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.25);
+    pointer-events: none;
+}
+
+.page-banner-progress-bar {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.85);
+}
+
+/* 翻页控件：上一张 / 下一张 + 指示点（只有多张图片且 controls 开启时才有） */
+.page-banner-controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5em;
+    padding: 0.4em 0.6em;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+    line-height: 1;
+}
+
+.page-banner-controls[hidden] {
+    display: none;
+}
+
+.page-banner-prev,
+.page-banner-next {
+    flex: 0 0 auto;
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: #ffffff;
+    font-size: 1em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.page-banner-prev::before,
+.page-banner-next::before {
+    display: block;
+    font-size: 1.1em;
+    line-height: 1;
+    text-align: center;
+}
+
+.page-banner-prev::before {
+    content: "\2039"; /* ‹ */
+}
+
+.page-banner-next::before {
+    content: "\203A"; /* › */
+}
+
+.page-banner-prev:hover,
+.page-banner-next:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.page-banner-prev:focus-visible,
+.page-banner-next:focus-visible,
+.page-banner-dot:focus-visible,
+.page-banner:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.page-banner-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin: 0 auto;
+}
+
+.page-banner-dot {
+    width: 0.6em;
+    height: 0.6em;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+}
+
+.page-banner-dot:hover {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.page-banner-dot--active {
+    background: #ffffff;
+}
+
+/* 说明文字：叠加在图片下缘（有控件时抬到控件上方；--controls 由渲染器按是否输出控件添加） */
+.page-banner-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    padding: 0.6em 1em;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+    color: #ffffff;
+    font-size: 1.15em;
+    line-height: 1.3;
+}
+
+.page-banner--controls .page-banner-caption {
+    bottom: 2.6em;
+}
+
+/* 窄屏：控件与指示点小一号，说明文字紧凑一些 */
+@media (max-width: 600px) {
+    .page-banner-controls {
+        padding: 0.3em 0.4em;
+    }
+
+    .page-banner-prev,
+    .page-banner-next {
+        width: 1.8em;
+        height: 1.8em;
+        font-size: 0.9em;
+    }
+
+    .page-banner-caption {
+        padding: 0.4em 0.7em;
+        font-size: 1em;
+    }
+
+    .page-banner--controls .page-banner-caption {
+        bottom: 2.3em;
+    }
+}

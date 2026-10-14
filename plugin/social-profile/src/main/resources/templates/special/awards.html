@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!-- 插件 social-profile：特殊:奖励 / Special:Awards（仿 MediaWiki SocialProfile 的 Special:Awards）
+     ?user=用户名 看某人的勋章；管理员（管理员 / 行政员组）可授予 / 撤销（/api/social-profile/award/*）
+     顶部导航条与其它社交页一致（本页高亮「奖励」）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="sp-page-desc" th:text="#{socialProfile.desc.awards}">
+        查看用户获得的勋章；管理员可在此授予或撤销。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and loginRequired}">
+        <span th:text="#{permissions.loginRequired}">请先登录。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or loginRequired}">
+        <nav class="sp-nav" th:aria-label="#{socialProfile.nav.label}">
+            <ul class="sp-nav-list">
+                <li><a th:href="@{/wiki/特殊:编辑资料}" th:text="#{socialProfile.nav.editProfile}">编辑资料</a></li>
+                <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
+                <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
+                <li><a th:href="@{/wiki/特殊:礼物}" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
+                <li><a th:href="@{/wiki/特殊:奖励}" aria-current="page" th:text="#{socialProfile.nav.awards}">奖励</a></li>
+                <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
+                <li><a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.nav.uploadAvatar}">上传头像</a></li>
+                <li><a th:href="@{/wiki/特殊:私信}" th:text="#{socialProfile.nav.messages}">私信</a></li>
+            </ul>
+        </nav>
+
+        <p class="wiki-warning" th:if="${awardsTargetNotFound}"
+           th:text="#{socialProfile.error.userNotFound}">用户不存在。</p>
+
+        <th:block th:unless="${awardsTargetNotFound}">
+            <div class="sp-profile-head">
+                <img class="wiki-avatar sp-avatar-small" th:src="${targetAvatarUrl}" th:alt="${awardsOwner}"/>
+                <div>
+                    <div class="sp-profile-name" th:text="${awardsOwner}">用户名</div>
+                    <p>
+                        <a th:href="${targetUserUrl}" th:text="#{messages.threadUserPage}">用户页</a>
+                        <span class="sp-sep">·</span>
+                        <a th:href="@{/wiki/特殊:留言板(user=${awardsOwner})}"
+                           th:text="#{socialProfile.board.title}">留言板</a>
+                        <span class="sp-sep">·</span>
+                        <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a>
+                    </p>
+                </div>
+            </div>
+
+            <p class="wiki-hint" th:if="${!awardsAdmin}" th:text="#{socialProfile.awards.adminHint}">
+                只有管理员能授予 / 撤销奖励。
+            </p>
+
+            <!-- 授予表单：仅管理员可见（服务端会再判一次权限） -->
+            <form class="sp-inline-form" th:if="${awardsAdmin}" method="post"
+                  action="/api/social-profile/award/grant">
+                <input type="text" name="user" required="required" th:value="${awardsOwner}"
+                       th:aria-label="#{socialProfile.awards.userLabel}"
+                       th:placeholder="#{socialProfile.awards.userLabel}"/>
+                <select name="award" th:aria-label="#{socialProfile.awards.awardLabel}">
+                    <option th:each="award : ${awardsCatalog}" th:value="${award['id']}"
+                            th:text="${award['name']}">奖励</option>
+                </select>
+                <input type="text" name="comment" th:maxlength="${awardsCommentLimit}"
+                       th:aria-label="#{socialProfile.awards.commentLabel}"
+                       th:placeholder="#{socialProfile.awards.commentLabel}"/>
+                <button type="submit" class="wiki-button" th:text="#{socialProfile.awards.grant}">授予奖励</button>
+                <span class="form-message" role="alert" hidden="hidden"></span>
+            </form>
+
+            <div class="sp-empty-block" th:if="${#lists.isEmpty(awardRows)}">
+                <p class="sp-empty" th:text="#{socialProfile.awards.empty}">还没有获得任何奖励。</p>
+                <p class="sp-empty-next">
+                    <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
+                    <a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.empty.next.randomUsers}">去随机用户看看谁在活跃</a>
+                </p>
+            </div>
+            <ul class="sp-award-list" th:unless="${#lists.isEmpty(awardRows)}">
+                <li class="sp-award-item" th:each="row : ${awardRows}">
+                    <span class="sp-award-icon" aria-hidden="true">★</span>
+                    <span class="sp-award-name" th:text="${row['name']}">奖励</span>
+                    <span class="sp-award-meta" th:if="${!#strings.isEmpty(row['comment'])}"
+                          th:text="'（' + ${row['comment']} + '）'">（说明）</span>
+                    <span class="sp-award-meta">
+                        <span th:text="#{socialProfile.awards.grantedBy}">授予人</span>
+                        <a th:href="${row['granterUrl']}" th:text="${row['granter']}">管理员</a>
+                        <span class="sp-sep">·</span>
+                        <span class="sp-award-time" th:text="${row['timeText']}">时间</span>
+                    </span>
+                    <button type="button" class="sp-award-revoke" th:if="${row['canRevoke']}"
+                            th:attr="data-id=${row['id']}"
+                            th:aria-label="#{socialProfile.awards.revoke}"
+                            th:text="#{socialProfile.awards.revoke}">撤销</button>
+                </li>
+            </ul>
+        </th:block>
+    </th:block>
+</section>
+</body>
+</html>

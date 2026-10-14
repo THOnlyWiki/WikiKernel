@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- 特殊:登录 / Special:UserLogin -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-auth">
+        <p class="auth-subtitle" th:if="${registerAvailable}">
+            <span th:text="#{auth.haveNoAccount}">还没有账号？</span>
+            <a th:href="@{/wiki/特殊:注册}" th:text="#{auth.createAccount}">创建账号</a>
+        </p>
+        <p class="auth-subtitle">
+            <a th:href="@{/wiki/特殊:重置密码}" th:text="#{auth.forgotPassword}">忘记密码？</a>
+        </p>
+
+        <form id="wiki-login-form" class="wiki-form" th:action="@{/api/user/login}" method="post">
+            <input type="hidden" name="returnto" th:value="${returnto}"/>
+
+            <div class="form-field">
+                <label for="wpName1" th:text="#{auth.username}">用户名</label>
+                <input type="text" id="wpName1" name="username" autocomplete="username" autofocus required/>
+            </div>
+
+            <div class="form-field">
+                <label for="wpPassword1" th:text="#{auth.password}">密码</label>
+                <input type="password" id="wpPassword1" name="password" autocomplete="current-password" required/>
+            </div>
+
+            <div class="form-field form-field-inline">
+                <label for="wpRemember">
+                    <input type="checkbox" id="wpRemember" name="remember" value="1" checked/>
+                    <span th:text="#{auth.remember}">记住我的登录状态</span>
+                </label>
+            </div>
+
+            <div class="form-message" role="alert" hidden></div>
+
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{auth.loginButton}">登录</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

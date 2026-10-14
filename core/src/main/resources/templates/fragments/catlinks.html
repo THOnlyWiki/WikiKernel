@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<!-- 公共片段：页面底部分类栏（view / category / file 共用）；参数：items（分类行）
+     外层 .catlinks-block 撑满剩余高度，让分类栏位于内容容器最底部（长页面时与正文保持 1em 间距） -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="catlinks(items)" class="catlinks-block" th:if="${!#lists.isEmpty(items)}">
+    <div class="catlinks-spacer" aria-hidden="true"></div>
+    <div class="catlinks">
+        <span class="catlinks-label" th:text="#{view.categories}">分类</span>
+        <span class="catlinks-item" th:each="cat : ${items}">
+            <a th:href="${cat.url}" th:classappend="${cat.red} ? 'new'" th:text="${cat.label}">分类</a>
+        </span>
+    </div>
+</div>
+</body>
+</html>

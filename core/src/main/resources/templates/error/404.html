@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<!-- 404 页面：WikiKernel:404 的渲染结果会插入这里（没有该页面时用内置提示） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${errorTitle}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-error-page">
+        <p class="wiki-error-code">404</p>
+        <!-- WikiKernel:404 的内容（已渲染 + 白名单过滤，支持 $TITLE$ / $SEARCH_URL$ / $LOGS_URL$ / $CREATE_URL$ 占位符） -->
+        <div th:if="${notFoundContent != null}" class="wiki-content wiki-error-custom"
+             th:utext="${notFoundContent}">404 自定义内容</div>
+        <!-- 内置提示：同样带「搜索本页标题 / 搜索相关日志 / 创建本页面」蓝链 -->
+        <div th:if="${notFoundContent == null}" class="wiki-content wiki-error-default"
+             th:utext="${defaultNotFoundContent}">404 内置提示</div>
+    </div>
+</section>
+</body>
+</html>

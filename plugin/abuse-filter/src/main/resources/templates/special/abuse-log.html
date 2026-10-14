@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- 特殊:滥用日志 / Special:AbuseLog：过滤器命中记录（列表 + 详情） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="abuse-log">
+    <th:block th:if="${mode == 'missing'}">
+        <p class="wiki-warning" th:text="#{abusefilter.logMissingDetail}">日志条目不存在或已被隐藏。</p>
+    </th:block>
+
+    <!-- ==================== 详情 ==================== -->
+    <th:block th:if="${mode == 'detail'}">
+        <h2 th:text="#{abusefilter.logDetail}">日志详情</h2>
+        <table class="wikitable abuse-log-detail">
+            <tr><th th:text="#{abusefilter.logTime}">时间</th><td th:text="${timeText}">…</td></tr>
+            <tr><th th:text="#{abusefilter.logFilter}">过滤器</th>
+                <td>
+                    <a th:href="@{/wiki/特殊:滥用过滤器(edit=${log.filterId})}" th:text="${filterDescription}">说明</a>
+                    <span class="abuse-mark" th:if="${log.hided}" th:text="#{abusefilter.hiddenMark}">（隐藏）</span>
+                </td></tr>
+            <tr><th th:text="#{abusefilter.logUser}">用户</th>
+                <td>
+                    <a th:if="${userUrl != null}" th:href="${userUrl}" th:text="${userName}">用户</a>
+                    <span th:if="${userUrl == null}" th:text="${userName != null} ? ${userName} : ${log.ip}">IP</span>
+                </td></tr>
+            <tr><th th:text="#{abusefilter.logPage}">页面 / 动作</th>
+                <td th:text="${log.pageTitle} + ' · ' + ${log.action}">页面 · edit</td></tr>
+            <tr><th th:text="#{abusefilter.logResult}">结果</th>
+                <td th:if="${!#strings.isEmpty(log.actionsTaken)}"
+                    th:text="'(' + ${log.actionsTaken} + ')'"></td>
+                <td th:if="${#strings.isEmpty(log.actionsTaken)}" th:text="#{abusefilter.noActions}">（仅记录）</td></tr>
+        </table>
+
+        <h3 th:text="#{abusefilter.logVariables}">变量</h3>
+        <table class="wikitable abuse-log-variables">
+            <tr th:each="variable : ${variables}">
+                <th th:text="${variable.name}">page_title</th>
+                <td th:text="${variable.value}">值</td>
+            </tr>
+        </table>
+
+        <p>
+            <button type="button" class="wiki-button abuse-log-hide"
+                    th:if="${canManage}"
+                    th:attr="data-id=${log.id},data-hided=${log.hided} ? 0 : 1"
+                    th:text="${log.hided} ? #{abusefilter.logUnhide} : #{abusefilter.logHide}">隐藏此条目</button>
+            <a th:href="@{/wiki/特殊:滥用日志}" th:text="#{abusefilter.backToList}">返回滥用日志</a>
+        </p>
+    </th:block>
+
+    <!-- ==================== 列表 ==================== -->
+    <th:block th:if="${mode == 'list'}">
+        <p th:text="#{abusefilter.logIntro}">每次过滤器命中都会记录在这里；隐藏条目只有管理员可见。</p>
+        <p th:if="${#lists.isEmpty(logs)}" th:text="#{abusefilter.logEmpty}">没有命中记录。</p>
+        <table class="wikitable abuse-log-table" th:unless="${#lists.isEmpty(logs)}">
+            <tr>
+                <th th:text="#{abusefilter.logTime}">时间</th>
+                <th th:text="#{abusefilter.logFilter}">过滤器</th>
+                <th th:text="#{abusefilter.logUser}">用户</th>
+                <th th:text="#{abusefilter.logPage}">页面 / 动作</th>
+                <th th:text="#{abusefilter.logResult}">结果</th>
+            </tr>
+            <tr th:each="row : ${logs}" th:classappend="${row.hided} ? 'abuse-log-hided'">
+                <td th:text="${row.time}">…</td>
+                <td><a th:href="@{/wiki/特殊:滥用日志(id=${row.id})}" th:text="${row.filterDescription}">说明</a></td>
+                <td>
+                    <a th:if="${row.userUrl != null}" th:href="${row.userUrl}" th:text="${row.userText}">用户</a>
+                    <span th:if="${row.userUrl == null}" th:text="${row.userText}">IP</span>
+                </td>
+                <td th:text="${row.pageTitle} + ' · ' + ${row.action}">页面 · edit</td>
+                <td th:if="${!#strings.isEmpty(row.actionsText)}" th:text="${row.actionsText}">阻止操作</td>
+                <td th:if="${#strings.isEmpty(row.actionsText)}" th:text="#{abusefilter.noActions}">（仅记录）</td>
+            </tr>
+        </table>
+    </th:block>
+</section>
+</body>
+</html>

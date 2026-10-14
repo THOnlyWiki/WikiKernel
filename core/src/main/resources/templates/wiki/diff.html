@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- 差异对比（GET ?diff=…，仿 MediaWiki DifferenceEngine：两栏 diff 表格 + 行内加粗 + 版本导航） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <!-- 版本导航（仿 MediaWiki 的 prevlink / nextlink） -->
+    <div class="diff-nav">
+        <a th:if="${prevDiffUrl != null}" th:href="${prevDiffUrl}" th:text="#{diff.prev}">← 上一差异</a>
+        <span th:if="${prevDiffUrl != null}" class="diff-nav-gap"></span>
+        <a th:href="${historyUrl}" th:text="#{common.history}">查看历史</a>
+        <span class="language-separator">|</span>
+        <a th:href="${pageUrl}" th:text="#{common.view}">阅读</a>
+        <a th:if="${nextDiffUrl != null}" class="diff-next" th:href="${nextDiffUrl}"
+           th:text="#{diff.next}">下一差异 →</a>
+    </div>
+
+    <p class="wiki-warning diff-empty-message" th:if="${diffEmpty}" th:text="#{diff.empty}">没有差异。</p>
+
+    <th:block th:unless="${diffEmpty}">
+        <p class="wiki-hint diff-legend" th:text="#{diff.legend}">
+            图例：（− 删除的行，+ 添加的行）
+        </p>
+
+        <table class="diff">
+            <colgroup>
+                <col class="diff-marker-col"/>
+                <col class="diff-lineno-col"/>
+                <col/>
+                <col class="diff-marker-col"/>
+                <col class="diff-lineno-col"/>
+                <col/>
+            </colgroup>
+            <tr class="diff-header-row">
+                <th colspan="3" class="diff-otitle">
+                    <div class="diff-title-line">
+                        <span th:text="#{diff.oldVersion}">旧版本：</span>
+                        <th:block th:if="${older != null}">
+                            <a th:href="${pageUrl + '?oldid=' + older.id}"
+                               th:text="#{diff.revision(${older.id})}">修订 123</a>
+                        </th:block>
+                        <th:block th:if="${older == null}" th:text="#{diff.noOldRevision}">（这是最早的版本）</th:block>
+                    </div>
+                    <div class="diff-title-meta" th:if="${older != null}">
+                        <span th:if="${oldUserName != null}"><a
+                                th:href="@{/wiki/{t}(t=${'用户:' + oldUserName})}"
+                                th:text="${oldUserName}">用户</a></span>
+                        <span th:if="${oldUserName == null}" th:text="#{common.anonymous}">匿名用户</span>
+                        <span class="diff-time" th:text="${@wikiTime.format(older.createAt)}">时间</span>
+                    </div>
+                    <div class="diff-title-comment" th:if="${older != null}"
+                         th:text="${#strings.isEmpty(older.comment) ? #messages.msg('common.noSummary') : older.comment}">摘要</div>
+                </th>
+                <th colspan="3" class="diff-ntitle">
+                    <div class="diff-title-line">
+                        <span th:text="#{diff.newVersion}">新版本：</span>
+                        <a th:href="${pageUrl + '?oldid=' + newer.id}"
+                           th:text="#{diff.revision(${newer.id})}">修订 456</a>
+                    </div>
+                    <div class="diff-title-meta">
+                        <span th:if="${newUserName != null}"><a
+                                th:href="@{/wiki/{t}(t=${'用户:' + newUserName})}"
+                                th:text="${newUserName}">用户</a></span>
+                        <span th:if="${newUserName == null}" th:text="#{common.anonymous}">匿名用户</span>
+                        <span class="diff-time" th:text="${@wikiTime.format(newer.createAt)}">时间</span>
+                    </div>
+                    <div class="diff-title-comment"
+                         th:text="${#strings.isEmpty(newer.comment) ? #messages.msg('common.noSummary') : newer.comment}">摘要</div>
+                </th>
+            </tr>
+            <tr th:each="row : ${diffRows}">
+                <td class="diff-marker" th:text="${row.oldMarker}">-</td>
+                <td class="diff-lineno" th:text="${row.oldNo}">1</td>
+                <td th:class="${row.oldClass}"><span th:text="${row.oldBefore}"></span><span
+                        th:if="${row.oldChange != ''}" class="diffchange"
+                        th:text="${row.oldChange}"></span><span th:text="${row.oldAfter}"></span></td>
+                <td class="diff-marker" th:text="${row.newMarker}">+</td>
+                <td class="diff-lineno" th:text="${row.newNo}">1</td>
+                <td th:class="${row.newClass}"><span th:text="${row.newBefore}"></span><span
+                        th:if="${row.newChange != ''}" class="diffchange"
+                        th:text="${row.newChange}"></span><span th:text="${row.newAfter}"></span></td>
+            </tr>
+        </table>
+    </th:block>
+</section>
+</body>
+</html>

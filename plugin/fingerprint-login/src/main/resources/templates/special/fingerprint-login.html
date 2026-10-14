@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!-- 特殊:指纹登录 / Special:FingerprintLogin（插件 fingerprint-login）：管理自己的浏览器指纹 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="fingerprint-login-page">
+    <p class="wiki-warning" th:unless="${enabled}" th:text="#{fingerprint.disabled}">
+        浏览器指纹登录当前未启用。
+    </p>
+    <p th:text="#{fingerprint.special.intro}">
+        在这里管理自己的浏览器指纹。
+    </p>
+    <p class="wiki-hint" th:unless="${loggedIn}">
+        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:指纹登录'})}"
+           th:text="#{fingerprint.special.loginLink}">登录</a>
+    </p>
+    <p class="wiki-hint" th:if="${loggedIn}">
+        <a th:href="${preferencesUrl}" th:text="#{fingerprint.special.openPreferences}">打开参数设置</a>
+    </p>
+    <!-- 面板由插件 Java 侧拼好（FingerprintLoginPanel，与参数设置分区同一段 HTML），
+         交互交给站点级注入的 /plugins/fingerprint-login/fingerprint-login.js -->
+    <div th:utext="${panelHtml}">指纹列表</div>
+    <noscript>
+        <p class="wiki-warning" th:text="#{fingerprint.login.notSupported}">
+            需要启用 JavaScript 才能使用指纹登录。
+        </p>
+    </noscript>
+</section>
+</body>
+</html>

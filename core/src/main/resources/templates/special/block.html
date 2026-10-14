@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- 特殊:封禁 / Special:Block：封禁用户或 IP（可永久 / 定时、可禁邮件 / 禁注册 / 仅匿名） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p th:text="#{block.intro}">封禁指定用户或 IP 地址（支持 CIDR，如 203.0.113.0/24），可设置期限与选项。</p>
+
+    <p class="form-message success" th:if="${blockedSuccess}" th:text="#{block.success(${target})}">已封禁。</p>
+    <p class="form-message success" th:if="${unblockedSuccess}" th:text="#{block.unblockSuccess}">已解封。</p>
+
+    <p class="wiki-form-error" th:if="${blockLogin}">
+        <span th:text="#{block.loginRequired}">请先登录再封禁用户。</span>
+        <a th:href="@{/wiki/特殊:登录(returnto=${pageUrl})}" th:text="#{source.login}">登录</a>
+    </p>
+    <p class="wiki-form-error" th:if="${!canBlock and !blockLogin}" th:text="#{block.forbidden}">
+        只有管理员可以封禁用户或 IP。
+    </p>
+
+    <div class="wiki-warning" th:if="${existingBlock != null}">
+        <span th:text="#{block.alreadyBlocked}">该目标当前已被封禁（提交将更新封禁设置）。</span>
+        <a th:if="${targetIsUser}" th:href="@{/wiki/{t}(t=${'用户:' + target})}" th:text="${target}">目标</a>
+        <span th:if="${existingBlocker != null}"><span th:text="#{block.blockedBy}">封禁者：</span><a
+                th:href="@{/wiki/{t}(t=${'用户:' + existingBlocker})}" th:text="${existingBlocker}">封禁者</a></span>
+        <button th:if="${canBlock}" type="button" class="wiki-button block-unblock"
+                th:attr="data-id=${existingBlock.id}" th:text="#{block.unblock}">解封</button>
+    </div>
+
+    <form id="wiki-block-form" class="wiki-form" method="post" th:action="@{/api/blocks}" th:if="${canBlock}">
+        <div class="form-field">
+            <label for="wpTarget" th:text="#{block.target}">目标（用户名 / IP / CIDR）：</label>
+            <input type="text" id="wpTarget" name="target" th:value="${target}"
+                   th:placeholder="#{block.targetPlaceholder}" autofocus required/>
+        </div>
+        <div class="form-field">
+            <label for="wpExpiry" th:text="#{block.expiry}">期限：</label>
+            <select id="wpExpiry" name="expiry">
+                <option th:each="option : ${expiryOptions}" th:value="${option.id}"
+                        th:text="${option.label}">永久</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="wpReason" th:text="#{block.reason}">原因（可选）：</label>
+            <input type="text" id="wpReason" name="reason" maxlength="500"/>
+        </div>
+        <div class="form-field form-field-inline">
+            <label>
+                <input type="checkbox" name="preventEmail" value="true"/>
+                <span th:text="#{block.option.email}">禁止发送电子邮件</span>
+            </label>
+        </div>
+        <div class="form-field form-field-inline">
+            <label>
+                <input type="checkbox" name="preventCreate" value="true"/>
+                <span th:text="#{block.option.create}">禁止创建账号</span>
+            </label>
+        </div>
+        <div class="form-field form-field-inline">
+            <label>
+                <input type="checkbox" name="anonOnly" value="true"/>
+                <span th:text="#{block.option.anonOnly}">仅封禁匿名用户（仅对 IP 有效）</span>
+            </label>
+        </div>
+        <div class="form-message" role="alert" hidden></div>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button" th:text="#{block.submit}">封禁</button>
+        </div>
+    </form>
+
+    <p><a th:href="@{/wiki/特殊:封禁列表}" th:text="#{special.blockList}">封禁列表</a></p>
+</section>
+</body>
+</html>

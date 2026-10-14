@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!-- 被封禁的用户尝试编辑时显示（仿 MediaWiki 的「您已被封禁」页；仍然可以阅读） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <div class="wiki-warning block-notice" th:with="reason=${#strings.isEmpty(block.reason)
+                ? #messages.msg('block.noReason') : block.reason},
+            expiry=${block.expiresAt == null
+                ? #messages.msg('block.permanent')
+                : @wikiTime.format(block.expiresAt)}">
+        <p><strong th:text="#{block.blockedTitle}">您已被封禁</strong></p>
+        <ul>
+            <li><span th:text="#{block.blockedTarget}">目标：</span><span th:text="${block.target}">x</span></li>
+            <li><span th:text="#{block.blockedReason}">原因：</span><span th:text="${reason}">x</span></li>
+            <li><span th:text="#{block.blockedExpiry}">到期：</span><span th:text="${expiry}">x</span></li>
+            <li th:if="${blockerName != null}">
+                <span th:text="#{block.blockedBy}">封禁者：</span><a
+                        th:href="@{/wiki/{t}(t=${'用户:' + blockerName})}" th:text="${blockerName}">x</a>
+            </li>
+        </ul>
+        <p th:text="#{block.blockedHint}">您仍然可以阅读页面，但不能编辑、移动、上传文件或发送电子邮件。</p>
+    </div>
+</section>
+</body>
+</html>

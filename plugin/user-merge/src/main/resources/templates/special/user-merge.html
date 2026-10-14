@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:用户合并 / Special:UserMerge（仿 MediaWiki UserMerge；核查员专用） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:unless="${canMerge}" th:text="#{userMerge.forbidden}">
+        只有核查员可以合并用户。
+    </p>
+
+    <th:block th:if="${canMerge}">
+        <p th:text="#{userMerge.intro}">把源账号的数据归入目标账号。</p>
+
+        <form id="user-merge-form" class="wiki-form" method="post">
+            <div class="form-field">
+                <label for="user-merge-old" th:text="#{userMerge.oldUser}">要合并的用户（源）：</label>
+                <input type="text" id="user-merge-old" name="oldUser" th:value="${oldUserValue}" required/>
+            </div>
+            <div class="form-field">
+                <label for="user-merge-new" th:text="#{userMerge.newUser}">合并到的用户（目标）：</label>
+                <input type="text" id="user-merge-new" name="newUser" th:value="${newUserValue}" required/>
+            </div>
+            <label class="pref-checkbox">
+                <input type="checkbox" id="user-merge-delete" name="deleteOld" value="1" checked/>
+                <span th:text="#{userMerge.deleteOld}">合并后删除源账号</span>
+            </label>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{userMerge.submit}">合并用户</button>
+            </div>
+        </form>
+        <p id="user-merge-message" class="form-message" hidden></p>
+    </th:block>
+</section>
+</body>
+</html>

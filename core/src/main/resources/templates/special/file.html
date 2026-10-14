@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<!-- 特殊:文件 / Special:File：旧链接兼容页（文件存在时由控制器 302 到 文件:<名>） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="wiki-form-error" th:if="${nameRequired}" th:text="#{files.nameRequired}">请输入文件名。</p>
+    <p th:if="${fileNotFound}" th:text="#{files.notFound}">文件不存在。</p>
+    <p>
+        <a class="wiki-button" th:href="@{/wiki/特殊:文件列表}" th:text="#{files.list}">文件列表</a>
+        <a th:href="@{/wiki/特殊:上传文件}" th:text="#{files.uploadNew}">上传新文件</a>
+    </p>
+</section>
+</body>
+</html>

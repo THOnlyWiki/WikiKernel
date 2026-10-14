@@ -1,0 +1,529 @@
+/*
+ * 多媒体预览（仿 MediaWiki TimedMediaHandler 播放器 + MediaViewer 图片放大）的样式。
+ * 从 core 的 base.css 迁出（插件 media-viewer）；插件加载时经 head 扩展注入。
+ */
+/* ==================== 多媒体播放器（仿 MediaWiki TimedMediaHandler） ==================== */
+/* 视频：黑色播放器 + 居中大播放按钮 + 底部控制条；音频：浅色工具条 */
+.wiki-media-player {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    background: #000;
+    color: #fff;
+    border-radius: 2px;
+    overflow: hidden;
+    line-height: 0;
+    vertical-align: middle;
+}
+
+.wiki-media-player:focus-visible {
+    outline: 2px solid #36c;
+    outline-offset: 1px;
+}
+
+.wiki-media-element {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: 70vh;
+    background: #000;
+}
+
+.wiki-media-video .wiki-media-element {
+    cursor: pointer;
+}
+
+/* 音频：浅色工具条；JS 增强后隐藏原生 <audio>（未增强时保留原生控件作回退） */
+.wiki-media-audio {
+    background: #f8f9fa;
+    color: #202122;
+    border: 1px solid #a2a9b1;
+    line-height: normal;
+}
+
+.mw-player-enhanced.wiki-media-audio .wiki-media-element {
+    display: none;
+}
+
+/* 居中大播放按钮（暂停时显示） */
+.mw-player-bigplay {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+    z-index: 2;
+}
+
+.mw-player-bigplay:hover {
+    background: rgba(0, 0, 0, 0.75);
+}
+
+.mw-player-bigplay[hidden] {
+    display: none;
+}
+
+.wiki-media-audio .mw-player-bigplay {
+    display: none;
+}
+
+/* 控制条 */
+.mw-player-controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+    line-height: 1;
+    z-index: 2;
+}
+
+.wiki-media-audio .mw-player-controls {
+    position: static;
+    background: none;
+    padding: 7px 10px;
+}
+
+.mw-player-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    flex: 0 0 auto;
+    text-decoration: none;
+}
+
+.mw-player-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.wiki-media-audio .mw-player-button:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.mw-player-time {
+    font-size: 12px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    opacity: 0.95;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 进度条：已播放部分红色（MediaWiki 播放器的主色） */
+.mw-player-seek {
+    flex: 1 1 auto;
+    min-width: 60px;
+    height: 4px;
+    margin: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 2px;
+    cursor: pointer;
+    background: linear-gradient(to right,
+    #d33 0 var(--mw-progress, 0%),
+    rgba(255, 255, 255, 0.35) var(--mw-progress, 0%) 100%);
+}
+
+.wiki-media-audio .mw-player-seek {
+    background: linear-gradient(to right,
+    #d33 0 var(--mw-progress, 0%),
+    #c8ccd1 var(--mw-progress, 0%) 100%);
+}
+
+.mw-player-seek::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border: 0;
+    border-radius: 50%;
+    background: #d33;
+    cursor: pointer;
+}
+
+.mw-player-seek::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    border-radius: 50%;
+    background: #d33;
+    cursor: pointer;
+}
+
+.mw-player-volume {
+    width: 64px;
+    height: 3px;
+    margin: 0;
+    flex: 0 0 auto;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+}
+
+.wiki-media-audio .mw-player-volume {
+    background: #c8ccd1;
+}
+
+.mw-player-volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.wiki-media-audio .mw-player-volume::-webkit-slider-thumb {
+    background: #54595d;
+}
+
+.mw-player-volume::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.wiki-media-audio .mw-player-volume::-moz-range-thumb {
+    background: #54595d;
+}
+
+.mw-player-rate {
+    font-size: 12px;
+    width: auto;
+    min-width: 34px;
+    padding: 0 4px;
+}
+
+/* 加载中 / 出错提示 */
+.mw-player-loading .wiki-media-element {
+    opacity: 0.6;
+}
+
+.mw-player-error .wiki-media-element,
+.mw-player-error .mw-player-bigplay,
+.mw-player-error .mw-player-controls {
+    display: none;
+}
+
+.wiki-media-fallback {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #fff;
+    line-height: 1.5;
+}
+
+.wiki-media-audio .wiki-media-fallback {
+    color: #54595d;
+}
+
+/* 全屏 */
+.wiki-media-player:fullscreen {
+    border-radius: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+
+.wiki-media-player:fullscreen .wiki-media-element {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+}
+
+/* 非媒体文件嵌入占位框（仿 MediaWiki 的图标 + 文件名链接） */
+.wiki-file-embed {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.wiki-file-embed a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid #c8ccd1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    color: #36c;
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.wiki-file-embed a:hover {
+    background: #eaecf0;
+}
+
+.wiki-file-embed a.new {
+    color: #d33;
+}
+
+.wiki-file-embed-icon {
+    flex: 0 0 auto;
+    color: #54595d;
+}
+
+/* 词条里嵌入播放器时的宽度处理（thumb 图注 + 播放器） */
+.wiki-thumb .wiki-media-player {
+    max-width: 100%;
+}
+
+/* ==================== 图片放大查看器（仿 MediaWiki MediaViewer） ==================== */
+html.wiki-image-viewer-open {
+    overflow: hidden;
+}
+
+.wiki-image-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.92);
+    color: #fff;
+}
+
+.wiki-image-viewer[hidden] {
+    display: none;
+}
+
+.wiki-image-viewer-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: linear-gradient(rgba(0, 0, 0, 0.65), transparent);
+    z-index: 3;
+}
+
+.wiki-image-viewer-title {
+    color: #fff;
+    font-size: 14px;
+    text-decoration: none;
+    opacity: 0.95;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wiki-image-viewer-title:hover {
+    text-decoration: underline;
+}
+
+.wiki-image-viewer-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.wiki-image-viewer-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.wiki-image-viewer-close {
+    margin-left: auto;
+    width: 36px;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.wiki-image-viewer-stage {
+    position: relative;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 56px 64px;
+}
+
+.wiki-image-viewer-stage img {
+    display: block;
+    max-width: none;
+    max-height: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.wiki-image-viewer-status {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 8px 14px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.7);
+    font-size: 13px;
+}
+
+.wiki-image-viewer-status[hidden] {
+    display: none;
+}
+
+.wiki-image-viewer-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    width: 48px;
+    height: 72px;
+    border: 0;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    font-size: 36px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.wiki-image-viewer-nav:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.wiki-image-viewer-nav[hidden] {
+    display: none;
+}
+
+.wiki-image-viewer-prev {
+    left: 8px;
+}
+
+.wiki-image-viewer-next {
+    right: 8px;
+}
+
+.wiki-image-viewer-bottom {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.72);
+    z-index: 3;
+}
+
+.wiki-image-viewer-caption {
+    flex: 1 1 auto;
+    font-size: 13px;
+    opacity: 0.9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wiki-image-viewer-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.wiki-image-viewer-zoom {
+    min-width: 56px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.wiki-image-viewer-download {
+    position: relative;
+}
+
+.wiki-image-viewer-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    min-width: 230px;
+    padding: 4px 0;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #fff;
+    color: #202122;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    z-index: 4;
+}
+
+.wiki-image-viewer-menu[hidden] {
+    display: none;
+}
+
+.wiki-image-viewer-menu-item {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    background: none;
+    color: #202122;
+    font-size: 13px;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.wiki-image-viewer-menu-item:hover {
+    background: #eaecf0;
+}
+
+.wiki-image-viewer-menu-item:disabled {
+    color: #72777d;
+    cursor: default;
+}
+
+.wiki-image-viewer-menu-status {
+    padding: 6px 12px;
+    color: #d33;
+    font-size: 12px;
+}
+
+.wiki-image-viewer-menu-status[hidden] {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .wiki-image-viewer-stage {
+        padding: 48px 8px;
+    }
+
+    .wiki-image-viewer-nav {
+        width: 36px;
+        height: 52px;
+        font-size: 26px;
+    }
+}
+

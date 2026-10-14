@@ -1,0 +1,40 @@
+plugins {
+    id 'java-library'
+}
+
+description = '通用代码：插件 SPI、扩展点、共享模型（common.data）。不依赖 Spring / core / 插件'
+
+// 说明：common 只额外依赖 MyBatis-Plus 注解（api，供实体类使用）与 Jackson 3 的 JSON 类型
+// （compileOnly，KvStore 的 JsonNode 签名 / 便捷方法用；运行时由 core 提供）以及 Spring AOP 的
+// Advisor 类型（compileOnly，CoreAopHook 扩展点签名用），
+// 不含任何运行时实现，也不依赖 Spring、core 或任何插件。
+// 跨插件协作的接口（扩展点）都必须定义在这里。
+// Lombok 仅编译期，由根构建脚本统一注入。
+dependencies {
+    // 实体模型（common.data）上的 @TableName/@TableId 等注解
+    // api：core 和插件都能直接使用这些注解；想更干净可改成 compileOnly
+    api "com.baomidou:mybatis-plus-annotation:${mybatisPlusVersion}"
+
+    // JSON 类型（KvStore 的 Optional<JsonNode> 读法）：Jackson 3 由 Spring Boot 4 在运行时提供，
+    // 与插件的用法一致（插件自己也在 build.gradle 里 compileOnly 声明它）
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'tools.jackson.core:jackson-databind'
+
+    // @TableField / @TableId 这类注解的默认值引用了 org.apache.ibatis.type.JdbcType，
+    // 缺它时 javac 会为每个 MyBatis-Plus 注解报「未知的枚举常量 JdbcType.UNDEFINED」；
+    // 同样只 compileOnly（运行时由 core 的 mybatis-plus starter 提供）。
+    // 版本与 mybatis-plus 3.5.17 的传递依赖一致，写死在这里以免动共享的 gradle.properties
+    compileOnly 'org.mybatis:mybatis:3.5.19'
+
+    // AOP 扩展点 CoreAopHook 的签名用到 org.springframework.aop.Advisor：
+    // 同样只 compileOnly（运行期由 core 提供，与插件写法一致），common 产物里不打包 Spring、
+    // 不产生运行时依赖，仍然可以被独立编译与单元测试。
+    compileOnly 'org.springframework:spring-aop'
+
+    // common 的纯逻辑单元测试（插件描述 / 版本约束 / 依赖图），不启动 Spring 容器
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-aop'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+
+}

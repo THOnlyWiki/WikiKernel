@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<!-- 特殊:最近更改 / Special:RecentChanges（仿 MediaWiki：过滤器栏 + 日期分组 + 折叠行 + 图例） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="mw-rc-page">
+    <a class="rc-help" href="https://www.mediawiki.org/wiki/Help:Recent_changes" target="_blank" rel="nofollow">
+        <span class="rc-help-icon">?</span><span th:text="#{recentChanges.help}">帮助</span>
+    </a>
+
+    <p class="rc-summary" th:text="#{recentChanges.intro}">此页面可以追踪本wiki的最近更改。</p>
+
+    <!-- 过滤器栏 -->
+    <div class="rc-filters">
+        <div class="rc-filters-head">
+            <span th:text="#{recentChanges.filters}">激活的过滤器</span>
+            <button type="button" id="rc-filters-toggle" class="rc-link-button"
+                    th:attr="data-hide=#{recentChanges.filtersHide},data-show=#{recentChanges.filtersShow}"
+                    th:text="#{recentChanges.filtersHide}">隐藏</button>
+        </div>
+        <div class="rc-active-filters" id="rc-active-filters">
+            <!-- 没有过滤器时显示空状态（仿 MediaWiki RCFilters） -->
+            <span class="rc-filters-empty" th:if="${#lists.isEmpty(activeFilters)}"
+                  th:text="#{recentChanges.filtersEmpty}">没有激活的过滤器。所有贡献均已显示。</span>
+            <th:block th:unless="${#lists.isEmpty(activeFilters)}">
+                <span class="rc-chip" th:each="filter : ${activeFilters}">
+                    <span th:text="${filter.label}">过滤器</span>
+                    <a class="rc-chip-remove" th:href="${filter.removeUrl}"
+                       th:title="#{recentChanges.chipRemove}">×</a>
+                </span>
+                <a class="rc-chip-trash" th:href="${clearUrl}" th:title="#{recentChanges.clearFilters}">🗑</a>
+            </th:block>
+        </div>
+        <div class="rc-filter-row">
+            <input type="search" id="rc-filter-input" th:placeholder="#{recentChanges.filterPlaceholder}"/>
+            <div class="rc-filter-actions">
+                <details class="rc-menu">
+                    <summary th:text="#{recentChanges.namespace}">命名空间</summary>
+                    <ul>
+                        <li th:each="option : ${namespaceOptions}">
+                            <a th:href="${option.url}" th:text="${option.label}"
+                               th:classappend="${option.selected} ? 'selected'">全部</a>
+                        </li>
+                    </ul>
+                </details>
+                <details class="rc-menu">
+                    <summary th:text="#{recentChanges.tags}">标签</summary>
+                    <ul>
+                        <li th:each="option : ${tagOptions}">
+                            <a th:href="${option.url}" th:text="${option.label}"
+                               th:classappend="${option.selected} ? 'selected'">全部</a>
+                        </li>
+                    </ul>
+                </details>
+                <details class="rc-menu">
+                    <summary th:text="#{recentChanges.hideOptions}">隐藏</summary>
+                    <ul>
+                        <li th:each="option : ${botOptions}">
+                            <a th:href="${option.url}" th:text="${option.label}"
+                               th:classappend="${option.selected} ? 'selected'">机器人</a>
+                        </li>
+                    </ul>
+                </details>
+            </div>
+        </div>
+        <div class="rc-toolbar">
+            <button type="button" id="rc-live-toggle" class="rc-live">
+                <span class="rc-live-icon">▶</span><span th:text="#{recentChanges.liveUpdates}">动态更新</span>
+            </button>
+            <details class="rc-menu rc-range">
+                <summary th:text="${limitDaysLabel}">50次更改，7天</summary>
+                <ul>
+                    <li th:each="option : ${limitOptions}">
+                        <a th:href="${option.url}" th:text="${option.label}">50次更改</a>
+                    </li>
+                    <li class="rc-menu-sep"></li>
+                    <li th:each="option : ${dayOptions}">
+                        <a th:href="${option.url}" th:text="${option.label}">最近7天</a>
+                    </li>
+                </ul>
+            </details>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(days)}" th:text="#{recentChanges.empty}">没有最近的更改。</p>
+
+    <!-- 缩略列表（图例） -->
+    <div class="rc-legend" th:unless="${#lists.isEmpty(days)}">
+        <div class="rc-legend-title" th:text="#{recentChanges.legend}">缩略列表：</div>
+        <dl>
+            <dt th:text="#{recentChanges.newMark}">新</dt>
+            <dd th:text="#{recentChanges.legendNew}">此编辑创建了新页面（见新页面列表）</dd>
+            <dt th:text="#{recentChanges.minorMark}">小</dt>
+            <dd th:text="#{recentChanges.legendMinor}">此编辑为小编辑</dd>
+            <dt th:text="#{recentChanges.botMark}">机</dt>
+            <dd th:text="#{recentChanges.legendBot}">此编辑由机器人执行</dd>
+            <dt>(±123)</dt>
+            <dd th:text="#{recentChanges.legendBytes}">此页面字节数的前后变化</dd>
+        </dl>
+    </div>
+
+    <!-- 按日期分组（动态更新会往 #rc-days 里插新条目） -->
+    <div id="rc-days">
+        <div class="rc-day" th:each="day : ${days}">
+            <h2 class="rc-day-title" th:text="${day.label}">2026年10月5日 (星期一)</h2>
+            <ul class="rc-list">
+                <li th:each="entry : ${day.entries}" class="rc-entry" th:attr="data-key=${entry.key}">
+                <!-- 同一词条多次更改：折叠（摘要行带 N次更改） -->
+                <details class="rc-group" th:if="${entry.kind == 'group' and entry.count > 1}">
+                    <summary>
+                        <th:block th:replace="~{special/recent-changes-line :: rcLine(${entry.latest})}">…</th:block>
+                    </summary>
+                    <ul class="rc-changes">
+                        <li th:each="change : ${entry.changes}">
+                            <th:block th:replace="~{special/recent-changes-line :: rcLine(${change})}">…</th:block>
+                        </li>
+                    </ul>
+                </details>
+                <!-- 单次更改 -->
+                <div class="rc-line" th:if="${entry.kind == 'group' and entry.count == 1}">
+                    <th:block th:replace="~{special/recent-changes-line :: rcLine(${entry.latest})}">…</th:block>
+                </div>
+                <!-- 单条日志（仿 MediaWiki：日志名链到同类型日志页，目标可点击；隐藏日志管理员可见并带删除线） -->
+                <div class="rc-line rc-log-line" th:if="${entry.kind == 'log'}"
+                     th:classappend="${entry.hided} ? ' rc-hided'">
+                    <th:block th:replace="~{special/recent-changes-log :: rcLogLine(${entry})}">…</th:block>
+                </div>
+                <!-- 多条同类型日志：折叠成一行「（日志名） [目标；目标]」，展开看每条 -->
+                <details class="rc-group rc-log-group" th:if="${entry.kind == 'loggroup'}">
+                    <summary>
+                        <span class="rc-time" th:text="${entry.timeText}">01:27</span>
+                        <span class="rc-log-label"><a th:href="${entry.labelUrl}"
+                                                      th:text="${entry.label}">（论坛日志）</a></span>
+                        <span class="rc-log-targets" th:if="${entry.targetsText != null}"
+                              th:text="${entry.targetsText}">[甲；乙]</span>
+                    </summary>
+                    <ul class="rc-changes">
+                        <li th:each="logEntry : ${entry.entries}">
+                            <div class="rc-line rc-log-line"
+                                 th:classappend="${logEntry.hided} ? ' rc-hided'">
+                                <th:block th:replace="~{special/recent-changes-log :: rcLogLine(${logEntry})}">…</th:block>
+                            </div>
+                        </li>
+                    </ul>
+                </details>
+            </li>
+            </ul>
+        </div>
+    </div>
+</section>
+</body>
+</html>

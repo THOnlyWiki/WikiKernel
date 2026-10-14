@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!-- 邮箱确认结果页（邮件里的一次性链接） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section>
+    <p class="form-message success" th:if="${resultKind == 'OK' or resultKind == 'ALREADY'}"
+       th:text="${resultText}">电子邮件地址已确认。</p>
+    <p class="form-message" th:unless="${resultKind == 'OK' or resultKind == 'ALREADY'}"
+       th:text="${resultText}">确认链接无效或已过期。</p>
+
+    <p>
+        <a class="wiki-button" th:href="@{/wiki/特殊:参数设置}"
+           th:text="#{special.preferences}">参数设置</a>
+        <a th:href="@{/}" th:text="#{common.home}">首页</a>
+    </p>
+</section>
+</body>
+</html>

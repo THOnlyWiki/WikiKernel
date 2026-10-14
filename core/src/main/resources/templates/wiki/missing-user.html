@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!-- 尚未创建的用户页 / 用户讨论页：直接按阅读页显示（头像资料卡 + 尚未创建提示 + 创建链接），
+     不再自动跳到编辑 / 创建页（仿 MediaWiki）。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${wikiTitle}, ~{:: section})}">
+<body>
+<section>
+    <!-- 用户页资料卡（用户讨论页不显示） -->
+    <th:block th:replace="~{fragments/user-profile :: profile}"/>
+    <!-- 资料卡下方的插件面板：未创建的用户页也显示（UserId=0：留言 / 加好友入口，见 UserProfileHook.panelHtml） -->
+    <th:block th:replace="~{fragments/user-profile :: profile-panel}"/>
+    <div class="wiki-warning missing-page-note">
+        <span th:if="${userPageName != null}" th:text="#{view.userPageMissing}">此用户页尚未创建。</span>
+        <span th:if="${userPageName == null}" th:text="#{view.pageMissing}">此页面尚未创建。</span>
+        <a th:href="${pageUrl + '?action=edit'}" th:text="#{view.createThisPage}">创建此页面</a>
+    </div>
+</section>
+</body>
+</html>

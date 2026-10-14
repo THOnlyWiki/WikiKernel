@@ -1,0 +1,19 @@
+/*
+ * 滥用过滤器（特殊:滥用过滤器 / 特殊:滥用日志）样式。
+ * 迁移前在 core 的 base.css（.abuse-mark / .abuse-restricted），随插件走：
+ * 插件加载时由 AbuseFilterHeadProvider 站点级注入，未加载插件时 core 不再带这些规则。
+ */
+
+/* 过滤器的隐藏 / 删除标记（小号灰字，MW 为灰色注释样式） */
+.abuse-mark {
+    margin-left: 0.4em;
+    font-size: 0.875em;
+    color: #72777d;
+}
+
+/* 「受限操作」（封禁 / 撤销自动确认）说明 */
+.abuse-restricted {
+    font-size: 0.875em;
+    color: #72777d;
+    font-style: italic;
+}

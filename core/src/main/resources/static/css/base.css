@@ -1,0 +1,4325 @@
+/* ============================================================
+   WikiKernel 基础样式（与皮肤无关）：设计变量、正文排版、通用组件、各页面控件
+   由所有皮肤共用；皮肤样式在 base 之后加载，可覆盖这里的选择器
+   ============================================================ */
+
+
+/* 全局设计变量（组件统一样式使用） */
+:root {
+    --wiki-border: #a2a9b1;
+    --wiki-border-light: #c8ccd1;
+    --wiki-subtle: #f8f9fa;
+    --wiki-text-muted: #54595d;
+    --wiki-link: #0645ad;
+    --wiki-accent: #36c;
+    /* 以下提示色 / 边框色取自 Codex 设计 token（MediaWiki 现行值）：
+       color-error #bf3c2c、background-color-error-subtle #ffe9e5、border-color-error #f54739 … */
+    --wiki-error: #bf3c2c;
+    --wiki-error-bg: #ffe9e5;
+    --wiki-error-border: #f54739;
+    --wiki-success: #177860;
+    --wiki-success-bg: #dff2eb;
+    --wiki-success-border: #099979;
+    --wiki-warning: #886425;
+    --wiki-warning-bg: #fdf2d5;
+    --wiki-warning-border: #ab7f2a;
+    --wiki-notice-bg: #eaecf0;
+    --wiki-notice-border: #72777d;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f6f6f6;
+    color: #202122;
+    font-family: sans-serif;
+    /* 根字号 = 浏览器默认 16px（MediaWiki 的字号基准）：
+       导航 / 个人工具 / 页脚 0.75em（12px）、页签 / 搜索 0.8125em（13px）、正文 0.875em（14px）。
+       不要把 0.875em 放在 body 上，否则导航等会被复合缩小到 10px 出头。 */
+    font-size: 1em;
+    line-height: 1.6;
+}
+
+/* 正文容器（相当于 MediaWiki 的 .mw-body）：标题与正文统一用 14px 基准 */
+#content {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.875em; /* 14px */
+}
+
+/* 各页面统一传 ~{:: section}，包在 #bodyContent.wiki-content 里：纵向撑满内容框，
+   短页面时把页面底部的分类栏（.catlinks-block）推到容器最下面 */
+#content > #bodyContent {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+
+#content > #bodyContent > section {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+
+a {
+    color: #0645ad;
+    text-decoration: none;
+}
+
+a:visited {
+    color: #0b0080;
+}
+
+a:active {
+    color: #faa700;
+}
+
+a:hover,
+a:focus {
+    text-decoration: underline;
+}
+
+a.new {
+    color: #ba0000;
+}
+
+
+/* 表格：全站统一（wikitext 正文与特殊页表格共用；值对齐 MW content.tables.less） */
+.wikitable {
+    border-collapse: collapse;
+    margin: 0.5em 0;
+    background: var(--wiki-subtle);
+    border: 1px solid var(--wiki-border);
+}
+
+.wikitable th,
+.wikitable td {
+    border: 1px solid var(--wiki-border);
+    padding: 0.2em 0.4em;
+}
+
+.wikitable th {
+    background: #eaecf0;
+    text-align: center;
+}
+
+/* 页面信息（仿 MediaWiki action=info）：多张表格、标签列加粗、值列顶端对齐 */
+table.mw-page-info {
+    margin: 0 0 1em;
+}
+
+table.mw-page-info td {
+    vertical-align: top;
+}
+
+table.mw-page-info td:first-child {
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+/* 链入页面（仿 MediaWiki Special:WhatLinksHere） */
+.mw-whatlinkshere-form fieldset {
+    border: 1px solid var(--wiki-border);
+    padding: 0.6em 0.9em 0.9em;
+}
+
+.mw-whatlinkshere-form legend {
+    padding: 0 0.4em;
+    font-weight: bold;
+}
+
+.mw-whatlinkshere-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em 1.2em;
+}
+
+.mw-whatlinkshere-filters label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.mw-whatlinkshere-nav {
+    color: var(--wiki-text-muted);
+}
+
+#mw-whatlinkshere-list .mw-whatlinkshere-tools {
+    color: var(--wiki-text-muted);
+}
+
+#mw-whatlinkshere-list a.mw-redirect {
+    color: #2e7d32;
+}
+
+.wiki-error {
+    margin: 0.5em 0;
+    padding: 0.6em 1em;
+    border: 1px solid var(--wiki-error-border);
+    border-radius: 2px;
+    background: var(--wiki-error-bg);
+    color: #202122;
+}
+
+.search-summary {
+    color: var(--wiki-text-muted);
+}
+
+.search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.search-results li {
+    margin-bottom: 0.9em;
+}
+
+.search-results a {
+    font-size: 1.05em;
+}
+
+.search-snippet {
+    color: #54595d;
+}
+
+/* ---------- 用户页 / 权限 ---------- */
+.wiki-permissions .form-actions {
+    margin-top: 1em;
+}
+
+.permission-list {
+    list-style: none;
+    margin: 0.5em 0 1em;
+    padding: 0;
+}
+
+.permission-list li {
+    margin: 0.35em 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75em;
+}
+
+.permission-list label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+}
+
+/* 权限有效期（特殊:用户权限）：已过期标记 + datetime-local 输入 */
+.permission-list .permission-choice {
+    min-width: 9em;
+}
+
+.permission-expired {
+    color: var(--wiki-error);
+    font-size: 0.875em;
+}
+
+/* 权限有效期（特殊:用户权限）：已过期标记 + 「期限」下拉 / 具体时间输入 */
+.permission-list li.permission-item {
+    display: block;
+    margin: 0.25em 0 0.6em;
+}
+
+.permission-list .permission-expiry {
+    display: block;
+    margin: 0.3em 0 0 1.8em;
+}
+
+.permission-expiry[hidden],
+.permission-expiry-other[hidden] {
+    display: none;
+}
+
+/* 「期限」下拉沿用全局 MediaWiki / OOUI 控件样式（白底、灰边、右侧箭头），
+   这里只让具体时间输入与它保持一致的尺寸 / 圆角 / 焦点样式 */
+.permission-expiry input[type="datetime-local"] {
+    box-sizing: border-box;
+    padding: 0.35em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+    color: #202122;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.permission-expiry input[type="datetime-local"]:focus {
+    border-color: var(--wiki-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.25);
+}
+
+.permission-reason {
+    margin: 0.8em 0 0;
+}
+
+.permission-reason-input {
+    box-sizing: border-box;
+    width: 40em;
+    max-width: 100%;
+    padding: 0.4em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.permission-reason-input:focus {
+    border-color: var(--wiki-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.25);
+}
+
+/* 伪装成链接的按钮（日志隐藏 / 显示） */
+.link-button {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: #0645ad;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.link-button:hover {
+    text-decoration: underline;
+}
+
+.link-button[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+/* ---------- 日志页 ---------- */
+.log-filter-form {
+    margin: 0 0 1em;
+}
+
+.log-table {
+    width: 100%;
+    /* 固定列宽：翻页 / 切每页条数时列宽不随本页内容长短跳变（仿 MediaWiki 的日志页） */
+    table-layout: fixed;
+}
+
+/* 时间 / 操作者 / 详情 / 管理员操作列固定宽度，操作列自动占满余下空间（内容过长换行） */
+.log-table .log-col-time {
+    width: 12.5em; /* 175px：一行放下「2026年10月11日 01:28」并留余量 */
+}
+
+.log-table .log-col-actor {
+    width: 7.5em; /* 105px：用户名过长换行 */
+}
+
+.log-table .log-col-detail {
+    width: 14em; /* 196px：常见摘要（如「新增西瓜（依赖追踪验证）」）一行放下 */
+}
+
+.log-table .log-col-status {
+    width: 9em; /* 126px：已隐藏标记 + 隐藏 / 显示按钮（nowrap） */
+}
+
+.log-table td.log-time {
+    white-space: nowrap;
+    /* 极端字体差异时优雅截断，绝不溢出到操作者列 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 手机端：恢复自动列宽（窄屏本就靠外层表格横向滚动） */
+@media (max-width: 719px) {
+    .log-table {
+        table-layout: auto;
+    }
+
+    .log-table .log-col-time,
+    .log-table .log-col-actor,
+    .log-table .log-col-detail,
+    .log-table .log-col-status {
+        width: auto;
+    }
+}
+
+.log-table td.log-actions {
+    white-space: nowrap;
+}
+
+.log-hide-form {
+    display: inline;
+    margin: 0;
+}
+
+.log-hided {
+    opacity: 0.6;
+}
+
+.log-hidden-mark {
+    margin-right: 0.5em;
+    color: #b00020;
+}
+
+/* 分页栏（特殊:日志）：每页 10 / 50 / 100 / 500 + 最新 / 上一页 / 下一页 */
+.log-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0.6em 0;
+    color: var(--wiki-text-muted);
+}
+
+.log-pager-sizes,
+.log-pager-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+}
+
+.log-pager-nav {
+    margin-left: 1.2em;
+}
+
+.log-pager-sep {
+    color: #a2a9b1;
+}
+
+.log-pager-disabled {
+    color: #a2a9b1;
+}
+
+/* ============================================================
+   最近更改（仿 MediaWiki Special:RecentChanges）
+   ============================================================ */
+.mw-rc-page {
+    position: relative;
+}
+
+.rc-help {
+    position: absolute;
+    top: -0.3em;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-weight: bold;
+}
+
+.rc-help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 50%;
+    background: #36c;
+    color: #fff;
+    font-size: 0.9em;
+}
+
+.rc-summary {
+    margin: 0.2em 0 1em;
+    color: #54595d;
+}
+
+.rc-filters {
+    margin: 0 0 1em;
+    border: 1px solid #c8ccd1;
+    background: #fff;
+}
+
+.rc-filters-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5em 0.8em;
+    font-weight: bold;
+}
+
+.rc-link-button {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: #36c;
+    font: inherit;
+    cursor: pointer;
+}
+
+.rc-link-button:hover {
+    text-decoration: underline;
+}
+
+.rc-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0 0.8em 0.6em;
+}
+
+/* 没有激活的过滤器（仿 MediaWiki RCFilters 的空状态） */
+.rc-filters-empty {
+    color: #72777d;
+    font-size: 0.9em;
+}
+
+.rc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.1em 0.6em;
+    border: 1px solid #a2a9b1;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 0.9em;
+}
+
+.rc-chip-remove {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: #54595d;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.rc-chip-trash {
+    margin-left: auto;
+    color: #54595d;
+    text-decoration: none;
+}
+
+.rc-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0 0.8em 0.4em;
+}
+
+.rc-filter-row input {
+    flex: 1;
+    min-width: 8em;
+    padding: 0.35em 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.rc-filter-actions {
+    display: flex;
+    gap: 0.4em;
+}
+
+.rc-menu {
+    position: relative;
+}
+
+.rc-menu > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.35em 0.8em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    font-size: 0.9em;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.rc-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.rc-menu[open] > summary {
+    background: #fff;
+}
+
+.rc-menu ul {
+    position: absolute;
+    right: 0;
+    z-index: 20;
+    list-style: none;
+    min-width: 11em;
+    margin: 0.2em 0 0;
+    padding: 0.3em 0;
+    border: 1px solid #a2a9b1;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.rc-menu ul a {
+    display: block;
+    padding: 0.3em 1em;
+}
+
+.rc-menu ul a:hover {
+    background: #eaecf0;
+}
+
+.rc-menu ul a.selected {
+    font-weight: bold;
+}
+
+.rc-menu-sep {
+    height: 1px;
+    margin: 0.3em 0;
+    background: #eaecf0;
+}
+
+.rc-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4em 0.8em 0.6em;
+    border-top: 1px solid #eaecf0;
+}
+
+.rc-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.35em 0.8em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    font: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.rc-live:hover {
+    background: #fff;
+}
+
+.rc-live.active {
+    border-color: #36c;
+    background: #36c;
+    color: #fff;
+}
+
+.rc-live-icon {
+    font-size: 0.75em;
+}
+
+.rc-legend {
+    float: right;
+    max-width: 24em;
+    margin: 0 0 0.8em 1em;
+    padding: 0.5em 0.8em;
+    border: 1px solid #c8ccd1;
+    background: #f8f9fa;
+    font-size: 0.85em;
+}
+
+.rc-legend-title {
+    margin-bottom: 0.2em;
+    font-weight: bold;
+}
+
+.rc-legend dl {
+    margin: 0;
+}
+
+.rc-legend dt {
+    float: left;
+    clear: left;
+    margin-right: 0.5em;
+    font-weight: bold;
+}
+
+.rc-legend dd {
+    margin: 0 0 0.15em 2.2em;
+}
+
+.rc-day-title {
+    margin: 0.8em 0 0.3em;
+    font-family: inherit;
+    font-size: 1.05em;
+    font-weight: bold;
+    border: 0;
+}
+
+.rc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 3em;
+}
+
+.rc-entry {
+    padding: 0.1em 0;
+    line-height: 1.7;
+}
+
+.rc-line,
+.rc-group > summary {
+    display: block;
+}
+
+.rc-group > summary {
+    position: relative;
+    padding-left: 1.3em;
+    cursor: pointer;
+    list-style: none;
+}
+
+.rc-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.rc-group > summary::before {
+    content: "▶";
+    position: absolute;
+    left: 0.1em;
+    top: 0.15em;
+    font-size: 0.7em;
+    color: #54595d;
+    transition: transform 0.15s;
+}
+
+.rc-group[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.rc-changes {
+    list-style: none;
+    margin: 0.15em 0 0;
+    padding-left: 1.6em;
+}
+
+.rc-time {
+    color: #202122;
+}
+
+.rc-links {
+    color: #72777d;
+    font-size: 0.95em;
+}
+
+/* 差异 / 历史是普通蓝链（括号灰色，链接本身不跟着变灰） */
+.rc-links a {
+    color: #36c;
+    font-size: 0.95em;
+}
+
+.rc-new {
+    color: #202122;
+}
+
+/* 机器人编辑标记（机）与变更标签（滥用过滤器等） */
+.rc-bot {
+    color: #72777d;
+}
+
+.rc-tag {
+    display: inline-block;
+    margin-left: 0.3em;
+    padding: 0 0.4em;
+    border: 1px solid #c8ccd1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    color: #54595d;
+    font-size: 0.85em;
+}
+
+.rc-page {
+    color: #36c;
+}
+
+/* 最近更改：字节增减用 MediaWiki / Codex 的 token 颜色（+ #006400，− #8b0000，0 #a2a9b1） */
+.rc-bytes-plus {
+    color: #006400;
+}
+
+.rc-bytes-minus {
+    color: #8b0000;
+}
+
+.rc-bytes-zero {
+    color: #a2a9b1;
+}
+
+.rc-dot {
+    color: #a2a9b1;
+}
+
+.rc-user,
+.rc-user a {
+    color: #36c;
+}
+
+/* 编辑摘要：灰色斜体并套括号（纯段落注释不加括号，仿 MediaWiki） */
+.rc-comment {
+    color: #54595d;
+    font-style: italic;
+}
+
+.rc-comment::before {
+    content: "（";
+}
+
+.rc-comment::after {
+    content: "）";
+}
+
+.rc-comment-section::before,
+.rc-comment-section::after {
+    content: none;
+}
+
+.rc-log-label {
+    color: #54595d;
+}
+
+.rc-log-text {
+    color: #202122;
+}
+
+/* 同类型日志折叠组的摘要行：[目标；目标] */
+.rc-log-targets {
+    color: #54595d;
+}
+
+/* 已隐藏的日志（管理员可见）：整行删除线 + （已隐藏）标记 */
+.rc-hided .rc-time,
+.rc-hided .rc-log-label,
+.rc-hided .rc-log-text {
+    text-decoration: line-through;
+}
+
+.rc-hidden-mark {
+    margin-left: 0.4em;
+    color: #b00020;
+}
+
+.permission-tags {
+    margin: 0.5em 0 1em;
+}
+
+.permission-none {
+    color: #72777d;
+}
+
+/* ---------- 权限列表页 ---------- */
+.rights-list-intro {
+    color: #54595d;
+}
+
+.rights-list-groups {
+    margin: 0.5em 0 1em;
+}
+
+.rights-list-groups a {
+    margin-right: 0.8em;
+}
+
+.rights-list-groups a.selected {
+    font-weight: bold;
+}
+
+/* ---------- 用户权限页（Special:UserRights 布局） ---------- */
+.user-rights-fieldset {
+    margin: 0 0 1em;
+    padding: 0.5em 0.8em 0.8em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+}
+
+.user-rights-fieldset legend {
+    padding: 0 0.3em;
+    font-weight: bold;
+}
+
+.user-rights-caption {
+    margin: 0 0 0.5em;
+}
+
+.user-rights-autogroups {
+    margin: 0.6em 0 0;
+}
+
+.user-rights-fieldset .wiki-permissions .form-actions {
+    margin-top: 0.8em;
+}
+
+/* ---------- 跨 Wiki（Special:Interwiki） ---------- */
+.interwiki-fieldset {
+    margin: 0 0 1em;
+    padding: 0.5em 0.8em 0.8em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+}
+
+.interwiki-fieldset legend {
+    padding: 0 0.3em;
+    font-weight: bold;
+}
+
+.interwiki-table td code {
+    word-break: break-all;
+}
+
+.interwiki-flag {
+    display: inline-block;
+    margin-right: 0.4em;
+    padding: 0 0.4em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #eaecf0;
+    font-size: 0.9em;
+}
+
+.interwiki-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: monospace, monospace;
+    font-size: 0.9em;
+}
+
+/* ---------- 注册问答行编辑器（/init 与 站点设置 共用） ---------- */
+.quiz-editor .quiz-row {
+    display: flex;
+    gap: 0.4em;
+    align-items: center;
+    margin-bottom: 0.4em;
+}
+
+.quiz-editor .quiz-row .quiz-question {
+    flex: 2 1 0;
+    min-width: 0;
+}
+
+.quiz-editor .quiz-row .quiz-answer {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.quiz-editor .quiz-actions {
+    display: flex;
+    gap: 0.6em;
+    align-items: center;
+}
+
+.quiz-editor .quiz-counter {
+    color: #54595d;
+    font-size: 0.9em;
+}
+
+.quiz-editor .quiz-counter.quiz-mismatch {
+    color: #b32424;
+    font-weight: bold;
+}
+
+/* ---------- 工具页（链入 / 相关更改 / 贡献 / 日志 / 页面信息） ---------- */
+.link-list,
+.change-list {
+    list-style: none;
+    margin: 0.5em 0;
+    padding: 0;
+}
+
+.change-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.75em;
+    padding: 0.35em 0.2em;
+    border-bottom: 1px solid #eaecf0;
+}
+
+.change-list .history-comment {
+    flex: 1;
+}
+
+.rights-log {
+    list-style: none;
+    margin: 0.5em 0;
+    padding: 0;
+}
+
+.rights-log li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.75em;
+    padding: 0.35em 0.2em;
+    border-bottom: 1px solid #eaecf0;
+}
+
+.rights-log-time,
+.rights-log-actor {
+    color: #54595d;
+}
+
+.page-info-list {
+    margin: 0.5em 0;
+}
+
+.page-info-list dt {
+    margin-top: 0.4em;
+    font-weight: bold;
+}
+
+.page-info-list dd {
+    margin: 0 0 0.2em;
+}
+
+ul.page-info-list {
+    margin: 0.5em 0;
+    padding-left: 1.2em;
+}
+
+/* ---------- 登录 / 注册布局（表单控件由 .wiki-form 统一提供） ---------- */
+.wiki-auth {
+    max-width: 28em;
+}
+
+.auth-subtitle {
+    margin: 0 0 1em;
+}
+
+/* MediaWiki 消息框：错误 / 成功（JS 表单反馈共用） */
+.form-message {
+    max-width: 25em;
+    margin: 0.5em 0 1em;
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--wiki-error-border);
+    background: var(--wiki-error-bg);
+    color: #202122;
+}
+
+.form-message.success {
+    border-color: var(--wiki-success-border);
+    background: var(--wiki-success-bg);
+}
+
+/* 按钮 */
+.wiki-button {
+    padding: 0.4em 0.85em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: var(--wiki-subtle);
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.wiki-button:hover {
+    background: #ffffff;
+    border-color: #54595d;   /* OOUI / MediaWiki 按钮悬停时边框变深 */
+}
+
+.wiki-button[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+/* ---------- 编辑页（控件样式由 .wiki-form 提供） ---------- */
+.edit-intro {
+    color: var(--wiki-text-muted);
+}
+
+/* 本地草稿恢复提示（edit-draft.js） */
+.edit-draft-notice {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.8em;
+}
+
+/* hidden 属性优先：没有草稿 / 放弃草稿后必须真正隐藏（作者样式的 display 会盖掉 UA 的 [hidden]） */
+.edit-draft-notice[hidden] {
+    display: none;
+}
+
+.edit-draft-notice .wiki-button {
+    padding: 0.25em 0.7em;
+}
+
+/* 用户核查表格：User-Agent 列可换行 */
+.checkuser-ua {
+    max-width: 24em;
+    word-break: break-all;
+}
+
+/* ---------- 目录（TOC，仿 MediaWiki）：竖排编号 1 / 1.1 / 1.1.1，可折叠 ---------- */
+.toc {
+    display: table;
+    border: 1px solid #a2a9b1;
+    background-color: #f8f9fa;
+    padding: 0.5em 0.9em 0.6em;
+    margin: 0.5em 0 1em;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.toc .toctitle {
+    text-align: center;
+}
+
+.toc .toctext-title {
+    font-weight: bold;
+}
+
+.toc .toctoggle {
+    margin-left: 0.4em;
+    font-size: 0.9em;
+    color: var(--wiki-text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.toc .toc-show-label {
+    display: none;
+}
+
+.toc.toc-hidden>ul,
+.toc.toc-hidden .toc-hide-label {
+    display: none;
+}
+
+.toc.toc-hidden .toc-show-label {
+    display: inline;
+}
+
+.toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.toc ul ul {
+    margin-left: 1.6em;
+}
+
+.toc li {
+    margin: 0.1em 0;
+}
+
+/* ---------- 段落编辑链接（仿 MediaWiki .mw-editsection） ---------- */
+.mw-editsection {
+    margin-left: 0.8em;
+    font-size: 0.75em;
+    font-weight: normal;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.mw-editsection a {
+    color: #0645ad;
+}
+
+.mw-editsection-bracket {
+    color: #54595d;
+}
+
+/* ---------- 脚注（仿 MediaWiki Cite：<ref> / <references/>） ---------- */
+ol.references {
+    font-size: 0.9em;
+    margin: 0.5em 0 1em;
+}
+
+ol.references li {
+    margin-bottom: 0.1em;
+}
+
+sup.reference {
+    font-size: 0.75em;
+    line-height: 1;
+    font-weight: normal;
+    font-style: normal;
+}
+
+.mw-cite-backlink a {
+    text-decoration: none;
+}
+
+.mw-cite-backlink a:hover {
+    text-decoration: underline;
+}
+
+.error {
+    color: #d33;
+}
+
+.mw-cite-error {
+    font-weight: bold;
+}
+
+/* ---------- 编辑辅助工具栏（仿 MediaWiki WikiEditor 默认皮肤） ---------- */
+.wiki-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    border: 1px solid #a2a9b1;
+    border-bottom: none;
+    background: #eaecf0;
+    background-image: linear-gradient(to bottom, #ffffff 0%, #eaecf0 100%);
+    padding: 2px 4px;
+    user-select: none;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+}
+
+.toolbar-group + .toolbar-group {
+    border-left: 1px solid #c8ccd1;
+    margin-left: 3px;
+    padding-left: 3px;
+}
+
+.toolbar-group-right {
+    margin-left: auto;
+}
+
+.toolbar-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin: 1px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: #202122;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.toolbar-button:hover {
+    border-color: #a2a9b1;
+    background: #ffffff;
+}
+
+.toolbar-button:active {
+    background: #c8ccd1;
+}
+
+.toolbar-glyph {
+    font-family: sans-serif;
+    pointer-events: none;
+}
+
+.toolbar-glyph-bold {
+    font-family: serif;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.toolbar-glyph-italic {
+    font-family: serif;
+    font-size: 14px;
+    font-style: italic;
+}
+
+.toolbar-glyph-ref {
+    font-size: 11px;
+}
+
+.toolbar-glyph-numbers,
+.toolbar-glyph-heading {
+    font-weight: 700;
+}
+
+.toolbar-caret {
+    margin-left: 1px;
+    color: #54595d;
+    font-size: 9px;
+    pointer-events: none;
+}
+
+.toolbar-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+    pointer-events: none;
+}
+
+.tb-icon-link {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202122' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E");
+}
+
+.tb-icon-external {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202122' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
+}
+
+.tb-icon-image {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202122' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E");
+}
+
+.tb-icon-bullets {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202122' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='9' y1='6' x2='21' y2='6'/%3E%3Cline x1='9' y1='12' x2='21' y2='12'/%3E%3Cline x1='9' y1='18' x2='21' y2='18'/%3E%3Ccircle cx='4.5' cy='6' r='1.2' fill='%23202122' stroke='none'/%3E%3Ccircle cx='4.5' cy='12' r='1.2' fill='%23202122' stroke='none'/%3E%3Ccircle cx='4.5' cy='18' r='1.2' fill='%23202122' stroke='none'/%3E%3C/svg%3E");
+}
+
+.tb-icon-nowiki {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202122' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cline x1='5.7' y1='5.7' x2='18.3' y2='18.3'/%3E%3C/svg%3E");
+}
+
+.tb-icon-table {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202122' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cline x1='3' y1='9' x2='21' y2='9'/%3E%3Cline x1='9' y1='21' x2='9' y2='9'/%3E%3C/svg%3E");
+}
+
+.toolbar-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.toolbar-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 60;
+    min-width: 110px;
+    padding: 2px 0;
+    border: 1px solid #a2a9b1;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.toolbar-menu[hidden] {
+    display: none;
+}
+
+.toolbar-menu button {
+    display: block;
+    width: 100%;
+    padding: 4px 12px;
+    border: none;
+    background: none;
+    color: #202122;
+    text-align: left;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.toolbar-menu button:hover {
+    background: #eaecf0;
+}
+
+.toolbar-group-right .toolbar-menu {
+    left: auto;
+    right: 0;
+}
+
+.toolbar-menu-special {
+    display: flex;
+    flex-wrap: wrap;
+    width: 248px;
+    padding: 4px;
+}
+
+.toolbar-menu-special button {
+    width: 26px;
+    min-width: 0;
+    padding: 2px 0;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* 快速上传图片弹窗 */
+.wiki-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.wiki-dialog-overlay[hidden] {
+    display: none;
+}
+
+.wiki-dialog {
+    width: 400px;
+    max-width: calc(100vw - 32px);
+    border: 1px solid #a2a9b1;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    font-size: 0.875em;
+}
+
+.wiki-dialog-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid #c8ccd1;
+    background: #eaecf0;
+    font-weight: bold;
+}
+
+.wiki-dialog-close {
+    border: none;
+    background: none;
+    color: #54595d;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.wiki-dialog-body {
+    padding: 10px;
+}
+
+.wiki-dialog-label {
+    display: block;
+    margin: 6px 0 2px;
+    color: #54595d;
+}
+
+.wiki-dialog-body input[type="file"] {
+    display: block;
+}
+
+.wiki-dialog-body input[type="text"] {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.wiki-dialog-preview {
+    margin-top: 8px;
+}
+
+.wiki-dialog-preview img {
+    display: block;
+    max-width: 100%;
+    max-height: 150px;
+    border: 1px solid #c8ccd1;
+}
+
+.wiki-dialog-status {
+    max-width: none;
+    margin: 8px 0 0;
+}
+
+.wiki-dialog-actions {
+    display: flex;
+    gap: 8px;
+    padding: 0 10px 10px;
+}
+
+/* ---------- 安装向导（/init，独立页面） ---------- */
+.setup-body {
+    padding: 2em 1em;
+    background: #f8f9fa;
+}
+
+.setup-shell {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 1.5em 1.8em 2em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+.setup-shell h1 {
+    margin-top: 0;
+    padding-bottom: 0.15em;
+    border-bottom: 1px solid #a2a9b1;
+    font-family: "Linux Libertine", Georgia, "Times New Roman", serif;
+    font-size: 1.8em;
+    font-weight: normal;
+}
+
+.setup-shell h2 {
+    margin: 1.2em 0 0.4em;
+    padding-bottom: 0.15em;
+    border-bottom: 1px solid #eaecf0;
+    font-size: 1.15em;
+}
+
+.setup-shell h3 {
+    margin: 0.9em 0 0.3em;
+    font-size: 1em;
+}
+
+.setup-intro,
+.setup-note {
+    color: #54595d;
+}
+
+.setup-note {
+    font-size: 0.875em;
+}
+
+.setup-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin: 1em 0 0;
+    border-bottom: 1px solid #a7d7f9;
+}
+
+.setup-tab {
+    padding: 0.45em 0.9em;
+    border: 1px solid #a7d7f9;
+    border-bottom: none;
+    background: linear-gradient(to top, #d1e7f5 0, #f8fcff 100%);
+    color: #0645ad;
+    font-size: 0.8125em;
+    cursor: pointer;
+}
+
+.setup-tab.active {
+    margin-bottom: -1px;
+    border-bottom: 1px solid #ffffff;
+    background: #ffffff;
+    color: #202122;
+    font-weight: 600;
+}
+
+.setup-tab.locked {
+    background: #f8f9fa;
+    color: #a2a9b1;
+    cursor: not-allowed;
+}
+
+.setup-panel {
+    padding-top: 0.5em;
+}
+
+.setup-panel .form-field {
+    margin: 0.5em 0;
+}
+
+.setup-panel .form-field > label {
+    display: block;
+    margin-bottom: 0.2em;
+}
+
+.setup-panel .form-field-inline {
+    margin: 0.6em 0;
+}
+
+.setup-panel .form-field-inline > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+}
+
+.setup-panel input[type="text"],
+.setup-panel input[type="password"],
+.setup-panel input[type="email"],
+.setup-panel input[type="number"] {
+    width: 100%;
+    max-width: 30em;
+    padding: 0.4em 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.setup-actions {
+    margin-top: 1.2em;
+    padding-top: 1em;
+    border-top: 1px solid #eaecf0;
+}
+
+/* /init：功能开关分组（一组 fieldset + legend）与「多配置项」功能卡片 */
+.setup-group {
+    margin: 0 0 1em;
+    padding: 0.5em 0.9em 0.7em;
+    border: 1px solid #c8ccd1;
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+.setup-group > legend {
+    padding: 0 0.45em;
+    font-size: 0.9375em;
+    font-weight: bold;
+    color: #202122;
+}
+
+.setup-group .form-field:first-of-type {
+    margin-top: 0.15em;
+}
+
+.setup-group .wiki-hint:last-child {
+    margin-bottom: 0.1em;
+}
+
+.setup-feature {
+    margin: 0.35em 0 0.1em;
+}
+
+/* 子配置：缩进 + 左侧竖线，表示属于上面的开关 */
+.setup-options {
+    margin: 0.25em 0 0.6em 1.6em;
+    padding: 0.35em 0 0.15em 0.85em;
+    border-left: 3px solid #eaecf0;
+}
+
+.setup-options-title {
+    margin: 0 0 0.15em;
+    font-size: 0.8125em;
+    color: #54595d;
+}
+
+/* 编辑预览（仿 MediaWiki「显示预览」）：预览区在编辑框上方，虚线分隔 */
+.wiki-preview {
+    margin: 0.5em 0 1em;
+    padding-bottom: 0.75em;
+    border-bottom: 1px dashed var(--wiki-border);
+}
+
+.wiki-preview .preview-note {
+    margin: 0 0 0.75em;
+}
+
+.wiki-form.wiki-editor textarea {
+    min-height: 24em;
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 0.95em;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+/* 创建 / 编辑页面：表单与摘要输入框随内容区自适应（不锁死固定宽度） */
+.wiki-form.wiki-editor {
+    max-width: none;
+}
+
+.wiki-form.wiki-editor .edit-summary input {
+    width: 100%;
+    max-width: none;
+}
+
+/* 编辑冲突提示：差异对照表限高可滚动；文本保留在下方编辑框中。 */.edit-conflict-notice {
+    margin-bottom: 1em;
+}
+
+.edit-conflict-intro {
+    font-weight: 600;
+    margin: 0 0 0.4em;
+}
+
+.edit-conflict-structure {
+    margin: 0 0 0.4em;
+}
+
+.edit-conflict-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em 1.25em;
+    margin: 0.35em 0;
+    padding-left: 1.2em;
+}
+
+.edit-conflict-hint {
+    margin: 0.35em 0 0.6em;
+}
+
+.edit-conflict-diff {
+    max-height: 30em;
+    overflow: auto;
+    border: 1px solid var(--wiki-border);
+}
+
+.edit-conflict-diff-title {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.4em 0.6em;
+    border-bottom: 1px solid var(--wiki-border);
+    background: var(--wiki-warning-bg);
+    font-weight: 600;
+}
+
+.edit-conflict-diff table.diff {
+    margin: 0;
+}
+
+/* 可视化编辑器：从编辑框源码出发的可视化编辑面板 */
+.visual-editor {
+    margin-top: 1em;
+    border: 1px solid var(--wiki-border);
+    background: var(--wiki-content-bg, #fff);
+}
+
+.visual-editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.5em;
+    border-bottom: 1px solid var(--wiki-border);
+    background: #f8f9fa;
+}
+
+.visual-editor-toolbar button {
+    padding: 0.25em 0.6em;
+    border: 1px solid #c8ccd1;
+    border-radius: 2px;
+    background: #fff;
+    color: #202122;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.visual-editor-toolbar button:hover {
+    background: #eaecf0;
+}
+
+.visual-editor-spacer {
+    flex: 1;
+}
+
+.visual-editor-surface {
+    min-height: 24em;
+    padding: 0.5em 1em 1.5em;
+    outline: none;
+}
+
+.visual-editor-surface:focus {
+    box-shadow: inset 0 0 0 2px rgba(51, 102, 204, 0.25);
+}
+
+/* 源码块（模板 / 引用 / 文件 / 分类 / 复杂表格等）：不可编辑，点击可查看和修改源码 */
+.ve-token {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0 0.35em;
+    margin: 0 0.1em;
+    border: 1px dashed #36c;
+    border-radius: 3px;
+    background: #eaf3ff;
+    color: #36c;
+    font-size: 0.85em;
+    line-height: 1.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: baseline;
+    cursor: pointer;
+}
+
+.ve-token:hover {
+    background: #d7e7ff;
+}
+
+/* 模板块：独占段落的模板直接把渲染结果当预览（点击打开模板对话框） */
+.ve-template-block {
+    display: block;
+    padding: 0;
+    margin: 0.2em 0;
+    border: 1px dashed #36c;
+    border-radius: 3px;
+    background: #f8fbff;
+    white-space: normal;
+    overflow: visible;
+    font-size: 1em;
+    color: inherit;
+}
+
+.ve-template-badge {
+    display: inline-block;
+    margin: 0.35em 0.5em 0;
+    padding: 0 0.4em;
+    border-radius: 2px;
+    background: #eaf3ff;
+    color: #36c;
+    font-size: 0.8em;
+    line-height: 1.6;
+}
+
+.ve-template-render {
+    padding: 0.3em 0.6em 0.5em;
+}
+
+/* 预览里的链接不跳出编辑器 */
+.ve-template-render a {
+    pointer-events: none;
+}
+
+.ve-template-render img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* 行内模板块 */
+.ve-template-inline {
+    background: #eaf3ff;
+}
+
+/* ==================== 模板 / 源码块对话框 ==================== */
+.ve-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ve-dialog[hidden] {
+    display: none;
+}
+
+.ve-dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.ve-dialog-box {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(960px, 94vw);
+    max-height: 88vh;
+    background: #fff;
+    border: 1px solid #a2a9b1;
+    border-radius: 3px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    font-size: 0.95em;
+}
+
+.ve-dialog-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.5em 0.8em;
+    border-bottom: 1px solid #eaecf0;
+}
+
+.ve-dialog-title {
+    flex: 1;
+    font-weight: bold;
+}
+
+.ve-dialog-close {
+    border: 0;
+    background: none;
+    color: #54595d;
+    font-size: 1.3em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ve-dialog-tabs {
+    display: flex;
+    gap: 0.4em;
+    padding: 0.45em 0.8em 0;
+}
+
+.ve-dialog-tabs button {
+    padding: 0.25em 0.9em;
+    border: 1px solid #a2a9b1;
+    border-bottom: 0;
+    border-radius: 3px 3px 0 0;
+    background: #f8f9fa;
+    cursor: pointer;
+}
+
+.ve-dialog-tabs button.selected {
+    background: #fff;
+    color: #36c;
+    font-weight: bold;
+}
+
+.ve-dialog-body {
+    flex: 1;
+    overflow: auto;
+    padding: 0.6em 0.8em;
+}
+
+.ve-pane-params[hidden],
+.ve-pane-source[hidden] {
+    display: none;
+}
+
+.ve-param-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.5em;
+}
+
+.ve-param-table td {
+    padding: 0.15em 0.3em;
+}
+
+.ve-param-name-cell {
+    width: 26%;
+}
+
+.ve-param-value-cell {
+    width: 60%;
+}
+
+.ve-param-action-cell {
+    width: 14%;
+    text-align: right;
+}
+
+.ve-param-table input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.2em 0.4em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font: inherit;
+}
+
+.ve-param-known .ve-param-name {
+    background: #f8f9fa;
+    color: #54595d;
+}
+
+.ve-param-remove {
+    border: 0;
+    background: none;
+    color: #b32424;
+    font-size: 1.1em;
+    cursor: pointer;
+}
+
+.ve-source-input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.4em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.ve-dialog-preview {
+    margin-top: 0.5em;
+    padding-top: 0.4em;
+    border-top: 1px solid #eaecf0;
+}
+
+.ve-dialog-preview-title {
+    margin-bottom: 0.2em;
+    color: #54595d;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.ve-preview-body {
+    max-height: 26em;
+    overflow: auto;
+    padding: 0.4em 0.6em;
+    border: 1px solid #eaecf0;
+    background: #fff;
+}
+
+.ve-dialog-missing {
+    margin: 0.3em 0;
+}
+
+.ve-dialog-message {
+    margin: 0.3em 0.8em 0;
+}
+
+.ve-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5em;
+    padding: 0.6em 0.8em;
+    border-top: 1px solid #eaecf0;
+}
+
+.edit-summary {
+    margin-top: 0.9em;
+}
+
+.edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-top: 1em;
+}
+
+.edit-bot-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.95em;
+}
+
+/* 代码页面（.js / .css）顶部的缓存提示（仿 MediaWiki:Clearyourcache） */
+.code-cache-notice p {
+    margin: 0;
+}
+
+.code-cache-notice ul {
+    margin: 0.4em 0 0;
+    padding-left: 1.8em;
+    list-style: disc;
+}
+
+/* ---------- JS/CSS 代码页：预览与编辑器（CodeMirror） ---------- */
+.wiki-code-view,
+.wiki-code-editor {
+    margin: 0.5em 0 1em;
+}
+
+.wiki-code-view .CodeMirror,
+.CodeMirror.wiki-code-editor {
+    height: auto;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.CodeMirror.wiki-code-editor {
+    min-height: 24em;
+}
+
+.wiki-code-view .CodeMirror-gutters,
+.wiki-code-editor .CodeMirror-gutters {
+    background: #f8f9fa;
+    border-right: 1px solid #eaecf0;
+}
+
+/* 代码预览：只读但可选择 / 复制（隐藏光标，保持静态预览观感） */
+.wiki-code-view {
+    position: relative;
+}
+
+.wiki-code-view .CodeMirror-cursor {
+    display: none;
+}
+
+.wiki-code-copy {
+    position: absolute;
+    top: 0.4em;
+    right: 0.4em;
+    z-index: 5;
+    padding: 0.1em 0.6em;
+    font-size: 0.8em;
+    line-height: 1.6;
+}
+
+.CodeMirror-hints {
+    z-index: 100;
+}
+
+/* ---------- 正文代码块：语法高亮（仿 SyntaxHighlight 扩展 / Pygments 默认配色） ---------- */
+pre.syntax {
+    margin: 0.5em 0 1em;
+    padding: 0.8em 1em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    overflow-x: auto;
+    line-height: 1.5;
+}
+
+pre.syntax code {
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 0.9em;
+    white-space: pre;
+}
+
+pre.syntax .hl-comment {
+    color: #3d7b7b;
+    font-style: italic;
+}
+
+pre.syntax .hl-keyword {
+    color: #008000;
+    font-weight: bold;
+}
+
+pre.syntax .hl-string {
+    color: #ba2121;
+}
+
+pre.syntax .hl-number {
+    color: #666666;
+}
+
+pre.syntax .hl-literal {
+    color: #008000;
+}
+
+/* ---------- <poem>（Poem 扩展）：保留换行的诗体文本 ---------- */
+.poem {
+    margin: 0.5em 0 1em;
+    line-height: 1.6;
+}
+
+/* ---------- <markdown>（仿 MediaWiki 的 Markdown 类扩展）：标签内 Markdown 渲染成 HTML ---------- */
+.markdown {
+    margin: 0.5em 0 1em;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+    margin: 0.8em 0 0.4em;
+    padding-bottom: 0.15em;
+    font-weight: bold;
+    line-height: 1.3;
+}
+
+.markdown h1 {
+    font-size: 1.7em;
+    border-bottom: 1px solid var(--wiki-border-light);
+}
+
+.markdown h2 {
+    font-size: 1.4em;
+    border-bottom: 1px solid var(--wiki-border-light);
+}
+
+.markdown h3 {
+    font-size: 1.2em;
+}
+
+.markdown h4 {
+    font-size: 1.05em;
+}
+
+.markdown h5,
+.markdown h6 {
+    font-size: 1em;
+    color: var(--wiki-text-muted);
+}
+
+.markdown p {
+    margin: 0.5em 0;
+}
+
+.markdown ul,
+.markdown ol {
+    margin: 0.5em 0;
+    padding-left: 2em;
+}
+
+.markdown li {
+    margin: 0.15em 0;
+}
+
+.markdown blockquote {
+    margin: 0.5em 0;
+    padding: 0.2em 0.8em;
+    border-left: 4px solid var(--wiki-border-light);
+    background: var(--wiki-subtle);
+    color: var(--wiki-text-muted);
+}
+
+.markdown code {
+    padding: 0.1em 0.3em;
+    background: var(--wiki-subtle);
+    border: 1px solid var(--wiki-border-light);
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 0.95em;
+}
+
+/* 代码块沿用全站 pre.syntax 的样式（内层 code 的去框见 pre code 规则），这里只补行内 code 的观感 */
+
+.markdown table {
+    border-collapse: collapse;
+    margin: 0.5em 0;
+    background: var(--wiki-subtle);
+    border: 1px solid var(--wiki-border);
+}
+
+.markdown th,
+.markdown td {
+    border: 1px solid var(--wiki-border);
+    padding: 0.2em 0.6em;
+}
+
+.markdown th {
+    background: #eaecf0;
+    font-weight: bold;
+}
+
+.markdown hr {
+    margin: 0.8em 0;
+    border: 0;
+    border-top: 1px solid var(--wiki-border-light);
+}
+
+.markdown a {
+    color: var(--wiki-link);
+}
+
+.markdown img {
+    max-width: 100%;
+}
+
+/* ---------- 数学公式（Math：<math> 标签，前端 KaTeX 渲染） ---------- */
+.mw-math {
+    display: inline-block;
+    max-width: 100%;
+}
+
+.mw-math-block {
+    display: block;
+    margin: 0.5em 0;
+    text-align: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.mw-math-render .katex {
+    font-size: 1.05em;
+}
+
+.mw-math-block .mw-math-render .katex-display {
+    margin: 0;
+}
+
+/* 脚本未加载 / 渲染失败时的 TeX 源码回退 */
+.mw-math-fallback {
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 0.875em;
+    background: #f8f9fa;
+    padding: 0 0.3em;
+    border: 1px solid #eaecf0;
+}
+
+/* ---------- Flash 播放器（Ruffle WASM，<flash-player> 标签） ---------- */
+.flash-player {
+    position: relative;
+    margin: 0.5em 0 1em;
+    background: #000000;
+    max-width: 100%;
+}
+
+.flash-player ruffle-player,
+.flash-player ruffle-embed {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* 脚本未加载 / 初始化前的回退链接 */
+.flash-player .flash-player-fallback {
+    display: block;
+    padding: 0.6em 0.8em;
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.flash-player[data-flash-ready="1"] .flash-player-fallback {
+    display: none;
+}
+
+.flash-player .flash-player-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0.5em 1.2em;
+    font-size: 1em;
+}
+
+.flash-player .flash-player-caption {
+    padding: 0.4em 0.6em;
+    background: #eaecf0;
+    color: #202122;
+    font-size: 0.8125em;
+    line-height: 1.5;
+}
+
+.flash-player-disabled {
+    color: #72777d;
+}
+
+/* ---------- 时间轴（EasyTimeline：<timeline> 标签，服务端生成内联 SVG） ---------- */
+.mw-timeline {
+    margin: 0.5em 0 1em;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.mw-timeline svg,
+.mw-timeline-svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.mw-timeline-svg text {
+    font-family: sans-serif;
+}
+
+/* ---------- 图形（Graph / Vega：<graph> 标签与图表命名空间整页图） ---------- */
+figure.mw-graph {
+    margin: 0.5em 0 1em;
+    padding: 0;
+    background: #ffffff;
+    border: 1px solid #eaecf0;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+figure.mw-graph .mw-graph-plot {
+    display: block;
+    padding: 0.4em;
+    min-width: 0;
+}
+
+figure.mw-graph .mw-graph-plot svg {
+    max-width: 100%;
+    height: auto;
+}
+
+figure.mw-graph .mw-graph-caption {
+    padding: 0.4em 0.6em;
+    border-top: 1px solid #eaecf0;
+    background: #f8f9fa;
+    color: #54595d;
+    font-size: 0.8125em;
+    line-height: 1.5;
+}
+
+figure.mw-graph .mw-graph-fallback {
+    color: #72777d;
+}
+/* ---------- mw.notify 通知区（MediaWiki 风格：右上角浮动、自动消失） ---------- */
+#mw-notification-area {
+    position: fixed;
+    top: 0.75em;
+    right: 0.75em;
+    z-index: 1000;
+    width: 20em;
+    max-width: calc(100vw - 1.5em);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    pointer-events: none;
+}
+
+.mw-notification {
+    pointer-events: auto;
+    padding: 0.6em 0.9em;
+    border: 1px solid #a2a9b1;
+    border-left-width: 4px;
+    border-radius: 2px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    font-size: 0.875em;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.mw-notification-type-success {
+    border-left-color: #14866d;
+}
+
+.mw-notification-type-warn {
+    border-left-color: #fc3;
+}
+
+.mw-notification-type-error {
+    border-left-color: #d33;
+}
+
+.mw-notification-type-info {
+    border-left-color: #36c;
+}
+
+.mw-notification-title {
+    font-weight: bold;
+    margin-bottom: 0.2em;
+}
+
+.mw-notification-content a {
+    color: var(--wiki-link);
+}
+
+.mw-notification-dismissed {
+    opacity: 0;
+    transform: translateX(10px);
+}
+
+/* ---------- 页面横幅容器（WikidataPageBanner）：标题上方的宽幅图片 ----------
+   容器由皮肤布局渲染（#page-banner，内容来自插件 page-banner 的 PageDisplayHook.beforeTitle），
+   .page-banner 图片与说明文字的样式在插件里（/plugins/page-banner/page-banner.css）。 */
+#page-banner {
+    margin: 0 0 1em;
+}
+
+/* ---------- <inputbox>（InputBox 扩展）：创建 / 搜索小表单 ---------- */
+form.inputbox {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    margin: 0.5em 0 1em;
+}
+
+form.inputbox input[type="text"] {
+    box-sizing: border-box;
+    min-width: 12em;
+    padding: 0.3em 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 0.9em;
+}
+
+form.inputbox input[type="text"]:focus {
+    outline: 0;
+    border-color: #36c;
+    box-shadow: inset 0 0 0 1px #36c;
+}
+
+form.inputbox button {
+    padding: 0.3em 0.9em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    font-family: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+form.inputbox button:hover {
+    background: #ffffff;
+}
+
+/* ============================================================
+   组件：表单（全站统一；登录 / 注册 / 搜索 / 创建 / 查找 / 移动 / 保护 / 编辑共用）
+   ============================================================ */
+.wiki-form {
+    max-width: 40em;
+}
+
+.wiki-form .form-field {
+    margin-bottom: 1em;
+}
+
+.wiki-form .form-field > label {
+    display: block;
+    margin-bottom: 0.25em;
+    font-weight: bold;
+}
+
+.wiki-form .form-field-inline > label {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-weight: normal;
+}
+
+/* 下拉框：仿 MediaWiki（OOUI）——白底、1px 灰边、2px 圆角、右侧灰色三角箭头 */
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    max-width: 100%;
+    padding: 0.35em 1.8em 0.35em 0.55em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 14 4 6h12z' fill='%2354595d'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.55em center;
+    background-size: 11px 11px;
+    color: #202122;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.5;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+select:hover {
+    border-color: #72777d;
+}
+
+select:focus {
+    border-color: var(--wiki-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.25);
+}
+
+select:disabled {
+    background-color: var(--wiki-subtle);
+    color: var(--wiki-text-muted);
+    cursor: default;
+}
+
+.wiki-form input[type="text"],
+.wiki-form input[type="search"],
+.wiki-form input[type="password"],
+.wiki-form input[type="email"],
+.wiki-form textarea {
+    width: 100%;
+    max-width: 30em;
+    padding: 0.4em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* 下拉框沿用全局 MediaWiki 样式，只控制宽度（右侧留出箭头位置） */
+.wiki-form select {
+    width: 100%;
+    max-width: 30em;
+}
+
+.wiki-form textarea {
+    max-width: none;
+}
+
+.wiki-form input[type="text"]:focus,
+.wiki-form input[type="search"]:focus,
+.wiki-form input[type="password"]:focus,
+.wiki-form input[type="email"]:focus,
+.wiki-form textarea:focus {
+    border-color: var(--wiki-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.25);
+}
+
+.wiki-form .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-top: 1em;
+}
+
+/* 行内表单：输入框 + 按钮一行（搜索 / 创建页面 / 查找用户 / 移动 / 保护） */
+.wiki-form-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    max-width: none;
+    margin: 0.25em 0 0.75em;
+}
+
+.wiki-form-inline input[type="text"],
+.wiki-form-inline input[type="search"] {
+    flex: 1;
+    width: auto;
+    max-width: none;
+    min-width: 8em;
+}
+
+/* 行内表单里的下拉框按内容宽度，不占满整行（如 全部页面 的命名空间筛选） */
+.wiki-form-inline select {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+}
+
+.wiki-form-inline > label {
+    white-space: nowrap;
+}
+
+/* 筛选栏（特殊:日志等）：下拉 + 输入框 + 按钮，可折行、可多行 */
+.wiki-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    margin: 0 0 0.6em;
+}
+
+.wiki-filter input[type="text"],
+.wiki-filter input[type="search"],
+.wiki-filter input[type="datetime-local"] {
+    padding: 0.35em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.wiki-filter input[type="text"],
+.wiki-filter input[type="search"] {
+    min-width: 11em;
+}
+
+.wiki-filter input:focus {
+    border-color: var(--wiki-accent);
+    outline: 0;
+    box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.25);
+}
+
+.wiki-filter label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    white-space: nowrap;
+}
+
+/* 访问控制（特殊:权限配置）：允许范围与用户组勾选 */
+.access-scope {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 0.8em;
+}
+
+.access-scope-option,
+.access-group-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    white-space: nowrap;
+}
+
+.access-group-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.4em 0.8em;
+    margin-left: 0.4em;
+    color: var(--wiki-text-muted);
+}
+
+.access-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+}
+
+.access-table td {
+    vertical-align: top;
+}
+
+/* ---------- 文件（上传 / 列表 / 详情 + 词条内嵌图片） ---------- */
+/* 多文件批量上传：已选文件列表（特殊:上传文件，功能开启时） */
+.file-multi-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    margin: 0.4em 0;
+}
+
+.file-multi-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.4em 0.6em;
+    border: 1px solid var(--wiki-border);
+    background: var(--wiki-subtle);
+}
+
+.file-multi-thumb {
+    width: 2.5em;
+    height: 2.5em;
+    object-fit: cover;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+.file-multi-original {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 16em;
+    color: var(--wiki-text-muted);
+    font-size: 0.875em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-multi-name {
+    flex: 1 1 12em;
+    min-width: 8em;
+}
+
+.file-multi-status {
+    flex: 0 0 auto;
+    min-width: 7em;
+    font-size: 0.875em;
+    color: var(--wiki-text-muted);
+}
+
+.file-multi-status.uploading {
+    color: var(--wiki-accent);
+}
+
+.file-multi-status.done {
+    color: var(--wiki-success);
+}
+
+.file-multi-status.failed {
+    color: var(--wiki-error);
+}
+
+/* 审核：批量上传里「已提交审核」的状态 */
+.file-multi-status.queued {
+    color: #ac6600;
+}
+
+.file-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8em;
+    list-style: none;
+    margin: 1em 0;
+    padding: 0;
+}
+
+.file-gallery li {
+    width: 160px;
+    text-align: center;
+    font-size: 0.9em;
+}
+
+.file-gallery img {
+    max-width: 100%;
+    max-height: 150px;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+.file-gallery .file-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    padding: 0 0.4em;
+    border: 1px solid var(--wiki-border);
+    background: var(--wiki-subtle);
+    color: var(--wiki-text-muted);
+    word-break: break-all;
+}
+
+.file-gallery-name {
+    margin-top: 0.25em;
+    word-break: break-all;
+}
+
+.file-gallery-meta {
+    color: var(--wiki-text-muted);
+}
+
+.file-preview img {
+    max-width: 100%;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+#file-preview {
+    max-width: 100%;
+    max-height: 240px;
+    margin-top: 0.5em;
+    border: 1px solid var(--wiki-border);
+    background: #ffffff;
+}
+
+#file-preview[hidden] {
+    display: none;
+}
+
+.file-info th {
+    width: 8em;
+}
+
+.file-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1em;
+}
+
+/* 皮肤选择（特殊:外观） */
+.skin-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    margin: 1em 0;
+}
+
+.skin-option {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    padding: 0.5em 0.7em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: var(--wiki-subtle);
+}
+
+.skin-option-name {
+    font-weight: bold;
+}
+
+.skin-option-desc {
+    flex: 1;
+    color: var(--wiki-text-muted);
+    font-size: 0.9em;
+}
+
+.skin-option-default {
+    color: var(--wiki-text-muted);
+    font-size: 0.85em;
+}
+
+/* 分类栏（页面底部的「分类」）：长页面紧跟正文（间隔条至少 1em），短页面贴在内容框底部 */
+.catlinks-block {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+
+.catlinks-spacer {
+    flex: 1 1 auto;
+    min-height: 1em;
+}
+
+.catlinks {
+    margin-top: 0;
+    padding: 0.4em 0.7em;
+    border: 1px solid var(--wiki-border);
+    background: var(--wiki-subtle);
+    font-size: 0.9em;
+}
+
+.catlinks-label {
+    margin-right: 0.35em;
+    font-weight: bold;
+}
+
+.catlinks-item {
+    margin-right: 0.6em;
+}
+
+/* 分类成员 / 分类列表：多列排版（经典样式：带圆点） */
+.cat-members {
+    columns: 3 16em;
+    margin: 0.5em 0;
+    padding-left: 1.6em;
+    list-style: disc;
+}
+
+.cat-sort-key {
+    color: var(--wiki-text-muted);
+    font-size: 0.85em;
+}
+
+.page-info-item {
+    margin-right: 0.8em;
+}
+
+/* 参数设置（仿 MediaWiki Special:Preferences） */
+.pref-search {
+    max-width: 30em;
+    margin: 0 0 0.6em;
+}
+
+.pref-search input {
+    width: 100%;
+    padding: 0.4em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* 国家 / 地区下拉框的输入搜索（由 /js/preferences.js 注入，无 JS 时不存在；
+   匹配数提示用 .wiki-hint，不另加样式） */
+.country-search {
+    max-width: 30em;
+    margin: 0 0 0.4em;
+}
+
+.country-search input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.4em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+    color: #202122;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.pref-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em;
+    margin: 0 0 1em;
+    border-bottom: 1px solid var(--wiki-border);
+}
+
+.pref-tab {
+    padding: 0.4em 0.9em;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    background: transparent;
+    color: var(--wiki-link);
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.pref-tab:hover {
+    text-decoration: underline;
+}
+
+.pref-tab.selected {
+    border-color: var(--wiki-border);
+    background: #ffffff;
+    color: #202122;
+    font-weight: bold;
+}
+
+.pref-section h2 {
+    margin-top: 0.8em;
+}
+
+.pref-field {
+    margin: 0.35em 0;
+}
+
+.pref-label {
+    margin-right: 0.3em;
+    color: var(--wiki-text-muted);
+}
+
+.pref-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4em;
+    margin: 0.35em 0;
+}
+
+.pref-radios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    margin: 0.3em 0;
+}
+
+.pref-radios label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.pref-actions {
+    margin-top: 1.2em;
+}
+
+/* 重定向提示：目标页顶部的「重定向自 X」 */
+.redirect-note {
+    margin: -0.2em 0 0.8em;
+    font-size: 0.9em;
+    color: var(--wiki-text-muted);
+}
+
+/* 词条内嵌图片：[[文件:xxx|thumb|说明|200px]] */.wiki-thumb {
+    border: 1px solid var(--wiki-border-light);
+    background: var(--wiki-subtle);
+    padding: 5px;
+    max-width: 100%;
+}
+
+.wiki-thumb img {
+    max-width: 100%;
+    height: auto;
+}
+
+.wiki-thumb figcaption {
+    padding: 3px 2px 0;
+    font-size: 0.9em;
+    color: var(--wiki-text-muted);
+}
+
+.wiki-thumb-right {
+    float: right;
+    margin: 0.3em 0 0.8em 1em;
+}
+
+.wiki-thumb-left {
+    float: left;
+    margin: 0.3em 1em 0.8em 0;
+}
+
+.wiki-thumb-center {
+    margin: 0.5em auto;
+    text-align: center;
+}
+
+.wiki-image-center {
+    text-align: center;
+}
+
+.wiki-float-left {
+    float: left;
+    margin: 0.3em 1em 0.5em 0;
+}
+
+.wiki-float-right {
+    float: right;
+    margin: 0.3em 0 0.5em 1em;
+}
+
+/* 表单错误文本 */
+.wiki-form-error {
+    margin: 0.5em 0;
+    color: var(--wiki-error);
+}
+
+/* 提示文本 */
+.wiki-hint {
+    color: #72777d;
+    font-size: 0.9em;
+}
+
+.wiki-form .wiki-hint {
+    margin-top: 0.25em;
+}
+
+/* 用户组 / 权限链接之间的分隔符（参数设置·权限列表·页面信息） */
+.group-separator {
+    margin: 0 0.15em;
+    color: var(--wiki-text-muted);
+}
+
+/* 标签（权限名等） */
+.wiki-tag {
+    display: inline-block;
+    margin: 0 0.3em 0.3em 0;
+    padding: 0.1em 0.6em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: var(--wiki-subtle);
+}
+
+/* 警告框（MediaWiki 消息框配色，值 = Codex token；保留旧类名兼容） */
+.wiki-warning,
+.old-revision-warning,
+.source-warning {
+    margin: 0 0 16px;
+    padding: 12px 24px;
+    border: 1px solid var(--wiki-warning-border);
+    background: var(--wiki-warning-bg);
+    overflow-wrap: break-word;
+}
+
+.move-intro,
+.protect-intro {
+    color: #54595d;
+}
+
+.move-from {
+    margin: 0.5em 0 1em;
+}
+
+/* 「特殊:移动页面 / 特殊:保护页面」的返回按钮（从 ?page= 的源页面进入时显示） */
+.page-back {
+    margin: 0 0 0.8em;
+}
+
+/* ---------- 查看源代码 ---------- */
+.source-intro {
+    color: var(--wiki-text-muted);
+}
+
+.wiki-source {
+    margin: 0.5em 0;
+    padding: 0.8em 1em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ---------- 版本历史 ---------- */
+.history-summary {
+    color: #54595d;
+}
+
+.history-list {
+    list-style: none;
+    margin: 1em 0 0;
+    padding: 0;
+}
+
+.history-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.75em;
+    padding: 0.5em 0.6em;
+    border-bottom: 1px solid #eaecf0;
+}
+
+.history-list li:hover {
+    background: #f8f9fa;
+}
+
+.history-date {
+    color: #202122;
+}
+
+.history-user,
+.history-comment {
+    color: #54595d;
+}
+
+.history-comment {
+    flex: 1;
+    min-width: 12em;
+}
+
+.history-current {
+    font-weight: bold;
+}
+
+.history-deleted {
+    opacity: 0.6;
+}
+
+.history-deleted-mark {
+    color: #b00020;
+}
+
+.history-actions {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ---------- 特殊:全部页面（仿 MediaWiki Special:AllPages） ---------- */
+.allpages-form {
+    max-width: none;
+    margin: 0.4em 0 0.6em;
+}
+
+.allpages-fields {
+    display: flex;
+    flex-direction: column; /* 竖排：每一行一组「标签 + 控件」 */
+    align-items: flex-start;
+    gap: 0.4em;
+}
+
+/* 一组「标签 + 控件」占一行 */
+.allpages-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.allpages-row label {
+    white-space: nowrap;
+}
+
+.allpages-form input[type="text"] {
+    width: 13em;
+    max-width: none;
+}
+
+.allpages-form select {
+    width: auto;
+    max-width: none;
+}
+
+.allpages-hide {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-weight: normal;
+}
+
+/* 页面列表：三列（窄屏一列），每项前面的圆点由 ::marker 渲染（MediaWiki 经典样式） */
+.allpages-chunk {
+    list-style: disc;
+    margin: 0.4em 0 0.8em;
+    padding: 0 0 0 1.5em;
+    column-count: 3;
+    column-gap: 2.5em;
+    line-height: 1.75;
+}
+
+.allpages-chunk li {
+    break-inside: avoid;
+    padding: 0.05em 0;
+}
+
+/* 特殊:特殊页面：搜索 + 目录 + 分组列表（仿 MediaWiki Special:SpecialPages） */
+.specialpages-search {
+    display: block;
+    width: 100%;
+    max-width: 30em;
+    margin: 0.6em 0 0.8em;
+    padding: 0.4em 0.5em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    font: inherit;
+}
+
+.specialpages-toc {
+    margin: 0 0 0.8em;
+}
+
+.specialpages-toc-title {
+    font-weight: bold;
+}
+
+.specialpages-toc ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2em 1.6em;
+    margin: 0.2em 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: specialpages-toc;
+}
+
+.specialpages-toc li {
+    counter-increment: specialpages-toc;
+    white-space: nowrap;
+}
+
+.specialpages-toc li::before {
+    content: counter(specialpages-toc) " ";
+    color: var(--wiki-text-muted);
+}
+
+.specialpages-group h2 {
+    margin: 1.2em 0 0.4em;
+}
+
+.specialpages-items {
+    list-style: disc;
+    margin: 0.4em 0 0.8em;
+    padding-left: 1.6em;
+    column-count: 3;
+    column-gap: 2.5em;
+}
+
+.specialpages-items li {
+    break-inside: avoid;
+    padding: 0.05em 0;
+}
+
+@media (max-width: 719px) {
+    .specialpages-items {
+        column-count: 1;
+    }
+}
+
+.allpages-nav {
+    margin: 0.6em 0;
+    min-height: 1.2em;
+}
+
+.allpages-nav a {
+    margin-right: 1.5em;
+}
+
+@media (max-width: 719px) {
+    .allpages-chunk {
+        column-count: 1;
+    }
+}
+
+
+/* ===== 用户页资料卡 / 头像上传（.wiki-profile / .wiki-avatar / .avatar-page）的样式
+   已迁到插件 social-profile：/plugins/social-profile/social-profile-base.css ===== */
+
+/* ===== 评论区（<comment />）的样式已迁到插件 comments：/plugins/comments/comments.css ===== */
+
+/* ===== 特殊:私信（.messages-* / .message-*）的样式已迁到插件 social-profile：
+   /plugins/social-profile/social-profile-base.css ===== */
+
+/* ============================================================
+   差异对比（?diff=…，仿 MediaWiki DifferenceEngine）
+   ============================================================ */
+.diff-nav {
+    margin: 0.5em 0;
+    font-size: 0.9375em;
+}
+
+.diff-nav-gap {
+    display: inline-block;
+    width: 1em;
+}
+
+.diff-nav .diff-next {
+    margin-left: 1em;
+}
+
+.diff-empty-message {
+    margin-top: 0.75em;
+}
+
+.diff-legend {
+    margin: 0.35em 0;
+}
+
+/* 差异表格：按 MediaWiki（mediawiki.diff.styles/diff.less）对齐——
+   单元格之间 4px 间隔、内容行 4px 彩色左边框 + 0.33em 圆角、
+   行号 / 标记列无底色，改动词才上底色（新增 #a3d3ff、删除 #ffe49c，Codex token） */
+table.diff {
+    width: 100%;
+    border: 0;
+    border-collapse: separate;
+    border-spacing: 4px;
+    table-layout: fixed;
+    margin: 0.35em 0 1em;
+    font-size: 0.9375em;
+}
+
+table.diff td,
+table.diff th {
+    padding: 0.15em 0.4em;
+    vertical-align: top;
+}
+
+.diff-marker-col {
+    width: 1.2em;
+}
+
+.diff-lineno-col {
+    width: 3em;
+}
+
+/* 标题行（旧版本 / 新版本）：居中（MW .diff-otitle / .diff-ntitle） */
+.diff-header-row th,
+.diff-otitle,
+.diff-ntitle {
+    text-align: center;
+    font-weight: normal;
+}
+
+.diff-title-meta {
+    color: #54595d;
+    font-size: 0.875em;
+}
+
+.diff-title-comment {
+    color: #54595d;
+    font-size: 0.875em;
+    font-style: italic;
+}
+
+/* 行标记（+ / − / 空）与行号：MW 里无底色、右对齐、加粗 */
+.diff-marker {
+    width: 1.2em;
+    padding: 0.25em;
+    text-align: right;
+    font-weight: bold;
+    font-size: 1.25em;
+    line-height: 1.2;
+    color: #54595d;
+    background: transparent;
+    border: 0;
+}
+
+.diff-lineno {
+    width: 3em;
+    padding: 0.33em 0.5em;
+    text-align: right;
+    font-weight: bold;
+    color: #72777d;
+    background: transparent;
+    border: 0;
+    font-size: 0.8125em;
+    user-select: none;
+}
+
+/* 内容行：MW 的「左 4px 彩色边框 + 其余 1px + 0.33em 圆角」 */
+.diff-line,
+.diff-context,
+.diff-addedline,
+.diff-deletedline {
+    vertical-align: top;
+    border-style: solid;
+    border-width: 1px 1px 1px 4px;
+    border-radius: 0.33em;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    tab-size: 4;
+    white-space: pre-wrap;
+    white-space: break-spaces;
+    word-break: break-word;
+}
+
+.diff-line,
+.diff-context {
+    background: #f8f9fa;
+    border-color: #dadde3;
+}
+
+.diff-addedline {
+    background: #ffffff;
+    border-color: #a3d3ff;
+}
+
+.diff-deletedline {
+    background: #ffffff;
+    border-color: #ffe49c;
+}
+
+/* 空的一侧：不画框、不填色（MW 的空单元格） */
+.diff-line.diff-empty {
+    background: transparent;
+    border: 0;
+}
+
+/* 改动词高亮（MW .diffchange）：只有变化的词上底色 */
+.diffchange {
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 0.33em;
+    padding: 0.25em 0;
+}
+
+.diff-addedline .diffchange {
+    background: #a3d3ff;
+}
+
+.diff-deletedline .diffchange {
+    background: #ffe49c;
+}
+
+/* ============================================================
+   交互动效：过渡更顺滑（prefers-reduced-motion 下全部关闭）
+   ============================================================ */
+html {
+    scroll-behavior: smooth;
+}
+
+.wiki-button {
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wiki-button:not([disabled]):active {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.wiki-button:focus-visible {
+    outline: 2px solid #36c;
+    outline-offset: 1px;
+}
+
+.wiki-form input[type="text"],
+.wiki-form input[type="search"],
+.wiki-form input[type="password"],
+.wiki-form input[type="email"],
+.wiki-form textarea,
+.wiki-form select,
+.page-actions input[type="text"] {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wiki-form input:focus,
+.wiki-form textarea:focus,
+.wiki-form select:focus {
+    box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.15);
+}
+
+.pref-tab,
+.wiki-button,
+.comment-reply-link,
+.comment-delete-link {
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.12s ease, text-decoration-color 0.12s ease;
+}
+
+.rc-group > summary:hover {
+    background-color: #f8f9fa;
+}
+
+.wikitable tbody tr {
+    transition: background-color 0.12s ease;
+}
+
+.wikitable tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.wiki-dialog-overlay:not([hidden]) {
+    animation: wikiFadeIn 0.15s ease-out;
+}
+
+.wiki-dialog-overlay:not([hidden]) .wiki-dialog {
+    animation: wikiDialogIn 0.18s ease-out;
+}
+
+.wiki-preview:not([hidden]) {
+    animation: wikiFadeIn 0.18s ease-out;
+}
+
+.form-message:not([hidden]) {
+    animation: wikiFadeIn 0.18s ease-out;
+}
+
+/* 提示显示后由 feedback.js 自动淡出（成功 3 秒、其它 8 秒） */
+.form-message {
+    transition: opacity 0.65s ease;
+}
+
+.form-message.wiki-fading {
+    opacity: 0;
+}
+
+.comment-reply-note:not([hidden]) {
+    animation: wikiFadeIn 0.18s ease-out;
+}
+
+.rc-group[open] > .rc-changes,
+.rc-log-group[open] > .rc-changes {
+    animation: wikiFadeIn 0.16s ease-out;
+}
+
+/* 动态更新：新插入的条目滑入 + 淡黄高亮渐隐；有新条目时按钮闪一下 */
+.rc-entry.rc-live-new {
+    animation: wikiLiveIn 3s ease-out;
+}
+
+.rc-live.rc-live-flash {
+    background: #fef6e7;
+}
+
+@keyframes wikiLiveIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-4px);
+        background-color: #fef6e7;
+    }
+    10% {
+        opacity: 1;
+        transform: none;
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.comment-avatar {
+    transition: opacity 0.25s ease;
+}
+
+/* 目录折叠 / 皮肤页签 / 侧栏链接：收紧过渡 */
+.toc:not(.toc-hidden) > ul {
+    animation: wikiFadeIn 0.15s ease-out;
+}
+
+.toc .toctoggle {
+    transition: color 0.12s ease;
+}
+
+.tabs-left li a,
+.tabs-right li a {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.portal a {
+    transition: color 0.12s ease;
+}
+
+/* comments.js 替换评论区时的淡出 / 淡入 */
+.wiki-comments.wiki-comments-fading {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+@keyframes wikiFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes wikiDialogIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes wikiNewComment {
+    0% {
+        background-color: #fef6e7;
+    }
+    100% {
+        background-color: #ffffff;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+/* 错误页（404 / 通用）：大号状态码 + 自定义内容（WikiKernel:404） */
+.wiki-error-page {
+    margin: 0.5em 0;
+}
+
+.wiki-error-code {
+    margin: 0 0 0.6em;
+    color: #54595d;
+    font-size: 2.6em;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.wiki-error-default {
+    color: #54595d;
+}
+
+/* ==================== 多媒体播放器（TimedMediaHandler）与图片放大查看器（MediaViewer） ==================== */
+/* 已迁到插件 media-viewer：样式随插件注入（/plugins/media-viewer/media-viewer.css），见插件 README。 */
+
+/* ==================== 回退皮肤（fallback）功能补全：用户栏 / 搜索 / 页签 / 侧边导航 ==================== */
+.skin-fallback .fallback-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em;
+    padding: 0.5em 0.8em;
+    border-bottom: 1px solid #c8ccd1;
+    background: #f8f9fa;
+}
+
+.skin-fallback .fallback-brand {
+    font-weight: bold;
+}
+
+.skin-fallback .fallback-separator {
+    color: #72777d;
+}
+
+.skin-fallback .fallback-title {
+    color: #54595d;
+}
+
+.skin-fallback .fallback-personal {
+    margin-left: auto;
+}
+
+.skin-fallback .fallback-personal ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75em;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.skin-fallback .fallback-search {
+    display: flex;
+    gap: 0.25em;
+}
+
+.skin-fallback .fallback-search input {
+    min-width: 12em;
+    padding: 0.3em 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.skin-fallback .fallback-tabs {
+    padding: 0 0.8em;
+    border-bottom: 1px solid #a2a9b1;
+    background: #fff;
+}
+
+.skin-fallback .fallback-tabs ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9em;
+    list-style: none;
+    margin: 0;
+    padding: 0.4em 0;
+}
+
+.skin-fallback .fallback-tabs a {
+    color: #36c;
+}
+
+.skin-fallback .fallback-tabs li.selected > a,
+.skin-fallback .fallback-tabs li.selected > span {
+    color: #202122;
+    font-weight: bold;
+}
+
+.skin-fallback .fallback-sidebar {
+    padding: 0.5em 0.8em;
+    border-bottom: 1px solid #eaecf0;
+    background: #f8f9fa;
+}
+
+.skin-fallback .fallback-sidebar .portal {
+    display: inline-block;
+    margin-right: 1.4em;
+    vertical-align: top;
+}
+
+.skin-fallback .fallback-sidebar h3 {
+    margin: 0.2em 0 0.3em;
+    color: #54595d;
+    font-size: 0.85em;
+}
+
+.skin-fallback .fallback-sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.skin-fallback .fallback-sidebar li {
+    line-height: 1.6;
+}
+
+.skin-fallback main#content {
+    padding: 0.8em;
+}
+
+/* ==================== 移动端适配（全局）：防止横向溢出 / 长内容不撑宽整页 / iOS 自动缩放 ==================== */
+html {
+    /* iOS 旋转 / 双指缩放时不自动放大字号（配合输入框 16px，消除"缩放后布局不对"） */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+@media (max-width: 719px) {
+    html,
+    body {
+        /* 兜底：任何残余溢出都不让整页左右滑动（"手滑滑走"） */
+        overflow-x: hidden;
+    }
+
+    /* 长单词 / 链接 / 代码串允许任意位置换行，不再把整页撑宽 */
+    .wiki-content,
+    #bodyContent,
+    .wiki-source,
+    .diff-table {
+        overflow-wrap: anywhere;
+    }
+
+    /* 代码块：块内横向滚动（长代码行不撑破页面） */
+    .wiki-content pre,
+    #bodyContent pre,
+    .wiki-source {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 表格：移动端块级横向滚动（宽表在表内左右滑动，整页不动） */
+    .wiki-content table,
+    #bodyContent table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 信息框：模板里是行内 float + width:300px，移动端改为通栏 */
+    .wiki-infobox {
+        float: none !important;
+        width: auto !important;
+        max-width: 100% !important;
+        margin: 0 0 1em !important;
+    }
+
+    /* 信息框内部的小表格保持正常表格布局，不套块级滚动 */
+    .wiki-infobox table {
+        display: table;
+        width: 100%;
+    }
+
+    /* 图片 / 播放器不超出屏幕 */
+    .wiki-content img,
+    #bodyContent img,
+    .wiki-media-player {
+        max-width: 100% !important;
+        height: auto;
+    }
+
+    /* iOS：聚焦字号小于 16px 的输入框会自动放大整页（"双指出现缩放"的常见来源） */
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
+/* 回退皮肤移动端：用户栏单行横向滑动（与 Vector 一致，避免登录后折成多行） */
+@media (max-width: 719px) {
+    .skin-fallback .fallback-personal {
+        flex: 1 1 100%;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .skin-fallback .fallback-personal::-webkit-scrollbar {
+        display: none;
+    }
+
+    .skin-fallback .fallback-personal ul {
+        flex-wrap: nowrap;
+        margin-left: auto;
+        gap: 0.8em;
+    }
+
+    .skin-fallback .fallback-personal li {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+/* ---------- 可打印版（?printable=yes，仿 MediaWiki 可打印版） ---------- */
+.wiki-printable {
+    background: #fff;
+}
+
+.wiki-printable .mw-editsection {
+    display: none !important;
+}
+
+.wiki-printable .wiki-comments {
+    display: none !important;
+}
+
+.wiki-printable #content,
+.wiki-printable .wiki-column {
+    box-shadow: none;
+}
+
+/* 可打印版顶部工具条（自动打印窗口取消后仍可用；打印时隐藏） */
+.wk-printable-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #c8ccd1;
+}
+
+.wk-printable-bar .wk-printable-back {
+    font-size: 13px;
+}
+
+/* 打印（含另存为 PDF）：去掉页面内边距与外边距 */
+@page {
+    margin: 12mm;
+}
+
+@media print {
+    .wiki-printable {
+        padding: 0;
+    }
+
+    .wk-printable-bar {
+        display: none !important;
+    }
+}
+
+/* ==================== 页脚左右两区（Vector / fallback / 插件皮肤共用） ==================== */
+/* 左区贴左、右区贴右：WikiKernel:Footer-Left / Footer-Right 页面各自替换一区 */
+#footer-places {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5em;
+    flex-wrap: wrap;
+}
+
+#footer-places ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5em;
+    margin: 0;
+    padding: 0;
+}
+
+.footer-left,
+.footer-right {
+    min-width: 0;
+}
+
+.footer-right {
+    margin-left: auto;
+    text-align: right;
+}
+
+.footer-custom > p {
+    margin: 0 0 0.25em;
+}
+
+/* 页脚标识行（仿 MediaWiki 的 footer-icons）：「站点名称 · Powered by Spring Boot」 */
+#footer-icons {
+    list-style: none;
+    margin: 0.6em 0 0;
+    padding: 0;
+    font-size: 0.8125em;
+    color: #54595d;
+}
+
+.footer-custom > p:last-child {
+    margin-bottom: 0;
+}
+
+/* ==================== JS 兼容性（未内置模块提示 / 诊断报告） ==================== */
+/* 特殊:Gadgets：dependencies=… 里未内置的模块标红（悬停看说明） */
+.gadget-module-unsupported {
+    color: #b32424;
+    text-decoration: underline dotted;
+    cursor: help;
+}
+
+.gadget-module-missing {
+    display: inline-block;
+    margin-left: 0.4em;
+    padding: 0.05em 0.45em;
+    border-radius: 2px;
+    background: #fee7e6;
+    color: #b32424;
+    font-size: 0.8125em;
+    cursor: help;
+}
+
+.gadget-module-missing[hidden] {
+    display: none;
+}
+
+/* 诊断页（#js-compat-report）：模块清单与现场演示的告警原文 */
+.js-compat-table code {
+    word-break: break-all;
+}
+
+.js-compat-warnings {
+    margin: 0.4em 0 0;
+    padding: 0.6em 0.8em;
+    border: 1px solid #c8ccd1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    color: #202122;
+    font-size: 0.8125em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   表单控件基线（对齐 OOUI wikimediaui / MediaWiki）
+   目的：任何页面、任何容器里的控件都有一致外观（含动态生成的 UI）；
+   容器级规则（.wiki-form / .wiki-filter / .setup-panel / form.inputbox …）
+   特异性更高，会覆盖这里的值。
+   参考值取自 OOUI 0.54 的 wikimediaui 主题（边框 #a2a9b1、圆角 2px、
+   底色 #f8f9fa、聚焦环 #36c、禁用 #eaecf0/#72777d）。
+   ============================================================ */
+button,
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+input[type="text"],
+input[type="search"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+textarea {
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.4;
+    color: #202122;
+}
+
+/* 文本类输入：白底 + 1px #a2a9b1 + 2px 圆角（OOUI 输入框外观） */
+input[type="text"],
+input[type="search"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+textarea {
+    padding: 0.35em 0.5em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background-color: #ffffff;
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="datetime-local"]:focus,
+input[type="time"]:focus,
+input[type="month"]:focus,
+input[type="week"]:focus,
+textarea:focus {
+    border-color: #36c;
+    box-shadow: inset 0 0 0 1px #36c;
+    outline: none;
+}
+
+input[type="text"]:disabled,
+input[type="search"]:disabled,
+input[type="password"]:disabled,
+input[type="email"]:disabled,
+input[type="url"]:disabled,
+input[type="tel"]:disabled,
+input[type="number"]:disabled,
+input[type="date"]:disabled,
+input[type="datetime-local"]:disabled,
+input[type="time"]:disabled,
+input[type="month"]:disabled,
+input[type="week"]:disabled,
+textarea:disabled {
+    background-color: #eaecf0;
+    color: #72777d;
+    border-color: #c8ccd1;
+}
+
+/* 普通按钮：与 .wiki-button / MediaWiki 按钮一致（灰底、悬停变白） */
+button,
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
+    padding: 0.4em 1em;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled),
+input[type="button"]:hover:not(:disabled),
+input[type="reset"]:hover:not(:disabled) {
+    background-color: #ffffff;
+    border-color: #54595d;
+}
+
+button:disabled,
+input[type="submit"]:disabled,
+input[type="button"]:disabled,
+input[type="reset"]:disabled {
+    background-color: #eaecf0;
+    color: #72777d;
+    border-color: #c8ccd1;
+    cursor: default;
+}
+
+button:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="button"]:focus-visible,
+input[type="reset"]:focus-visible {
+    outline: 2px solid #36c;
+    outline-offset: 1px;
+}
+
+/* 复选框 / 单选框：原生控件着 OOUI 蓝（跨浏览器一致），并统一与文字的间距 */
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: #36c;
+    margin: 0 0.35em 0 0;
+    vertical-align: middle;
+}
+
+label > input[type="checkbox"]:first-child,
+label > input[type="radio"]:first-child {
+    margin-left: 0;
+}
+
+/* ============================================================
+   MediaWiki 细节对齐（缺样式的地方补齐）
+   ============================================================ */
+
+/* 文件页历史表格：当前版本行加粗（MW .filehistory-selected），
+   表头左对齐、单元格顶对齐（MW `.filehistory` 规则） */
+.file-history th,
+.file-history td {
+    vertical-align: top;
+}
+
+.file-history th {
+    text-align: left;
+}
+
+.file-history-current {
+    font-weight: bold;
+}
+
+/* ConfirmEdit：验证码算式加粗，和输入框之间留出间距 */
+.captcha-question {
+    font-weight: bold;
+    margin-right: 0.5em;
+}
+
+/* 监视星标（仿 MediaWiki 页签的 ☆/★）：模板已带 data-watched，用 CSS 显示状态 */
+#watch-tab a::before {
+    content: "☆ ";
+}
+
+#watch-tab a[data-watched="true"]::before {
+    content: "★ ";
+}
+
+/* 滥用过滤器的 .abuse-mark / .abuse-restricted 样式已迁到插件 abuse-filter
+   （/plugins/abuse-filter/abuse-filter.css，由插件站点级注入） */
+
+/* 特殊:Gadgets 依赖列：模块名等宽显示，未内置的沿用红色（js-compat.js 标记） */
+.gadget-dependencies .gadget-module {
+    font-family: monospace, monospace;
+    font-size: 0.875em;
+}
+
+/* ============================================================
+   AI 协助版本的水印（页面元数据；对话界面样式在插件 ai-agent）
+   ============================================================ */
+/* 词条底部的隐藏水印：完全不显示、不占位（数据在 data-* 属性里，供审计/追溯） */
+.mw-ai-watermark {
+    display: none;
+}
+
+/* ============================================================
+   MediaWiki 代码样式（mediawiki.skinning/elements.less）
+   pre / code / .mw-code：浅灰底 + 1px #dadde3 边框；行内 code 圆角内边距
+   ============================================================ */
+pre,
+code,
+kbd,
+samp,
+.mw-code {
+    font-family: monospace, monospace;
+}
+
+pre,
+code,
+.mw-code {
+    background-color: #f8f9fa;
+    color: #101418;
+    border: 1px solid #dadde3;
+}
+
+code {
+    border-radius: 2px;
+    padding: 1px 4px;
+}
+
+/* 代码块里的 <code> 不要重复画框（MW 高亮块内没有内层 code 的样式） */
+pre code,
+pre.syntax code,
+.mw-code code {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+}
+
+pre,
+.mw-code {
+    margin: 0.5em 0 1em;
+    padding: 1em;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+/* ============================================================
+   MediaWiki 消息框类（mediawiki.skinning/messageBoxes.less）
+   站点内容 / Gadgets 里写 .mw-message-box 系列即可得到 MediaWiki 外观
+   ============================================================ */
+.mw-message-box {
+    box-sizing: border-box;
+    margin-bottom: 16px;
+    padding: 12px 24px;
+    border: 1px solid var(--wiki-notice-border);
+    background-color: var(--wiki-notice-bg);
+    color: #101418;
+    overflow: hidden;
+    overflow-wrap: break-word;
+}
+
+.mw-message-box > :only-child {
+    margin: 0;
+}
+
+.mw-message-box-error {
+    background-color: var(--wiki-error-bg);
+    border-color: var(--wiki-error-border);
+}
+
+.mw-message-box-warning {
+    background-color: var(--wiki-warning-bg);
+    border-color: var(--wiki-warning-border);
+}
+
+.mw-message-box-success {
+    background-color: var(--wiki-success-bg);
+    border-color: var(--wiki-success-border);
+}
+
+/* ============================================================
+   特殊:版本（仿 MediaWiki Special:Version）：已安装的扩展表
+   5 列：扩展 / 插件 ID / 版本 / 说明 / JAR 包名。
+   表格按容器宽度自适应（table-layout: fixed + 百分比列宽，比例固定），
+   说明列最宽、其余列按内容给窄比例；长 ID / jar 名允许换行，不会撑破布局。
+   ============================================================ */
+.mw-version-plugins-intro {
+    margin: 0.4em 0 0.8em;
+    max-width: 60em;
+    color: var(--wiki-text-muted);
+}
+
+table.wikitable.mw-version-plugins {
+    width: 100%;
+    max-width: none;
+    table-layout: fixed;
+}
+
+.mw-version-plugins th,
+.mw-version-plugins td {
+    padding: 0.45em 0.7em;
+    vertical-align: top;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+/* 列宽比例：扩展 15% / 插件 ID 14% / 版本 7% / 说明 44% / JAR 20% */
+.mw-version-plugins th.mw-version-plugins-extension,
+.mw-version-plugins td.mw-version-plugins-extension {
+    width: 15%;
+    font-weight: 600;
+}
+
+.mw-version-plugins th.mw-version-plugins-plugin-id,
+.mw-version-plugins td.mw-version-plugins-plugin-id {
+    width: 14%;
+    text-align: center;
+}
+
+.mw-version-plugins th.mw-version-plugins-version,
+.mw-version-plugins td.mw-version-plugins-version {
+    width: 7%;
+    white-space: nowrap;
+    text-align: center;
+    color: var(--wiki-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.mw-version-plugins th.mw-version-plugins-description,
+.mw-version-plugins td.mw-version-plugins-description {
+    width: 44%;
+}
+
+.mw-version-plugins td.mw-version-plugins-description {
+    text-align: left;
+}
+
+/* 说明末尾的「（原插件）」链接 */
+.mw-version-plugins td.mw-version-plugins-description a.mw-version-plugins-original {
+    margin-left: 0.25em;
+    color: var(--wiki-link);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.mw-version-plugins td.mw-version-plugins-description a.mw-version-plugins-original:hover,
+.mw-version-plugins td.mw-version-plugins-description a.mw-version-plugins-original:focus {
+    text-decoration: underline;
+}
+
+.mw-version-plugins th.mw-version-plugins-jar,
+.mw-version-plugins td.mw-version-plugins-jar {
+    width: 20%;
+    text-align: center;
+}
+
+/* 插件 ID / JAR 包名：等宽字体但要看得清（不缩小、不用弱化灰），浅底小标签 */
+.mw-version-plugins td.mw-version-plugins-plugin-id code,
+.mw-version-plugins td.mw-version-plugins-jar code {
+    display: inline-block;
+    padding: 0.05em 0.4em;
+    border: 1px solid var(--wiki-border-light);
+    border-radius: 3px;
+    background: #f4f6f9;
+    color: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1em;
+    line-height: 1.45;
+    word-break: break-all;
+}
+
+/* 行悬停高亮（表头是 th，不会被这条规则命中） */
+.mw-version-plugins tr:hover td {
+    background: #eef3fb;
+}

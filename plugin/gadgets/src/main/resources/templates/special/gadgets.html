@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- 特殊:Gadgets（插件 gadgets）：MediaWiki Gadgets 目录、个人启用入口与管理员维护入口。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="gadgets-page">
+    <p class="wiki-warning" th:unless="${enabled}" th:text="#{gadget.featureDisabled}">
+        Gadgets 功能当前未启用。
+    </p>
+    <p th:text="#{gadget.intro}">
+        Gadgets 是由站点提供的 JavaScript / CSS 小功能；登录用户可以在参数设置中选择启用的 Gadget。
+    </p>
+    <p>
+        <a th:href="${preferencesUrl}" th:text="#{gadget.openPreferences}">打开参数设置</a>
+        <span th:if="${canManage}"> · </span>
+        <a th:if="${canManage}" th:href="${definitionUrl}" th:text="#{gadget.editDefinition}">
+            编辑 Gadgets-definition
+        </a>
+    </p>
+    <p class="wiki-hint" th:if="${#lists.isEmpty(gadgets)}" th:text="#{gadget.empty}">
+        尚未定义任何 Gadget。
+    </p>
+    <table class="wikitable" th:unless="${#lists.isEmpty(gadgets)}">
+        <thead>
+        <tr>
+            <th th:text="#{gadget.name}">名称</th>
+            <th th:text="#{gadget.description}">说明</th>
+            <th th:text="#{gadget.status}">状态</th>
+            <th th:text="#{gadget.assets}">资源</th>
+            <th th:text="#{gadget.dependencies}">依赖模块</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="gadget : ${gadgets}">
+            <td th:text="${gadget.name}">Gadget</td>
+            <td th:text="${gadget.description}">Description</td>
+            <td th:text="${gadget.enabled} ? #{gadget.enabled} : #{gadget.disabled}">启用</td>
+            <td>
+                <span th:each="script, iter : ${gadget.scripts}">
+                    <a th:href="@{/wiki/{title}(title=${'Gadget:' + script})}"
+                       th:text="${script}">script.js</a><span th:if="${!iter.last}">, </span>
+                </span>
+                <span th:each="style, iter : ${gadget.styles}">
+                    <a th:href="@{/wiki/{title}(title=${'Gadget:' + style})}"
+                       th:text="${style}">style.css</a><span th:if="${!iter.last}">, </span>
+                </span>
+            </td>
+            <td class="gadget-dependencies">
+                <span th:each="dependency, iter : ${gadget.dependencies}"><span class="gadget-module"
+                        th:attr="data-module=${dependency}" th:text="${dependency}">oojs-ui-core</span><span
+                        th:if="${!iter.last}">, </span></span>
+                <span class="gadget-module-missing" hidden th:title="#{gadget.dependenciesMissing}"
+                      th:text="'⚠ ' + #{gadget.dependenciesMissing}">⚠ 未内置</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>
