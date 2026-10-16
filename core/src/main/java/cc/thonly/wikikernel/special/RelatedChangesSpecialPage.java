@@ -10,7 +10,7 @@ import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.PageLinkService;
 import cc.thonly.wikikernel.service.UserService;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;

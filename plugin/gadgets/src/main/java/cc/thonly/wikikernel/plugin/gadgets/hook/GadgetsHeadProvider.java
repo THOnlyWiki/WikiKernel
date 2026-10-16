@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.gadgets.hook;
 
 import cc.thonly.wikikernel.common.extension.HeadContext;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.plugin.gadgets.model.GadgetDefinition;
 import cc.thonly.wikikernel.plugin.gadgets.service.GadgetService;
@@ -71,7 +72,7 @@ public class GadgetsHeadProvider implements HtmlHeadProvider {
 
     /** 资源页标题 → {@code ?action=raw} 地址（标题逐段编码，保留子页面斜杠与命名空间冒号）。 */
     private static String rawUrl(String title, String contentType) {
-        StringBuilder path = new StringBuilder("/wiki/");
+        StringBuilder path = new StringBuilder(WikiUrls.pagePrefix());
         String[] segments = title.split("/");
         for (int i = 0; i < segments.length; i++) {
             if (i > 0) {

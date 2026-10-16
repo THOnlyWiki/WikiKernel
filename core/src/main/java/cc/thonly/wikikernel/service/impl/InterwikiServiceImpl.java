@@ -5,7 +5,7 @@ import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.db.mapper.WikiInterwikiMapper;
 import cc.thonly.wikikernel.service.InterwikiService;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

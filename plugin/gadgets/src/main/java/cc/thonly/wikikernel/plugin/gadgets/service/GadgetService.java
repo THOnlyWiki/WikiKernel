@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.gadgets.service;
 
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.service.PageSnapshot;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.service.UserSettings;
@@ -160,7 +161,7 @@ public class GadgetService {
 
     /** 定义页地址（特殊页里给「编辑定义页」链接用）。 */
     public String definitionPageUrl() {
-        return "/wiki/" + DEFINITION_PAGE.replace(' ', '_');
+        return WikiUrls.pagePrefix() + DEFINITION_PAGE.replace(' ', '_');
     }
 
     private List<String> assetTitles(boolean scripts) {

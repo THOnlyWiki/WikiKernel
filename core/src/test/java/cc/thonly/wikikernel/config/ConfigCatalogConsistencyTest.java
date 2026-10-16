@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConfigCatalogConsistencyTest {
 
     /** 配置全集的键数：新增 / 删除配置项时同步更新（配合下面的断言一起防漂移）。 */
-    private static final int EXPECTED_CATALOG_KEY_COUNT = 109;
+    private static final int EXPECTED_CATALOG_KEY_COUNT = 114;
 
     /** metadata 里由 @ConfigurationProperties 暴露的键（本测试的第二方）。 */
     private static Set<String> metadataKeys() {

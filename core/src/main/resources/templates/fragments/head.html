@@ -9,6 +9,9 @@
     <!-- 静态资源放在 core/src/main/resources/static/ 下 -->
     <!-- 基础样式（全皮肤共用）+ 当前皮肤样式（base 之后加载，可覆盖） -->
     <link rel="stylesheet" th:href="@{/css/base.css(v=${assetVersion})}">
+    <!--/* 站点图标：默认用内置 wiki-logo.svg（浏览器默认请求 /favicon.ico 会 404）。
+           想换成自己的图标：把 href 改成自己的图片 URL（或替换 core 的 static/img/wiki-logo.svg） */-->
+    <link rel="icon" th:href="@{/img/wiki-logo.svg(v=${assetVersion})}">
     <link th:each="skinSheet : ${skin.stylesheets}" rel="stylesheet"
           th:href="@{${skinSheet}(v=${assetVersion})}">
     <!-- 页面自定义样式（Wiki.css + {title}/XXX.css），服务端已转义 <，不会提前闭合 style -->
@@ -28,6 +31,7 @@
             hardDeleteConfirm: /*[[#{files.hardDeleteConfirm}]]*/ '',
             revertConfirm: /*[[#{files.revertConfirm}]]*/ '',
             prefResetConfirm: /*[[#{preferences.resetConfirm}]]*/ '',
+            prefTabNoMatch: /*[[#{preferences.tabNoMatch}]]*/ '',
             timeZoneUnavailable: /*[[#{preferences.timezoneUnavailable}]]*/ '',
             prefCountrySearch: /*[[#{preferences.countrySearch}]]*/ '',
             prefCountrySearchPlaceholder: /*[[#{preferences.countrySearchPlaceholder}]]*/ '',
@@ -43,6 +47,10 @@
             toolbarLinkSample: /*[[#{toolbar.linkSample}]]*/ '',
             toolbarExternalSample: /*[[#{toolbar.externalSample}]]*/ '',
             toolbarHeadingSample: /*[[#{toolbar.headingSample}]]*/ '',
+            toolbarBigSample: /*[[#{toolbar.bigSample}]]*/ '',
+            toolbarSmallSample: /*[[#{toolbar.smallSample}]]*/ '',
+            toolbarSupSample: /*[[#{toolbar.supSample}]]*/ '',
+            toolbarSubSample: /*[[#{toolbar.subSample}]]*/ '',
             toolbarTableHeader: /*[[#{toolbar.tableHeader}]]*/ '',
             toolbarTableCell: /*[[#{toolbar.tableCell}]]*/ '',
             uploadTitle: /*[[#{toolbar.fileTitle}]]*/ '',
@@ -88,7 +96,26 @@
             veDialogPreviewFailed: /*[[#{veDialogPreviewFailed}]]*/ '',
             veDiscardConfirm: /*[[#{edit.visualDiscardConfirm}]]*/ '',
             watchWatch: /*[[#{watch.watch}]]*/ '',
-            watchUnwatch: /*[[#{watch.unwatch}]]*/ ''
+            watchUnwatch: /*[[#{watch.unwatch}]]*/ '',
+            toolbarHighlight: /*[[#{toolbar.highlight}]]*/ '',
+            toolbarHighlightOn: /*[[#{toolbar.highlightOn}]]*/ '',
+            toolbarHighlightOff: /*[[#{toolbar.highlightOff}]]*/ '',
+            toolbarTableTitle: /*[[#{toolbar.tableDialogTitle}]]*/ '',
+            toolbarTableRows: /*[[#{toolbar.tableRows}]]*/ '',
+            toolbarTableCols: /*[[#{toolbar.tableCols}]]*/ '',
+            toolbarTableHeader: /*[[#{toolbar.tableHeaderOption}]]*/ '',
+            toolbarTableHeaderNone: /*[[#{toolbar.tableHeaderNone}]]*/ '',
+            toolbarTableHeaderRow: /*[[#{toolbar.tableHeaderRow}]]*/ '',
+            toolbarTableHeaderCol: /*[[#{toolbar.tableHeaderCol}]]*/ '',
+            toolbarTableHeaderBoth: /*[[#{toolbar.tableHeaderBoth}]]*/ '',
+            toolbarTableWikitable: /*[[#{toolbar.tableWikitable}]]*/ '',
+            toolbarTableInsert: /*[[#{toolbar.tableInsert}]]*/ '',
+            toolbarTableCaption: /*[[#{toolbar.tableCaption}]]*/ '',
+            toolbarTableCaptionHint: /*[[#{toolbar.tableCaptionHint}]]*/ '',
+            toolbarFilePreview: /*[[#{toolbar.filePreview}]]*/ '',
+            toolbarFileDrop: /*[[#{toolbar.fileDrop}]]*/ '',
+            deletedRestoreConfirm: /*[[#{deletedRestoreConfirm}]]*/ '',
+            deletedRestored: /*[[#{deletedRestored}]]*/ ''
         });
         /* MediaWiki 兼容：页面配置（mw.config 的 RLCONF）与模块启动队列（RLQ，由 /js/mediawiki.js 处理） */
         window.RLCONF = /*[[${mwConfig}]]*/ {};
@@ -140,13 +167,17 @@
     <!-- JS 兼容性：mw.loader 未内置模块的显式提示（特殊:Gadgets 的依赖标记 + #js-compat-report 报告容器） -->
     <script th:src="@{/js/js-compat.js(v=${assetVersion})}" defer></script>
     <script th:src="@{/js/preferences.js(v=${assetVersion})}" defer></script>
+    <!-- 特殊:修改密码（参数设置里的「更改密码」按钮点进来的页面） -->
+    <script th:src="@{/js/change-password.js(v=${assetVersion})}" defer></script>
     <!-- 皮肤附加脚本（可选，如插件皮肤自带 JS） -->
     <script th:each="skinScript : ${skin.scripts}" th:src="@{${skinScript}(v=${assetVersion})}" defer></script>
-    <!-- JS/CSS 代码页面：代码预览 / 编辑器（CodeMirror 本地内置，仅代码页加载） -->
-    <th:block th:if="${codeLanguage != null}">
+    <!-- JS/CSS 代码页面：代码预览 / 编辑器（CodeMirror 本地内置）。
+         wikitext 编辑页也加载（语法高亮可开关，见 code-editor.js） -->
+    <th:block th:if="${codeLanguage != null or editContent != null}">
         <link rel="stylesheet" th:href="@{/vendor/codemirror/codemirror.min.css(v=${assetVersion})}">
         <link rel="stylesheet" th:href="@{/vendor/codemirror/addon-show-hint.min.css(v=${assetVersion})}">
         <script th:src="@{/vendor/codemirror/codemirror.min.js(v=${assetVersion})}" defer></script>
+        <script th:src="@{/vendor/codemirror/mode-wikitext.js(v=${assetVersion})}" defer></script>
         <script th:src="@{/vendor/codemirror/mode-javascript.min.js(v=${assetVersion})}" defer></script>
         <script th:src="@{/vendor/codemirror/mode-css.min.js(v=${assetVersion})}" defer></script>
         <script th:src="@{/vendor/codemirror/mode-xml.min.js(v=${assetVersion})}" defer></script>

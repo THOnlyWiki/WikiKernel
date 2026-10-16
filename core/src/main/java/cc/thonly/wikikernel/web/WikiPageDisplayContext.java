@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.web;
 
 import cc.thonly.wikikernel.common.extension.PageDisplayContext;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.extension.Viewer;
 
 import java.util.LinkedHashMap;

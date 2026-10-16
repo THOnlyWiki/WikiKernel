@@ -16,9 +16,9 @@ public final class CodePages {
     private CodePages() {
     }
 
-    /** 标题是否以 {@code .css} / {@code .js} 结尾（大小写不敏感；含子页面与全站脚本，如 {@code WikiKernel:Common.js}）。 */
+    /** 标题是否以 {@code .css} / {@code .js} / {@code .vue} 结尾（大小写不敏感；含子页面与全站脚本，如 {@code WikiKernel:Common.js}）。 */
     public static boolean isInterfacePage(String title) {
         String lower = Strings.trimToEmpty(title).toLowerCase(Locale.ROOT);
-        return lower.endsWith(".css") || lower.endsWith(".js");
+        return lower.endsWith(".css") || lower.endsWith(".js") || lower.endsWith(".vue");
     }
 }

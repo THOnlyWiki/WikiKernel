@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.abusefilter;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.service.UserStore;
 import org.springframework.context.MessageSource;
@@ -116,12 +117,7 @@ public final class AbuseFilterSupport {
 
     /** 站内页面路径：{@code 用户:甲} → {@code /wiki/%E7%94%A8%E6%88%B7:%E7%94%B2}（保留子页面的 {@code /}）。 */
     public static String pagePath(String title) {
-        if (title == null || title.isEmpty()) {
-            return "/wiki/";
-        }
-        return "/wiki/" + Arrays.stream(title.split("/", -1))
-                .map(AbuseFilterSupport::encodeSegment)
-                .collect(Collectors.joining("/"));
+        return WikiUrls.pagePath(title);
     }
 
     /** 查询参数值编码（空格 → {@code +}）。 */

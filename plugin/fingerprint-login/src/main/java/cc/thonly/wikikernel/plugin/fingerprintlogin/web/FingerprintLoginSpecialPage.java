@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.fingerprintlogin.web;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageCategories;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
@@ -63,7 +64,7 @@ public class FingerprintLoginSpecialPage implements SpecialPage {
         List<Map<String, Object>> rows = listable ? service.listRows(userId) : List.of();
         model.put("enabled", enabled);
         model.put("loggedIn", userId > 0);
-        model.put("preferencesUrl", "/wiki/特殊:参数设置");
+        model.put("preferencesUrl", WikiUrls.pagePrefix() + "特殊:参数设置");
         model.put("fingerprints", rows);
         model.put("panelHtml", FingerprintLoginPanel.html(support::message, enabled, userId, rows));
         model.put("panelConfigJson", FingerprintLoginPanel.configJson(support::message));

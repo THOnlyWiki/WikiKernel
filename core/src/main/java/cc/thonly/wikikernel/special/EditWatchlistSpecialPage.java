@@ -4,7 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.SpecialPageCategories;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.service.WatchService;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 

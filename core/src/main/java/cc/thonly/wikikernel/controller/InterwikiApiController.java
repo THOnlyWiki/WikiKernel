@@ -8,7 +8,7 @@ import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.service.InterwikiService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.user.UserSession;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;

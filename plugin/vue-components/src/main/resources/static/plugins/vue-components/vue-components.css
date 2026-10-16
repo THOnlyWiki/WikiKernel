@@ -1,0 +1,14 @@
+/*
+ * Vue 组件挂载点样式（加载器与组件之外的少量集成样式；组件自己的样式写在 SFC 的 <style> 里）。
+ */
+
+/* 挂载点：整块渲染（组件一般是一块 UI；内联小徽章可以自己在组件里 display:inline-flex） */
+.wiki-vue {
+    display: block;
+}
+
+/* 加载 / 报错状态 */
+.wiki-vue-error {
+    display: block;
+    margin: 0.4em 0;
+}

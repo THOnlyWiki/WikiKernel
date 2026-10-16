@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- 插件 echo：特殊:通知 / Special:Notifications 模板（仿 MediaWiki Echo 的通知列表页）
+     顶部：标题 + 未读数 + 全部标为已读；过滤标签（全部 / 讨论页 / 提及 / 回退 / 欢迎）；列表 + 翻页。 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="echo-page">
+    <p class="echo-page-desc" th:text="#{echo.page.desc}">你收到的通知（讨论页被编辑 / 提及 / 被回退 / 欢迎）。</p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.echoDisabled}">
+        站点已关闭通知功能。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and notificationsLogin}">
+        <span th:text="#{echo.loginRequired}">请先登录再查看通知。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled or notificationsLogin}">
+        <div class="echo-page-head">
+            <span class="echo-unread" th:if="${unreadCount > 0}"
+                  th:text="#{echo.unreadCount(${unreadCount})}">3 条未读</span>
+            <button type="button" class="wiki-button echo-mark-all-read"
+                    th:if="${unreadCount > 0}" th:text="#{echo.markAllRead}">全部标为已读</button>
+        </div>
+
+        <nav class="echo-filters" th:aria-label="#{echo.filter.label}">
+            <a th:each="option : ${notificationTypes}"
+               th:href="@{/wiki/特殊:通知(type=${option.value})}"
+               th:classappend="${option.selected} ? 'selected'"
+               th:text="${option.label}">全部</a>
+        </nav>
+
+        <p class="echo-empty" th:if="${notificationEmpty}" th:text="#{echo.empty}">暂无通知。</p>
+
+        <ul class="echo-list" th:unless="${notificationEmpty}">
+            <li th:each="notification : ${notifications}" class="echo-item"
+                th:classappend="${!notification.read} ? ' echo-unread'"
+                th:attr="data-id=${notification.id}">
+                <span class="echo-icon" th:text="${notification.icon}">🔔</span>
+                <div class="echo-body">
+                    <div class="echo-desc" th:utext="${notification.html}">通知</div>
+                    <div class="echo-meta">
+                        <span class="echo-type" th:text="${notification.typeLabel}">提及</span>
+                        <span class="echo-time" th:text="${notification.timeText}">时间</span>
+                    </div>
+                </div>
+                <div class="echo-actions">
+                    <a class="echo-open" th:if="${notification.pageUrl != null}"
+                       th:href="${notification.pageUrl}" th:text="#{echo.jumpTo}">查看</a>
+                    <button type="button" class="echo-mark-read" th:if="${!notification.read}"
+                            th:attr="data-id=${notification.id}" th:text="#{echo.markRead}">标为已读</button>
+                </div>
+            </li>
+        </ul>
+
+        <div class="echo-pager" th:if="${hasPrev or hasNext}">
+            <a class="wiki-button" th:if="${hasPrev}"
+               th:href="@{/wiki/特殊:通知(type=${currentType}, offset=${prevOffset})}"
+               th:text="#{echo.pager.prev}">更新</a>
+            <span class="echo-pager-info"
+                  th:text="#{echo.pager.info(${offset} + 1, ${offset} + ${#lists.size(notifications)}, ${total})}">
+                1-50 / 120</span>
+            <a class="wiki-button" th:if="${hasNext}"
+               th:href="@{/wiki/特殊:通知(type=${currentType}, offset=${nextOffset})}"
+               th:text="#{echo.pager.next}">更早</a>
+        </div>
+
+        <p class="form-message" id="echo-page-message" role="alert" hidden></p>
+    </th:block>
+</section>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /*
- * 移动页面 / 保护页面表单：提交到 /api/pages/*，成功后跳到返回的页面 URL。
+ * 移动页面 / 保护页面 / 删除页面表单：提交到 /api/pages/*，成功后跳到返回的页面 URL。
  */
 (function () {
     'use strict';
@@ -66,5 +66,10 @@
     var protectForm = document.getElementById('wiki-protect-form');
     if (protectForm) {
         submit(protectForm);
+    }
+
+    var deleteForm = document.getElementById('wiki-delete-form');
+    if (deleteForm) {
+        submit(deleteForm);
     }
 })();

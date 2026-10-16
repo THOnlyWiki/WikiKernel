@@ -59,7 +59,8 @@ class PagePreviewTest {
                 .andExpect(jsonPath("$.data.html").value(containsString("<b>粗体</b>")))
                 .andExpect(jsonPath("$.data.html").value(containsString("<h2 id=\"标题\">")))
                 .andExpect(jsonPath("$.data.html").value(containsString("href=\"/wiki/链接\"")))
-                .andExpect(jsonPath("$.data.html").value(containsString("cite_note-1")))
+                // 引用（<ref> / <references/>）已迁到 cite 插件：core 只保证正文照常渲染（脚注文字还在）
+                .andExpect(jsonPath("$.data.html").value(containsString("脚注A")))
                 .andExpect(jsonPath("$.data.html").value(containsString("class=\"catlinks\"")))
                 .andExpect(jsonPath("$.data.html").value(containsString(category)));
         // 预览不落盘

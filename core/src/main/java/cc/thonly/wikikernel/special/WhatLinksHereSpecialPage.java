@@ -9,7 +9,7 @@ import cc.thonly.wikikernel.service.PageLinkService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikiRedirect;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;

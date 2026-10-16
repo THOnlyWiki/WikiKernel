@@ -44,6 +44,9 @@ subprojects {
             }
             systemProperty 'wk.setup.test.file',
                     testWorkDir.get().asFile.toPath().resolve('setup-migrate-LocalSettings.yaml').toString()
+            // 测试固定用默认 URL 前缀（/wiki/），避免受本地部署配置（wikikernel.urls.*）影响断言
+            systemProperty 'wikikernel.urls.page-prefix', 'wiki'
+            systemProperty 'wikikernel.urls.special-prefix', '特殊'
             systemProperty 'wk.templates.dir', file('src/main/resources/templates').absolutePath
             // 已构建的插件 jar 目录（仓库根 plugins/，由 installPlugins 生成）：
             // PluginRuntimeLoadTest 用它做「真实插件能否启动」的回归；目录不存在时该测试自动跳过

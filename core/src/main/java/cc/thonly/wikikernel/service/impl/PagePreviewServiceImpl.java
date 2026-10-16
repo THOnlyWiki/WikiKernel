@@ -9,7 +9,7 @@ import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.PagePreviewService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikiSections;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;
 import org.springframework.stereotype.Service;

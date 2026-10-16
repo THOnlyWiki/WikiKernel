@@ -226,6 +226,37 @@ class WikitextRendererTest {
     }
 
     @Test
+    void galleryRendersItemsAndRedLinks() {
+        // 每行一张图：文件:前缀可写可不写；不存在的文件显示红链；标签本身从正文消失
+        String html = renderer.render("<gallery>\n文件:不存在的图.png|说明一\n也不存在.png\n</gallery>", "测试");
+        assertTrue(html.contains("<ul class=\"gallery\">"), html);
+        assertTrue(html.contains("class=\"gallerybox gallery-missing\""), html);
+        assertTrue(html.contains("文件:不存在的图.png"), html);
+        assertFalse(html.contains("<gallery"), html);
+        // 属性：perrow（网格列数）、caption（画廊说明）、mode（nolines）
+        String attrs = renderer.render(
+                "<gallery perrow=\"3\" mode=\"nolines\" caption=\"'说明'组\">\n甲.png\n</gallery>", "测试");
+        assertTrue(attrs.contains("gallery-perrow") && attrs.contains("mw-gallery-nolines"), attrs);
+        assertTrue(attrs.contains("grid-template-columns: repeat(3, minmax(0, 1fr))"), attrs);
+        assertTrue(attrs.contains("gallery-caption"), attrs);
+    }
+
+    @Test
+    void indicatorIsStrippedAndStoredAsPageProperty() {
+        WikiRenderContext context = renderer.createContext("测试");
+        String html = renderer.renderWithMeta(
+                "正文<indicator name=\"样例\">[[文件:图.png|20px]]</indicator>结尾", "测试", context).html();
+        assertFalse(html.contains("<indicator"), html);
+        assertTrue(html.contains("正文") && html.contains("结尾"), html);
+        String value = context.property("indicator-样例", "");
+        assertTrue(value.contains("图.png"), value);
+        // 没有 name 的指示器照旧剥离，但不写页面属性
+        WikiRenderContext second = renderer.createContext("测试");
+        renderer.renderWithMeta("<indicator>裸内容</indicator>", "测试", second);
+        assertTrue(second.properties().isEmpty(), second.properties().toString());
+    }
+
+    @Test
     void syntaxHighlightDropsTheNewlineRightAfterTheOpeningTag() {
         // 大家习惯 <syntaxhighlight lang="bash"> 后换行再写第一行：那个换行不该渲染成一行空白
         String bash = renderer.render("<syntaxhighlight lang=\"bash\">\n"

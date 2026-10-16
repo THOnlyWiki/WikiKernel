@@ -46,6 +46,21 @@ public interface WikiPageService {
     WikiPage deletePage(WikiUser user, String title);
 
     /**
+     * 按标题查**已删除**的页面（普通的 {@code getByTitle} 会过滤掉删除的页面）。
+     * 用于「访问被删页面时给提示」与「特殊:已删除页面」里查看 / 恢复被删内容。
+     */
+    Optional<WikiPage> findDeletedByTitle(String title);
+
+    /** 已删除的页面（删除时间倒序，最多 {@code limit} 条；{@code limit <= 0} 时给默认上限）。 */
+    List<WikiPage> deletedPages(int limit);
+
+    /**
+     * 恢复已删除的页面（{@code deleted=true → false}）并写一条 {@code restore} 日志。
+     * 页面不存在 / 没有被删除时返回 {@code null}。
+     */
+    WikiPage restorePage(WikiUser user, String title);
+
+    /**
      * 移动页面（改标题，编辑历史保留在同一个页面 ID 下）。
      * 调用方需先校验：目标标题不存在、受保护页面只有管理员能移动。
      * 源页面不存在返回 null。旧标题不留重定向（等价于 {@code leaveRedirect=false}）。
@@ -80,6 +95,13 @@ public interface WikiPageService {
 
     /** 按版本 ID 查版本（含已删除版本，展示前自行判断）。 */
     Optional<WikiRevision> getRevision(Long revisionId);
+
+    /**
+     * 按页面 ID 取页面（**含已删除页面**，不过滤 {@code deleted} / {@code hided}）：
+     * 供 Action API / REST API 这类「先拿到版本号再反查页面」的调用方做权限判定用，
+     * 调用方自己判断 {@code deleted} 与读权限。
+     */
+    Optional<WikiPage> getById(Long pageId);
 
     /** 页面历史（含已删除版本，按版本 ID 倒序）。 */
     List<WikiRevision> getHistory(Long pageId);

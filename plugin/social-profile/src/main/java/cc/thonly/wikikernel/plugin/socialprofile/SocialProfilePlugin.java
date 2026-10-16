@@ -3,7 +3,6 @@ package cc.thonly.wikikernel.plugin.socialprofile;
 import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.PageViewHook;
-import cc.thonly.wikikernel.common.extension.PersonalToolbarHook;
 import cc.thonly.wikikernel.common.extension.PreferenceSection;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.UserProfileHook;
@@ -22,7 +21,6 @@ import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserBoard;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserGift;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserRelation;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserStats;
-import cc.thonly.wikikernel.plugin.socialprofile.hook.MessagesToolbarHook;
 import cc.thonly.wikikernel.plugin.socialprofile.hook.PointsViewHook;
 import cc.thonly.wikikernel.plugin.socialprofile.hook.SocialPreferencesSection;
 import cc.thonly.wikikernel.plugin.socialprofile.hook.SocialProfileHeadProvider;
@@ -88,7 +86,7 @@ import java.util.List;
  * core 不再内置头像与私信（{@code AvatarService} / {@code MessageService} / 两个特殊页 / 两个 API /
  * 前端脚本 / 样式 / 文案全部移除），只保留站点设置里的功能开关（{@code features.social-profile}，
  * 兼容旧键 {@code features.user-interaction}，见 {@link SocialProfileSupport#LEGACY_ENABLED_KEY}）
- * 与两个渲染槽位钩子（{@code UserProfileHook} / {@code PersonalToolbarHook}）。
+ * 与一个渲染槽位钩子（{@code UserProfileHook}）。
  * SocialProfile 自己的数据用六张表（{@code wiki_user_board} / {@code wiki_user_relation} /
  * {@code wiki_user_gift} / {@code wiki_user_stats} / {@code wiki_user_award} / {@code wiki_message}），
  * 资料字段与社交偏好落在用户偏好表；头像文件名仍记在 {@code wiki_user.avatar}。
@@ -190,10 +188,6 @@ public class SocialProfilePlugin implements WikiPlugin {
     @Autowired
     private SocialProfileView socialProfileView;
 
-    /** 顶栏条目（Spring Bean：特殊页与顶栏钩子共用）。 */
-    @Autowired
-    private MessagesToolbarHook toolbar;
-
     @Override
     public PluginDescriptor descriptor() {
         return new PluginDescriptor("social-profile", "SocialProfile", "1.0.0",
@@ -220,7 +214,7 @@ public class SocialProfilePlugin implements WikiPlugin {
         // 原有能力：头像上传 + 私信
         context.register(SpecialPage.class, new UploadAvatarSpecialPage(avatars, userStore, support));
         context.register(SpecialPage.class,
-                new MessagesSpecialPage(messages, userStore, wikiText, support, toolbar));
+                new MessagesSpecialPage(messages, userStore, wikiText, support));
         context.register(HtmlHeadProvider.class, new SocialProfileHeadProvider(support));
         // SocialProfile：资料 / 留言板 / 好友 / 礼物 / 积分排行 / 奖励 / 随机用户
         context.register(SpecialPage.class, new EditProfileSpecialPage(userStore, support, profiles, board,
@@ -239,10 +233,9 @@ public class SocialProfilePlugin implements WikiPlugin {
                 friends, gifts, avatars, awards, currentUser));
         context.register(SpecialPage.class, new RandomUsersSpecialPage(userStore, support, profiles, board,
                 friends, gifts, avatars));
-        // 用户页资料卡（头像 + 私信 / 留言板 / 好友 / 礼物 / 积分 / 编辑资料链接）与顶栏入口
+        // 用户页资料卡（头像 + 私信 / 留言板 / 好友 / 礼物 / 积分 / 编辑资料链接）
         context.register(UserProfileHook.class,
                 new UserProfileLinksHook(avatars, support, board, friends, gifts));
-        context.register(PersonalToolbarHook.class, toolbar);
         // 用户页资料卡**下方、正文之前**的 SocialProfile 面板（操作按钮 / 关系状态 / 关于字段 /
         // 统计栏 / 内嵌留言板）：走 UserProfileHook.panelHtml，而不是 PageDisplayHook.afterContent
         // （后者会把整块堆在正文之后，未创建的用户页也拿不到）

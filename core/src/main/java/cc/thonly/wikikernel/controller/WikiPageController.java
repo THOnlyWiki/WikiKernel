@@ -65,7 +65,7 @@ import cc.thonly.wikikernel.web.TalkPages;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiPageDisplayContext;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.CssSanitizer;
 import cc.thonly.wikikernel.wikitext.DiffRows;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
@@ -668,6 +668,11 @@ public class WikiPageController {
         }
         WikiPage page = this.wikiPageService.getVisibleByTitle(title).orElse(null);
         if (page == null) {
+            // 已删除的页面：给「此页面已被删除」提示（管理员可找回最近的源代码并恢复；仿 MediaWiki）
+            Optional<WikiPage> deletedPage = this.wikiPageService.findDeletedByTitle(title);
+            if (deletedPage.isPresent()) {
+                return renderDeletedPage(deletedPage.get(), currentUser);
+            }
             if (this.wikiPageService.getByTitle(title).isPresent()) {
                 // 页面存在但被隐藏：仍然 404，不暴露存在性
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, message("error.pageMissing", title));
@@ -808,7 +813,12 @@ public class WikiPageController {
         // 插件页面级能力：隐藏标题（NoTitle）、<head> 扩展（WikiSEO）、浏览钩子（HitCounters）
         displayContext.properties(pageProperties);
         // 插件页面显示钩子：标题上方 / 正文之前（提示条）/ 正文下方 / 该页额外的 head 片段
-        List<String> beforeTitleFragments = this.pageDisplayHookService.beforeTitle(displayContext);
+        List<String> beforeTitleFragments = new ArrayList<>(this.pageDisplayHookService.beforeTitle(displayContext));
+        // <indicator name="…">（仿 MediaWiki 页面状态指示器）：从页面属性还原，浮在标题右上角
+        String indicators = indicatorsHtml(pageProperties);
+        if (!indicators.isEmpty()) {
+            beforeTitleFragments.add(indicators);
+        }
         List<String> beforeContentFragments = this.pageDisplayHookService.beforeContent(displayContext);
         List<String> afterContentFragments = this.pageDisplayHookService.afterContent(displayContext);
         List<String> displayHeadItems = this.pageDisplayHookService.headItems(displayContext);
@@ -906,6 +916,37 @@ public class WikiPageController {
             base.append(':').append(port);
         }
         return base.toString();
+    }
+
+    /**
+     * {@code <indicator name="…">…</indicator>}（仿 MediaWiki 页面状态指示器）：
+     * 从页面属性 {@code indicator-<名字>} 还原成标题右上角的小图标
+     * （按名字排序；同名只显示一个，渲染时最后写入的生效）。
+     */
+    private static String indicatorsHtml(Map<String, String> pageProperties) {
+        if (pageProperties == null || pageProperties.isEmpty()) {
+            return "";
+        }
+        List<String> keys = pageProperties.keySet().stream()
+                .filter(key -> key.startsWith("indicator-"))
+                .sorted()
+                .toList();
+        if (keys.isEmpty()) {
+            return "";
+        }
+        StringBuilder html = new StringBuilder("<div class=\"mw-indicators\">");
+        for (String key : keys) {
+            String value = pageProperties.get(key);
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            html.append("<div class=\"mw-indicator\" data-indicator=\"")
+                    .append(key.substring("indicator-".length())
+                            .replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;"))
+                    .append("\">").append(value).append("</div>");
+        }
+        html.append("</div>");
+        return html.toString();
     }
 
     /**
@@ -1503,13 +1544,17 @@ public class WikiPageController {
         }
     }
 
-    /** 页签/工具需要的权限模型属性（编辑 / 查看源代码 / 移动 / 保护；全部来自可配置的访问规则）。 */
+    /** 页签/工具需要的权限模型属性（编辑 / 查看源代码 / 移动 / 保护 / 删除；全部来自可配置的访问规则）。 */
     private void addPagePermissionAttributes(ModelAndView modelAndView, String title, WikiPage page, WikiUser user) {
         boolean canMove = this.accessControlService.can(AccessAction.MOVE, title, user)
                 && (page == null || !Boolean.TRUE.equals(page.getProtectedPage()) || isAdmin(user));
         modelAndView.addObject("canEditPage", canEditPage(title, page, user));
         modelAndView.addObject("canMove", canMove);
         modelAndView.addObject("canProtect", this.accessControlService.can(AccessAction.PROTECT, title, user));
+        // 删除：与移动一致，受保护页面只有管理员能删
+        modelAndView.addObject("canDelete",
+                this.accessControlService.can(AccessAction.DELETE, title, user)
+                        && (page == null || !Boolean.TRUE.equals(page.getProtectedPage()) || isAdmin(user)));
         // 讨论页签（仿 MediaWiki）：普通页面 ↔ 讨论命名空间页面
         String talkTitle = TalkPages.talkTitle(title);
         boolean talkPage = TalkPages.isTalk(title);
@@ -1741,6 +1786,10 @@ public class WikiPageController {
         if (lower.endsWith(".ts") || lower.endsWith(".tsx")) {
             return "typescript";
         }
+        if (lower.endsWith(".vue")) {
+            // Vue 单文件组件：用 HTML 高亮（template / script / style 三块都能正确着色）
+            return "html";
+        }
         if (lower.endsWith(".css")) {
             return "css";
         }
@@ -1844,9 +1893,40 @@ public class WikiPageController {
                         message("error.revisionMissing", revisionId)));
     }
 
+    /**
+     * 访问「已被删除的页面」时的提示页（仿 MediaWiki）：
+     * 说明「此页面已被删除」，管理员额外可以**找回最近版本的源代码**并前往「特殊:已删除页面」恢复。
+     */
+    private ModelAndView renderDeletedPage(WikiPage page, WikiUser currentUser) {
+        ModelAndView modelAndView = new ModelAndView("wiki/deleted");
+        boolean canRestore = currentUser != null && this.permissionService.canManage(currentUser.getId());
+        modelAndView.addObject("page", page);
+        modelAndView.addObject("wikiTitle", page.getTitle());
+        modelAndView.addObject("pageUrl", WikiUrls.pagePath(page.getTitle()));
+        modelAndView.addObject("activeTab", "view");
+        modelAndView.addObject("footerLastEdited", page.getUpdateAt());
+        // 页签（页面 / 讨论 / 编辑 / 历史…）：page 传 null —— 编辑页签表示「重新创建本页面」
+        addPagePermissionAttributes(modelAndView, page.getTitle(), null, currentUser);
+        applyUserToolsSidebar(modelAndView, page.getTitle(), currentUser);
+        modelAndView.addObject("canRestore", canRestore);
+        if (canRestore) {
+            // 找回源代码：最近版本原文（只给能恢复的人看，与 MediaWiki 只对管理员展示被删内容一致）
+            modelAndView.addObject("deletedContent",
+                    this.wikiPageService.getLatestContent(page.getId()).orElse(""));
+            modelAndView.addObject("restoreUrl",
+                    WikiUrls.pagePath("特殊:已删除页面") + "?page=" + encodeQueryValue(page.getTitle()));
+        }
+        return modelAndView;
+    }
+
     private ModelAndView renderHistory(String title, HttpServletRequest request) {
         WikiPage page = this.wikiPageService.getVisibleByTitle(title).orElse(null);
         if (page == null) {
+            // 已删除的页面：给「此页面已被删除」提示（管理员可找回最近的源代码并恢复；仿 MediaWiki）
+            Optional<WikiPage> deletedPage = this.wikiPageService.findDeletedByTitle(title);
+            if (deletedPage.isPresent()) {
+                return renderDeletedPage(deletedPage.get(), UserSession.current(request));
+            }
             if (this.wikiPageService.getByTitle(title).isPresent()) {
                 // 页面存在但被隐藏：仍然 404，不暴露存在性
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, message("error.pageMissing", title));

@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.wikitext;
 
 import cc.thonly.wikikernel.common.util.Strings;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -775,8 +776,9 @@ public class VisualEditorService {
             throw new UnsupportedException("a[href]");
         }
         String text = inline(anchor, sources);
-        if (href.startsWith("/wiki/")) {
-            String target = decode(href.substring("/wiki/".length()));
+        String rest = WikiUrls.pagePathRest(href);
+        if (rest != null) {
+            String target = decode(rest);
             if (text.equals(target)) {
                 return "[[" + target + "]]";
             }

@@ -51,6 +51,12 @@ body.skin-plain {
     gap: 0.7em;
 }
 
+/* 插件贡献的个人工具条目是 <li>（PersonalToolbarHook），而这里是 <div> 不是 <ul>：
+   去掉浏览器默认的项目符号（::marker），与其它链接排版一致 */
+.skin-plain .plain-personal li {
+    list-style: none;
+}
+
 .skin-plain .plain-tabs {
     display: flex;
     flex-wrap: wrap;

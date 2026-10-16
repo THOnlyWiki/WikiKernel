@@ -16,6 +16,15 @@
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.pref-tab'));
     var sections = Array.prototype.slice.call(document.querySelectorAll('.pref-section'));
 
+    // core 表单里的分区（插件分区在表单外、同一内容区里，各自带保存按钮）
+    var coreTabs = sections
+        .filter(function (section) {
+            return form.contains(section);
+        })
+        .map(function (section) {
+            return section.getAttribute('data-tab');
+        });
+
     function showTab(target) {
         tabs.forEach(function (tab) {
             tab.classList.toggle('selected', tab.getAttribute('data-target') === target);
@@ -23,6 +32,12 @@
         sections.forEach(function (section) {
             section.hidden = section.getAttribute('data-tab') !== target;
         });
+        // 插件分区：把 core 表单（含底部保存条）整个收起来，避免留一块空面板 + 多余的保存按钮
+        form.hidden = coreTabs.indexOf(target) < 0;
+        // 记住当前标签：保存（AJAX 后 reload）与刷新 / 分享链接都会回到同一标签
+        if (target && window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', '#' + target);
+        }
     }
 
     tabs.forEach(function (tab) {
@@ -41,10 +56,35 @@
     if (search) {
         search.addEventListener('input', function () {
             var keyword = search.value.trim().toLowerCase();
+            var visible = [];
             tabs.forEach(function (tab) {
                 var match = !keyword || tab.textContent.toLowerCase().indexOf(keyword) >= 0;
                 tab.style.display = match ? '' : 'none';
+                if (match) {
+                    visible.push(tab);
+                }
             });
+            var hint = document.getElementById('pref-search-empty');
+            if (!visible.length) {
+                // 没有匹配的分区：给一条提示（否则标签列整个空掉，看起来像页面坏了）
+                if (!hint) {
+                    hint = document.createElement('p');
+                    hint.id = 'pref-search-empty';
+                    hint.className = 'wiki-hint';
+                    search.parentElement.appendChild(hint);
+                }
+                hint.textContent = MESSAGES.prefTabNoMatch || '没有匹配的设置分区。';
+                hint.hidden = false;
+                return;
+            }
+            if (hint) {
+                hint.hidden = true;
+            }
+            // 过滤后当前标签被隐藏时，自动切到第一个匹配的分区（内容与标签列保持一致）
+            var selected = document.querySelector('.pref-tab.selected');
+            if (keyword && selected && selected.style.display === 'none') {
+                showTab(visible[0].getAttribute('data-target'));
+            }
         });
     }
 
@@ -341,53 +381,6 @@
             }).catch(function () {
                 showMessage(MESSAGES.networkError || 'auth.networkError');
                 confirmEmail.disabled = false;
-            });
-        });
-    }
-    // 修改密码（参数设置 → 用户资料）
-    var passwordForm = document.getElementById('preferences-password-form');
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-            var message = document.getElementById('password-message');
-            var button = passwordForm.querySelector('button[type="submit"]');
-
-            function show(text, success) {
-                if (!message) {
-                    return;
-                }
-                message.textContent = text;
-                message.className = 'form-message' + (success ? ' success' : '');
-                message.hidden = false;
-            }
-
-            if (button) {
-                button.disabled = true;
-            }
-            fetch('/api/user/preferences/password', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: new URLSearchParams(new FormData(passwordForm))
-            }).then(function (response) {
-                return response.json();
-            }).then(function (result) {
-                if (result && result.code === 200) {
-                    show(result.message || '', true);
-                    passwordForm.reset();
-                } else {
-                    show((result && result.message) || MESSAGES.operationFailed || 'auth.operationFailed', false);
-                }
-                if (button) {
-                    button.disabled = false;
-                }
-            }).catch(function () {
-                show(MESSAGES.networkError || 'auth.networkError', false);
-                if (button) {
-                    button.disabled = false;
-                }
             });
         });
     }

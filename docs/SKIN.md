@@ -71,6 +71,54 @@
   支持预览与「站点默认」；保存走 `POST /api/user/skin`，当前会话立即生效；
 - **特殊:版本** 动态列出全部已装皮肤（版本 / 说明 / 内置或插件 / 「使用中」）。
 
+### 通用组件（按钮 / 弹窗）
+
+界面控件不要各写各的颜色：core 在 `/css/base.css` 里提供一套通用组件，颜色全部走 CSS 变量，
+**皮肤只需覆盖变量**（Vector：`skins/vector/vector.css`；Timeless/糖果风：插件皮肤
+`kawaii-timeless-extra.css`），插件与页面直接写类名即可。
+
+**按钮**
+
+| 类名 | 用途 |
+| --- | --- |
+| `.wiki-button` | 次要操作（灰底） |
+| `.wiki-button-primary` | 主操作（填色；Timeless 皮肤里就是站点糖果粉） |
+| `.wiki-button-danger` | 破坏性操作（红底白字，删除等） |
+| `.wiki-button-quiet` | 无底无框（图标 / 工具条；弹窗右上角 × 就是这一套） |
+
+- **悬停一律「加深一档」，绝不用白色**——白底容器里的按钮悬停变白会直接「消失」（老站踩过这个坑）；
+- 禁用态 `[disabled]` 自动 60% 透明；焦点环走 `--wiki-focus-ring`；
+- 没上类的裸 `<button>` 走 core 基线（选择器用 `:where()` 压到 0 特异性）——站点 CSS
+  （如 Timeless 的糖果按钮主题）、皮肤 CSS 总能覆盖它，不会出现「主题被 core 压掉、悬停变白」的情况。
+
+### 组件变量（皮肤覆盖这几个即可）
+
+```css
+:root {
+  --wiki-focus-ring: #36c;
+
+  --wiki-button-bg: #f8f9fa;         --wiki-button-bg-hover: #eaecf0;         --wiki-button-bg-active: #dcdfe3;
+  --wiki-button-border: #a2a9b1;     --wiki-button-border-hover: #72777d;    --wiki-button-text: #202122;
+  --wiki-button-primary-bg: #36c;    --wiki-button-primary-bg-hover: #447ff5; --wiki-button-primary-bg-active: #2a4b8d;
+  --wiki-button-primary-text: #ffffff;
+  --wiki-button-danger-bg: #d73333;  --wiki-button-danger-bg-hover: #b32424;  --wiki-button-danger-bg-active: #8b1a1a;
+  --wiki-button-danger-text: #ffffff;
+  --wiki-quiet-text: #54595d;        --wiki-quiet-text-hover: #202122;
+  --wiki-quiet-bg-hover: #eaecf0;    --wiki-quiet-bg-active: #dcdfe3;
+}
+```
+
+Timeless（糖果风）把 `--wiki-button-primary-*` 映射到站点的 `--color-primary` / `--color-hover` /
+`--color-dark`——改 `WikiKernel:Kawaii-timeless.css` 里那三个变量就能整体换色。
+
+### 弹窗
+
+`.wiki-dialog-overlay` + `.wiki-dialog`（标题 `.wiki-dialog-title`、关闭 `.wiki-dialog-close`、
+正文 `.wiki-dialog-body`、按钮行 `.wiki-dialog-actions`），表单用 `.wiki-dialog-grid` /
+`.wiki-dialog-label` / `.wiki-dialog-field` / `.wiki-dialog-check`。
+关闭按钮按安静按钮处理（`.wiki-dialog .wiki-dialog-close`，特异性足够，
+不会被通用 `button` 规则压出「悬停白块」）。
+
 ### 内置皮肤
 
 - **Vector**（默认，`vector`）：模仿 MediaWiki Vector（经典版 2010）——顶栏品牌 + 搜索、左侧 `WikiKernel:Sidebar`

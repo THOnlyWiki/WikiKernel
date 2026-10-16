@@ -13,7 +13,6 @@
 | 私信页 | `特殊:私信` / `Special:Messages` | `?box=inbox\|sent\|conversations`、`?with=用户名`、`?write=1&to=用户名`、`?id=123`（自动标已读） |
 | 私信 API | `POST /api/messages/send`、`POST /api/messages/delete` | 发送需要登录、收件人存在、不能发给自己；删除只删自己一侧（两侧都删则物理删除） |
 | 资料卡 | `UserProfileHook` | 头像（上传过就是 `/avatars/…`）+ 用户名下方「贡献 \| 私信 \| 上传头像」（上传头像仅本人可见） |
-| 顶栏入口 | `PersonalToolbarHook` | 登录后显示「私信（N）」（未读计数）；功能关闭或匿名不显示 |
 | 前端资源 | `/plugins/social-profile/…` | `avatar.js`、`messages.js`、`social-profile-base.css`（原在 core 的 `/js/` 与 `base.css`），由 `HtmlHeadProvider`（`siteWide`）注入 |
 
 ## 规则（与迁移前 core 完全一致）
@@ -33,7 +32,6 @@
 | --- | --- |
 | `SpecialPage` | `特殊:上传头像`、`特殊:私信`（插件自带模板与文案） |
 | `UserProfileHook` | 用户页资料卡的头像地址与「贡献 \| …」额外链接 |
-| `PersonalToolbarHook` | 顶栏个人工具区的「私信（N）」条目 |
 | `HtmlHeadProvider`（`siteWide()`） | 注入插件 CSS / JS、`WIKI_CONFIG.userInteraction = true` 与 `WIKI_MESSAGES` 文案 |
 | `MessageBundle` | `avatar.*` / `messages.*` / `special.messages` / `special.uploadAvatar` / `tools.sendMessage`（键名与迁移前 core 一致） |
 | `@RestController` / `@Controller` | 头像上传、私信 API、`/avatars/<文件名>` 文件服务 |
@@ -58,8 +56,8 @@
 - **头像尺寸**：只限制最大尺寸（资料卡 180×180、上传页 240×240 显示），按原图比例缩放，
   不做 MediaWiki `$wgUploadAvatar` 的裁剪 / 缩略图多尺寸（没有生成 65×65 等头像副本）；
   头像文件不做版本历史（替换即删除旧文件），也没有头像审核 / 删除日志；
-- **未读徽标**：顶栏显示「私信（N）」，但没有 MediaWiki 的跨设备未读同步与
-  `Echo` 的「全部标记为已读」；
+- **未读徽标**：私信未读数只在「特殊:私信」页面上显示（顶栏旧的「私信（N）」入口已随 Echo 移植移除，
+  通知统一走 Echo 插件的「提醒 / 一般通知」铃铛）；没有 MediaWiki 的跨设备未读同步；
 - **时间显示**：私信时间按 `format.dateTime` 消息键格式化（服务器时区）；
   core 的显示时区换算（`time.WikiTime` + 用户时区设置）只在 core 内部生效，
   插件拿不到这个 ThreadLocal，所以私信时间不受「参数设置 → 时区」影响（其余页面照常）；

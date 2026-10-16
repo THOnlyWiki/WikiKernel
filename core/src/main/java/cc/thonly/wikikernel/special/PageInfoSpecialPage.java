@@ -19,7 +19,7 @@ import cc.thonly.wikikernel.time.WikiTime;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;

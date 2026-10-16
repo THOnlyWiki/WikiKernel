@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.sidebar;
 
 import cc.thonly.wikikernel.web.WikiTitles;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -39,7 +40,10 @@ public class SidebarModelAdvice {
         if (uri == null) {
             return "";
         }
-        String raw = uri.substring("/wiki/".length());
+        String raw = WikiUrls.pagePathRest(uri);
+        if (raw == null) {
+            return "";
+        }
         int query = raw.indexOf('?');
         if (query >= 0) {
             raw = raw.substring(0, query);
@@ -52,6 +56,6 @@ public class SidebarModelAdvice {
     }
 
     private static boolean isWikiPath(String uri) {
-        return uri != null && uri.startsWith("/wiki/");
+        return WikiUrls.pagePathRest(uri) != null;
     }
 }

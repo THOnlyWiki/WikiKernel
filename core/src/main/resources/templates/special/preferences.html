@@ -15,6 +15,8 @@
                    th:attr="aria-label=#{preferences.searchPlaceholder}"/>
         </div>
 
+        <!--/* 左右布局（仿线上 OOUI 参数设置）：左列竖排标签 + 右侧内容（皮肤 CSS 负责视觉） */-->
+        <div class="pref-layout">
         <div class="pref-tabs" role="tablist">
             <button type="button" class="pref-tab selected" data-target="profile"
                     th:text="#{preferences.tab.profile}">用户资料</button>
@@ -33,7 +35,10 @@
                     th:data-target="${section.id}" th:text="${section.label}">插件设置</button>
         </div>
 
+        <div class="pref-content">
         <form id="preferences-form" class="wiki-form preferences-form" method="post">
+            <!--/* 滚动区：面板固定高度、内容在这里内部滚动，底部保存条位置恒定（见 base.css） */-->
+            <div class="pref-panels">
             <!-- ==================== 用户资料 ==================== -->
             <section id="pref-profile" class="pref-section" data-tab="profile">
                 <h2 th:text="#{preferences.basic}">基本信息</h2>
@@ -68,8 +73,16 @@
                 </div>
                 <div class="pref-field">
                     <span class="pref-label" th:text="#{preferences.password}">密码：</span>
-                    <span class="wiki-hint" th:text="#{preferences.passwordPlaceholder}">
-                        密码修改功能尚未实现。
+                    <!--/* 仿线上（OOUI 的 framed 按钮）：参数设置里不放改密表单，只放一个白框按钮
+                           跳到 特殊:修改密码（带 returnto 回来） */-->
+                    <span class="oo-ui-widget oo-ui-widget-enabled oo-ui-buttonElement oo-ui-buttonElement-framed oo-ui-labelElement pref-password-button">
+                        <a role="button" tabindex="0" rel="nofollow" class="oo-ui-buttonElement-button mdui-ripple"
+                           th:href="@{/wiki/{t}(t=${'特殊:修改密码'},returnto=${'特殊:参数设置'})}">
+                            <span class="oo-ui-iconElement-icon oo-ui-iconElement-noIcon"></span>
+                            <span class="oo-ui-labelElement-label"
+                                  th:text="#{preferences.password.changeButton}">更改密码</span>
+                            <span class="oo-ui-indicatorElement-indicator oo-ui-indicatorElement-noIndicator"></span>
+                        </a>
                     </span>
                 </div>
                 <div class="pref-field">
@@ -307,33 +320,13 @@
                      它们有自己的表单与保存按钮，POST 到插件自己的接口 -->
                 <p class="wiki-hint" th:text="#{preferences.miscHint}">更多设置见上方由扩展提供的标签页。</p>
             </section>
+            </div><!--/* /.pref-panels */-->
 
+            <!--/* 保存结果提示：放在保存条上方，不会被保存条盖住 */-->
+            <p id="preferences-message" class="form-message" hidden></p>
             <div class="pref-actions">
                 <button type="submit" class="wiki-button" th:text="#{preferences.save}">保存</button>
             </div>
-            <p id="preferences-message" class="form-message" hidden></p>
-        </form>
-
-        <!-- 修改密码（仿 MediaWiki 参数设置里的「修改密码」） -->
-        <form id="preferences-password-form" class="wiki-form preferences-form pref-section" data-tab="profile">
-            <h2 th:text="#{preferences.password.title}">修改密码</h2>
-            <div class="pref-field">
-                <label for="pref-old-password" th:text="#{preferences.password.old}">旧密码：</label>
-                <input type="password" id="pref-old-password" name="oldPassword" autocomplete="current-password"/>
-            </div>
-            <div class="pref-field">
-                <label for="pref-new-password" th:text="#{preferences.password.new}">新密码：</label>
-                <input type="password" id="pref-new-password" name="newPassword" autocomplete="new-password"/>
-            </div>
-            <div class="pref-field">
-                <label for="pref-confirm-password" th:text="#{preferences.password.confirm}">确认新密码：</label>
-                <input type="password" id="pref-confirm-password" name="confirmPassword" autocomplete="new-password"/>
-            </div>
-            <p class="wiki-hint" th:text="#{preferences.password.hint}">新密码至少 6 位。</p>
-            <div class="pref-actions">
-                <button type="submit" class="wiki-button" th:text="#{preferences.password.submit}">修改密码</button>
-            </div>
-            <p id="password-message" class="form-message" hidden></p>
         </form>
 
 
@@ -343,6 +336,8 @@
             <h2 th:text="${section.label}">插件设置</h2>
             <div class="plugin-preference-section" th:utext="${section.html}"></div>
         </section>
+        </div>
+        </div>
     </th:block>
 </section>
 </body>

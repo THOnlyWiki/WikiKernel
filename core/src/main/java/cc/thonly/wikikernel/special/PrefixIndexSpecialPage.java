@@ -8,7 +8,7 @@ import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;

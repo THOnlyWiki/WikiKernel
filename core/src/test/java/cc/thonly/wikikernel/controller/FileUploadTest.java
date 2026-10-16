@@ -1,5 +1,7 @@
 package cc.thonly.wikikernel.controller;
 
+import cc.thonly.wikikernel.common.web.WikiUrls;
+
 import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.data.WikiFile;
 import cc.thonly.wikikernel.common.data.WikiUser;
@@ -9,7 +11,6 @@ import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
-import cc.thonly.wikikernel.web.WikiUrls;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -29,18 +29,95 @@
         return MESSAGES[key] || key;
     }
 
+    /**
+     * 是否「链到文件页 / 原文件」的链接（这些才拦截给预览器）。
+     * 注意：裸根部署下文件页链接是 {@code /文件:X.png}（浏览器还会把冒号编码成 %3A），
+     * 只有 URL 前缀 {@code /wiki/} 时也要能认出来。
+     */
     function isFileLink(href) {
-        return href && (href.indexOf('/wiki/') === 0 || href.indexOf('/files/') === 0);
+        if (!href) {
+            return false;
+        }
+        if (href.indexOf('/files/') === 0) {
+            return true;
+        }
+        var decoded = href;
+        try {
+            decoded = decodeURIComponent(href);
+        } catch (error) {
+            decoded = href;
+        }
+        return /(^|\/)(?:wiki\/)?(?:文件|File|Image|图像|图片):/i.test(decoded);
+    }
+
+    /**
+     * 正文里可以放大查看的图片：
+     *  - 服务端渲染的 [[文件:X|thumb]] 会带 .wiki-media-image；但缓存里的旧 HTML、
+     *    插件/模板生成的 <img>、直接写进 wikitext 的 <img> 都没有这个类 ——
+     *    所以这里以「正文容器里的图片」为准（排除界面图标：头部/侧栏/页脚/小于 48px 的图）。
+     */
+    function viewableImages() {
+        var selector = '#mw-parser-output img, .wiki-content img, #mw-content-text img, #mw-content img';
+        return Array.prototype.slice.call(document.querySelectorAll(selector)).filter(function (img) {
+            if (!img.getAttribute('src')) {
+                return false;
+            }
+            if (img.closest && (img.closest('#mw-header-container') || img.closest('#mw-footer-container')
+                    || img.closest('#mw-site-navigation') || img.closest('#mw-related-navigation')
+                    || img.closest('#wiki-head') || img.closest('.wiki-image-viewer')
+                    || img.closest('.mw-editsection') || img.closest('a[data-no-viewer]'))) {
+                return false;
+            }
+            if (img.classList.contains('wiki-media-image')) {
+                return true;
+            }
+            // 界面小图标（脚注箭头、缩略图角标、语言图标等）不参与查看
+            var rect = img.getBoundingClientRect();
+            var width = rect.width || img.naturalWidth || 0;
+            var height = rect.height || img.naturalHeight || 0;
+            if (width > 0 && width < 48 && height > 0 && height < 48) {
+                return false;
+            }
+            return !img.closest('.mw-editsection');
+        });
     }
 
     function buildItems() {
-        var raw = Array.prototype.slice.call(document.querySelectorAll('img.wiki-media-image'));
+        var raw = viewableImages();
         return raw.map(function (img) {
             var link = img.closest ? img.closest('a') : null;
             var href = link ? link.getAttribute('href') || '' : '';
             var title = img.getAttribute('data-file') || '';
+            if (!title && link) {
+                // 从「文件:X」链接 / 链接 title 推断文件名
+                var decoded = '';
+                try {
+                    decoded = decodeURIComponent(href);
+                } catch (error) {
+                    decoded = href;
+                }
+                var match = decoded.match(/\/(?:wiki\/)?(?:文件|File):([^?#]+)$/i);
+                if (match) {
+                    title = '文件:' + match[1];
+                } else if (link.getAttribute('title')) {
+                    title = link.getAttribute('title');
+                }
+            }
+            var caption = img.getAttribute('data-caption') || '';
+            if (!caption) {
+                var figure = img.closest ? img.closest('figure, .thumb, .wiki-media, .mw-halign-none, .center') : null;
+                if (figure) {
+                    var captionEl = figure.querySelector('figcaption, .thumbcaption, .wiki-media-caption');
+                    if (captionEl) {
+                        caption = captionEl.textContent.trim();
+                    }
+                }
+            }
+            if (!caption) {
+                caption = img.getAttribute('alt') || '';
+            }
             var page = null;
-            if (isFileLink(href) && href.indexOf('/wiki/') === 0) {
+            if (isFileLink(href)) {
                 page = href;
             } else if (title) {
                 page = '/wiki/' + encodeURIComponent(title);
@@ -48,7 +125,7 @@
             return {
                 src: img.getAttribute('src') || img.src,
                 title: title,
-                caption: img.getAttribute('data-caption') || img.getAttribute('alt') || '',
+                caption: caption,
                 page: page
             };
         });
@@ -480,8 +557,13 @@
             return;
         }
         var target = event.target;
-        var img = target && target.closest ? target.closest('img.wiki-media-image') : null;
+        var img = target && target.closest ? target.closest('img') : null;
         if (!img) {
+            return;
+        }
+        var all = viewableImages();
+        var index = all.indexOf(img);
+        if (index < 0) {
             return;
         }
         var link = img.closest ? img.closest('a') : null;
@@ -491,11 +573,6 @@
             if (!isFileLink(href)) {
                 return;
             }
-        }
-        var all = Array.prototype.slice.call(document.querySelectorAll('img.wiki-media-image'));
-        var index = all.indexOf(img);
-        if (index < 0) {
-            return;
         }
         event.preventDefault();
         event.stopPropagation();

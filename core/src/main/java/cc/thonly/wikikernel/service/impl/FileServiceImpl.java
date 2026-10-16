@@ -13,7 +13,7 @@ import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaTypes;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -59,17 +59,61 @@ public class FileServiceImpl implements FileService {
     private final FileStorageProperties properties;
     private final LogService logService;
     private final MessageSource messageSource;
+    private final cc.thonly.wikikernel.common.service.SiteConfig siteConfig;
 
     public FileServiceImpl(WikiFileMapper wikiFileMapper,
                            WikiFileVersionMapper wikiFileVersionMapper,
                            FileStorageProperties properties,
                            LogService logService,
-                           MessageSource messageSource) {
+                           MessageSource messageSource,
+                           cc.thonly.wikikernel.common.service.SiteConfig siteConfig) {
         this.wikiFileMapper = wikiFileMapper;
         this.wikiFileVersionMapper = wikiFileVersionMapper;
         this.properties = properties;
         this.logService = logService;
         this.messageSource = messageSource;
+        this.siteConfig = siteConfig;
+    }
+
+    /**
+     * 上传类型判定（可配置，见站点设置 wikikernel.upload.*）：
+     * <ol>
+     *     <li>内置硬黑名单永远禁止（html/js/css/svg/可执行文件等会被同源执行的类型），配置也放不开；</li>
+     *     <li>{@code wikikernel.upload.blocked-extensions} 里额外禁止的扩展名；</li>
+     *     <li>{@code wikikernel.upload.allowed-extensions}：留空 = 只受前两条限制；填了则以它为准（白名单）。</li>
+     * </ol>
+     */
+    private boolean typeAllowed(String extension) {
+        if (extension == null || extension.isEmpty()) {
+            return false;
+        }
+        if (BLOCKED_EXTENSIONS.contains(extension)) {
+            return false;
+        }
+        if (configuredExtensions("upload.blocked-extensions").contains(extension)) {
+            return false;
+        }
+        java.util.Set<String> allowed = configuredExtensions("upload.allowed-extensions");
+        return allowed.isEmpty() || allowed.contains(extension);
+    }
+
+    /** 读逗号分隔的站点设置并归一化成小写扩展名集合。 */
+    private java.util.Set<String> configuredExtensions(String key) {
+        String raw = siteConfig.get(key, "");
+        if (raw == null || raw.isBlank()) {
+            return java.util.Set.of();
+        }
+        java.util.Set<String> result = new java.util.LinkedHashSet<>();
+        for (String piece : raw.split("[,\\s;]+")) {
+            String value = piece.trim().toLowerCase(java.util.Locale.ROOT);
+            if (value.startsWith(".")) {
+                value = value.substring(1);
+            }
+            if (!value.isEmpty()) {
+                result.add(value);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -87,7 +131,7 @@ public class FileServiceImpl implements FileService {
             throw new IllegalArgumentException("files.tooLarge");
         }
         String extension = extensionOf(fileName);
-        if (BLOCKED_EXTENSIONS.contains(extension)) {
+        if (!typeAllowed(extension)) {
             throw new IllegalArgumentException("files.invalidType");
         }
         WikiFile existing = findAnyByName(fileName).orElse(null);

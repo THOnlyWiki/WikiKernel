@@ -9,7 +9,7 @@ import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiNamespaces;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikiRedirect;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
@@ -65,7 +65,8 @@ public class AllPagesSpecialPage implements SpecialPage {
 
     @Override
     public List<String> aliases() {
-        return List.of("AllPages");
+        // AllPages = MediaWiki 的英文名；「所有页面」= MediaWiki 中文界面的别名（侧栏页面里常写 Special:所有页面）
+        return List.of("AllPages", "所有页面");
     }
 
     @Override

@@ -4,11 +4,9 @@ import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.PageDisplayHook;
 import cc.thonly.wikikernel.common.extension.PageViewHook;
-import cc.thonly.wikikernel.common.extension.PersonalToolbarHook;
 import cc.thonly.wikikernel.common.extension.PreferenceSection;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.UserProfileHook;
-import cc.thonly.wikikernel.plugin.socialprofile.hook.MessagesToolbarHook;
 import cc.thonly.wikikernel.plugin.socialprofile.hook.PointsViewHook;
 import cc.thonly.wikikernel.plugin.socialprofile.hook.SocialPreferencesSection;
 import cc.thonly.wikikernel.plugin.socialprofile.hook.SocialProfilePageDisplayHook;
@@ -114,7 +112,6 @@ class SocialProfilePluginTest {
         assertEquals(2, profileHooks.size(), "链接钩子 + 面板钩子");
         assertEquals(100, profileHooks.get(0).order());
         assertEquals(300, profileHooks.get(1).order());
-        assertInstanceOf(PersonalToolbarHook.class, context.lookup(PersonalToolbarHook.class).get(0));
         assertTrue(context.lookup(PageDisplayHook.class).isEmpty(),
                 "用户页板面改走 UserProfileHook.panelHtml 之后不再注册 PageDisplayHook");
         assertInstanceOf(PageViewHook.class, context.lookup(PageViewHook.class).get(0));
@@ -138,17 +135,12 @@ class SocialProfilePluginTest {
     }
 
     @Test
-    void toolbarAndPreferenceSectionComeFromTheSameBeansAsThePages() {
-        // 顶栏与参数设置分区用的是插件里 @Autowired 的 Bean（单元测试里手工装配）
-        MessagesToolbarHook toolbar = new MessagesToolbarHook(null, SocialProfileFakes.support(true));
+    void preferenceSectionComesFromTheSameBeansAsThePages() {
+        // 参数设置分区用的是插件里 @Autowired 的 Bean（单元测试里手工装配）
         SocialPreferencesSection section = new SocialPreferencesSection(null,
                 SocialProfileFakes.support(true));
         assertEquals("social-profile", section.id());
         assertEquals("socialProfile.preferences.title", section.labelKey());
-        assertEquals(MessagesToolbarHook.ITEM_CLASS, "personal-messages");
-        assertTrue(toolbar.friendsItemHtml(2).contains("personal-friends"));
-        assertTrue(toolbar.giftsItemHtml(3).contains("personal-gifts"));
-        assertTrue(toolbar.giftsItemHtml(0).contains("礼物"));
     }
 
     /** 建插件实例（不依赖 Spring 的字段注入）。 */
@@ -186,7 +178,6 @@ class SocialProfilePluginTest {
         setField(plugin, "awards", awards);
         setField(plugin, "socialProfileView", new SocialProfileView(support, profiles, points,
                 SocialProfileFakes.wikiText()));
-        setField(plugin, "toolbar", new MessagesToolbarHook(messages, support, friends, gifts));
         setField(plugin, "userStore", users);
         setField(plugin, "userSettings", settings);
         setField(plugin, "userBoardStore", new SocialProfileFakes.FakeBoards());

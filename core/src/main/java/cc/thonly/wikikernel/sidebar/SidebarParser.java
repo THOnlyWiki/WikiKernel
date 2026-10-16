@@ -1,5 +1,7 @@
 package cc.thonly.wikikernel.sidebar;
 
+import cc.thonly.wikikernel.common.web.WikiUrls;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,7 +67,7 @@ public final class SidebarParser {
             label = target;
         }
         boolean external = target.matches("(?i)^https?://.*");
-        String href = external ? target : "/wiki/" + target.replace(' ', '_');
+        String href = external ? target : WikiUrls.pagePrefix() + WikiUrls.normalizeSpecialTitle(target).replace(' ', '_');
         return new SidebarItem(label, href, external);
     }
 }

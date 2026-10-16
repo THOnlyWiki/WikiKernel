@@ -3,9 +3,10 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <th:block th:fragment="rcLine(change)">
+    <!--/* 元素顺序对齐线上（MediaWiki 增强版最近更改）：
+           时间 → 新/机/小 标记 → 页面标题 → （差异 | 历史） → （N次更改） → 标签
+           → ． → (±字节) → ． → 用户（留言 | 贡献） → 摘要 */-->
     <span class="rc-time" th:text="${change.timeText}">21:34</span>
-    <span class="rc-links">（<a th:href="${change.diffUrl}" th:text="#{recentChanges.diff}">差异</a> |
-        <a th:href="${change.historyUrl}" th:text="#{recentChanges.hist}">历史</a>）</span>
     <b class="rc-new" th:if="${change.newPage}" th:title="#{recentChanges.legendNew}"
        th:text="#{recentChanges.newMark}">新</b>
     <b class="rc-bot" th:if="${change.bot}" th:title="#{recentChanges.legendBot}"
@@ -13,12 +14,15 @@
     <b class="rc-minor" th:if="${change.minor}" th:title="#{recentChanges.legendMinor}"
        th:text="#{recentChanges.minorMark}">小</b>
     <a class="rc-page" th:href="${change.pageUrl}" th:text="${change.pageTitle}">页面</a>
-    <span class="rc-tag" th:each="tag : ${change.tags}" th:text="${tag}">标签</span>
+    <span class="rc-links">（<a th:href="${change.diffUrl}" th:text="#{recentChanges.diff}">差异</a> |
+        <a th:href="${change.historyUrl}" th:text="#{recentChanges.hist}">历史</a>）</span>
     <span class="rc-count-inline" th:if="${change.count != null and change.count > 1}">（<a
             th:href="${change.historyUrl}" th:text="#{recentChanges.changes(${change.count})}">3次更改</a>）</span>
+    <span class="rc-tag" th:each="tag : ${change.tags}" th:text="${tag}">标签</span>
+    <span class="rc-dot">．</span>
     <span class="rc-bytes" th:if="${change.bytesText != null}" th:classappend="${change.bytesClass}"
           th:text="${change.bytesText}">(+431)</span>
-    <span class="rc-dot">．．</span>
+    <span class="rc-dot" th:if="${change.bytesText != null}">．</span>
     <span class="rc-user" th:if="${change.userName != null}"><a th:href="${change.userUrl}"
             th:text="${change.userName}">用户</a>（<a th:href="${change.talkUrl}"
             th:text="#{recentChanges.talk}">留言</a> | <a th:href="${change.contributionsUrl}"

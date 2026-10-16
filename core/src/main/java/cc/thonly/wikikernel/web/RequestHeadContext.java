@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.web;
 
 import cc.thonly.wikikernel.common.data.WikiFile;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.extension.HeadContext;
 import cc.thonly.wikikernel.service.FileService;
 import jakarta.servlet.http.HttpServletRequest;

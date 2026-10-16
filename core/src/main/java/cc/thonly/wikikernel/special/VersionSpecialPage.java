@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.special;
 
 import cc.thonly.wikikernel.WikiKernelInfo;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.extension.ParserTag;
 import cc.thonly.wikikernel.common.extension.Skin;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
@@ -10,6 +11,7 @@ import cc.thonly.wikikernel.i18n.PluginMessageSource;
 import cc.thonly.wikikernel.i18n.PluginI18n;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.LoadedPlugin;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.plugin.PluginManager;
 import cc.thonly.wikikernel.skin.ActiveSkin;
 import cc.thonly.wikikernel.skin.SkinRegistry;
@@ -23,9 +25,12 @@ import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * {@code 特殊:版本} / {@code Special:Version}：仿 MediaWiki Special:Version。
@@ -121,6 +126,7 @@ public class VersionSpecialPage implements SpecialPage {
                         message("version.library.vega.desc"),
                         message("version.library.vega.source"))));
         model.put("plugins", plugins());
+        model.put("parserTags", parserTags());
         model.put("extensionPoints", EXTENSION_POINTS.stream()
                 .map(name -> Map.<String, Object>of(
                         "name", name,
@@ -150,8 +156,8 @@ public class VersionSpecialPage implements SpecialPage {
     private List<Map<String, Object>> entryPoints() {
         List<Map<String, Object>> rows = new ArrayList<>();
         rows.add(entry(message("version.entry.home"), "/", true));
-        rows.add(entry(message("version.entry.articlePath"), "/wiki/$1", false));
-        rows.add(entry(message("version.entry.specialPages"), "/wiki/特殊:特殊页面", true));
+        rows.add(entry(message("version.entry.articlePath"), WikiUrls.pagePrefix() + "$1", false));
+        rows.add(entry(message("version.entry.specialPages"), WikiUrls.pagePath("特殊:特殊页面"), true));
         rows.add(entry(message("version.entry.api"), "/api/version", true));
         return rows;
     }
@@ -169,6 +175,72 @@ public class VersionSpecialPage implements SpecialPage {
      *     <li>{@code jar}：JAR 包名（{@link LoadedPlugin#source()}）。</li>
      * </ul>
      */
+    /**
+     * 解析器标签：**一张表**（core 内置在前、插件在后）——多个来源共享「解析器标签」这一个大板块，
+     * 来源只是每行的一列，不再按来源拆成多张表 / 多个小标题。
+     * <p>
+     * core 行只列 {@code WikitextRenderer} 直接实现的标签（ref / references / nowiki / pre / poem /
+     * syntaxhighlight / markdown）；math / timeline / graph / flash-player 等都由插件注册，走同一个循环。
+     * 来源判定：插件注册的 {@code ParserTag} 实现类包名形如
+     * {@code cc.thonly.wikikernel.plugin.<插件 id 去掉 - _>.…}，据此归到对应插件；
+     * 归不上的一律算「其它插件」；同一个标签名只列一次（例如 category-tree 注册了展开前 / 展开后两个实现）。
+     * 用法 / 参数说明走消息键 {@code version.tag.<标签名>.usage} / {@code …description}，没写则留空。
+     */
+    private List<Map<String, Object>> parserTags() {
+        String core = message("version.parserTags.source.core");
+        Map<String, List<String>> coreAliases = Map.of(
+                "references", List.of("reference"),
+                "syntaxhighlight", List.of("source"));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (String name : List.of("nowiki", "pre", "poem", "gallery",
+                "syntaxhighlight", "markdown", "indicator")) {
+            rows.add(tagRow(name, coreAliases.getOrDefault(name, List.of()), core));
+            seen.add(name);
+        }
+        for (ParserTag tag : pluginManager.extensions(ParserTag.class)) {
+            if (!seen.add(tag.name())) {
+                continue;
+            }
+            List<String> aliases = new ArrayList<>(tag.names());
+            aliases.remove(tag.name());
+            rows.add(tagRow(tag.name(), aliases, sourceOf(tag.getClass().getName())));
+        }
+        return rows;
+    }
+
+    /** 标签行（名称 / 别名 / 用法 / 参数说明 / 来源）。 */
+    private Map<String, Object> tagRow(String name, List<String> aliases, String source) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("name", name);
+        row.put("aliases", aliases == null || aliases.isEmpty() ? List.of() : List.copyOf(aliases));
+        row.put("usage", Strings.trimToEmpty(messageSource.resolveOrNull("version.tag." + name + ".usage",
+                LocaleContextHolder.getLocale())));
+        row.put("description", Strings.trimToEmpty(messageSource.resolveOrNull(
+                "version.tag." + name + ".description", LocaleContextHolder.getLocale())));
+        row.put("source", source);
+        return row;
+    }
+
+    /** 由实现类包名反查插件 id（包名 = 插件 id 去掉 - 和 _）；认不出来算其它插件。 */
+    private String sourceOf(String className) {
+        String prefix = "cc.thonly.wikikernel.plugin.";
+        if (className == null || !className.startsWith(prefix)) {
+            return message("version.parserTags.source.other");
+        }
+        String rest = className.substring(prefix.length());
+        int dot = rest.indexOf('.');
+        String packagePart = dot < 0 ? rest : rest.substring(0, dot);
+        for (LoadedPlugin loaded : pluginManager.loadedPlugins()) {
+            String id = loaded.descriptor().id();
+            String sanitized = id.replace("-", "").replace("_", "").toLowerCase(Locale.ROOT);
+            if (sanitized.equals(packagePart.toLowerCase(Locale.ROOT))) {
+                return loaded.descriptor().name() + "（" + id + "）";
+            }
+        }
+        return message("version.parserTags.source.other") + "：" + packagePart;
+    }
+
     private List<Map<String, Object>> plugins() {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (LoadedPlugin loaded : pluginManager.loadedPlugins()) {

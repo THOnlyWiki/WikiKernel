@@ -11,7 +11,7 @@ import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.service.WatchService;
 import cc.thonly.wikikernel.time.WikiTime;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;

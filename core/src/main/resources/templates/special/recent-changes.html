@@ -63,23 +63,25 @@
                 </details>
             </div>
         </div>
-        <div class="rc-toolbar">
-            <button type="button" id="rc-live-toggle" class="rc-live">
-                <span class="rc-live-icon">▶</span><span th:text="#{recentChanges.liveUpdates}">动态更新</span>
-            </button>
-            <details class="rc-menu rc-range">
-                <summary th:text="${limitDaysLabel}">50次更改，7天</summary>
-                <ul>
-                    <li th:each="option : ${limitOptions}">
-                        <a th:href="${option.url}" th:text="${option.label}">50次更改</a>
-                    </li>
-                    <li class="rc-menu-sep"></li>
-                    <li th:each="option : ${dayOptions}">
-                        <a th:href="${option.url}" th:text="${option.label}">最近7天</a>
-                    </li>
-                </ul>
-            </details>
-        </div>
+    </div>
+
+    <!-- 工具栏在白色过滤卡片之外（仿线上 RCFilters：动态更新在左、范围选择在右） -->
+    <div class="rc-toolbar">
+        <button type="button" id="rc-live-toggle" class="rc-live">
+            <span class="rc-live-icon">▶</span><span th:text="#{recentChanges.liveUpdates}">动态更新</span>
+        </button>
+        <details class="rc-menu rc-range">
+            <summary th:text="${limitDaysLabel}">50次更改，7天</summary>
+            <ul>
+                <li th:each="option : ${limitOptions}">
+                    <a th:href="${option.url}" th:text="${option.label}">50次更改</a>
+                </li>
+                <li class="rc-menu-sep"></li>
+                <li th:each="option : ${dayOptions}">
+                    <a th:href="${option.url}" th:text="${option.label}">最近7天</a>
+                </li>
+            </ul>
+        </details>
     </div>
 
     <p th:if="${#lists.isEmpty(days)}" th:text="#{recentChanges.empty}">没有最近的更改。</p>

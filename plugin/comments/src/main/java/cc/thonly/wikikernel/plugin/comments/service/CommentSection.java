@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.comments.service;
 
 import cc.thonly.wikikernel.common.extension.Viewer;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.service.UserStore;
@@ -202,7 +203,7 @@ public class CommentSection {
                     comment.getId(),
                     depth,
                     author,
-                    comment.getUserId() == null ? null : "/wiki/用户:" + encodeSegment(author),
+                    comment.getUserId() == null ? null : WikiUrls.pagePrefix() + "用户:" + encodeSegment(author),
                     avatarUrl,
                     formatTime(comment.getCreateAt()),
                     deleted,

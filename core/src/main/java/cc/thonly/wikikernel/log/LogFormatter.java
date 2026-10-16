@@ -9,7 +9,7 @@ import cc.thonly.wikikernel.service.LogTypeRegistry;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.time.WikiTime;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -104,9 +104,11 @@ public class LogFormatter {
      * 插件自定义类型没有消息键时退化为「类型名 + 目标」。
      */
     private void splitAction(LogEntryView view, String logType) {
-        String pattern = messageSource.getMessage("log.entry." + logType, null, null,
-                LocaleContextHolder.getLocale());
-        if (pattern == null) {
+        String key = "log.entry." + logType;
+        String pattern = messageSource.getMessage(key, null, null, LocaleContextHolder.getLocale());
+        if (pattern == null || pattern.equals(key)) {
+            // 没有对应文案（插件自定义类型没提供 log.entry.* 键时 Spring 会回显键名）：
+            // 退化为「类型名 + 目标」，绝不把裸键名印到页面上
             view.setActionBefore(logTypeRegistry.displayNameOf(logType) + " ");
             view.setActionAfter("");
             return;

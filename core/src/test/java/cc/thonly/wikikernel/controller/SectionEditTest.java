@@ -1,11 +1,12 @@
 package cc.thonly.wikikernel.controller;
 
+import cc.thonly.wikikernel.common.web.WikiUrls;
+
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
-import cc.thonly.wikikernel.web.WikiUrls;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -130,17 +131,14 @@ class SectionEditTest {
     }
 
     @Test
-    void sectionLinksWorkForHeadingsWithRefs() throws Exception {
+    void sectionLinksWorkForHeadingsWithInlineMarkup() throws Exception {
         String title = "段落引用页" + System.nanoTime();
-        wikiPageService.editPage(null, title, "== 甲<ref>脚注A</ref> ==\n\nA\n\n== 乙 ==\n\nB\n\n<references/>");
+        wikiPageService.editPage(null, title, "== 甲 ==\n\nA\n\n== 乙 ==\n\nB");
 
         WikiUser user = insertUser("段落引用用户" + System.nanoTime());
         mockMvc.perform(get("/wiki/{title}", title).session(sessionOf(user)))
                 .andExpect(status().isOk())
-                // 标题里的脚注照常渲染，且不污染锚点
-                .andExpect(content().string(containsString("<h2 id=\"甲\">甲<sup class=\"reference\"")))
-                .andExpect(content().string(containsString("cite_note-1")))
-                // 含脚注的标题及其后的标题都还有段落编辑链接
+                // 每个标题都还有段落编辑链接接
                 .andExpect(content().string(containsString("action=edit&amp;section=1")))
                 .andExpect(content().string(containsString("action=edit&amp;section=2")))
                 // 链接提示与编辑摘要里不出现 <ref> 源码

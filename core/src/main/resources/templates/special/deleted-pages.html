@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!-- 特殊:已删除页面 / Special:Undelete：列出已删除页面（管理员），可查看被删版本原文并恢复 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="wiki-deleted-pages">
+    <p class="wiki-hint" th:text="#{deletedPages.intro}">
+        这里可以查看被删除的页面，并把它们恢复（恢复后版本历史一并回来）。
+    </p>
+
+    <p class="wiki-warning" th:if="${deletedPagesLogin}" th:text="#{deletedPages.loginRequired}">
+        请先登录；查看与恢复被删除页面需要管理员权限。
+    </p>
+
+    <p class="wiki-warning" th:if="${!deletedPagesLogin and !canRestore}"
+       th:text="#{deletedPages.forbidden}">
+        需要管理员 / 行政员权限才能查看与恢复被删除的页面。
+    </p>
+
+    <th:block th:if="${canRestore}">
+        <!-- ==================== 单个页面：被删版本 + 恢复 ==================== -->
+        <th:block th:if="${deletedPage != null}">
+            <h2 class="deleted-detail-title">
+                <span th:text="#{deletedPages.detailTitle}">已删除页面：</span><span
+                    th:text="${deletedPageTitle}">页面</span>
+            </h2>
+            <p class="wiki-hint">
+                <span th:text="#{deletedPages.deletedAt}">删除时间：</span><span th:text="${deletedAt}">时间</span>
+                <span th:text="#{deletedPages.revisionCount(${revisionTotal})}">（共 N 个版本）</span>
+            </p>
+            <p class="deleted-detail-actions">
+                <button type="button" class="wiki-button wiki-restore-button"
+                        th:attr="data-title=${deletedPageTitle}"
+                        th:text="#{deletedPages.restore}">恢复本页面</button>
+                <a th:href="@{/wiki/特殊:已删除页面}" th:text="#{deletedPages.back}">返回列表</a>
+            </p>
+            <p class="form-message" id="deleted-restore-message" role="alert" hidden></p>
+
+            <h3 class="deleted-revisions-title" th:text="#{deletedPages.revisions}">被删除的版本（含原文）</h3>
+            <ol class="deleted-revisions">
+                <li th:each="revision : ${revisions}">
+                    <div class="deleted-revision-head">
+                        <span th:text="${revision.timeText}">时间</span>
+                        <th:block th:if="${revision.userName != null}">
+                            <span th:text="' · ' + ${revision.userName}">用户</span>
+                        </th:block>
+                        <th:block th:if="${revision.comment != null and !revision.comment.isEmpty()}">
+                            <span th:text="' · ' + ${revision.comment}">摘要</span>
+                        </th:block>
+                    </div>
+                    <pre class="wiki-deleted-source" th:text="${revision.content}">（空）</pre>
+                </li>
+            </ol>
+        </th:block>
+
+        <!-- ==================== 列表 ==================== -->
+        <th:block th:if="${deletedPages != null}">
+            <p class="wiki-hint" th:if="${#lists.isEmpty(deletedPages)}" th:text="#{deletedPages.empty}">
+                目前没有被删除的页面。
+            </p>
+            <table class="wikitable deleted-pages-table" th:unless="${#lists.isEmpty(deletedPages)}">
+                <thead>
+                <tr>
+                    <th th:text="#{deletedPages.table.title}">页面</th>
+                    <th th:text="#{deletedPages.table.deletedAt}">删除时间</th>
+                    <th th:text="#{deletedPages.table.actions}">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${deletedPages}">
+                    <td th:text="${row.title}">页面</td>
+                    <td th:text="${row.deletedAt}">时间</td>
+                    <td>
+                        <a th:href="${row.detailUrl}" th:text="#{deletedPages.view}">查看</a>
+                        <button type="button" class="wiki-restore-button wiki-link-button"
+                                th:attr="data-title=${row.title}"
+                                th:text="#{deletedPages.restore}">恢复</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="form-message" id="deleted-restore-message" role="alert" hidden></p>
+        </th:block>
+
+        <p class="wiki-warning" th:if="${deletedPageNotFound}" th:text="#{deletedPages.notFound}">
+            没有找到这个已删除的页面（可能已经被恢复，或标题写错了）。
+        </p>
+    </th:block>
+
+    <script>
+        (function () {
+            var MESSAGES = window.WIKI_MESSAGES || {};
+            var message = document.getElementById('deleted-restore-message');
+            function show(text, success) {
+                if (!message) {
+                    return;
+                }
+                message.textContent = text;
+                message.className = 'form-message' + (success ? ' success' : '');
+                message.hidden = false;
+            }
+            Array.prototype.forEach.call(document.querySelectorAll('.wiki-restore-button'), function (button) {
+                button.addEventListener('click', function () {
+                    var title = button.getAttribute('data-title');
+                    if (!window.confirm((MESSAGES.deletedRestoreConfirm || '恢复页面')
+                        + '「' + title + '」？')) {
+                        return;
+                    }
+                    button.disabled = true;
+                    fetch('/api/pages/restore', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: new URLSearchParams({ title: title })
+                    }).then(function (response) {
+                        return response.json();
+                    }).then(function (result) {
+                        if (result && result.code === 200) {
+                            var url = result.data && result.data.url ? result.data.url : null;
+                            show(result.message || MESSAGES.deletedRestored || '已恢复', true);
+                            setTimeout(function () {
+                                window.location.href = url || window.location.href;
+                            }, 800);
+                            return;
+                        }
+                        button.disabled = false;
+                        show((result && result.message) || MESSAGES.operationFailed || '操作失败');
+                    }).catch(function () {
+                        button.disabled = false;
+                        show(MESSAGES.networkError || '网络错误，请稍后重试');
+                    });
+                });
+            });
+        })();
+    </script>
+</section>
+</body>
+</html>

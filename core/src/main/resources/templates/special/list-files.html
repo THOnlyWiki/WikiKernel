@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!-- 特殊页模板：特殊:文件列表 / Special:ListFiles（对齐线上 MediaWiki 的 TablePager 版式：
+     顶部一句说明 + OOUI 风格「文件列表」表单（每页项数 / 用户名 / 包括文件的旧版本）+ 分页导航 +
+     表格（日期 | 名称 | 缩略图 | 大小 | 用户 | 描述 | 版本），缩略图 180px 宽） -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="listfiles-page">
+    <div class="mw-specialpage-summary">
+        <p th:text="#{listFiles.summary}">本特殊页面展示所有上传的文件。</p>
+    </div>
+
+    <!-- 线上是 OOUI 的 framed 表单面板：fieldset + legend「文件列表」 -->
+    <form id="mw-listfiles-form" class="listfiles-form" method="get" th:action="@{/wiki/特殊:文件列表}">
+        <fieldset class="listfiles-fieldset">
+            <legend class="listfiles-legend" th:text="#{special.fileList}">文件列表</legend>
+            <div class="listfiles-fields">
+                <span class="listfiles-field">
+                    <label for="listfiles-limit" th:text="#{listFiles.limitLabel}">每页项数：</label>
+                    <select id="listfiles-limit" name="limit">
+                        <option th:each="n : ${limitOptions}" th:value="${n}" th:text="${n}"
+                                th:selected="${n == limitValue}">50</option>
+                    </select>
+                </span>
+                <span class="listfiles-field">
+                    <label for="listfiles-user" th:text="#{listFiles.userLabel}">用户名：</label>
+                    <input type="text" id="listfiles-user" name="user" maxlength="255"
+                           th:value="${userFilter}" class="listfiles-user-input"/>
+                </span>
+                <label class="listfiles-check">
+                    <input type="checkbox" name="ilshowall" value="1" th:checked="${showAll}"/>
+                    <span th:text="#{listFiles.showAll}">包括文件的旧版本</span>
+                </label>
+                <input type="hidden" name="sort" th:value="${sortValue}"/>
+                <input type="hidden" name="dir" th:value="${dirValue}"/>
+                <button type="submit" class="wiki-button listfiles-submit" th:text="#{allPages.submit}">提交</button>
+            </div>
+        </fieldset>
+    </form>
+
+    <p th:if="${#lists.isEmpty(files)}" th:text="#{listFiles.empty}">还没有上传任何文件。</p>
+
+    <th:block th:unless="${#lists.isEmpty(files)}">
+        <!-- 分页导航（线上 TablePager：首页 / 上一页 / 下一页 / 末页，上下各一条） -->
+        <div class="listfiles-nav">
+            <a th:if="${firstOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${firstOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.first}">首页</a>
+            <span th:unless="${firstOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.first}">首页</span>
+            <a th:if="${prevOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${prevOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.prev}">← 上一页</a>
+            <span th:unless="${prevOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.prev}">← 上一页</span>
+            <a th:if="${nextOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${nextOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.next}">下一页 →</a>
+            <span th:unless="${nextOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.next}">下一页 →</span>
+            <a th:if="${lastOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${lastOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.last}">末页</a>
+            <span th:unless="${lastOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.last}">末页</span>
+        </div>
+
+        <table class="mw-datatable listfiles">
+            <thead>
+            <tr>
+                <th class="listfiles-sort">
+                    <a th:href="@{/wiki/特殊:文件列表(sort='date', dir=${dateDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
+                       th:text="#{listFiles.date}" title="排序">日期</a>
+                </th>
+                <th class="listfiles-sort">
+                    <a th:href="@{/wiki/特殊:文件列表(sort='name', dir=${nameDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
+                       th:text="#{listFiles.name}" title="排序">名称</a>
+                </th>
+                <th th:text="#{listFiles.thumb}">缩略图</th>
+                <th class="listfiles-sort">
+                    <a th:href="@{/wiki/特殊:文件列表(sort='size', dir=${sizeDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
+                       th:text="#{files.size}" title="排序">大小</a>
+                </th>
+                <th th:text="#{listFiles.user}">用户</th>
+                <th th:text="#{listFiles.description}">描述</th>
+                <th th:text="#{listFiles.version}">版本</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${files}">
+                <td class="listfiles-col-date" th:if="${item.createdAt != null}"
+                    th:text="${@wikiTime.format(item.createdAt)}">日期</td>
+                <td class="listfiles-col-date" th:unless="${item.createdAt != null}">—</td>
+                <td class="listfiles-col-name">
+                    <a th:href="${item.pageUrl}" th:text="${item.name}" th:title="${item.name}">名称</a>
+                    <th:block th:if="${item.directUrl != null}">
+                        <span class="listfiles-sep">（</span><a th:href="${item.directUrl}"
+                            th:text="#{listFiles.originalFile}">文件</a><span class="listfiles-sep">）</span>
+                    </th:block>
+                </td>
+                <td class="listfiles-col-thumb">
+                    <a th:if="${item.image}" th:href="${item.pageUrl}" class="image">
+                        <img class="listfiles-thumb" th:src="${item.url}" th:alt="''" loading="lazy"/>
+                    </a>
+                    <span th:unless="${item.image}" th:text="#{listFiles.noThumb}">—</span>
+                </td>
+                <td class="listfiles-col-size" th:text="${item.sizeText}">大小</td>
+                <td class="listfiles-col-user">
+                    <a th:if="${item.uploaderName != null}"
+                       th:href="@{/wiki/{t}(t=${'用户:' + item.uploaderName})}"
+                       th:text="${item.uploaderName}">用户</a>
+                    <span th:if="${item.uploaderName == null}" th:text="#{common.anonymous}">匿名用户</span>
+                </td>
+                <td class="listfiles-col-desc">
+                    <th:block th:if="${item.description != null and !item.description.isEmpty()}"
+                              th:text="${item.description}">描述</th:block>
+                    <span th:if="${item.description == null or item.description.isEmpty()}">&nbsp;</span>
+                </td>
+                <td class="listfiles-col-count" th:text="${item.versionCount}">1</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div class="listfiles-nav">
+            <a th:if="${firstOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${firstOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.first}">首页</a>
+            <span th:unless="${firstOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.first}">首页</span>
+            <a th:if="${prevOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${prevOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.prev}">← 上一页</a>
+            <span th:unless="${prevOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.prev}">← 上一页</span>
+            <a th:if="${nextOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${nextOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.next}">下一页 →</a>
+            <span th:unless="${nextOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.next}">下一页 →</span>
+            <a th:if="${lastOffset != null}"
+               th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${lastOffset})}"
+               class="listfiles-nav-link" th:text="#{listFiles.last}">末页</a>
+            <span th:unless="${lastOffset != null}" class="listfiles-nav-disabled" th:text="#{listFiles.last}">末页</span>
+        </div>
+
+        <p class="listfiles-total" th:text="#{listFiles.range(${rangeStart}, ${rangeEnd}, ${total})}">
+            显示第 1 至 50 条，共 0 个文件。
+        </p>
+    </th:block>
+</section>
+</body>
+</html>

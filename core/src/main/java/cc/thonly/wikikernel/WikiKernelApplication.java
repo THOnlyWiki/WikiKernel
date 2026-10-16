@@ -16,6 +16,7 @@ import cc.thonly.wikikernel.config.TypeScriptProperties;
 import cc.thonly.wikikernel.config.SpecialPageProperties;
 import cc.thonly.wikikernel.config.SetupProperties;
 import cc.thonly.wikikernel.config.TransferProperties;
+import cc.thonly.wikikernel.config.UrlProperties;
 import cc.thonly.wikikernel.sidebar.SidebarProperties;
 import cc.thonly.wikikernel.web.WikiTitleProperties;
 import cc.thonly.wikikernel.wikitext.WikitextProperties;
@@ -39,7 +40,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
         SetupProperties.class, FeatureProperties.class, CorsProperties.class,
         RateLimitProperties.class, TransferProperties.class,
         WikiTitleProperties.class, SiteProperties.class, TypeScriptProperties.class,
-        PageCacheProperties.class})
+        PageCacheProperties.class, UrlProperties.class})
 @MapperScan("cc.thonly.wikikernel.db.mapper")
 public class WikiKernelApplication {
 

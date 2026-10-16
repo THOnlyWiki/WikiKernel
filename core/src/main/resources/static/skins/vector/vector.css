@@ -3,6 +3,35 @@
    通用组件在 /css/base.css，本文件只负责页面外壳
    ============================================================ */
 
+/* ---------- 通用组件主题（Vector）：覆盖 base.css「通用组件」的变量 ---------- */
+/* 按钮 / 弹窗 / 焦点环在 Vector 下保持 MediaWiki 蓝（Codex 现行色值）；
+   插件与页面直接用 .wiki-button / .wiki-button-primary / .wiki-button-danger / .wiki-button-quiet。 */
+:root {
+    --wiki-focus-ring: #36c;
+
+    --wiki-button-bg: #f8f9fa;
+    --wiki-button-bg-hover: #eaecf0;
+    --wiki-button-bg-active: #dcdfe3;
+    --wiki-button-border: #a2a9b1;
+    --wiki-button-border-hover: #72777d;
+    --wiki-button-text: #202122;
+
+    --wiki-button-primary-bg: #36c;
+    --wiki-button-primary-bg-hover: #447ff5;
+    --wiki-button-primary-bg-active: #2a4b8d;
+    --wiki-button-primary-text: #ffffff;
+
+    --wiki-button-danger-bg: #d73333;
+    --wiki-button-danger-bg-hover: #b32424;
+    --wiki-button-danger-bg-active: #8b1a1a;
+    --wiki-button-danger-text: #ffffff;
+
+    --wiki-quiet-text: #54595d;
+    --wiki-quiet-text-hover: #202122;
+    --wiki-quiet-bg-hover: #eaecf0;
+    --wiki-quiet-bg-active: #dcdfe3;
+}
+
 /* ---------- 顶部渐变区（5em = 80px，与 MediaWiki Vector 相同：白色 50% → #f6f6f6，下沿即内容框顶边） ---------- */
 #wiki-head {
     position: relative;

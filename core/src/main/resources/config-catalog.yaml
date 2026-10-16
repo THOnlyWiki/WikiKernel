@@ -100,6 +100,37 @@ groups:
         default: 20
         description: 单个上传文件大小上限（MB）；同时受 spring.servlet.multipart 限制。
 
+  # ---------------- 可配置路由重定向 ----------------
+  - prefix: route
+    comment: |-
+      可配置的路径重定向（每行「源路径=目标」，目标后可跟「, 301」改用永久重定向；
+      源路径以 /* 结尾表示前缀通配）。只接受站内目标，外站目标会被忽略（防开放重定向）。
+      例：
+        /excel=/excel/
+        /线下活动速查表=/wiki/线下活动速查表
+    items:
+      - key: route.redirects
+        type: string
+        default: ""
+        description: 路径重定向规则（每行「源路径=目标」；留空 = 不启用）。
+
+  # ---------------- 上传文件类型白/黑名单 ----------------
+  - prefix: upload
+    comment: |-
+      上传文件类型控制：
+      「允许的扩展名」为空 = 不额外限制（只受内置危险类型黑名单约束：html/js/css/svg/可执行文件等永远禁止）；
+      填了就以它为准（白名单），只有列出的扩展名能上传。
+      「额外禁止的扩展名」在黑名单上再加一批，任何情况下都不放行。
+    items:
+      - key: upload.allowed-extensions
+        type: string
+        default: "png,jpg,jpeg,gif,webp,bmp,ico,webm,ogv,mp4,ogg,oga,opus,mp3,wav,m4a,flac,pdf,txt,md,zip,7z,swf"
+        description: 允许上传的扩展名（逗号分隔；留空 = 不额外限制，仍禁止危险类型）。
+      - key: upload.blocked-extensions
+        type: string
+        default: ""
+        description: 额外禁止的扩展名（逗号分隔），在内置危险类型黑名单之外再禁一批。
+
   # ---------------- 侧边栏 ----------------
   - prefix: wikikernel.sidebar
     comment: |-
@@ -381,6 +412,22 @@ groups:
         type: list
         default: []
         description: 禁用的皮肤 id（Vector 可禁用；内置 fallback 始终可用）。
+
+  # ---------------- 站点 URL ----------------
+  - prefix: wikikernel.urls
+    comment: |-
+      站点 URL（页面路径与特殊页前缀；改完重启生效）：
+      生成链接与接收路由同步切换，/wiki/ 旧路径始终可用（内部路由不变，前缀靠转发）。
+      page-prefix 留空（"" 或 /）= 裸根部署（/首页，像线上站）；默认 wiki = /wiki/首页。
+    items:
+      - key: wikikernel.urls.page-prefix
+        type: string
+        default: wiki
+        description: '页面路径前缀：wiki（默认，/wiki/首页）/ 自定义（如 p → /p/首页）/ 留空或 /（裸根路径 /首页）'
+      - key: wikikernel.urls.special-prefix
+        type: string
+        default: 特殊
+        description: '特殊页前缀（生成链接用）：特殊（默认，/wiki/特殊:搜索）或 Special 等；输入侧两种前缀都识别'
 
   # ---------------- 功能开关 ----------------
   - prefix: wikikernel.features

@@ -13,7 +13,7 @@ import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.LogTypeRegistry;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.UserService;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;

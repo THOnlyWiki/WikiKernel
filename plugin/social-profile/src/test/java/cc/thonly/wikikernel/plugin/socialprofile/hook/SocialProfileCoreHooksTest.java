@@ -70,31 +70,6 @@ class SocialProfileCoreHooksTest {
         assertNull(disabled.avatarUrl(profile(1, "甲", true, SocialProfileFakes.viewer(1, "甲"))));
         assertNull(disabled.linksHtml(profile(1, "甲", true, SocialProfileFakes.viewer(1, "甲"))));
     }
-    // ==================== 顶栏个人工具区 ====================
-
-    @Test
-    void toolbarHookShowsUnreadCountForLoggedInUsersOnly() {
-        MessageCenter messages = new MessageCenter(store, users);
-        MessagesToolbarHook hook = new MessagesToolbarHook(messages, SocialProfileFakes.support(true));
-        messages.send(1, "乙", "未读私信");
-
-        String html = hook.itemsHtml(toolbarContext(SocialProfileFakes.viewer(2, "乙")));
-        assertTrue(html.contains("/wiki/特殊:私信"), html);
-        assertTrue(html.contains("<li class=\"personal-messages\">"), html);
-        assertTrue(html.contains(" (1)"), "有未读时显示计数：" + html);
-
-        // 匿名不显示
-        assertNull(hook.itemsHtml(toolbarContext(Viewer.ANONYMOUS)));
-
-        // 功能关闭不显示
-        MessagesToolbarHook disabled = new MessagesToolbarHook(messages, SocialProfileFakes.support(false));
-        assertNull(disabled.itemsHtml(toolbarContext(SocialProfileFakes.viewer(2, "乙"))));
-
-        // 没有未读时不带括号计数
-        String zero = hook.itemHtml(0);
-        assertFalse(zero.contains("("), zero);
-    }
-
     // ==================== head 注入 ====================
 
     @Test
@@ -155,9 +130,8 @@ class SocialProfileCoreHooksTest {
     @Test
     void messagesSpecialPageCoversInboxComposeThreadAndReading() {
         MessageCenter center = new MessageCenter(store, users);
-        MessagesToolbarHook toolbar = new MessagesToolbarHook(center, SocialProfileFakes.support(true));
         MessagesSpecialPage page = new MessagesSpecialPage(center, users, SocialProfileFakes.wikiText(),
-                SocialProfileFakes.support(true), toolbar);
+                SocialProfileFakes.support(true));
 
         assertEquals("私信", page.name());
         assertEquals(SpecialPageCategories.LOGIN, page.category());
@@ -171,9 +145,8 @@ class SocialProfileCoreHooksTest {
         // 甲 → 乙（wikitext 粗体）
         var sent = center.send(1, "乙", "你好 '''乙'''");
 
-        // 乙的收件箱：未读高亮 + 摘要 + 对方用户名；顶部徽标刷新为最新未读数
+        // 乙的收件箱：未读高亮 + 摘要 + 对方用户名
         Map<String, Object> inbox = new LinkedHashMap<>();
-        inbox.put("pluginPersonalTools", List.of(toolbar.itemHtml(1), "<li class=\"other-plugin\">其它</li>"));
         page.populate(new SpecialPageRequest("私信", Map.of(), wikiUser(2, "乙")), inbox);
         assertEquals("inbox", inbox.get("messagesMode"));
         assertEquals(1L, inbox.get("unreadCount"));
@@ -183,10 +156,6 @@ class SocialProfileCoreHooksTest {
         assertEquals("甲", row.get("other"));
         assertEquals(Boolean.TRUE, row.get("unread"));
         assertEquals("你好 '''乙'''", row.get("excerpt"));
-        List<?> toolbarItems = (List<?>) inbox.get("pluginPersonalTools");
-        assertEquals(2, toolbarItems.size(), "其它插件的条目应保留");
-        assertTrue(String.valueOf(toolbarItems.get(0)).contains(" (1)"), String.valueOf(toolbarItems.get(0)));
-        assertTrue(String.valueOf(toolbarItems.get(1)).contains("other-plugin"));
 
         // 阅读（?id=）：wikitext 渲染 + 自动标已读（与迁移前一致：正文区下方仍显示收件箱列表）
         Map<String, Object> view = new LinkedHashMap<>();
@@ -198,7 +167,6 @@ class SocialProfileCoreHooksTest {
                 "私信正文按 wikitext 渲染：" + view.get("messageHtml"));
         assertEquals(Boolean.TRUE, view.get("messageInbox"));
         assertEquals(0, center.unreadCount(2));
-        assertTrue(String.valueOf(((List<?>) view.get("pluginPersonalTools")).get(0)).contains("私信"));
 
         // 无关用户看不到这条私信
         Map<String, Object> stranger = new LinkedHashMap<>();
@@ -242,7 +210,7 @@ class SocialProfileCoreHooksTest {
 
         // 功能关闭：只给「已关闭」提示
         MessagesSpecialPage disabled = new MessagesSpecialPage(center, users, SocialProfileFakes.wikiText(),
-                SocialProfileFakes.support(false), toolbar);
+                SocialProfileFakes.support(false));
         Map<String, Object> closed = new LinkedHashMap<>();
         disabled.populate(new SpecialPageRequest("私信", Map.of(), wikiUser(1, "甲")), closed);
         assertEquals(Boolean.TRUE, closed.get("featureDisabled"));
@@ -276,25 +244,6 @@ class SocialProfileCoreHooksTest {
             @Override
             public String defaultAvatarUrl() {
                 return UserStore.DEFAULT_AVATAR_URL;
-            }
-        };
-    }
-
-    private static PersonalToolbarContext toolbarContext(Viewer viewer) {
-        return new PersonalToolbarContext() {
-            @Override
-            public Viewer viewer() {
-                return viewer;
-            }
-
-            @Override
-            public String siteName() {
-                return "WikiKernel";
-            }
-
-            @Override
-            public String baseUrl() {
-                return "http://localhost:18080";
             }
         };
     }

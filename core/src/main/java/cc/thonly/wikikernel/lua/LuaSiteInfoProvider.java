@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.db.mapper.WikiFileMapper;
 import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.db.mapper.WikiPermissionTypeMapper;
 import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.db.mapper.WikiUserPermissionMapper;
 import cc.thonly.wikikernel.service.PermissionService;
@@ -87,11 +88,16 @@ public class LuaSiteInfoProvider {
         return scheme + "://" + host + (defaultPort ? "" : ":" + port);
     }
 
-    /** 脚本路径（仿 MediaWiki 的 {@code scriptPath}；本站页面都在 {@code /wiki} 下）。 */
+    /** 脚本路径（仿 MediaWiki 的 {@code scriptPath}；默认 {@code /wiki}，裸根部署时就是站点根）。 */
     public String scriptPath() {
         HttpServletRequest request = currentRequest();
         String context = request == null ? "" : request.getContextPath();
-        return context + "/wiki";
+        String prefix = WikiUrls.pagePrefix();
+        if ("/".equals(prefix)) {
+            return context;
+        }
+        String trimmed = prefix.endsWith("/") ? prefix.substring(0, prefix.length() - 1) : prefix;
+        return context + trimmed;
     }
 
     /** 条目路径模板（仿 MediaWiki 的 {@code articlePath}）。 */

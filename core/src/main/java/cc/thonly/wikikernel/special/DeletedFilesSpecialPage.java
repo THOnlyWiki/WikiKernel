@@ -56,7 +56,8 @@ public class DeletedFilesSpecialPage implements SpecialPage {
 
     @Override
     public List<String> aliases() {
-        return List.of("DeletedFiles", "Undelete");
+        // Undelete 让给「已删除页面」（Special:Undelete 在 MediaWiki 里是页面恢复；文件回收站用 DeletedFiles）
+        return List.of("DeletedFiles");
     }
 
     @Override

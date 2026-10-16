@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.web;
 
 import cc.thonly.wikikernel.actionapi.ActionApiTokens;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.util.Strings;
@@ -49,6 +50,7 @@ public class MwConfigAdvice {
             Map.entry("category", 14), Map.entry("category-talk", 15),
             Map.entry("module", 828), Map.entry("module-talk", 829),
             Map.entry("graph", 484), Map.entry("graph-talk", 485),
+            Map.entry("component", 486), Map.entry("component-talk", 487),
             Map.entry("widget", 2300), Map.entry("widget-talk", 2301),
             Map.entry("gadget", 2302), Map.entry("gadget-talk", 2303));
 
@@ -77,6 +79,7 @@ public class MwConfigAdvice {
             Map.entry("category", "Category"), Map.entry("category-talk", "Category talk"),
             Map.entry("module", "Module"), Map.entry("module-talk", "Module talk"),
             Map.entry("graph", "Graph"), Map.entry("graph-talk", "Graph talk"),
+            Map.entry("component", "Component"), Map.entry("component-talk", "Component talk"),
             Map.entry("widget", "Widget"), Map.entry("widget-talk", "Widget talk"),
             Map.entry("gadget", "Gadget"), Map.entry("gadget-talk", "Gadget talk"));
 
@@ -108,7 +111,8 @@ public class MwConfigAdvice {
             return buildConfig(request);
         } catch (RuntimeException exception) {
             // 任何异常都不能影响页面渲染：退化成最小配置
-            return Map.of("wgPageName", "", "wgScript", "/wiki/", "wgArticlePath", "/wiki/$1");
+            return Map.of("wgPageName", "", "wgScript", WikiUrls.pagePrefix(),
+                    "wgArticlePath", WikiUrls.pagePrefix() + "$1");
         }
     }
 
@@ -140,10 +144,10 @@ public class MwConfigAdvice {
         conf.put("wgIsArticle", page != null && namespaceNumber == 0 && "view".equals(action)
                 && page.getLatestRevisionId() != null);
         conf.put("wgAction", action);
-        conf.put("wgArticlePath", "/wiki/$1");
+        conf.put("wgArticlePath", WikiUrls.pagePrefix() + "$1");
         // 我们没有 index.php：wgScript 用页面的入口前缀（非标准，已在 README 说明）
         conf.put("wgScriptPath", "");
-        conf.put("wgScript", "/wiki/");
+        conf.put("wgScript", WikiUrls.pagePrefix());
         conf.put("wgServer", serverOf(request));
         conf.put("wgSiteName", siteNameService.name());
         conf.put("wgVersion", appVersion());
@@ -182,10 +186,10 @@ public class MwConfigAdvice {
             if (context != null && !context.isEmpty() && uri.startsWith(context)) {
                 uri = uri.substring(context.length());
             }
-            if (!uri.startsWith("/wiki/")) {
+            String rest = WikiUrls.pagePathRest(uri);
+            if (rest == null) {
                 return "";
             }
-            String rest = uri.substring("/wiki/".length());
             // 路径解码：+ 不能当空格（标题里的 + 是字面量）
             String decoded = URLDecoder.decode(rest.replace("+", "%2B"), StandardCharsets.UTF_8);
             return WikiTitles.normalize(decoded);

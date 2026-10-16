@@ -17,7 +17,7 @@ import cc.thonly.wikikernel.service.InterwikiService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaPlayerHtml;
 import cc.thonly.wikikernel.web.WikiFileEmbedCall;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
@@ -91,6 +91,12 @@ public class WikitextRenderer {
     /** {@code <poem>…</poem>}（仿 Poem 扩展）：保留换行，内部支持行内 wikitext。 */
     private static final Pattern POEM = Pattern.compile(
             "<poem(?:\\s[^>]*)?>(.*?)</poem>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    /** {@code <gallery>文件:甲.jpg|说明（每行一张）</gallery>}（仿 MediaWiki 画廊）。 */
+    private static final Pattern GALLERY = Pattern.compile(
+            "<gallery(\\s[^>]*)?>(.*?)</gallery\\s*>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    /** {@code <indicator name="…">…</indicator>}（仿 MediaWiki 页面状态指示器，显示在标题右上角）。 */
+    private static final Pattern INDICATOR = Pattern.compile(
+            "<indicator(\\s[^>]*)?>(.*?)</indicator\\s*>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
     /** {@code lang="…"} / {@code lang=…} 属性（语法高亮用）。 */
     private static final Pattern LANG_ATTRIBUTE = Pattern.compile(
             "\\blang\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s/>]+))", Pattern.CASE_INSENSITIVE);
@@ -110,10 +116,6 @@ public class WikitextRenderer {
 
     /** 至少这么多个标题才自动显示目录（MediaWiki 规则；__TOC__ / __FORCETOC__ 可强制）。 */
     private static final int TOC_MIN_HEADINGS = 4;
-
-    /** 引用占位符：{@code \uE006<序号>\uE006} = 一个 <ref> 的标记；{@code \uE007} = <references/> 列表位置。 */
-    private static final String CITE_TOKEN_PREFIX = "\uE006";
-    private static final String CITE_REFERENCES = "\uE007";
 
     /** {@code {{DISPLAYTITLE:标题}}}（可选 {@code |noerror} 等修饰参数）。 */
     private static final Pattern DISPLAY_TITLE = Pattern.compile(
@@ -289,6 +291,10 @@ public class WikitextRenderer {
         withoutCategories = extractPluginTags(withoutCategories, trustedBlocks);
         // <poem>…</poem>（仿 Poem 扩展）：换行保留（→ <br>），内部支持行内 wikitext；整段作为可信块还原
         withoutCategories = extractPoem(withoutCategories, trustedBlocks);
+        // <gallery>…</gallery>（仿 MediaWiki 画廊）：每行一张图，整段作为可信块
+        withoutCategories = extractGallery(withoutCategories, trustedBlocks);
+        // <indicator name="…">…</indicator>（仿 MediaWiki 页面状态指示器）：剥离并写页面属性 indicator-<名字>
+        withoutCategories = extractIndicators(withoutCategories);
 
         // 目录魔术字：__NOTOC__ 关闭；__TOC__ / __FORCETOC__ 强制（默认 ≥4 个标题自动显示）
         boolean forceToc = withoutCategories.contains("__TOC__")
@@ -309,21 +315,46 @@ public class WikitextRenderer {
                 .replace("__NONEWSECTIONLINK__", "")
                 .replace("__HIDDENCAT__", "");
 
-        CiteState cite = new CiteState();
-        text = extractCite(text, cite);
-
         List<Heading> headings = new ArrayList<>();
         String html = renderBlocks(text, headings, new LinkedHashMap<>());
         html = restoreTokens(html, "\uE000", preBlocks);
         boolean showToc = !noToc && !headings.isEmpty()
                 && (headings.size() >= TOC_MIN_HEADINGS || forceToc);
         html = html.replace(TOC_PLACEHOLDER, showToc ? buildToc(headings) : "");
-        html = replaceCite(html, cite);
         // 可信块（微件输出，不经过 HTML 白名单）：先去掉独占段落的 <p> 包裹，再一次性还原
         html = Pattern.compile("<p>(" + Pattern.quote("\uE004") + "\\d+" + Pattern.quote("\uE004")
                         + ")</p>")
                 .matcher(html).replaceAll("$1");
         html = restoreTokens(html, "\uE004", trustedBlocks);
+        // 嵌套可信块（插件标签里再嵌插件标签，如 Vue 组件）：还原外层后，内层占位符才出现在结果里，
+        // 再扫几轮直到没有残留（有界循环，防作者写出的字面量死循环）
+        for (int pass = 0; pass < 4 && html.indexOf('\uE004') >= 0; pass++) {
+            String restored = restoreTokens(html, "\uE004", trustedBlocks);
+            if (restored.equals(html)) {
+                break;
+            }
+            html = restored;
+        }
+        // 插件 HTML 占位（deferHtml，如 Cite 脚注）：HTML 收尾阶段原样替换
+        RenderContextState deferredState = CURRENT.get();
+        if (deferredState != null && html.indexOf('\uE009') >= 0) {
+            for (int index = 0; index < deferredState.deferredHtmlCount(); index++) {
+                String marker = "\uE009" + index + "\uE009";
+                if (!html.contains(marker)) {
+                    continue;
+                }
+                String value = "";
+                java.util.function.Supplier<String> supplier = deferredState.deferredHtmlAt(index);
+                if (supplier != null) {
+                    try {
+                        value = supplier.get();
+                    } catch (RuntimeException ignored) {
+                        value = "";
+                    }
+                }
+                html = html.replace(marker, value == null ? "" : value);
+            }
+        }
         return new RenderResult(html, List.copyOf(categories), finalDisplayTitle,
                 List.copyOf(interwikiLinks));
     }
@@ -558,7 +589,7 @@ public class WikitextRenderer {
         TemplateSource source = findTemplate(name);
         if (source == null) {
             String linkTitle = name.indexOf(':') >= 0 ? name : "模板:" + name;
-            return "<a class=\"new\" href=\"/wiki/" + HtmlSanitizer.escapeAttribute(linkTitle)
+            return "<a class=\"new\" href=\"" + WikiUrls.pagePrefix() + HtmlSanitizer.escapeAttribute(linkTitle)
                     + "\">" + linkTitle + "</a>";
         }
         if (!stack.add(source.title())) {
@@ -838,7 +869,7 @@ public class WikitextRenderer {
                 while (matcher.find()) {
                     found = true;
                     out.append(text, last, matcher.start());
-                    String html = renderPluginTag(tag, state, matcher.group(1), matcher.group(2), trusted);
+                    String html = renderPluginTag(tag, state, name, matcher.group(1), matcher.group(2), trusted);
                     trusted.add(html == null ? "" : html);
                     out.append('\uE004').append(trusted.size() - 1).append('\uE004');
                     last = matcher.end();
@@ -871,7 +902,7 @@ public class WikitextRenderer {
                 while (matcher.find()) {
                     found = true;
                     out.append(result, last, matcher.start());
-                    String html = renderPluginTag(tag, state, matcher.group(1), matcher.group(2), List.of());
+                    String html = renderPluginTag(tag, state, name, matcher.group(1), matcher.group(2), List.of());
                     stash.add(html == null ? "" : html);
                     out.append('\uE000').append(stash.size() - 1).append('\uE000');
                     last = matcher.end();
@@ -891,7 +922,7 @@ public class WikitextRenderer {
         return Pattern.compile("(?si)<" + quoted + "\\b([^>]*?)(?:/>|>(.*?)</" + quoted + "\\s*>)");
     }
 
-    private String renderPluginTag(ParserTag tag, RenderContextState state, String attributeText,
+    private String renderPluginTag(ParserTag tag, RenderContextState state, String tagName, String attributeText,
                                    String body, List<String> trusted) {
         Map<String, String> attributes = parseAttributes(attributeText == null ? "" : attributeText);
         String bodyText = body == null ? "" : body;
@@ -903,7 +934,8 @@ public class WikitextRenderer {
 
             @Override
             public String tag() {
-                return tag.name();
+                // 匹配到的那个名字（多名字标签如 Vue 组件：name() 只是代表名，实际用的是别名）
+                return tagName == null || tagName.isBlank() ? tag.name() : tagName;
             }
 
             @Override
@@ -926,7 +958,9 @@ public class WikitextRenderer {
             String html = tag.render(call);
             return html == null ? "" : html;
         } catch (RuntimeException e) {
-            return error("wikitext.pluginTagFailed", tag.name());
+            // 标签渲染失败：记日志（含堆栈）并显示一行错误，避免只看到「渲染失败」无从排查
+            log.warn("扩展标签 <{}> 渲染失败（{}）", tagName, tag.getClass().getName(), e);
+            return error("wikitext.pluginTagFailed", tagName);
         }
     }
 
@@ -1266,275 +1300,6 @@ public class WikitextRenderer {
         return out.toString();
     }
 
-    // ==================== 引用（仿 MediaWiki Cite 扩展的 <ref>） ====================
-
-    /** 去掉标题 / 目录文本里的控件占位符（微件 \uE004、引用 \uE006 / \uE007）。 */
-    private static String stripDisplayTokens(String text) {
-        return text.replaceAll("[\uE004\uE006]\\d+[\uE004\uE006]", "")
-                .replace(CITE_REFERENCES, "")
-                .trim();
-    }
-
-    private static String citeToken(int index) {
-        return CITE_TOKEN_PREFIX + index + CITE_TOKEN_PREFIX;
-    }
-
-    /** 一个 {@code <ref>} 标签的出现（定义或复用）。 */
-    private static final class CiteEvent {
-        private final String name;
-        private final boolean selfClosing;
-        private final String content;
-        private CiteNote note;
-        private String errorKey;
-        private String errorArg;
-
-        private CiteEvent(String name, boolean selfClosing, String content) {
-            this.name = name;
-            this.selfClosing = selfClosing;
-            this.content = content;
-        }
-    }
-
-    /** 一条脚注（同名引用合并为一条，编号按首次出现）。 */
-    private static final class CiteNote {
-        private final String content;
-        private int number;
-        private final List<CiteEvent> uses = new ArrayList<>();
-
-        private CiteNote(String content) {
-            this.content = content;
-        }
-    }
-
-    /** 一次渲染收集到的所有引用。 */
-    private static final class CiteState {
-        private final List<CiteEvent> events = new ArrayList<>();
-        private final List<CiteNote> notes = new ArrayList<>();
-        private final Map<String, CiteNote> byName = new LinkedHashMap<>();
-        private int markers;
-        private boolean resolved;
-    }
-
-    /**
-     * 提取 {@code <ref>…</ref>} / {@code <ref name="x"/>} / {@code <references/>}
-     * （{@code <reference/>} 单数别名同样支持），替换成占位符；未闭合的标签按普通文本处理。
-     */
-    private static String extractCite(String text, CiteState state) {
-        StringBuilder out = new StringBuilder();
-        int i = 0;
-        int length = text.length();
-        while (i < length) {
-            int lt = text.indexOf('<', i);
-            if (lt < 0) {
-                out.append(text, i, length);
-                break;
-            }
-            out.append(text, i, lt);
-            int cursor = lt + 1;
-            boolean closing = cursor < length && text.charAt(cursor) == '/';
-            if (closing) {
-                cursor++;
-            }
-            int nameStart = cursor;
-            while (cursor < length && Character.isLetterOrDigit(text.charAt(cursor))) {
-                cursor++;
-            }
-            String tag = text.substring(nameStart, cursor).toLowerCase(Locale.ROOT);
-            if (closing) {
-                out.append('<');
-                i = lt + 1;
-                continue;
-            }
-            if ("nowiki".equals(tag)) {
-                int end = indexOfIgnoreCase(text, "</nowiki>", cursor);
-                if (end < 0) {
-                    out.append(text, lt, length);
-                    break;
-                }
-                out.append(text, lt, end + "</nowiki>".length());
-                i = end + "</nowiki>".length();
-                continue;
-            }
-            if ("references".equals(tag) || "reference".equals(tag)) {
-                int gt = text.indexOf('>', cursor);
-                if (gt < 0) {
-                    out.append(text, lt, length);
-                    break;
-                }
-                boolean selfClosing = text.substring(cursor, gt).trim().endsWith("/");
-                int end = gt + 1;
-                if (!selfClosing) {
-                    int close = indexOfTagClose(text, tag, end);
-                    if (close >= 0) {
-                        int closeEnd = text.indexOf('>', close);
-                        end = closeEnd < 0 ? length : closeEnd + 1;
-                    }
-                }
-                out.append(CITE_REFERENCES);
-                state.markers++;
-                i = end;
-                continue;
-            }
-            if ("ref".equals(tag)) {
-                int gt = text.indexOf('>', cursor);
-                if (gt < 0) {
-                    out.append(text, lt, length);
-                    break;
-                }
-                String attrs = text.substring(cursor, gt);
-                boolean selfClosing = attrs.trim().endsWith("/");
-                String name = nameAttribute(attrs);
-                int end = gt + 1;
-                String content = null;
-                if (!selfClosing) {
-                    int close = indexOfTagClose(text, "ref", end);
-                    if (close < 0) {
-                        // 未闭合：按普通文本原样输出
-                        out.append(text, lt, end);
-                        i = end;
-                        continue;
-                    }
-                    int closeEnd = text.indexOf('>', close);
-                    content = text.substring(end, close);
-                    end = closeEnd < 0 ? length : closeEnd + 1;
-                }
-                state.events.add(new CiteEvent(name, selfClosing, content));
-                out.append(citeToken(state.events.size() - 1));
-                i = end;
-                continue;
-            }
-            out.append('<');
-            i = lt + 1;
-        }
-        return out.toString();
-    }
-
-    /** 结算引用：先收集定义（支持先使用后定义），再按出现顺序编号。 */
-    private static void resolveCite(CiteState state) {
-        for (CiteEvent event : state.events) {
-            if (event.selfClosing || event.content == null) {
-                continue;
-            }
-            if (event.content.trim().isEmpty()) {
-                event.errorKey = "cite.error.empty";
-                continue;
-            }
-            if (event.name == null) {
-                CiteNote note = new CiteNote(event.content);
-                state.notes.add(note);
-                event.note = note;
-                continue;
-            }
-            CiteNote existing = state.byName.get(event.name);
-            if (existing == null) {
-                CiteNote note = new CiteNote(event.content);
-                state.notes.add(note);
-                state.byName.put(event.name, note);
-                event.note = note;
-            } else if (existing.content.equals(event.content)) {
-                event.note = existing; // 同名同内容：按复用处理
-            } else {
-                event.errorKey = "cite.error.duplicate";
-                event.errorArg = event.name;
-            }
-        }
-        int counter = 0;
-        for (CiteEvent event : state.events) {
-            if (event.errorKey != null) {
-                continue;
-            }
-            if (event.note == null) {
-                if (event.name == null) {
-                    event.errorKey = "cite.error.unnamedUse";
-                    continue;
-                }
-                CiteNote note = state.byName.get(event.name);
-                if (note == null) {
-                    event.errorKey = "cite.error.undefined";
-                    event.errorArg = event.name;
-                    continue;
-                }
-                event.note = note;
-            }
-            event.note.uses.add(event);
-            if (event.note.number == 0) {
-                event.note.number = ++counter;
-            }
-        }
-    }
-
-    /** 把正文里的引用占位符换成上标标记，并在 {@code <references/>} 处生成脚注列表。 */
-    private String replaceCite(String html, CiteState state) {
-        if (state.events.isEmpty() && state.markers == 0) {
-            return html;
-        }
-        if (!state.resolved) {
-            resolveCite(state);
-            state.resolved = true;
-        }
-        Map<CiteNote, Integer> useCounters = new LinkedHashMap<>();
-        List<String> markers = new ArrayList<>();
-        for (CiteEvent event : state.events) {
-            String marker;
-            if (event.errorKey != null) {
-                marker = citeError(event.errorKey, event.errorArg);
-            } else {
-                CiteNote note = event.note;
-                int seen = useCounters.merge(note, 1, Integer::sum);
-                String id = seen == 1
-                        ? "cite_ref-" + note.number
-                        : "cite_ref-" + note.number + "-" + seen;
-                marker = "<sup class=\"reference\" id=\"" + id + "\"><a href=\"#cite_note-"
-                        + note.number + "\">[" + note.number + "]</a></sup>";
-            }
-            markers.add(marker);
-        }
-        html = restoreTokens(html, CITE_TOKEN_PREFIX, markers);
-
-        // <references/>：第一个放列表，其余清掉；独占一段时同时去掉 <p> 包裹
-        String wrapped = "<p>" + CITE_REFERENCES + "</p>";
-        String list = state.notes.isEmpty() ? "" : citeList(state);
-        if (html.contains(wrapped)) {
-            html = html.replaceFirst(Pattern.quote(wrapped), Matcher.quoteReplacement(list));
-        } else if (html.contains(CITE_REFERENCES)) {
-            html = html.replaceFirst(CITE_REFERENCES, Matcher.quoteReplacement(list));
-        }
-        return html.replace(wrapped, "").replace(CITE_REFERENCES, "");
-    }
-
-    private String citeList(CiteState state) {
-        List<CiteNote> ordered = new ArrayList<>(state.notes);
-        ordered.sort((left, right) -> Integer.compare(left.number, right.number));
-        StringBuilder out = new StringBuilder("<ol class=\"references\">");
-        for (CiteNote note : ordered) {
-            out.append("<li id=\"cite_note-").append(note.number).append("\">");
-            out.append("<span class=\"mw-cite-backlink\">");
-            for (int i = 0; i < note.uses.size(); i++) {
-                if (i > 0) {
-                    out.append(' ');
-                }
-                String id = i == 0
-                        ? "cite_ref-" + note.number
-                        : "cite_ref-" + note.number + "-" + (i + 1);
-                out.append("<a href=\"#").append(id).append("\">↑</a>");
-            }
-            out.append("</span> ");
-            String content = note.content.replaceAll("[\\r\\n]+", " ").trim();
-            out.append("<span class=\"reference-text\">").append(inline(content)).append("</span>");
-            out.append("</li>");
-        }
-        out.append("</ol>");
-        return out.toString();
-    }
-
-    private String citeError(String key, String arg) {
-        String text = message(key);
-        if (arg != null) {
-            text = text.replace("$1", arg);
-        }
-        return "<span class=\"error mw-cite-error\">" + HtmlUtils.htmlEscape(text) + "</span>";
-    }
-
     private static String nameAttribute(String attrs) {
         Matcher matcher = NAME_ATTRIBUTE.matcher(attrs);
         if (!matcher.find()) {
@@ -1545,32 +1310,9 @@ public class WikitextRenderer {
         return value == null ? null : value.trim();
     }
 
-    /** 查找 {@code </tag>}（大小写不敏感、允许空格），返回 {@code <} 的位置。 */
-    private static int indexOfTagClose(String text, String tag, int from) {
-        String needle = "</" + tag;
-        int index = from;
-        while ((index = indexOfIgnoreCase(text, needle, index)) >= 0) {
-            int cursor = index + needle.length();
-            while (cursor < text.length() && Character.isWhitespace(text.charAt(cursor))) {
-                cursor++;
-            }
-            if (cursor < text.length() && text.charAt(cursor) == '>') {
-                return index;
-            }
-            index += needle.length();
-        }
-        return -1;
-    }
-
-    /** 大小写不敏感查找（从 {@code fromIndex} 起），找不到返回 -1。 */
-    private static int indexOfIgnoreCase(String text, String token, int fromIndex) {
-        int max = text.length() - token.length();
-        for (int i = Math.max(0, fromIndex); i <= max; i++) {
-            if (text.regionMatches(true, i, token, 0, token.length())) {
-                return i;
-            }
-        }
-        return -1;
+    /** 去掉标题 / 目录文本里的控件占位符（微件 \uE004、插件 HTML 占位 \uE009，如 Cite 脚注）。 */
+    private static String stripDisplayTokens(String text) {
+        return text.replaceAll("[\uE004\uE009]\\d+[\uE004\uE009]", "").trim();
     }
 
     // ==================== 行内解析 ====================
@@ -1637,7 +1379,7 @@ public class WikitextRenderer {
             if (target.startsWith(":")) {
                 // 前导冒号：强制普通链接（如 [[:分类:X]] / [[:文件:X]]），显示名去掉冒号
                 String real = target.substring(1).trim();
-                href = "/wiki/" + HtmlSanitizer.escapeAttribute(real.replace(' ', '_'));
+                href = WikiUrls.pagePrefix() + HtmlSanitizer.escapeAttribute(real.replace(' ', '_'));
                 existenceTarget = real;
                 if (rawLabel == null) {
                     label = real;
@@ -1645,7 +1387,7 @@ public class WikitextRenderer {
             } else if (target.matches("(?i)^(https?|ftp)://.*")) {
                 href = HtmlSanitizer.escapeAttribute(target);
             } else {
-                href = "/wiki/" + HtmlSanitizer.escapeAttribute(target.replace(' ', '_'));
+                href = WikiUrls.pagePrefix() + HtmlSanitizer.escapeAttribute(target.replace(' ', '_'));
                 existenceTarget = target;
             }
             String cssClass = isMissingPage(existenceTarget) ? " class=\"new\"" : "";
@@ -1822,7 +1564,7 @@ public class WikitextRenderer {
                 } else if (link != null) {
                     href = link.matches("(?i)^(https?|ftp)://.*")
                             ? HtmlSanitizer.escapeAttribute(link)
-                            : "/wiki/" + HtmlSanitizer.escapeAttribute(link.replace(' ', '_'));
+                            : WikiUrls.pagePrefix() + HtmlSanitizer.escapeAttribute(link.replace(' ', '_'));
                 } else {
                     href = HtmlSanitizer.escapeAttribute(fileService.pageUrlOf(file));
                 }
@@ -1888,7 +1630,8 @@ public class WikitextRenderer {
                 continue;
             }
             matcher.appendReplacement(out, Matcher.quoteReplacement(
-                    "<a href=\"" + HtmlSanitizer.escapeAttribute(url) + "\" target=\"_blank\" rel=\"nofollow\">"
+                    "<a class=\"external\" href=\"" + HtmlSanitizer.escapeAttribute(url)
+                            + "\" target=\"_blank\" rel=\"nofollow\">"
                             + label + "</a>"));
         }
         matcher.appendTail(out);
@@ -2024,6 +1767,168 @@ public class WikitextRenderer {
             String body = inline(matcher.group(1).trim());
             trusted.add("<div class=\"poem\">" + body.replace("\n", "<br>\n") + "</div>");
             out.append('\uE004').append(trusted.size() - 1).append('\uE004');
+            last = matcher.end();
+        }
+        out.append(text, last, text.length());
+        return out.toString();
+    }
+
+    /**
+     * {@code <gallery>…</gallery>}（仿 MediaWiki 画廊）：每行一张图
+     * （{@code 文件:甲.jpg|说明} 或 {@code 甲.jpg|说明}），整段作为可信 HTML 块还原。
+     * <p>
+     * 支持的属性：{@code widths}（图片最大宽度，默认 120）/ {@code heights}（最大高度）/
+     * {@code perrow}（每行几张，网格排列）/ {@code mode}（traditional / nolines / packed）/
+     * {@code caption}（画廊说明）/ {@code class}（附加类名，已转义）。
+     * 文件不存在的行显示红链（与 {@code [[文件:…]]} 一致）；说明文字按行内 wikitext 解析。
+     */
+    private String extractGallery(String text, List<String> trusted) {
+        Matcher matcher = GALLERY.matcher(text);
+        StringBuilder out = new StringBuilder();
+        int last = 0;
+        while (matcher.find()) {
+            out.append(text, last, matcher.start());
+            trusted.add(renderGallery(matcher.group(1) == null ? "" : matcher.group(1),
+                    matcher.group(2) == null ? "" : matcher.group(2)));
+            out.append('\uE004').append(trusted.size() - 1).append('\uE004');
+            last = matcher.end();
+        }
+        out.append(text, last, text.length());
+        return out.toString();
+    }
+
+    /** 渲染一个画廊（见 {@link #extractGallery}）。 */
+    private String renderGallery(String attributeText, String body) {
+        Map<String, String> params = new LinkedHashMap<>();
+        Matcher attr = ATTR.matcher(attributeText);
+        while (attr.find()) {
+            String key = attr.group(1).toLowerCase(Locale.ROOT);
+            String value = attr.group(2) != null ? attr.group(2)
+                    : attr.group(3) != null ? attr.group(3)
+                    : attr.group(4) != null ? attr.group(4) : "";
+            params.put(key, value.trim());
+        }
+        int widths = option(params, "widths", 120, 20, 2000);
+        int heights = option(params, "heights", 0, 0, 2000);
+        int perrow = option(params, "perrow", 0, 0, 50);
+        String mode = params.getOrDefault("mode", "").trim().toLowerCase(Locale.ROOT);
+        String caption = params.getOrDefault("caption", "").trim();
+        String userClass = params.getOrDefault("class", "").trim();
+
+        StringBuilder html = new StringBuilder(2048);
+        if (!caption.isEmpty()) {
+            html.append("<div class=\"gallery-caption\">").append(inline(caption)).append("</div>");
+        }
+        StringBuilder classes = new StringBuilder("gallery");
+        if ("nolines".equals(mode)) {
+            classes.append(" mw-gallery-nolines");
+        } else if (mode.startsWith("packed")) {
+            classes.append(" mw-gallery-packed");
+        }
+        if (perrow > 0) {
+            classes.append(" gallery-perrow");
+        }
+        if (!userClass.isEmpty()) {
+            classes.append(' ').append(HtmlSanitizer.escapeAttribute(userClass));
+        }
+        html.append("<ul class=\"").append(classes).append('"');
+        if (perrow > 0) {
+            html.append(" style=\"grid-template-columns: repeat(").append(perrow)
+                    .append(", minmax(0, 1fr))\"");
+        }
+        html.append('>');
+        for (String rawLine : body.split("\\n")) {
+            String line = rawLine.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            int pipe = line.indexOf('|');
+            String filePart = (pipe < 0 ? line : line.substring(0, pipe)).trim();
+            String captionPart = pipe < 0 ? "" : line.substring(pipe + 1).trim();
+            html.append(renderGalleryItem(filePart, captionPart, widths, heights));
+        }
+        html.append("</ul>");
+        return html.toString();
+    }
+
+    /** 画廊里的一格：图片链到文件页（多媒体预览识别 {@code a.image} + {@code data-file}），说明在图片下方。 */
+    private String renderGalleryItem(String filePart, String captionPart, int widths, int heights) {
+        String fileName = galleryFileName(filePart);
+        if (fileName.isEmpty()) {
+            return "";
+        }
+        Optional<WikiFile> found = fileService == null ? Optional.empty() : fileService.findByName(fileName);
+        if (found.isEmpty()) {
+            String url = WikiUrls.pagePath(FileTitles.titleOf(fileName));
+            return "<li class=\"gallerybox gallery-missing\"><a class=\"new\" href=\""
+                    + HtmlSanitizer.escapeAttribute(url) + "\">"
+                    + HtmlSanitizer.escapeText("文件:" + fileName) + "</a></li>";
+        }
+        WikiFile file = found.get();
+        String alt = HtmlSanitizer.escapeText(captionPart.isEmpty() ? file.getName() : captionPart);
+        String image = "<img class=\"wiki-media-image\" src=\""
+                + HtmlSanitizer.escapeAttribute(fileService.urlOf(file)) + "\" alt=\"" + attributeText(alt) + "\""
+                + " style=\"max-width:" + widths + "px" + (heights > 0 ? ";max-height:" + heights + "px" : "") + "\""
+                + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
+                + (captionPart.isEmpty() ? ""
+                : " data-caption=\"" + attributeText(HtmlSanitizer.escapeText(captionPart)) + "\"")
+                + " loading=\"lazy\">";
+        StringBuilder html = new StringBuilder(256);
+        html.append("<li class=\"gallerybox\"><div class=\"thumb\"><div class=\"thumbinner\" style=\"width:")
+                .append(widths).append("px\"><a class=\"image\" href=\"")
+                .append(HtmlSanitizer.escapeAttribute(fileService.pageUrlOf(file))).append("\">")
+                .append(image).append("</a>");
+        if (!captionPart.isEmpty()) {
+            html.append("<div class=\"thumbcaption\">").append(inline(captionPart)).append("</div>");
+        }
+        html.append("</div></div></li>");
+        return html.toString();
+    }
+
+    /** 画廊行里的文件名：{@code 文件:甲.jpg} / {@code File:甲.jpg} / {@code 甲.jpg} → {@code 甲.jpg}。 */
+    private static String galleryFileName(String raw) {
+        String value = raw.trim();
+        int colon = value.indexOf(':');
+        if (colon > 0) {
+            String prefix = value.substring(0, colon).trim().toLowerCase(Locale.ROOT);
+            if (List.of("文件", "file", "image", "图像", "圖片").contains(prefix)) {
+                value = value.substring(colon + 1).trim();
+            }
+        }
+        return value.replace(' ', '_');
+    }
+
+    /** 数字属性（带范围限制；非法 / 缺省用 fallback）。 */
+    private static int option(Map<String, String> params, String key, int fallback, int min, int max) {
+        try {
+            int value = Integer.parseInt(params.getOrDefault(key, "").trim());
+            return Math.max(min, Math.min(max, value));
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
+    /**
+     * {@code <indicator name="…">…</indicator>}（仿 MediaWiki 页面状态指示器）：
+     * 从正文剥离，内容按行内 wikitext 解析后写页面属性 {@code indicator-<名字>}
+     * （同名只保留最后写入的那个），由 core 在标题旁渲染成小图标。
+     */
+    private String extractIndicators(String text) {
+        if (text.indexOf("<indicator") < 0 && text.indexOf("<INDICATOR") < 0) {
+            return text;
+        }
+        Matcher matcher = INDICATOR.matcher(text);
+        StringBuilder out = new StringBuilder();
+        int last = 0;
+        while (matcher.find()) {
+            out.append(text, last, matcher.start());
+            String attributes = matcher.group(1) == null ? "" : matcher.group(1);
+            String name = nameAttribute(attributes);
+            String body = matcher.group(2) == null ? "" : matcher.group(2).trim();
+            RenderContextState state = CURRENT.get();
+            if (state != null && name != null && !name.isEmpty() && !body.isEmpty()) {
+                state.setProperty("indicator-" + name, inline(body));
+            }
             last = matcher.end();
         }
         out.append(text, last, text.length());

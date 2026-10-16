@@ -24,6 +24,8 @@ public final class RenderContextState implements WikiRenderContext {
     private final Map<String, Object> store = new LinkedHashMap<>();
     private final Map<String, String> properties = new LinkedHashMap<>();
     private final List<Supplier<String>> deferred = new ArrayList<>();
+    /** 『整页 HTML 收尾阶段』再替换的占位（{@code deferHtml}，见脚注 / Cite 扩展）。 */
+    private final List<Supplier<String>> deferredHtml = new ArrayList<>();
     private final Map<String, ParserFunction> functions = new LinkedHashMap<>();
     private final Map<String, MagicWord> magicWords = new LinkedHashMap<>();
     private final Map<String, BehaviorSwitch> switches = new LinkedHashMap<>();
@@ -121,6 +123,12 @@ public final class RenderContextState implements WikiRenderContext {
         return "\uE008" + (deferred.size() - 1) + "\uE008";
     }
 
+    @Override
+    public String deferHtml(Supplier<String> htmlSupplier) {
+        deferredHtml.add(htmlSupplier);
+        return "\uE009" + (deferredHtml.size() - 1) + "\uE009";
+    }
+
     // ==================== core 内部使用 ====================
 
     /** 延迟占位数量（解析收尾时逐个替换）。 */
@@ -130,6 +138,15 @@ public final class RenderContextState implements WikiRenderContext {
 
     Supplier<String> deferredAt(int index) {
         return index >= 0 && index < deferred.size() ? deferred.get(index) : null;
+    }
+
+    /** {@code deferHtml} 占位数量 / 单个取用（见 {@code WikitextRenderer} 收尾阶段）。 */
+    int deferredHtmlCount() {
+        return deferredHtml.size();
+    }
+
+    Supplier<String> deferredHtmlAt(int index) {
+        return index >= 0 && index < deferredHtml.size() ? deferredHtml.get(index) : null;
     }
 
     /** 插件解析器函数（名字大写匹配；未注册返回 null）。 */

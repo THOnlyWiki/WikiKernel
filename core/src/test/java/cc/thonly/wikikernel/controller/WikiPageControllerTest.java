@@ -1,5 +1,7 @@
 package cc.thonly.wikikernel.controller;
 
+import cc.thonly.wikikernel.common.web.WikiUrls;
+
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiRevision;
 import cc.thonly.wikikernel.common.data.WikiUser;
@@ -8,7 +10,6 @@ import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.user.UserSession;
-import cc.thonly.wikikernel.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -6,7 +6,7 @@ import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
@@ -159,11 +159,8 @@ public class WikiErrorController implements ErrorController {
         if (query >= 0) {
             path = path.substring(0, query);
         }
-        if (!path.startsWith(WikiUrls.WIKI_PREFIX)) {
-            return null;
-        }
-        String rest = path.substring(WikiUrls.WIKI_PREFIX.length());
-        if (rest.isBlank()) {
+        String rest = WikiUrls.pagePathRest(path);
+        if (rest == null || rest.isBlank()) {
             return null;
         }
         try {

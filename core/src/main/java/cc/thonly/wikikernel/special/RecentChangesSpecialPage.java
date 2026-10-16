@@ -17,7 +17,7 @@ import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.time.WikiTime;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -75,7 +76,7 @@ public class RecentChangesSpecialPage implements SpecialPage {
     /** 混排进最近更改的日志类型（创建/编辑已由版本代表，不重复）。 */
     private static final Set<String> LOG_TYPES = Set.of(
             LogTypeConfig.REGISTER, LogTypeConfig.RIGHTS, LogTypeConfig.DELETE,
-            LogTypeConfig.MOVE, LogTypeConfig.PROTECT,
+            LogTypeConfig.RESTORE, LogTypeConfig.MOVE, LogTypeConfig.PROTECT,
             LogTypeConfig.UPLOAD, LogTypeConfig.FILEDELETE,
             LogTypeConfig.BLOCK, LogTypeConfig.UNBLOCK, LogTypeConfig.IMPORT);
 
@@ -492,9 +493,7 @@ public class RecentChangesSpecialPage implements SpecialPage {
             // 与折叠组共用「按天 + 类型」的键：单条日志之后变成组时原地更新，不会重复
             entry.put("key", "lg-" + userTime.toLocalDate() + "-" + view.getLog().getLogType());
             entry.put("hided", Boolean.TRUE.equals(view.getLog().getHided()));
-            entry.put("label", message("recentChanges.logLabel",
-                    message("recentChanges.logName." + view.getLog().getLogType(),
-                            message("log.typeName." + view.getLog().getLogType()))));
+            entry.put("label", message("recentChanges.logLabel", logLabelOf(view.getLog().getLogType())));
             entry.put("actionText", view.getActionText());
             entry.put("actionBefore", view.getActionBefore());
             entry.put("actionAfter", view.getActionAfter());
@@ -504,6 +503,14 @@ public class RecentChangesSpecialPage implements SpecialPage {
             entry.put("labelUrl", WikiUrls.pagePath("特殊:日志") + "?type=" + view.getLog().getLogType());
             entry.put("detailText", view.getDetailText());
             entry.put("actorName", view.getActorName());
+            // 日志行也显示操作者（仿 MediaWiki：日志名 → 用户（留言 | 贡献）→ 动作文本）
+            String actorName = view.getActorName();
+            entry.put("userName", actorName);
+            entry.put("userUrl", actorName == null ? null : userUrl(actorName));
+            entry.put("talkUrl", actorName == null ? null
+                    : WikiUrls.pagePath("用户讨论:" + actorName) + "?action=edit");
+            entry.put("contributionsUrl", actorName == null ? null
+                    : WikiUrls.pagePath(UserToolsSidebar.CONTRIBUTIONS_PAGE) + "?name=" + encode(actorName));
             entries.add(entry);
         }
         return entries;
@@ -627,5 +634,25 @@ public class RecentChangesSpecialPage implements SpecialPage {
 
     private String message(String key, Object... args) {
         return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+    }
+
+    /**
+     * 日志类型显示名：{@code recentChanges.logName.<类型>} → {@code log.typeName.<类型>} → 类型 id。
+     * <p>
+     * 不能用 {@code message(key, 兜底)}（Spring 的 3 参数重载）——那个重载会把「兜底」当成
+     * <b>格式参数</b>，键缺失时直接返回键名本身（曾把「（recentChanges.logName.restore）」原样印到页面上）。
+     */
+    private String logLabelOf(String logType) {
+        Locale locale = LocaleContextHolder.getLocale();
+        String labelKey = "recentChanges.logName." + logType;
+        String label = messageSource.getMessage(labelKey, null, null, locale);
+        if (label == null || label.equals(labelKey)) {
+            String typeKey = "log.typeName." + logType;
+            label = messageSource.getMessage(typeKey, null, null, locale);
+            if (label == null || label.equals(typeKey)) {
+                label = logType;
+            }
+        }
+        return label;
     }
 }

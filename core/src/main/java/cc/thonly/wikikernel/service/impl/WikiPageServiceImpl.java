@@ -110,6 +110,20 @@ public class WikiPageServiceImpl implements WikiPageService {
             return null;
         }
         LocalDateTime now = LocalDateTime.now();
+        // 标题下有「已删除」的页面：重新创建 = 把这一行复活（deleted=false）再追加新版本，
+        // 否则插入会撞 title 唯一键（MediaWiki 里被删页面可以重新创建）。
+        WikiPage revived = findDeletedByTitle(normalized).orElse(null);
+        if (revived != null) {
+            revived.setDeleted(false);
+            revived.setUpdateAt(now);
+            wikiPageMapper.updateById(revived);
+            WikiRevision revision = appendRevision(revived, user, content, comment, now, bot, minor, tags);
+            revived.setLatestRevisionId(revision.getId());
+            wikiPageMapper.updateById(revived);
+            logService.record(LogTypeConfig.CREATE, actorId(user), revived.getTitle(), null, null);
+            publish(revived, false);
+            return revived;
+        }
         WikiPage page = new WikiPage(null, normalized, null, false, false, false, now, now);
         wikiPageMapper.insert(page);
         WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags);
@@ -209,6 +223,65 @@ public class WikiPageServiceImpl implements WikiPageService {
         wikiPageMapper.updateById(page);
         logService.record(LogTypeConfig.DELETE, actorId(user), page.getTitle(), null, null);
         publish(page, true);
+        return page;
+    }
+
+    @Override
+    public Optional<WikiPage> getById(Long pageId) {
+        // 不过滤 deleted：REST/Action API 拿到版本号后要反查页面做权限判定，
+        // 是否已删除由调用方判断（对外一律 404 还是 410，由调用方决定）
+        return pageId == null ? Optional.empty() : Optional.ofNullable(wikiPageMapper.selectById(pageId));
+    }
+
+    @Override
+    public Optional<WikiPage> findDeletedByTitle(String title) {
+        String normalized = normalizeTitle(title);
+        if (normalized.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<WikiPage> page = selectDeletedExactTitle(normalized);
+        if (page.isPresent()) {
+            return page;
+        }
+        for (String alias : WikiNamespaces.aliasVariants(normalized)) {
+            Optional<WikiPage> legacy = selectDeletedExactTitle(alias);
+            if (legacy.isPresent()) {
+                return legacy;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** 按标题精确查一行**已删除**页面。 */
+    private Optional<WikiPage> selectDeletedExactTitle(String title) {
+        return Optional.ofNullable(wikiPageMapper.selectOne(Wrappers.<WikiPage>lambdaQuery()
+                .eq(WikiPage::getTitle, title)
+                .eq(WikiPage::getDeleted, true)
+                .last("LIMIT 1")));
+    }
+
+    @Override
+    public List<WikiPage> deletedPages(int limit) {
+        int capped = limit <= 0 ? 200 : Math.min(limit, 500);
+        return wikiPageMapper.selectList(Wrappers.<WikiPage>lambdaQuery()
+                .eq(WikiPage::getDeleted, true)
+                .orderByDesc(WikiPage::getUpdateAt)
+                .orderByDesc(WikiPage::getId)
+                .last("LIMIT " + capped));
+    }
+
+    @Override
+    @Transactional
+    public WikiPage restorePage(WikiUser user, String title) {
+        WikiPage page = findDeletedByTitle(title).orElse(null);
+        if (page == null) {
+            return null;
+        }
+        page.setDeleted(false);
+        page.setUpdateAt(LocalDateTime.now());
+        wikiPageMapper.updateById(page);
+        logService.record(LogTypeConfig.RESTORE, actorId(user), page.getTitle(), null, null);
+        publish(page, false);
         return page;
     }
 

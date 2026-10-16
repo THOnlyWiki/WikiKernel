@@ -268,26 +268,140 @@
         container.appendChild(copyButton);
     });
 
-    // ---------- 编辑（高亮 + 补全） ----------
-    var textarea = document.querySelector('#wiki-edit-form textarea[data-language]');
+    // ---------- 编辑（wikitext / 代码页：可选语法高亮 + 补全） ----------
+    // 注意：wikitext 页的 data-language 是 null，Thymeleaf 会整个省略该属性，所以按 name="content" 取
+    var textarea = document.querySelector('#wiki-edit-form textarea[name="content"]');
     if (textarea) {
-        var language = textarea.getAttribute('data-language');
-        var editor = CodeMirror.fromTextArea(textarea, commonOptions(modeOf(language), false));
-        editor.getWrapperElement().className += ' wiki-code-editor';
-        editor.setSize(null, Math.round(window.innerHeight * 0.6));
+        var language = (textarea.getAttribute('data-language') || '').trim();
+        var isWikiText = language === '';
+        var HIGHLIGHT_KEY = 'wikitext-highlight';
+        var editor = null;
+        var syncTimer = null;
 
-        editor.on('inputRead', function (cm, change) {
-            var typed = change.text[0] || '';
-            if (/[a-zA-Z-]/.test(typed)) {
-                cm.showHint({ hint: hint, completeSingle: false });
+        function highlightPreferred() {
+            try {
+                return window.localStorage.getItem(HIGHLIGHT_KEY) === '1';
+            } catch (e) {
+                return false;
             }
-        });
+        }
+
+        function rememberHighlight(on) {
+            try {
+                window.localStorage.setItem(HIGHLIGHT_KEY, on ? '1' : '0');
+            } catch (e) { /* 隐私模式忽略 */ }
+        }
+
+        /** 把 CodeMirror 的改动同步回 textarea（草稿保护 / 表单提交都读 textarea）。 */
+        function syncBack() {
+            if (!editor) {
+                return;
+            }
+            editor.save();
+            clearTimeout(syncTimer);
+            syncTimer = setTimeout(function () {
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 250);
+        }
+
+        function createEditor() {
+            if (editor) {
+                return editor;
+            }
+            editor = CodeMirror.fromTextArea(textarea,
+                commonOptions(isWikiText ? 'wikitext' : modeOf(language), false));
+            editor.getWrapperElement().className +=
+                ' wiki-code-editor' + (isWikiText ? ' wiki-wikitext-editor' : '');
+            editor.setSize(null, Math.round(window.innerHeight * 0.6));
+            if (!isWikiText) {
+                editor.on('inputRead', function (cm, change) {
+                    var typed = change.text[0] || '';
+                    if (/[a-zA-Z-]/.test(typed)) {
+                        cm.showHint({ hint: hint, completeSingle: false });
+                    }
+                });
+            }
+            editor.on('change', syncBack);
+            return editor;
+        }
+
+        function destroyEditor() {
+            if (!editor) {
+                return;
+            }
+            editor.toTextArea(); // 值回写 textarea，并移除 CodeMirror 的 DOM
+            editor = null;
+        }
+
+        // 代码页始终高亮（保持原有行为）；wikitext 按用户开关（默认关，MediaWiki 也是可选项）
+        if (!isWikiText || highlightPreferred()) {
+            createEditor();
+        }
+
+        /**
+         * 编辑器桥：工具栏（edit-toolbar.js）在 CodeMirror 激活时改走这里，
+         * 保证插入的内容立刻可见（否则只会写进隐藏的 textarea）。
+         */
+        window.wikiCodeEditor = {
+            active: function () {
+                return !!editor;
+            },
+            isWikiText: isWikiText,
+            focus: function () {
+                if (editor) {
+                    editor.focus();
+                } else {
+                    textarea.focus();
+                }
+            },
+            getValue: function () {
+                return editor ? editor.getValue() : textarea.value;
+            },
+            getSelectionRange: function () {
+                if (!editor) {
+                    return { start: textarea.selectionStart, end: textarea.selectionEnd };
+                }
+                return {
+                    start: editor.indexFromPos(editor.getCursor('from')),
+                    end: editor.indexFromPos(editor.getCursor('to'))
+                };
+            },
+            /** 以「字符偏移」替换（与 textarea.setRangeText 同一坐标系）；未激活返回 false。 */
+            replaceRange: function (text, start, end, selectionStart, selectionEnd) {
+                if (!editor) {
+                    return false;
+                }
+                editor.replaceRange(text, editor.posFromIndex(start), editor.posFromIndex(end));
+                if (typeof selectionStart === 'number') {
+                    editor.setSelection(editor.posFromIndex(selectionStart),
+                        editor.posFromIndex(typeof selectionEnd === 'number' ? selectionEnd : selectionStart));
+                }
+                editor.focus();
+                syncBack();
+                return true;
+            },
+            /** 开关语法高亮，返回切换后的状态（true = 已开启）。 */
+            toggle: function () {
+                if (editor) {
+                    destroyEditor();
+                    rememberHighlight(false);
+                    textarea.focus();
+                    return false;
+                }
+                createEditor();
+                rememberHighlight(true);
+                editor.focus();
+                return true;
+            }
+        };
 
         var form = document.getElementById('wiki-edit-form');
         if (form) {
             // fromTextArea 已处理提交同步，这里再保险一次
             form.addEventListener('submit', function () {
-                editor.save();
+                if (editor) {
+                    editor.save();
+                }
             });
         }
     }

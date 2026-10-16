@@ -467,6 +467,22 @@
             }
           }
         },
+        "urls": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "page-prefix": {
+              "type": "string",
+              "default": "wiki",
+              "description": "页面路径前缀：wiki（默认，/wiki/首页）/ 自定义（如 p → /p/首页）/ 留空或 /（裸根路径 /首页）"
+            },
+            "special-prefix": {
+              "type": "string",
+              "default": "特殊",
+              "description": "特殊页前缀（生成链接用）：特殊（默认，/wiki/特殊:搜索）或 Special 等；输入侧两种前缀都识别"
+            }
+          }
+        },
         "features": {
           "type": "object",
           "additionalProperties": true,
@@ -786,6 +802,33 @@
               "description": "初始账号列表（username / password-hash / email / groups），由向导写入。"
             }
           }
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "redirects": {
+          "type": "string",
+          "default": "",
+          "description": "路径重定向规则（每行「源路径=目标」；留空 = 不启用）。"
+        }
+      }
+    },
+    "upload": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "allowed-extensions": {
+          "type": "string",
+          "default": "png,jpg,jpeg,gif,webp,bmp,ico,webm,ogv,mp4,ogg,oga,opus,mp3,wav,m4a,flac,pdf,txt,md,zip,7z,swf",
+          "description": "允许上传的扩展名（逗号分隔；留空 = 不额外限制，仍禁止危险类型）。"
+        },
+        "blocked-extensions": {
+          "type": "string",
+          "default": "",
+          "description": "额外禁止的扩展名（逗号分隔），在内置危险类型黑名单之外再禁一批。"
         }
       }
     },

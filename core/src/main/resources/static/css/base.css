@@ -25,6 +25,31 @@
     --wiki-warning-border: #ab7f2a;
     --wiki-notice-bg: #eaecf0;
     --wiki-notice-border: #72777d;
+
+    /* ---- 通用组件变量（按钮 / 弹窗；皮肤覆盖这些即可，见 docs/SKIN.md） ----
+       规则：悬停一律「加深一档」，绝不用白色——白底上的按钮悬停变白会直接“消失”。 */
+    --wiki-focus-ring: var(--wiki-accent);
+    --wiki-button-bg: #f8f9fa;
+    --wiki-button-bg-hover: #eaecf0;
+    --wiki-button-bg-active: #dcdfe3;
+    --wiki-button-border: var(--wiki-border);
+    --wiki-button-border-hover: #72777d;
+    --wiki-button-text: #202122;
+    /* 主按钮（填色）：core 默认 MediaWiki 蓝；Timeless 皮肤映射成站点糖果色 */
+    --wiki-button-primary-bg: #36c;
+    --wiki-button-primary-bg-hover: #447ff5;
+    --wiki-button-primary-bg-active: #2a4b8d;
+    --wiki-button-primary-text: #ffffff;
+    /* 危险按钮（删除等破坏性操作）：红底白字 */
+    --wiki-button-danger-bg: #d73333;
+    --wiki-button-danger-bg-hover: #b32424;
+    --wiki-button-danger-bg-active: #8b1a1a;
+    --wiki-button-danger-text: #ffffff;
+    /* 安静按钮（图标 / 弹窗右上角 ×）：无底无框，悬停一层淡底 */
+    --wiki-quiet-text: #54595d;
+    --wiki-quiet-text-hover: #202122;
+    --wiki-quiet-bg-hover: #eaecf0;
+    --wiki-quiet-bg-active: #dcdfe3;
 }
 
 * {
@@ -612,6 +637,9 @@ table.mw-page-info td:first-child {
 }
 
 .rc-legend {
+    /* 浮在右侧的图例要压在后文（rc-group 悬停高亮等）之上，否则悬停底色会盖住图例 */
+    position: relative;
+    z-index: 1;
     float: right;
     max-width: 24em;
     margin: 0 0 0.8em 1em;
@@ -1002,25 +1030,111 @@ ul.page-info-list {
     background: var(--wiki-success-bg);
 }
 
-/* 按钮 */
-.wiki-button {
-    padding: 0.4em 0.85em;
-    border: 1px solid var(--wiki-border);
-    border-radius: 2px;
-    background: var(--wiki-subtle);
+/* ============================================================
+   通用组件：按钮（所有皮肤 / 插件共用；皮肤只需覆盖 :root 里的 --wiki-button-* 变量）
+     .wiki-button          次要按钮（灰底）
+     .wiki-button-primary  主按钮（填色；Timeless 皮肤里就是站点糖果粉）
+     .wiki-button-danger   危险按钮（红底白字，删除等破坏性操作）
+     .wiki-button-quiet    安静按钮（无底无框，图标 / 工具条用）
+   悬停一律“加深一档”；禁用 60% 透明度；焦点环用 --wiki-focus-ring。
+   ============================================================ */
+.wiki-button,
+.wiki-button-primary,
+.wiki-button-danger,
+.wiki-button-quiet {
     font-family: inherit;
     font-size: inherit;
     cursor: pointer;
 }
 
-.wiki-button:hover {
-    background: #ffffff;
-    border-color: #54595d;   /* OOUI / MediaWiki 按钮悬停时边框变深 */
+.wiki-button,
+.wiki-button-primary,
+.wiki-button-danger {
+    padding: 0.4em 0.85em;
+    border: 1px solid var(--wiki-button-border);
+    border-radius: 2px;
+    background: var(--wiki-button-bg);
+    color: var(--wiki-button-text);
 }
 
-.wiki-button[disabled] {
+.wiki-button:hover:not([disabled]) {
+    background: var(--wiki-button-bg-hover);
+    border-color: var(--wiki-button-border-hover);
+}
+
+.wiki-button:active:not([disabled]) {
+    background: var(--wiki-button-bg-active);
+}
+
+.wiki-button-primary {
+    border-color: var(--wiki-button-primary-bg);
+    background: var(--wiki-button-primary-bg);
+    color: var(--wiki-button-primary-text);
+}
+
+.wiki-button-primary:hover:not([disabled]) {
+    background: var(--wiki-button-primary-bg-hover);
+    border-color: var(--wiki-button-primary-bg-hover);
+    color: var(--wiki-button-primary-text);
+}
+
+.wiki-button-primary:active:not([disabled]) {
+    background: var(--wiki-button-primary-bg-active);
+    border-color: var(--wiki-button-primary-bg-active);
+    color: var(--wiki-button-primary-text);
+}
+
+.wiki-button-danger {
+    border-color: var(--wiki-button-danger-bg);
+    background: var(--wiki-button-danger-bg);
+    color: var(--wiki-button-danger-text);
+}
+
+.wiki-button-danger:hover:not([disabled]) {
+    background: var(--wiki-button-danger-bg-hover);
+    border-color: var(--wiki-button-danger-bg-hover);
+    color: var(--wiki-button-danger-text);
+}
+
+.wiki-button-danger:active:not([disabled]) {
+    background: var(--wiki-button-danger-bg-active);
+    border-color: var(--wiki-button-danger-bg-active);
+    color: var(--wiki-button-danger-text);
+}
+
+.wiki-button[disabled],
+.wiki-button-primary[disabled],
+.wiki-button-danger[disabled] {
     opacity: 0.6;
     cursor: progress;
+}
+
+.wiki-button:focus-visible,
+.wiki-button-primary:focus-visible,
+.wiki-button-danger:focus-visible,
+.wiki-button-quiet:focus-visible {
+    outline: 2px solid var(--wiki-focus-ring);
+    outline-offset: 1px;
+}
+
+.wiki-button-quiet {
+    padding: 0.15em 0.4em;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--wiki-quiet-text);
+    line-height: 1;
+}
+
+.wiki-button-quiet:hover:not([disabled]) {
+    background: var(--wiki-quiet-bg-hover);
+    color: var(--wiki-quiet-text-hover);
+}
+
+.wiki-button-quiet:active:not([disabled]) {
+    background: var(--wiki-quiet-bg-active);
+    color: var(--wiki-quiet-text-hover);
 }
 
 /* ---------- 编辑页（控件样式由 .wiki-form 提供） ---------- */
@@ -1122,49 +1236,18 @@ ul.page-info-list {
     color: #54595d;
 }
 
-/* ---------- 脚注（仿 MediaWiki Cite：<ref> / <references/>） ---------- */
-ol.references {
-    font-size: 0.9em;
-    margin: 0.5em 0 1em;
-}
+/* 脚注（Cite 扩展：<ref> / <references/>）的样式随插件走：/plugins/cite/cite.css */
 
-ol.references li {
-    margin-bottom: 0.1em;
-}
-
-sup.reference {
-    font-size: 0.75em;
-    line-height: 1;
-    font-weight: normal;
-    font-style: normal;
-}
-
-.mw-cite-backlink a {
-    text-decoration: none;
-}
-
-.mw-cite-backlink a:hover {
-    text-decoration: underline;
-}
-
-.error {
-    color: #d33;
-}
-
-.mw-cite-error {
-    font-weight: bold;
-}
-
-/* ---------- 编辑辅助工具栏（仿 MediaWiki WikiEditor 默认皮肤） ---------- */
+/* ---------- 编辑辅助工具栏（仿 MediaWiki WikiEditor 默认皮肤） ----------
+   扁平白色工具条：32px 方按钮、无外框、悬停浅灰底、分组用浅分隔线（所有皮肤共用） */
 .wiki-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    border: 1px solid #a2a9b1;
-    border-bottom: none;
-    background: #eaecf0;
-    background-image: linear-gradient(to bottom, #ffffff 0%, #eaecf0 100%);
-    padding: 2px 4px;
+    border: 0;
+    background: #ffffff;
+    padding: 4px 0;
+    gap: 2px;
     user-select: none;
 }
 
@@ -1174,9 +1257,9 @@ sup.reference {
 }
 
 .toolbar-group + .toolbar-group {
-    border-left: 1px solid #c8ccd1;
-    margin-left: 3px;
-    padding-left: 3px;
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
+    margin-left: 5px;
+    padding-left: 5px;
 }
 
 .toolbar-group-right {
@@ -1187,27 +1270,45 @@ sup.reference {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin: 1px;
+    width: 32px;
+    height: 32px;
+    margin: 0;
     padding: 0;
-    border: 1px solid transparent;
+    border: 0;
     border-radius: 2px;
+    /* 皮肤可能给 button 元素加了投影 / 按下缩放：工具条要保持扁平 */
+    box-shadow: none;
+    transform: none;
     background: transparent;
-    color: #202122;
-    font-size: 13px;
+    color: #54595d;
+    font-size: 14px;
     line-height: 1;
     cursor: pointer;
     text-decoration: none;
 }
 
 .toolbar-button:hover {
-    border-color: #a2a9b1;
-    background: #ffffff;
+    background: rgba(0, 0, 0, 0.07);
+    color: #202122;
 }
 
 .toolbar-button:active {
-    background: #c8ccd1;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+/* 文字按钮（「语法高亮」这类，宽度自适应） */
+.toolbar-button-text {
+    width: auto;
+    padding: 0 10px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* 开关型按钮处于开启状态（如语法高亮） */
+.toolbar-button.active {
+    background: rgba(243, 104, 104, 0.14);
+    color: var(--wiki-accent, #f36868);
+    font-weight: 500;
 }
 
 .toolbar-glyph {
@@ -1234,6 +1335,96 @@ sup.reference {
 .toolbar-glyph-numbers,
 .toolbar-glyph-heading {
     font-weight: 700;
+}
+
+/* 大号 / 小号 / 上标 / 下标（MediaWiki「高级」栏那四个） */
+.toolbar-glyph-big {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.toolbar-glyph-small {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.toolbar-glyph-sup,
+.toolbar-glyph-sub {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* ---------- CodeMirror：wikitext（MediaWiki 语法）高亮配色 ----------
+   token 名与 MediaWiki 的 CodeMirror 媒体模式一致；颜色用变量，皮肤（含暗色主题）可覆盖 */
+.cm-s-default .cm-header {
+    color: var(--cm-editor-header, #1e78bc);
+    font-weight: 700;
+}
+
+.cm-s-default .cm-strong {
+    color: var(--cm-editor-strong, #202122);
+    font-weight: 700;
+}
+
+.cm-s-default .cm-em {
+    color: var(--cm-editor-em, #202122);
+    font-style: italic;
+}
+
+.cm-s-default .cm-link {
+    color: var(--cm-editor-link, #006692);
+}
+
+.cm-s-default .cm-image {
+    color: var(--cm-editor-image, #8a6d3b);
+}
+
+.cm-s-default .cm-template {
+    color: var(--cm-editor-template, #bd5774);
+}
+
+.cm-s-default .cm-table {
+    color: var(--cm-editor-table, #1e78bc);
+    font-weight: 500;
+}
+
+.cm-s-default .cm-url {
+    color: var(--cm-editor-url, #008ac5);
+}
+
+.cm-s-default .cm-hr {
+    color: var(--cm-editor-meta, #72777d);
+}
+
+/* 高亮开关开启时，编辑器区域与工具条的衔接（与普通 textarea 相同的白底） */
+.wiki-wikitext-editor.CodeMirror {
+    background: #ffffff;
+}
+
+/* ---------- 拖入文件（multi-upload 插件）：拖拽高亮 + 悬浮提示 + 状态行 ---------- */
+.wiki-editor.wiki-editor-dragover {
+    outline: 2px dashed var(--wiki-accent, #f36868);
+    outline-offset: 4px;
+    background: rgba(243, 104, 104, 0.04);
+}
+
+.wiki-editor-drop-hint {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 1100;
+    transform: translate(-50%, -50%);
+    padding: 14px 22px;
+    border-radius: 4px;
+    background: rgba(32, 33, 34, 0.85);
+    color: #ffffff;
+    font-size: 0.9375em;
+    pointer-events: none;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.wiki-editor-drop-status {
+    margin: 8px 0 0;
 }
 
 .toolbar-caret {
@@ -1285,35 +1476,62 @@ sup.reference {
 
 .toolbar-menu {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 2px);
     left: 0;
     z-index: 60;
-    min-width: 110px;
-    padding: 2px 0;
-    border: 1px solid #a2a9b1;
+    min-width: 150px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 2px;
     background: #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
 }
 
 .toolbar-menu[hidden] {
     display: none;
 }
 
+/* 菜单标题行（仿 MediaWiki 的下拉：先一行小标题，再是选项） */
+.toolbar-menu-title {
+    padding: 5px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: #f8f9fa;
+    color: #72777d;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.toolbar-menu-body {
+    padding: 2px 0;
+}
+
 .toolbar-menu button {
     display: block;
     width: 100%;
-    padding: 4px 12px;
-    border: none;
+    padding: 6px 12px;
+    border: 0;
     background: none;
+    box-shadow: none;
+    transform: none;
     color: #202122;
     text-align: left;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 400;
     white-space: nowrap;
     cursor: pointer;
 }
 
 .toolbar-menu button:hover {
-    background: #eaecf0;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.toolbar-menu button.active,
+.toolbar-menu button:focus-visible {
+    background: rgba(243, 104, 104, 0.12);
+    color: var(--wiki-accent, #f36868);
+    outline: none;
 }
 
 .toolbar-group-right .toolbar-menu {
@@ -1321,22 +1539,28 @@ sup.reference {
     right: 0;
 }
 
+/* 特殊字符面板：标题行 + 换行平铺的方格 */
 .toolbar-menu-special {
+    width: 264px;
+}
+
+.toolbar-menu-special .toolbar-menu-body {
     display: flex;
     flex-wrap: wrap;
-    width: 248px;
     padding: 4px;
 }
 
 .toolbar-menu-special button {
-    width: 26px;
+    width: 28px;
     min-width: 0;
-    padding: 2px 0;
+    padding: 3px 0;
     text-align: center;
-    font-size: 14px;
+    font-size: 15px;
+    line-height: 1.2;
+    border-radius: 2px;
 }
 
-/* 快速上传图片弹窗 */
+/* 快速上传图片 / 插入表格 弹窗（所有皮肤共用；MW 的对话框观感） */
 .wiki-dialog-overlay {
     position: fixed;
     inset: 0;
@@ -1352,11 +1576,14 @@ sup.reference {
 }
 
 .wiki-dialog {
-    width: 400px;
+    width: 420px;
     max-width: calc(100vw - 32px);
-    border: 1px solid #a2a9b1;
+    max-height: calc(100vh - 64px);
+    overflow: auto;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
     background: #ffffff;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
     font-size: 0.875em;
 }
 
@@ -1364,49 +1591,158 @@ sup.reference {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px;
-    border-bottom: 1px solid #c8ccd1;
-    background: #eaecf0;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: #f8f9fa;
     font-weight: bold;
 }
 
-.wiki-dialog-close {
-    border: none;
-    background: none;
-    color: #54595d;
-    font-size: 16px;
+/* 弹窗右上角 ×：安静按钮。选择器带 .wiki-dialog 前缀提高特异性——
+   否则会被通用 button 悬停规则（或站点 / 皮肤的 button 主题）压成“悬停白块”。 */
+.wiki-dialog .wiki-dialog-close {
+    padding: 0.05em 0.35em;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--wiki-quiet-text);
+    font-size: 18px;
+    font-family: inherit;
     line-height: 1;
     cursor: pointer;
 }
 
+.wiki-dialog .wiki-dialog-close:hover {
+    background: var(--wiki-quiet-bg-hover);
+    color: var(--wiki-quiet-text-hover);
+}
+
+.wiki-dialog .wiki-dialog-close:active {
+    background: var(--wiki-quiet-bg-active);
+    color: var(--wiki-quiet-text-hover);
+}
+
+.wiki-dialog .wiki-dialog-close:focus-visible {
+    outline: 2px solid var(--wiki-focus-ring);
+    outline-offset: 1px;
+}
+
 .wiki-dialog-body {
-    padding: 10px;
+    padding: 12px;
+}
+
+.wiki-dialog-field {
+    margin: 0 0 10px;
 }
 
 .wiki-dialog-label {
     display: block;
-    margin: 6px 0 2px;
+    margin: 0 0 3px;
     color: #54595d;
 }
 
+/* 两列网格（插入表格对话框的行/列/表头） */
+.wiki-dialog-grid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 10px;
+    margin: 0 0 10px;
+}
+
+.wiki-dialog-grid .wiki-dialog-label {
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* 文件选择：原生 input 的「选择文件」按钮也做成普通按钮（::file-selector-button） */
 .wiki-dialog-body input[type="file"] {
     display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #54595d;
+    font: inherit;
+    cursor: pointer;
 }
 
-.wiki-dialog-body input[type="text"] {
+.wiki-dialog-body input[type="file"]::file-selector-button {
+    margin-right: 10px;
+    padding: 6px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 2px;
+    background: #f8f9fa;
+    color: #202122;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.wiki-dialog-body input[type="file"]::file-selector-button:hover {
+    background: #eaecf0;
+}
+
+.wiki-dialog-body input[type="text"],
+.wiki-dialog-body input[type="number"],
+.wiki-dialog-body input[type="date"],
+.wiki-dialog-body input[type="datetime-local"],
+.wiki-dialog-body input[type="time"],
+.wiki-dialog-body select {
     box-sizing: border-box;
     width: 100%;
+    padding: 5px 8px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+    font: inherit;
 }
 
+.wiki-dialog-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0 0 4px;
+    color: #54595d;
+    cursor: pointer;
+}
+
+.wiki-dialog-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+/* 选择文件后的预览（缩略图 + 文件名） */
 .wiki-dialog-preview {
-    margin-top: 8px;
+    margin: 0 0 10px;
+}
+
+.wiki-dialog-preview figure {
+    margin: 0;
 }
 
 .wiki-dialog-preview img {
     display: block;
     max-width: 100%;
-    max-height: 150px;
-    border: 1px solid #c8ccd1;
+    max-height: 180px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 2px;
+    background: #f8f9fa;
+}
+
+.wiki-dialog-preview figcaption {
+    margin-top: 4px;
+    color: #72777d;
+    font-size: 0.9em;
+    word-break: break-all;
+}
+
+.wiki-dialog-file-note {
+    padding: 6px 8px;
+    border: 1px dashed rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+    color: #54595d;
+    word-break: break-all;
 }
 
 .wiki-dialog-status {
@@ -1417,7 +1753,129 @@ sup.reference {
 .wiki-dialog-actions {
     display: flex;
     gap: 8px;
-    padding: 0 10px 10px;
+    padding: 0 12px 12px;
+}
+
+/* ---------- 特殊:版本：解析器标签 ---------- */
+/* 标签可点击（弹窗看用法与参数），但伪装成行内 <code> 文本：
+   按钮完全去掉外观（all: unset），不吃各皮肤的按钮主题（避免悬停变白之类的问题） */
+.version-parser-tags .version-tag-button {
+    all: unset;
+    cursor: pointer;
+}
+
+.version-parser-tags .version-tag-button:focus-visible {
+    outline: 2px solid #36c;
+    outline-offset: 2px;
+}
+
+.version-parser-tags .version-tag-button:hover code,
+.version-parser-tags .version-tag-button:focus-visible code {
+    text-decoration: underline;
+}
+
+/* ---------- <gallery>（仿 MediaWiki 画廊） ---------- */
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0.6em 0 1em;
+    padding: 0;
+    list-style: none;
+}
+
+.gallery li.gallerybox {
+    margin: 0;
+    padding: 4px;
+    border: 1px solid #c8ccd1;
+    background: #f8f9fa;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.gallery .thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gallery .thumbinner {
+    display: inline-block;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.gallery img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+}
+
+.gallery .thumbcaption {
+    margin-top: 4px;
+    font-size: 0.86em;
+    line-height: 1.4;
+    color: #202122;
+    text-align: center;
+    overflow-wrap: break-word;
+}
+
+/* mode=nolines / packed：去掉外框与底色（packed 更紧凑） */
+.gallery.mw-gallery-nolines li.gallerybox,
+.gallery.mw-gallery-packed li.gallerybox {
+    border: 0;
+    background: none;
+}
+
+.gallery.mw-gallery-packed {
+    gap: 2px;
+}
+
+.gallery.mw-gallery-packed li.gallerybox {
+    padding: 0;
+}
+
+/* perrow=N：按网格排成 N 列（列数由内联 style 的 grid-template-columns 指定） */
+.gallery.gallery-perrow {
+    display: grid;
+}
+
+.gallery.gallery-perrow li.gallerybox {
+    width: auto;
+}
+
+.gallery li.gallery-missing {
+    padding: 8px 10px;
+    line-height: 1.4;
+}
+
+.gallery-caption {
+    margin: 0.5em 0 0.2em;
+    font-size: 0.95em;
+}
+
+/* ---------- <indicator>（仿 MediaWiki 页面状态指示器：标题右上角的小图标） ---------- */
+/* 片段容器（kawaii 皮肤是 #siteNotice）在 flex 布局里可能被居中收缩成内容宽：
+   撑满整行后，指示器用 margin-left:auto 顶到右侧（块级 / flex 容器都成立） */
+#siteNotice {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.mw-indicators {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    margin: 0 0 2px auto;
+    font-size: 0.9em;
+}
+
+.mw-indicator img {
+    display: block;
+    max-height: 20px;
+    width: auto;
 }
 
 /* ---------- 安装向导（/init，独立页面） ---------- */
@@ -1957,11 +2415,14 @@ sup.reference {
     margin-top: 1em;
 }
 
+.edit-watch-option,
+.edit-minor-option,
 .edit-bot-option {
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
     font-size: 0.95em;
+    cursor: pointer;
 }
 
 /* 代码页面（.js / .css）顶部的缓存提示（仿 MediaWiki:Clearyourcache） */
@@ -2431,6 +2892,208 @@ form.inputbox button:hover {
     align-items: center;
     gap: 0.4em;
     font-weight: normal;
+}
+
+/* ==================== 表单控件基线（所有皮肤；零权重 :where 让已有规则照常覆盖） ====================
+   目的：站点里大量 <input> 连 class 都没有（各特殊页的过滤表单、插件表单、参数设置等），
+   以前只有部分页面靠自己的类名上色，其余用浏览器默认外观。这里给「文本类输入框 / 多行文本」
+   一条最低优先级的基线：白底 + 1px 灰边 + 2px 圆角 + 统一内边距，保持与 OOUI / 线上一致；
+   复选框、单选按钮统一跟随主题色（accent-color）。 */
+:where(input[type="text"], input[type="search"], input[type="password"], input[type="email"],
+input[type="url"], input[type="number"], input[type="tel"], input[type="date"], input[type="time"],
+input[type="month"], input[type="week"], input[type="datetime-local"], input:not([type]), textarea) {
+    box-sizing: border-box;
+    max-width: 100%;
+    padding: 0.35em 0.55em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background-color: #ffffff;
+    color: inherit;
+    font: inherit;
+    vertical-align: middle;
+}
+
+:where(input[type="text"], input[type="search"], input[type="password"], input[type="email"],
+input[type="url"], input[type="number"], input[type="tel"], input[type="date"], input[type="time"],
+input[type="month"], input[type="week"], input[type="datetime-local"], input:not([type]), textarea):focus {
+    border-color: var(--wiki-accent, #3366cc);
+    outline: 0;
+    box-shadow: inset 0 0 0 1px var(--wiki-accent, #3366cc);
+}
+
+:where(input[type="checkbox"], input[type="radio"]) {
+    accent-color: var(--wiki-accent, #3366cc);
+}
+
+/* 上传页的文件选择框：线上是「大虚线拖放区」（input#wpUploadFile: 2px #ccc 虚线、10px 圆角、
+   87px 46px 内边距、居中的 Material upload 图标 + 一行提示、悬停/按下浅灰），
+   这里给本地等价的 #file-input（多文件上传插件也认这个 id）同款外观 */
+form#file-upload-form input[type="file"] {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 87px 46px;
+    border: 2px dashed #cccccc;
+    border-radius: 10px;
+    appearance: none;
+    background-color: transparent;
+    color: #747474;
+    font: inherit;
+    text-align: center;
+    text-align-last: center;
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+
+form#file-upload-form input[type="file"]::before {
+    display: block;
+    height: 100px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000000' d='M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 96px 96px;
+    content: '';
+    opacity: 0.4;
+}
+
+form#file-upload-form input[type="file"]::after {
+    display: block;
+    margin-top: 6px;
+    content: attr(data-hint);
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+form#file-upload-form input[type="file"]::file-selector-button,
+form#file-upload-form input[type="file"]::-webkit-file-upload-button {
+    display: none;
+}
+
+form#file-upload-form input[type="file"]:hover {
+    background-color: #fafafa;
+}
+
+form#file-upload-form input[type="file"]:active {
+    background-color: #ebebeb;
+}
+
+/* ==================== 特殊:文件列表（对齐线上 MediaWiki TablePager 版式） ==================== */
+.listfiles-page .mw-specialpage-summary p {
+    margin: 0.5em 0 1em;
+}
+
+/* 表单：线上是 OOUI 的 framed panel（白底、灰边、2px 圆角、内边距 16px） */
+.listfiles-form .listfiles-fieldset {
+    margin: 0 0 1em;
+    padding: 16px;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    background: #ffffff;
+}
+
+.listfiles-form .listfiles-legend {
+    padding: 0 0.35em;
+    color: var(--wiki-text-muted, #54595d);
+    font-size: 0.875em;
+}
+
+.listfiles-form .listfiles-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6em 1.2em;
+}
+
+.listfiles-form .listfiles-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-size: 0.875em;
+}
+
+.listfiles-form .listfiles-user-input {
+    width: 14em;
+}
+
+.listfiles-form .listfiles-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.875em;
+}
+
+/* 分页导航：线上在表格上下各一条（首页 / 上一页 / 下一页 / 末页，当前不可用的置灰） */
+.listfiles-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.9em;
+    margin: 0.6em 0;
+    font-size: 0.875em;
+}
+
+.listfiles-nav-disabled {
+    color: var(--wiki-text-muted, #72777d);
+    opacity: 0.6;
+}
+
+/* 表格：mw-datatable 的通用观感（线上的表格类名就是 mw-datatable listfiles；
+   皮肤里已有 .mw-datatable 的透明化规则，皮肤下会走皮肤样式） */
+.listfiles {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+}
+
+.listfiles th,
+.listfiles td {
+    padding: 8px;
+    border: 1px solid #a2a9b1;
+    vertical-align: top;
+    text-align: left;
+}
+
+.listfiles thead th {
+    background: #eaecf0;
+    font-weight: bold;
+}
+
+.listfiles-sort a {
+    color: inherit;
+}
+
+/* 缩略图：线上固定 180px 宽（高度按比例） */
+.listfiles .listfiles-thumb {
+    width: 180px;
+    height: auto;
+    max-width: 100%;
+}
+
+.listfiles-col-thumb,
+.listfiles-col-count,
+.listfiles-col-size {
+    white-space: nowrap;
+}
+
+/* 缩略图列固定足够宽（180px 图 + 内边距），否则自适应表宽时会被挤小；
+   min-width 防止皮肤表格样式（不同 padding / border 模型）把它压窄 */
+.listfiles thead th:nth-child(3),
+.listfiles tbody td:nth-child(3) {
+    width: 200px;
+    min-width: 200px;
+}
+
+/* 「大小 / 版本」等窄列不换行（线上是单行） */
+.listfiles thead th:nth-child(4),
+.listfiles thead th:nth-child(7),
+.listfiles tbody td:nth-child(4),
+.listfiles tbody td:nth-child(7) {
+    white-space: nowrap;
+}
+
+.listfiles-total {
+    color: var(--wiki-text-muted, #72777d);
+    font-size: 0.875em;
 }
 
 /* 下拉框：仿 MediaWiki（OOUI）——白底、1px 灰边、2px 圆角、右侧灰色三角箭头 */
@@ -2911,6 +3574,43 @@ select:disabled {
     color: var(--wiki-text-muted);
 }
 
+/* 参数设置 →「密码」一栏的白色按钮（线上是 OOUI 的 framed 按钮：
+   白底 / #a2a9b1 边框 / 2px 圆角 / 悬停变纯白 / 空图标与指示器不占位） */
+.pref-layout .pref-password-button > .oo-ui-buttonElement-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 5px 12px;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #f8f9fa;
+    color: #202122;
+    font-size: 0.875em;
+    font-weight: 400;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pref-layout .pref-password-button > .oo-ui-buttonElement-button:hover,
+.pref-layout .pref-password-button > .oo-ui-buttonElement-button:focus {
+    background: #ffffff;
+    color: #202122;
+    text-decoration: none;
+}
+
+.pref-layout .pref-password-button > .oo-ui-buttonElement-button:active {
+    background: #eaecf0;
+}
+
+/* OOUI 的 noIcon / noIndicator 占位：空元素不显示 */
+.pref-layout .pref-password-button .oo-ui-iconElement-noIcon,
+.pref-layout .pref-password-button .oo-ui-indicatorElement-noIndicator {
+    display: none;
+}
+
 .pref-checkbox {
     display: flex;
     align-items: flex-start;
@@ -2933,6 +3633,51 @@ select:disabled {
 
 .pref-actions {
     margin-top: 1.2em;
+}
+
+/* 参数设置：面板固定高度 + 内容内部滚动 + 底部保存条（仿线上 OOUI .oo-ui-panelLayout-scrollable
+   + .mw-prefs-buttons）。这样切标签 / 滚动内容时保存条位置恒定，提示信息也始终显示在保存条上方。 */
+.pref-layout .pref-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    /* 面板高度跟随视口（手机上一屏以内），最多 985px（与线上一致） */
+    height: clamp(380px, calc(100vh - 220px), 985px);
+}
+
+.pref-layout .preferences-form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.pref-layout .pref-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 1.2em;
+}
+
+/* 插件分区面板（在表单外、同一个内容区里）：同样只滚动自身 */
+.pref-layout .pref-content > .pref-section {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.pref-layout .pref-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: 0;
+}
+
+/* 保存结果提示：固定在保存条上方（不参与滚动，也不会被保存条盖住） */
+.pref-layout #preferences-message {
+    flex: 0 0 auto;
+    margin: 0 0 0.6em;
 }
 
 /* 重定向提示：目标页顶部的「重定向自 X」 */
@@ -3253,6 +3998,53 @@ select:disabled {
     }
 }
 
+/* ---------- 特殊:文件列表（TablePager 风格，仿 MediaWiki Special:ListFiles） ---------- */
+.listfiles-fields {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.listfiles-form label {
+    margin-left: 0.5em;
+}
+
+.listfiles-form label:first-child {
+    margin-left: 0;
+}
+
+.listfiles-nav {
+    margin: 0.6em 0;
+    min-height: 1.2em;
+}
+
+.listfiles-nav a {
+    margin-right: 1.5em;
+}
+
+.listfiles-table .listfiles-thumb-cell {
+    text-align: center;
+}
+
+.listfiles-table .listfiles-thumb {
+    width: 60px;
+    height: auto;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.listfiles-table .listfiles-name {
+    min-width: 12em;
+    max-width: 24em;
+    overflow-wrap: anywhere;
+}
+
+.listfiles-total {
+    color: #54595d;
+    font-size: 0.875em;
+}
+
 
 /* ===== 用户页资料卡 / 头像上传（.wiki-profile / .wiki-avatar / .avatar-page）的样式
    已迁到插件 social-profile：/plugins/social-profile/social-profile-base.css ===== */
@@ -3420,7 +4212,10 @@ html {
     scroll-behavior: smooth;
 }
 
-.wiki-button {
+.wiki-button,
+.wiki-button-primary,
+.wiki-button-danger,
+.wiki-button-quiet {
     transition: background-color 0.15s ease, border-color 0.15s ease,
         color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -4049,11 +4844,11 @@ textarea:disabled {
     border-color: #c8ccd1;
 }
 
-/* 普通按钮：与 .wiki-button / MediaWiki 按钮一致（灰底、悬停变白） */
-button,
-input[type="submit"],
-input[type="button"],
-input[type="reset"] {
+/* 普通按钮：与 .wiki-button / MediaWiki 按钮一致（灰底）。悬停“加深一档”（#eaecf0），
+   不再变白——白底容器里的按钮悬停变白 = 直接消失（在老站上踩过这个坑）。
+   注意：这里全部用 :where() 把特异性压到 0：站点 CSS（如 Timeless 的糖果按钮主题）、
+   皮肤 CSS、组件类（.wiki-button-*）都能轻松覆盖；需要定制请用组件类，不要在这里加颜色。 */
+:where(button, input[type="submit"], input[type="button"], input[type="reset"]) {
     padding: 0.4em 1em;
     border: 1px solid #a2a9b1;
     border-radius: 2px;
@@ -4061,29 +4856,20 @@ input[type="reset"] {
     cursor: pointer;
 }
 
-button:hover:not(:disabled),
-input[type="submit"]:hover:not(:disabled),
-input[type="button"]:hover:not(:disabled),
-input[type="reset"]:hover:not(:disabled) {
-    background-color: #ffffff;
+:where(button, input[type="submit"], input[type="button"], input[type="reset"]):where(:hover:not(:disabled)) {
+    background-color: #eaecf0;
     border-color: #54595d;
 }
 
-button:disabled,
-input[type="submit"]:disabled,
-input[type="button"]:disabled,
-input[type="reset"]:disabled {
+:where(button, input[type="submit"], input[type="button"], input[type="reset"]):where(:disabled) {
     background-color: #eaecf0;
     color: #72777d;
     border-color: #c8ccd1;
     cursor: default;
 }
 
-button:focus-visible,
-input[type="submit"]:focus-visible,
-input[type="button"]:focus-visible,
-input[type="reset"]:focus-visible {
-    outline: 2px solid #36c;
+:where(button, input[type="submit"], input[type="button"], input[type="reset"]):where(:focus-visible) {
+    outline: 2px solid var(--wiki-focus-ring);
     outline-offset: 1px;
 }
 

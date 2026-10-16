@@ -1,0 +1,367 @@
+/*
+ * Echo 插件样式（站点级注入，皮肤无关）：
+ *  - 顶栏铃铛：.echo-entry / .echo-bell（kawaii-timeless 的 #personal-extra 下自动走皮肤的图标规则，
+ *    这里给图标 ::before 与红点；plain / vector / fallback 下按普通个人工具链接显示）；
+ *  - 下拉面板：.echo-flyout（固定在铃铛下方，右侧对齐；body.echo-flyout-open 时显示）；
+ *  - 特殊:通知：.echo-page / .echo-list / .echo-item 等。
+ */
+
+/* ==================== 铃铛（顶栏） ==================== */
+
+.echo-entry {
+    position: relative;
+    /* 条目是 <li>：容器可能是 <div>（plain 的 .plain-personal）而不是 <ul>，
+       这里兜底去掉浏览器默认的项目符号（::marker） */
+    list-style: none;
+}
+
+.echo-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* kawaii-timeless：#personal-extra 里的条目是「隐藏文字 + Material 图标 + 红点」 */
+#personal-extra .echo-entry .echo-bell span {
+    display: none;
+}
+
+#personal-extra .echo-entry .echo-bell::before {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    font-family: 'Material Icons';
+    font-size: 24px;
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    line-height: 1;
+    opacity: var(--opacity-icon-base, 0.51);
+}
+
+/* 提醒（提及 / 讨论页 / 被回退）：铃铛；一般通知（欢迎等）：托盘 —— 与线上 Echo 的两个徽标一致 */
+#personal-extra .echo-entry.echo-alerts .echo-bell::before {
+    content: 'notifications';
+}
+
+#personal-extra .echo-entry.echo-notices .echo-bell::before {
+    content: 'inbox';
+}
+
+/* 未读红点（有未读时才有 .echo-badge；kawaii 下与私信 / 好友 / 礼物一致） */
+.echo-entry .echo-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #fb7299;
+    font-size: 0;
+    color: transparent;
+}
+
+/* …但 kawaii 皮肤已有「未读数 span → 红点」的通用规则，重复定位时以本文件为准（同一样式） */
+#personal-extra .echo-entry .echo-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #fb7299;
+}
+
+/* 非 kawaii 皮肤（plain / vector / fallback）：数字徽标 */
+.plain-personal .echo-bell .echo-badge,
+#p-personal .echo-bell .echo-badge {
+    position: static;
+    width: auto;
+    height: auto;
+    border: 0;
+    border-radius: 999px;
+    background: #fb7299;
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    padding: 2px 6px;
+    margin-left: 4px;
+}
+
+/* ==================== 参数设置里的「通知」标签图标 ==================== */
+
+#mw-wrapper .pref-tab[data-target="echo"]::before {
+    content: 'notifications';
+}
+
+/* ==================== 下拉面板 ==================== */
+
+.echo-flyout {
+    position: fixed;
+    z-index: 400;
+    top: 60px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    max-height: 420px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+    color: #202122;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: left;
+    overflow: hidden;
+}
+
+.echo-flyout[hidden] {
+    display: none;
+}
+
+.echo-flyout-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.echo-flyout-head .echo-mark-all {
+    color: var(--color-primary, #fb7299);
+    font-size: 12px;
+    font-weight: 400;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.echo-flyout-head .echo-mark-all:hover {
+    text-decoration: underline;
+}
+
+.echo-flyout-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+.echo-flyout-empty {
+    padding: 24px 12px;
+    color: #72777d;
+    text-align: center;
+}
+
+.echo-flyout-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    text-decoration: none;
+    color: inherit;
+}
+
+.echo-flyout-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.echo-flyout-item .echo-icon {
+    flex: 0 0 20px;
+    font-size: 16px;
+    line-height: 1.3;
+    color: #72777d;
+    text-align: center;
+}
+
+.echo-flyout-item.echo-unread .echo-icon {
+    color: var(--color-primary, #fb7299);
+}
+
+.echo-flyout-item .echo-item-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.echo-flyout-item .echo-item-time {
+    color: #72777d;
+    font-size: 12px;
+}
+
+.echo-flyout-item.echo-unread .echo-item-desc {
+    font-weight: 600;
+}
+
+.echo-flyout-foot {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.echo-flyout-foot a {
+    color: var(--color-link, #008ac5);
+}
+
+.echo-summary {
+    color: #72777d;
+}
+
+/* ==================== 特殊:通知 ==================== */
+
+.echo-page-desc {
+    margin: 0 0 12px;
+    color: #54595d;
+}
+
+.echo-page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 12px;
+}
+
+.echo-page-head .echo-unread {
+    color: #72777d;
+}
+
+.echo-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 12px;
+}
+
+.echo-filters a {
+    padding: 4px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 999px;
+    background: #f8f9fa;
+    color: #54595d;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.echo-filters a:hover {
+    background: #eaecf0;
+}
+
+.echo-filters a.selected {
+    border-color: transparent;
+    background: var(--color-primary, #fb7299);
+    color: #fff;
+}
+
+.echo-empty {
+    padding: 32px 12px;
+    color: #72777d;
+    text-align: center;
+}
+
+.echo-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.echo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.echo-item.echo-unread {
+    background: rgba(251, 114, 153, 0.06);
+}
+
+.echo-item .echo-icon {
+    flex: 0 0 24px;
+    color: #72777d;
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.echo-item.echo-unread .echo-icon {
+    color: var(--color-primary, #fb7299);
+}
+
+.echo-item .echo-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.echo-item .echo-desc a {
+    color: var(--color-link, #008ac5);
+}
+
+.echo-item .echo-meta {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    color: #72777d;
+    font-size: 12px;
+}
+
+.echo-item .echo-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+}
+
+.echo-item .echo-actions a,
+.echo-item .echo-actions button {
+    border: 0;
+    background: none;
+    /* 站点「糖果按钮」主题用裸 button 选择器加粉色底 / 投影 / 缩放；这里的小按钮保持文字链接样式 */
+    box-shadow: none;
+    transform: none;
+    margin-right: 0;
+    padding: 0;
+    color: var(--color-link, #008ac5);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.echo-item .echo-actions a:hover,
+.echo-item .echo-actions button:hover {
+    text-decoration: underline;
+}
+
+.echo-pager {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 0;
+}
+
+.echo-pager-info {
+    color: #72777d;
+    font-size: 13px;
+}
+
+/* 窄屏：面板占满屏宽 */
+@media (max-width: 600px) {
+    .echo-flyout {
+        position: fixed;
+        top: 56px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+        max-width: none;
+    }
+}

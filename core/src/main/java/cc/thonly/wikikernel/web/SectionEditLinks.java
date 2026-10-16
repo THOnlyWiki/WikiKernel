@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.web;
 
 import cc.thonly.wikikernel.wikitext.WikiSections;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;

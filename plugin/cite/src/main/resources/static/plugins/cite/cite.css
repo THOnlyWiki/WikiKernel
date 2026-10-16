@@ -1,0 +1,31 @@
+/*
+ * Cite 扩展（<ref> / <references/>）样式 —— 从 core 的 base.css 迁出（界面控件随插件走）。
+ */
+
+ol.references {
+    font-size: 0.9em;
+    margin: 0.5em 0 1em;
+}
+
+ol.references li {
+    margin-bottom: 0.1em;
+}
+
+sup.reference {
+    font-size: 0.75em;
+    line-height: 1;
+    font-weight: normal;
+    font-style: normal;
+}
+
+.mw-cite-backlink a {
+    text-decoration: none;
+}
+
+.mw-cite-backlink a:hover {
+    text-decoration: underline;
+}
+
+.mw-cite-error {
+    font-weight: bold;
+}

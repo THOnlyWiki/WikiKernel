@@ -204,11 +204,14 @@ class PreferencesTest {
         WikiUser user = userService.createUser("改密用户" + System.nanoTime(), "secret123", "");
         MockHttpSession session = sessionOf(user);
 
-        // 页面含「修改密码」表单
+        // 页面里「密码」一栏是指向 特殊:修改密码 的白色按钮（线上是 OOUI framed 按钮），不再内嵌改密表单
         mockMvc.perform(get("/wiki/{title}", "特殊:参数设置").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("preferences-password-form")))
-                .andExpect(content().string(containsString("修改密码")));
+                .andExpect(content().string(containsString("pref-password-button")))
+                .andExpect(content().string(containsString("更改密码")))
+                .andExpect(content().string(containsString("oo-ui-buttonElement-button")))
+                .andExpect(content().string(containsString("change-password")))
+                .andExpect(content().string(not(containsString("preferences-password-form"))));
 
         // 旧密码错误
         mockMvc.perform(post("/api/user/preferences/password").session(session)
@@ -233,6 +236,69 @@ class PreferencesTest {
                 .andExpect(jsonPath("$.code").value(200));
         assertNotNull(userService.login(user.getUsername(), "newpass123"));
         assertNull(userService.login(user.getUsername(), "secret123"));
+    }
+
+    /** 改密接口的防爆破：连续错旧密码达到阈值后被限流（用独立新账号，避免影响其它测试）。 */
+    @Test
+    void changePasswordIsRateLimited() throws Exception {
+        WikiUser user = userService.createUser("改密限流用户" + System.nanoTime(), "secret123", "");
+        MockHttpSession session = sessionOf(user);
+
+        boolean limited = false;
+        for (int i = 1; i <= 8; i++) {
+            MvcResult result = mockMvc.perform(post("/api/user/preferences/password").session(session)
+                            .param("oldPassword", "wrong-" + i)
+                            .param("newPassword", "newpass123")
+                            .param("confirmPassword", "newpass123"))
+                    .andReturn();
+            String body = result.getResponse().getContentAsString();
+            if (body.contains("请求过于频繁") || body.contains("429") || result.getResponse().getStatus() == 429) {
+                limited = true;
+                break;
+            }
+        }
+        assertTrue(limited, "连续多次错误旧密码后应触发限流");
+        // 正确密码也应被挡（锁定期间）；文案走 rateLimit.login
+        mockMvc.perform(post("/api/user/preferences/password").session(session)
+                        .param("oldPassword", "secret123")
+                        .param("newPassword", "newpass456")
+                        .param("confirmPassword", "newpass456"))
+                .andExpect(jsonPath("$.code").value(429));
+    }
+    @Test
+    void changePasswordSpecialPageRendersForLoggedInUsersOnly() throws Exception {
+        WikiUser user = userService.createUser("改密页用户" + System.nanoTime(), "secret123", "");
+        MockHttpSession session = sessionOf(user);
+
+        mockMvc.perform(get("/wiki/{title}", "特殊:修改密码").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("change-password-form")))
+                .andExpect(content().string(containsString(user.getUsername())))
+                .andExpect(content().string(containsString("当前密码")))
+                .andExpect(content().string(containsString("返回参数设置")));
+
+        // 英文别名
+        mockMvc.perform(get("/wiki/{title}", "Special:ChangePassword").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("change-password-form")));
+
+        // 带 returnto：返回链接指回参数设置（Thymeleaf 可能原样输出中文，也可能 URL 编码，两种都接受）
+        String encoded = URLEncoder.encode("特殊:参数设置", StandardCharsets.UTF_8).replace("+", "%20");
+        mockMvc.perform(get("/wiki/{title}", "特殊:修改密码").param("returnto", "特殊:参数设置").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(anyOf(containsString(encoded), containsString("特殊:参数设置"))));
+
+        // 外站 returnto 被忽略，回落到默认参数设置
+        mockMvc.perform(get("/wiki/{title}", "特殊:修改密码").param("returnto", "https://evil.example/x").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("evil.example"))))
+                .andExpect(content().string(anyOf(containsString(encoded), containsString("特殊:参数设置"))));
+
+        // 匿名：只看见登录提示，没有表单
+        mockMvc.perform(get("/wiki/{title}", "特殊:修改密码"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("请先登录")))
+                .andExpect(content().string(not(containsString("change-password-form"))));
     }
 
     /** 国家 / 地区下拉框：249 个 ISO 3166-1 地区 + 「未指定」，插在语言之后、时区之前。 */

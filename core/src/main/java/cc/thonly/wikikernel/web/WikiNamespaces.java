@@ -43,6 +43,8 @@ public final class WikiNamespaces {
             new Namespace("module-talk", "namespace.moduleTalk", List.of("模块讨论:", "Module talk:")),
             new Namespace("graph", "namespace.graph", List.of("图表:", "Graph:")),
             new Namespace("graph-talk", "namespace.graphTalk", List.of("图表讨论:", "Graph talk:")),
+            new Namespace("component", "namespace.component", List.of("组件:", "Component:")),
+            new Namespace("component-talk", "namespace.componentTalk", List.of("组件讨论:", "Component talk:")),
             new Namespace("gadget", "namespace.gadget", List.of("小部件:", "Gadget:")),
             new Namespace("gadget-talk", "namespace.gadgetTalk", List.of("小部件讨论:", "Gadget talk:")),
             new Namespace("wikikernel", "namespace.wikikernel", List.of("WikiKernel:")),

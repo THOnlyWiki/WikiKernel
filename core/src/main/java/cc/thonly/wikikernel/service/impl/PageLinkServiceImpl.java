@@ -9,7 +9,7 @@ import cc.thonly.wikikernel.service.PageLinkService;
 import cc.thonly.wikikernel.service.PageTemplateService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.FileTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import cc.thonly.wikikernel.wikitext.WikitextProperties;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;

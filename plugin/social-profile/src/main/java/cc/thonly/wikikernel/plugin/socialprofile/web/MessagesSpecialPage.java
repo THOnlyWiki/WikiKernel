@@ -9,7 +9,6 @@ import cc.thonly.wikikernel.common.service.WikiText;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiMessage;
-import cc.thonly.wikikernel.plugin.socialprofile.hook.MessagesToolbarHook;
 import cc.thonly.wikikernel.plugin.socialprofile.service.MessageCenter;
 
 import java.time.LocalDateTime;
@@ -40,22 +39,17 @@ public class MessagesSpecialPage implements SpecialPage {
     /** 列表摘要长度（与迁移前一致）。 */
     private static final int EXCERPT_LIMIT = 80;
 
-    /** core 的 {@code PersonalToolbarAdvice} 收集个人工具条目的模型键（见 README「插件扩展点」）。 */
-    private static final String TOOLBAR_MODEL_KEY = "pluginPersonalTools";
-
     private final MessageCenter messages;
     private final UserStore users;
     private final WikiText wikiText;
     private final SocialProfileSupport support;
-    private final MessagesToolbarHook toolbar;
 
     public MessagesSpecialPage(MessageCenter messages, UserStore users, WikiText wikiText,
-                               SocialProfileSupport support, MessagesToolbarHook toolbar) {
+                               SocialProfileSupport support) {
         this.messages = messages;
         this.users = users;
         this.wikiText = wikiText;
         this.support = support;
-        this.toolbar = toolbar;
     }
 
     @Override
@@ -140,7 +134,7 @@ public class MessagesSpecialPage implements SpecialPage {
             model.put("messageTime", formatTime(message.getCreateAt()));
             model.put("messageHtml", render(message.getContent()));
             // view() 可能刚把这条标成已读：刷新顶部「私信 (N)」徽标
-            refreshToolbarBadge(model, messages.unreadCount(user.getId()));
+            refreshUnreadCount(model, messages.unreadCount(user.getId()));
         }
 
         boolean sentBox = "sent".equalsIgnoreCase(Strings.trimToEmpty(request.parameters().get(PARAM_BOX)));
@@ -197,42 +191,15 @@ public class MessagesSpecialPage implements SpecialPage {
             rows.add(row);
         }
         model.put("threadRows", rows);
-        // 打开会话刚把未读清零：刷新顶部「私信 (N)」徽标
-        refreshToolbarBadge(model, messages.unreadCount(user.getId()));
+        // 打开会话刚把未读清零：更新页面上的未读数
+        refreshUnreadCount(model, messages.unreadCount(user.getId()));
     }
 
     /**
-     * 用最新未读数刷新顶部「私信 (N)」条目：core 的个人工具条目在进入控制器**之前**就已收集，
-     * 而本页会立刻把未读标为已读，所以这里替换掉同一次响应里的那一条（其它插件的条目原样保留）。
+     * 打开会话 / 阅读单条会立刻把未读标为已读：把最新未读数放进模型（页面上显示未读提示）。
      */
-    private void refreshToolbarBadge(Map<String, Object> model, long unread) {
+    private void refreshUnreadCount(Map<String, Object> model, long unread) {
         model.put("unreadCount", unread);
-        if (toolbar == null) {
-            return;
-        }
-        String fresh = toolbar.itemHtml(unread);
-        Object existing = model.get(TOOLBAR_MODEL_KEY);
-        List<String> items = new ArrayList<>();
-        boolean replaced = false;
-        if (existing instanceof List<?> list) {
-            for (Object item : list) {
-                if (!(item instanceof String html)) {
-                    continue;
-                }
-                if (html.contains(MessagesToolbarHook.ITEM_CLASS)) {
-                    if (!replaced) {
-                        items.add(fresh);
-                        replaced = true;
-                    }
-                    continue;
-                }
-                items.add(html);
-            }
-        }
-        if (!replaced) {
-            items.add(fresh);
-        }
-        model.put(TOOLBAR_MODEL_KEY, items);
     }
 
     /** 「会话」标签：按对方聚合的往来列表（最后一条 / 条数 / 未读），按最后一条消息倒序。 */

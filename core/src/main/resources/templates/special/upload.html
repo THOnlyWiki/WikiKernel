@@ -23,7 +23,8 @@
     <form id="file-upload-form" class="wiki-form" th:if="${canUpload}" method="post">
         <div class="form-field">
             <label for="file-input" th:text="#{files.choose}">选择文件</label>
-            <input type="file" id="file-input" name="file" required/>
+            <input type="file" id="file-input" name="file" required
+                   th:attr="data-hint=#{files.dropHint}"/>
             <img id="file-preview" alt="" hidden/>
         </div>
         <div class="form-field">

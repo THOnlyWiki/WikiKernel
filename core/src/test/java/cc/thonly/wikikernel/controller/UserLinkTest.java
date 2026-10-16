@@ -1,5 +1,7 @@
 package cc.thonly.wikikernel.controller;
 
+import cc.thonly.wikikernel.common.web.WikiUrls;
+
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.BlockService;

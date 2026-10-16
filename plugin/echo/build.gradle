@@ -1,0 +1,36 @@
+plugins {
+    id 'java'
+}
+
+description = 'MediaWiki Echo 风格通知扩展：用户讨论页被编辑 / 编辑被回退 / @提及 等通知，顶栏铃铛 + 未读红点 + 下拉面板，特殊:通知 列表页，参数设置里的通知偏好分区。'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework:spring-tx'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.slf4j:slf4j-api'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'org.springframework:spring-tx'
+    testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.slf4j:slf4j-api'
+    testImplementation 'com.h2database:h2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties（pluginName / pluginVersion / pluginDescription），
+// 构建时展开到 META-INF/wiki-plugin.properties；给人看的本地化名称与描述在 i18n/messages*.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}

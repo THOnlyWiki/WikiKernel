@@ -167,6 +167,10 @@ public class UserPreferencesApiController {
         return AjaxResult.success(message("preferences.reset.done"), null);
     }
 
+    /** 防爆破：改密接口里校验旧密码也算一次「密码尝试」，与登录共用限流规则（默认 5 次/5 分钟 → 锁 15 分钟）。 */
+    @org.springframework.beans.factory.annotation.Autowired
+    private cc.thonly.wikikernel.service.RateLimiterService rateLimiterService;
+
     /** 修改密码（仿 MediaWiki 参数设置里的「修改密码」）：校验旧密码 → 更新。 */
     @PostMapping("/password")
     public AjaxResult<Void> changePassword(@RequestParam(value = "oldPassword", required = false) String oldPassword,
@@ -177,6 +181,13 @@ public class UserPreferencesApiController {
         if (current == null) {
             return AjaxResult.error(AjaxCode.UNAUTHORIZED, message("permissions.loginRequired"));
         }
+        String limitKey = "password-change|" + current.getUsername().toLowerCase(java.util.Locale.ROOT);
+        cc.thonly.wikikernel.service.RateLimiterService.Decision decision =
+                rateLimiterService.check(cc.thonly.wikikernel.service.RateLimiterService.LOGIN, limitKey);
+        if (decision.limited()) {
+            return AjaxResult.error(AjaxCode.TOO_MANY_REQUESTS,
+                    message("rateLimit.login", decision.retryAfterSeconds()));
+        }
         String oldValue = Strings.trimToEmpty(oldPassword);
         String newValue = Strings.trimToEmpty(newPassword);
         if (newValue.length() < 6 || newValue.length() > 128) {
@@ -186,8 +197,10 @@ public class UserPreferencesApiController {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.password.mismatch"));
         }
         if (userService.login(current.getUsername(), oldValue) == null) {
+            rateLimiterService.failure(cc.thonly.wikikernel.service.RateLimiterService.LOGIN, limitKey);
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.password.oldWrong"));
         }
+        rateLimiterService.success(cc.thonly.wikikernel.service.RateLimiterService.LOGIN, limitKey);
         if (!userService.updatePassword(current.getId(), newValue)) {
             return AjaxResult.error(AjaxCode.NOT_FOUND, message("permissions.userNotFound"));
         }

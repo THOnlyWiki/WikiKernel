@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.categorytree.service;
 
 import cc.thonly.wikikernel.common.service.CategoryCounts;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.service.CategoryMember;
 import cc.thonly.wikikernel.common.service.CategoryStore;
 import cc.thonly.wikikernel.common.service.WikiPageStore;
@@ -52,10 +53,13 @@ public final class CategoryTreeRenderer {
     public static final String CATEGORY_PREFIX = "分类:";
 
     /** 特殊页路径（分类树的上级分类链接指向它）。 */
-    public static final String SPECIAL_PAGE_PATH = "/wiki/特殊:分类树";
+
 
     /** 页面路径前缀。 */
-    private static final String WIKI_PATH = "/wiki/";
+    /** 页面路径前缀（按站点 URL 配置动态生成） */
+    public static String specialPagePath() {
+        return WikiUrls.pagePrefix() + "特殊:分类树";
+    }
 
     /** 内容语言方向：WikiKernel 的内容语言是中文 / 英文，都是 ltr。 */
     private static final String DIR = "ltr";
@@ -224,7 +228,7 @@ public final class CategoryTreeRenderer {
                 continue;
             }
             String label = unprefixed(parent);
-            String url = SPECIAL_PAGE_PATH + "?" + specialPageQuery(parent, options);
+            String url = specialPagePath() + "?" + specialPageQuery(parent, options);
             links.add(CategoryTreeHtml.element("span", attributesOf("class", "CategoryTreeItem"),
                     "<a class=\"CategoryTreeLabel\" href=\"" + CategoryTreeHtml.escapeAttribute(url)
                             + "\">" + CategoryTreeHtml.escapeText(label) + "</a>"));
@@ -441,7 +445,7 @@ public final class CategoryTreeRenderer {
 
     /** 页面链接（红链用 core 的 {@code new} 类样式）。 */
     private String pageLink(String title, String label) {
-        String href = WIKI_PATH + title.replace(' ', '_');
+        String href = WikiUrls.pagePrefix() + title.replace(' ', '_');
         return "<a" + (categoryExists(title) ? "" : " class=\"new\"") + " href=\""
                 + CategoryTreeHtml.escapeAttribute(href) + "\">"
                 + CategoryTreeHtml.escapeText(label) + "</a>";

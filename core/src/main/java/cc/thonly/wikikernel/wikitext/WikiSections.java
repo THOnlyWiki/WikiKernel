@@ -26,7 +26,7 @@ public final class WikiSections {
     private static final Pattern HEADING = Pattern.compile("^\\s*(={1,6})\\s*(.+?)\\s*\\1\\s*$");
 
     /** 整块处理的标签（其内部的标题行不算段）。 */
-    private static final String[] BLOCK_TAGS = {"pre", "nowiki", "syntaxhighlight", "source", "poem", "markdown", "inputbox", "math", "chem", "timeline", "graph"};
+    private static final String[] BLOCK_TAGS = {"pre", "nowiki", "syntaxhighlight", "source", "poem", "markdown", "gallery", "inputbox", "math", "chem", "timeline", "graph"};
 
     private WikiSections() {
     }

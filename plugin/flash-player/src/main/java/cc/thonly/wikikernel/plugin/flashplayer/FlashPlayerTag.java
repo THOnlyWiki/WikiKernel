@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.flashplayer;
 
 import cc.thonly.wikikernel.common.extension.ParserTag;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.extension.ParserTagCall;
 import cc.thonly.wikikernel.common.service.FileStore;
 import cc.thonly.wikikernel.common.service.SiteConfig;
@@ -228,7 +229,8 @@ public class FlashPlayerTag implements ParserTag {
 
     /** 红链到不存在的文件页。 */
     private static String redFileLink(String name) {
-        return "<a class=\"new\" href=\"/wiki/" + escapeAttribute("文件:" + name.replace(' ', '_'))
+        return "<a class=\"new\" href=\"" + WikiUrls.pagePrefix()
+                + escapeAttribute("文件:" + name.replace(' ', '_'))
                 + "\">" + HtmlUtils.htmlEscape(name) + "</a>";
     }
 

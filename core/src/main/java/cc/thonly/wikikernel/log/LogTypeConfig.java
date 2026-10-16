@@ -22,6 +22,8 @@ public class LogTypeConfig {
     public static final String UPLOAD = "upload";
     public static final String FILEDELETE = "filedelete";
     public static final String FILERESTORE = "filerestore";
+    /** 页面恢复（{@code 特殊:已删除页面} 里把已删除页面恢复出来）。 */
+    public static final String RESTORE = "restore";
     /**
      * 用户合并（{@code usermerge} 日志类型由插件 {@code user-merge} 注册；此常量仅供 core 内引用
      * 字符串 id，不再注册 {@code LogType} Bean）。

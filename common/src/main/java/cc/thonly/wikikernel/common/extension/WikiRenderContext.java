@@ -37,4 +37,19 @@ public interface WikiRenderContext {
      * @return 私用区字符组成的占位串
      */
     String deferWikitext(Supplier<String> resolver);
+
+    /**
+     * 注册「**整页 HTML 收尾阶段**再替换」的占位（如脚注：要先收齐全页的 {@code <ref>} 才能编号、
+     * 生成 {@code <references/>} 列表）：返回值放进输出文本里，core 在渲染收尾时用
+     * {@code htmlSupplier} 的结果**原样**替换（可信 HTML，不过白名单）。
+     * <p>
+     * 与 {@link #deferWikitext} 的分工：wikitext 占位在「模板展开后」就求值、结果继续按 wikitext
+     * 渲染（目录 / 链接都在其中）；HTML 占位要等正文全部渲染完成（目录、脚注标记都已就位）。
+     * <p>
+     * 默认实现直接返回空串（测试替身等不支持延迟 HTML 的上下文）；core 的真实上下文见
+     * {@code RenderContextState}。
+     */
+    default String deferHtml(Supplier<String> htmlSupplier) {
+        return "";
+    }
 }

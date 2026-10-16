@@ -17,7 +17,7 @@ import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.SpecialWikiPageService;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;

@@ -312,11 +312,20 @@
             return;
         }
 
+        /** 把插入内容写进编辑器：语法高亮（CodeMirror）激活时走 core 的编辑器桥。 */
         function insertLinks( links ) {
             if ( links.length === 0 ) {
                 return;
             }
             var inserted = links.join( '\n' );
+            var bridge = window.wikiCodeEditor && window.wikiCodeEditor.active()
+                ? window.wikiCodeEditor : null;
+            if ( bridge ) {
+                var range = bridge.getSelectionRange();
+                bridge.replaceRange( inserted, range.start, range.end,
+                    range.start + inserted.length, range.start + inserted.length );
+                return;
+            }
             var start = textarea.selectionStart;
             var end = textarea.selectionEnd;
             textarea.setRangeText( inserted, start, end, 'end' );
@@ -324,6 +333,145 @@
             textarea.setSelectionRange( start + inserted.length, start + inserted.length );
             textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
         }
+
+        /** 批量上传（按钮多选与拖入文件共用）：按顺序上传，成功即插入链接。 */
+        function uploadFiles( files, showStatus, done ) {
+            var links = [];
+            var pending = 0;
+            var failed = 0;
+            var total = files.length;
+
+            function next( position ) {
+                if ( position >= total ) {
+                    insertLinks( links );
+                    done( links, pending, failed );
+                    return;
+                }
+                showStatus( formatMessage( msg( 'multiUploading', '正在上传（{0}/{1}）…' ),
+                    position + 1, total ), false );
+                upload( files[ position ], '', '' ).then( function ( result ) {
+                    if ( result && result.code === 200 && result.data && result.data.pending ) {
+                        pending++;
+                    } else if ( result && result.code === 200 && result.data && result.data.name ) {
+                        links.push( '[[文件:' + result.data.name + '|thumb]]' );
+                    } else {
+                        failed++;
+                    }
+                    next( position + 1 );
+                } ).catch( function () {
+                    failed++;
+                    next( position + 1 );
+                } );
+            }
+
+            next( 0 );
+        }
+
+        // ---------- 拖入文件：直接把图片拖到编辑器上即上传并插入 ----------
+
+        ( function setupDropZone() {
+            var zone = form;
+            var hint = null;
+            var depth = 0;
+
+            function showHint( show ) {
+                if ( show ) {
+                    if ( !hint ) {
+                        hint = document.createElement( 'div' );
+                        hint.className = 'wiki-editor-drop-hint';
+                        hint.textContent = msg( 'toolbarFileDrop', '松开即可上传并插入到正文' );
+                        document.body.appendChild( hint );
+                    }
+                    hint.hidden = false;
+                } else if ( hint ) {
+                    hint.hidden = true;
+                }
+            }
+
+            function hasFiles( event ) {
+                var transfer = event.dataTransfer;
+                if ( !transfer ) {
+                    return false;
+                }
+                if ( transfer.types && Array.prototype.indexOf.call( transfer.types, 'Files' ) >= 0 ) {
+                    return true;
+                }
+                return !!( transfer.files && transfer.files.length );
+            }
+
+            zone.addEventListener( 'dragenter', function ( event ) {
+                if ( !hasFiles( event ) ) {
+                    return;
+                }
+                event.preventDefault();
+                depth++;
+                zone.classList.add( 'wiki-editor-dragover' );
+                showHint( true );
+            } );
+            zone.addEventListener( 'dragover', function ( event ) {
+                if ( !hasFiles( event ) ) {
+                    return;
+                }
+                event.preventDefault();
+                if ( event.dataTransfer ) {
+                    event.dataTransfer.dropEffect = 'copy';
+                }
+            } );
+            zone.addEventListener( 'dragleave', function ( event ) {
+                if ( !hasFiles( event ) ) {
+                    return;
+                }
+                depth = Math.max( 0, depth - 1 );
+                if ( depth === 0 ) {
+                    zone.classList.remove( 'wiki-editor-dragover' );
+                    showHint( false );
+                }
+            } );
+            zone.addEventListener( 'drop', function ( event ) {
+                if ( !hasFiles( event ) ) {
+                    return;
+                }
+                event.preventDefault();
+                depth = 0;
+                zone.classList.remove( 'wiki-editor-dragover' );
+                showHint( false );
+                var files = Array.prototype.slice.call( event.dataTransfer.files || [] );
+                if ( files.length === 0 ) {
+                    return;
+                }
+                var names = files.map( function ( file ) { return file.name; } ).join( '、' );
+                dropStatus( formatMessage( msg( 'multiUploading', '正在上传（{0}/{1}）…' ), 1, files.length ), false );
+                uploadFiles( files, dropStatus, function ( links, pending, failed ) {
+                    if ( pending > 0 && failed === 0 ) {
+                        dropStatus( formatMessage( msg( 'multiSummaryPending',
+                            '上传完成：成功 {0} 个，待审核 {1} 个，失败 {2} 个。' ),
+                            links.length, pending, failed ), false );
+                    } else if ( failed === 0 ) {
+                        dropStatus( formatMessage( msg( 'multiSummary', '上传完成：成功 {0} 个，失败 {1} 个。' ),
+                            links.length, failed ), false );
+                        setTimeout( function () { dropStatus( '', false ); }, 2000 );
+                    } else {
+                        dropStatus( formatMessage( msg( 'multiSummary', '上传完成：成功 {0} 个，失败 {1} 个。' ),
+                            links.length, failed ), true );
+                    }
+                } );
+                console.log( '[multi-upload] 拖入文件：' + names );
+            } );
+
+            function dropStatus( text, error ) {
+                var status = document.getElementById( 'multi-upload-drop-status' );
+                if ( !status ) {
+                    status = document.createElement( 'div' );
+                    status.id = 'multi-upload-drop-status';
+                    status.className = 'form-message wiki-editor-drop-status';
+                    status.hidden = true;
+                    form.appendChild( status );
+                }
+                status.textContent = text;
+                status.className = 'form-message wiki-editor-drop-status' + ( error ? '' : ' success' );
+                status.hidden = !text;
+            }
+        } )();
 
         function enhance( dialog ) {
             if ( dialog.getAttribute( 'data-multi-upload-ready' ) === '1' ) {
@@ -377,49 +525,22 @@
                 button.textContent = msg( 'uploading', '正在上传…' );
                 showStatus( '', false );
 
-                var links = [];
-                var pending = 0;
-                var failed = 0;
-                var total = files.length;
-
-                function next( position ) {
-                    if ( position >= total ) {
-                        button.disabled = false;
-                        button.textContent = original;
-                        insertLinks( links );
-                        if ( failed === 0 && pending === 0 ) {
-                            var dialogContainer = dialog;
-                            dialogContainer.hidden = true;
-                            return;
-                        }
-                        if ( pending > 0 && failed === 0 ) {
-                            showStatus( formatMessage( msg( 'multiSummaryPending',
-                                '上传完成：成功 {0} 个，待审核 {1} 个，失败 {2} 个。' ),
-                                links.length, pending, failed ), false );
-                            return;
-                        }
-                        showStatus( formatMessage( msg( 'multiSummary', '上传完成：成功 {0} 个，失败 {1} 个。' ),
-                            links.length, failed ), true );
+                uploadFiles( files, showStatus, function ( links, pending, failed ) {
+                    button.disabled = false;
+                    button.textContent = original;
+                    if ( failed === 0 && pending === 0 ) {
+                        dialog.hidden = true;
                         return;
                     }
-                    showStatus( formatMessage( msg( 'multiUploading', '正在上传（{0}/{1}）…' ),
-                        position + 1, total ), false );
-                    upload( files[ position ], '', '' ).then( function ( result ) {
-                        if ( result && result.code === 200 && result.data && result.data.pending ) {
-                            pending++;
-                        } else if ( result && result.code === 200 && result.data && result.data.name ) {
-                            links.push( '[[文件:' + result.data.name + '|thumb]]' );
-                        } else {
-                            failed++;
-                        }
-                        next( position + 1 );
-                    } ).catch( function () {
-                        failed++;
-                        next( position + 1 );
-                    } );
-                }
-
-                next( 0 );
+                    if ( pending > 0 && failed === 0 ) {
+                        showStatus( formatMessage( msg( 'multiSummaryPending',
+                            '上传完成：成功 {0} 个，待审核 {1} 个，失败 {2} 个。' ),
+                            links.length, pending, failed ), false );
+                        return;
+                    }
+                    showStatus( formatMessage( msg( 'multiSummary', '上传完成：成功 {0} 个，失败 {1} 个。' ),
+                        links.length, failed ), true );
+                } );
             }, true );
         }
 

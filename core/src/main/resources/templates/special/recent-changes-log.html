@@ -7,6 +7,11 @@
     <span class="rc-log-label"><a th:href="${entry.labelUrl}" th:text="${entry.label}">（用户注册日志）</a></span>
     <b class="rc-bot" th:if="${entry.bot}" th:title="#{recentChanges.legendBot}"
        th:text="#{recentChanges.botMark}">机</b>
+    <!--/* 操作者（仿 MediaWiki 日志行：日志名 → 用户（留言 | 贡献）→ 动作文本） */-->
+    <span class="rc-user" th:if="${entry.userName != null}"><a th:href="${entry.userUrl}"
+            th:text="${entry.userName}">用户</a>（<a th:href="${entry.talkUrl}"
+            th:text="#{recentChanges.talk}">留言</a> | <a th:href="${entry.contributionsUrl}"
+            th:text="#{recentChanges.contribs}">贡献</a>）</span>
     <span class="rc-log-text">
         <span th:text="${entry.actionBefore}">注册了账号「</span><a
             th:if="${entry.targetUrl != null}" th:href="${entry.targetUrl}"

@@ -4,7 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.mail.EmailConfirmationService;
 import cc.thonly.wikikernel.user.UserSession;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;

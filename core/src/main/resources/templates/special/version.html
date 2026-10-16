@@ -35,8 +35,7 @@
         </tr>
     </table>
 
-    <h2 th:text="#{version.skins}">已安装的皮肤</h2>
-    <table class="wikitable">
+    <h2 th:text="#{version.skins}">已安装的皮肤</h2>    <table class="wikitable">
         <tr>
             <th th:text="#{version.table.skin}">皮肤</th>
             <th th:text="#{version.table.version}">版本</th>
@@ -109,6 +108,93 @@
             <td th:text="${item.description}">说明</td>
         </tr>
     </table>
+
+    <!-- ==================== 解析器标签（页面末尾，一张表；点击标签弹窗看用法与参数） ==================== -->
+    <h2 th:text="#{version.parserTags}">解析器标签</h2>
+    <p th:text="#{version.parserTags.intro}">下面列出本站可用的解析器标签（点击标签名查看用法与参数）。</p>
+    <table class="wikitable version-parser-tags">
+        <thead>
+        <tr>
+            <th th:text="#{version.parserTags.table.tag}">标签</th>
+            <th th:text="#{version.parserTags.sourceLabel}">来源</th>
+            <th th:text="#{version.parserTags.table.usage}">说明</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="tag : ${parserTags}">
+            <td>
+                <button type="button" class="version-tag-button"
+                        th:attr="data-tag=${tag.name},data-source=${tag.source},
+                                 data-usage=${tag.usage},data-description=${tag.description},
+                                 data-aliases=${#strings.listJoin(tag.aliases, '、')}">
+                    <code th:text="'&lt;' + ${tag.name} + '&gt;'">&lt;ref&gt;</code>
+                </button>
+            </td>
+            <td th:text="${tag.source}">WikiKernel 核心</td>
+            <td th:text="${#strings.isEmpty(tag.usage) ? tag.description : tag.usage}">说明</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 标签用法弹窗（复用 core 的 .wiki-dialog 样式） -->
+    <div class="wiki-dialog-overlay" id="version-tag-dialog" hidden>
+        <div class="wiki-dialog" role="dialog" aria-modal="true" th:attr="aria-label=#{version.parserTags}">
+            <div class="wiki-dialog-title">
+                <span th:text="#{version.parserTags}">解析器标签</span>
+                <button type="button" class="wiki-dialog-close" th:attr="aria-label=#{common.close}">×</button>
+            </div>
+            <div class="wiki-dialog-body">
+                <p><code id="version-tag-name">&lt;ref&gt;</code></p>
+                <p><strong th:text="#{version.parserTags.sourceLabel}">来源</strong>：<span id="version-tag-source"></span></p>
+                <p id="version-tag-aliases-line" hidden><strong th:text="#{version.parserTags.aliases}">别名</strong>：<span id="version-tag-aliases"></span></p>
+                <p><strong th:text="#{version.parserTags.usage}">用法</strong>：<span id="version-tag-usage"></span></p>
+                <p><strong th:text="#{version.parserTags.params}">参数</strong>：<span id="version-tag-description"></span></p>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var dialog = document.getElementById('version-tag-dialog');
+            if (!dialog) {
+                return;
+            }
+            function fill(id, value, code) {
+                var element = document.getElementById(id);
+                if (!element) {
+                    return;
+                }
+                element.textContent = value || '—';
+            }
+            document.addEventListener('click', function (event) {
+                var button = event.target.closest ? event.target.closest('.version-tag-button') : null;
+                if (button) {
+                    fill('version-tag-name', '<' + button.getAttribute('data-tag') + '>');
+                    fill('version-tag-source', button.getAttribute('data-source'));
+                    fill('version-tag-usage', button.getAttribute('data-usage'));
+                    fill('version-tag-description', button.getAttribute('data-description'));
+                    var aliases = button.getAttribute('data-aliases') || '';
+                    fill('version-tag-aliases', aliases);
+                    var line = document.getElementById('version-tag-aliases-line');
+                    if (line) {
+                        line.hidden = aliases === '';
+                    }
+                    dialog.hidden = false;
+                    return;
+                }
+                if (dialog.hidden) {
+                    return;
+                }
+                if (event.target === dialog || (event.target.closest && event.target.closest('.wiki-dialog-close'))) {
+                    dialog.hidden = true;
+                }
+            });
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    dialog.hidden = true;
+                }
+            });
+        })();
+    </script>
 </section>
 </body>
 </html>

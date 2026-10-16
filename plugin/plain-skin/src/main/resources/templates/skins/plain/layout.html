@@ -17,7 +17,7 @@
             <a th:href="@{/wiki/特殊:特殊页面}" th:text="#{special.specialPages}">特殊页面</a>
         </nav>
         <form class="plain-search" th:action="@{/wiki/特殊:搜索}" method="get">
-            <input type="search" name="q" th:placeholder="#{common.searchPlaceholder}" th:value="${q}"
+            <input type="search" name="q" th:placeholder="#{common.searchPlaceholder(${siteName} ?: 'WikiKernel')}" th:value="${q}"
                    th:attr="aria-label=#{common.search}"/>
             <button type="submit" class="wiki-button" th:text="#{common.search}">搜索</button>
         </form>

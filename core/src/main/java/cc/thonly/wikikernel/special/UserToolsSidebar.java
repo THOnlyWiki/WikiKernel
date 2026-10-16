@@ -5,7 +5,7 @@ import cc.thonly.wikikernel.service.InterwikiService;
 import cc.thonly.wikikernel.sidebar.SidebarItem;
 import cc.thonly.wikikernel.sidebar.SidebarSection;
 import cc.thonly.wikikernel.sidebar.SidebarService;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -258,8 +258,8 @@ public class UserToolsSidebar {
         int query = href.indexOf('?');
         String base = query < 0 ? href : href.substring(0, query);
         String queryText = query < 0 ? "" : href.substring(query + 1);
-        if (base.startsWith("/wiki/")) {
-            String target = base.substring("/wiki/".length());
+        if (base.startsWith(WikiUrls.pagePrefix())) {
+            String target = base.substring(WikiUrls.pagePrefix().length());
             try {
                 target = URLDecoder.decode(target, StandardCharsets.UTF_8);
             } catch (IllegalArgumentException ignored) {
@@ -276,7 +276,35 @@ public class UserToolsSidebar {
     }
 
     private SidebarItem item(String labelKey, String href) {
-        return new SidebarItem(message(labelKey), href, false);
+        // 条目 id 用 MediaWiki 风格的 t-*（皮肤 CSS 的 #t-whatlinkshere / #t-print … 图标规则按它匹配；
+        // 与站点侧栏条目用原始文字做 n-* id 是同一套约定）。没有对应工具的键用消息键兜底。
+        String toolId = toolId(labelKey);
+        return new SidebarItem(message(labelKey), href, false, toolId != null ? toolId : labelKey);
+    }
+
+    /**
+     * 工具条目的 MediaWiki 风格 id（与 MediaWiki：Timeless 皮肤的 {@code #t-*} 图标规则一一对应）；
+     * 没有对应工具的返回 {@code null}。
+     */
+    private static String toolId(String labelKey) {
+        return switch (labelKey) {
+            case "tools.whatLinksHere" -> "t-whatlinkshere";
+            case "tools.relatedChanges" -> "t-recentchangeslinked";
+            case "tools.printable" -> "t-print";
+            case "tools.permanentLink" -> "t-permalink";
+            case "tools.pageInfo" -> "t-info";
+            case "tools.upload" -> "t-upload";
+            case "tools.specialPages" -> "t-specialpages";
+            case "tools.userContributions" -> "t-contributions";
+            case "tools.logs" -> "t-log";
+            case "tools.viewGroups", "tools.changeGroups" -> "t-userrights";
+            case "tools.checkUser" -> "t-checkuser";
+            case "tools.userMerge" -> "t-usermerge";
+            case "tools.block" -> "t-blockip";
+            case "tools.sendMessage" -> "t-emailuser";
+            case "tools.pageLog" -> "t-pagelog";
+            default -> null;
+        };
     }
 
     private static String page(String title) {

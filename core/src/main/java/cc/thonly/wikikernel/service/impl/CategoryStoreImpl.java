@@ -48,6 +48,7 @@ public class CategoryStoreImpl implements CategoryStore {
             Map.entry("module", 828),
             Map.entry("module-talk", 829),
             Map.entry("graph", 484),
+            Map.entry("component", 486),
             Map.entry("graph-talk", 485));
 
     private final WikiPageCategoryMapper categoryMapper;

@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.service.WikiImportService;
 import cc.thonly.wikikernel.transfer.ExportData;
 import cc.thonly.wikikernel.transfer.ImportResult;
 import cc.thonly.wikikernel.transfer.MediaWikiXmlExporter;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.transfer.TransferFormat;
 import cc.thonly.wikikernel.transfer.WikiKernelJsonExporter;
 import cc.thonly.wikikernel.transfer.WikiKernelXmlExporter;
@@ -197,7 +198,7 @@ public class TransferApiController {
         boolean defaultPort = ("http".equals(request.getScheme()) && port == 80)
                 || ("https".equals(request.getScheme()) && port == 443);
         return request.getScheme() + "://" + request.getServerName()
-                + (defaultPort ? "" : ":" + port) + "/wiki/";
+                + (defaultPort ? "" : ":" + port) + WikiUrls.pagePrefix();
     }
 
     private String message(String key, Object... args) {

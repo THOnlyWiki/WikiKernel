@@ -1,7 +1,6 @@
 package cc.thonly.wikikernel.plugin.socialprofile.hook;
 
 import cc.thonly.wikikernel.common.extension.PageDisplayContext;
-import cc.thonly.wikikernel.common.extension.PersonalToolbarContext;
 import cc.thonly.wikikernel.common.extension.PreferenceContext;
 import cc.thonly.wikikernel.common.extension.UserProfileContext;
 import cc.thonly.wikikernel.common.extension.Viewer;
@@ -35,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *     <li>{@link UserProfileLinksHook}：资料卡的**头像**（链接行不再有社交入口：私信 / 留言板（N）/
  *     好友（N）/ 礼物（N）/ 积分排行 / 编辑资料 / 上传头像全部只在下方插件面板里出现一次）；</li>
  *     <li>{@link SocialProfilePageDisplayHook}：用户页正文下方的资料字段 + 留言板面板（最近 N 条 + 输入框）；</li>
- *     <li>{@link MessagesToolbarHook}：顶栏「私信（N）/ 好友（N）/ 礼物（N）」；</li>
  *     <li>{@link SocialPreferencesSection}：参数设置里的「社交资料」分区。</li>
  * </ul>
  */
@@ -297,43 +295,6 @@ class SocialProfileHooksTest {
     }
     // ==================== 顶栏 ====================
 
-    @Test
-    void toolbarShowsMessagesFriendsAndGiftBadges() {
-        cc.thonly.wikikernel.plugin.socialprofile.service.MessageCenter messages =
-                new cc.thonly.wikikernel.plugin.socialprofile.service.MessageCenter(
-                        new SocialProfileFakes.FakeMessages(), users);
-        messages.send(2, "甲", "未读私信");
-        friends.requestFriend(2, 1);
-        giftService.send(2, 1, "star", "");
-
-        MessagesToolbarHook toolbar = new MessagesToolbarHook(messages, support, friends, giftService);
-        String html = toolbar.itemsHtml(toolbarContext(SocialProfileFakes.viewer(1, "甲")));
-        assertTrue(html.contains(MessagesToolbarHook.ITEM_CLASS), html);
-        assertTrue(html.contains(MessagesToolbarHook.FRIENDS_ITEM_CLASS), html);
-        assertTrue(html.contains(MessagesToolbarHook.GIFTS_ITEM_CLASS), html);
-        assertTrue(html.contains(" (1)"), "三个徽标都带计数：" + html);
-        assertTrue(html.contains("/wiki/特殊:私信"), html);
-        assertTrue(html.contains("/wiki/特殊:好友"), html);
-        assertTrue(html.contains("/wiki/特殊:礼物"), html);
-
-        // 看过礼物页之后礼物徽标消失（私信 / 好友计数不受影响）
-        assertTrue(toolbar.giftsItemHtml(giftService.unseenCount(1)).contains(" (1)"));
-        giftService.markSeen(1);
-        assertEquals(0, giftService.unseenCount(1));
-        assertFalse(toolbar.giftsItemHtml(giftService.unseenCount(1)).contains(" ("),
-                "看过礼物页后不再带计数");
-        String after = toolbar.itemsHtml(toolbarContext(SocialProfileFakes.viewer(1, "甲")));
-        assertTrue(after.contains("/wiki/特殊:礼物"), after);
-        assertTrue(after.contains("/wiki/特殊:私信"), after);
-
-        // 匿名：不显示
-        assertNull(toolbar.itemsHtml(toolbarContext(Viewer.ANONYMOUS)));
-        // 功能关闭：不显示
-        MessagesToolbarHook disabled = new MessagesToolbarHook(messages, SocialProfileFakes.support(false),
-                friends, giftService);
-        assertNull(disabled.itemsHtml(toolbarContext(SocialProfileFakes.viewer(1, "甲"))));
-    }
-
     // ==================== 参数设置分区 ====================
 
     @Test
@@ -435,25 +396,6 @@ class SocialProfileHooksTest {
                 return Map.of();
             }
 
-            @Override
-            public Viewer viewer() {
-                return viewer;
-            }
-
-            @Override
-            public String siteName() {
-                return "WikiKernel";
-            }
-
-            @Override
-            public String baseUrl() {
-                return "http://localhost:18080";
-            }
-        };
-    }
-
-    private static PersonalToolbarContext toolbarContext(Viewer viewer) {
-        return new PersonalToolbarContext() {
             @Override
             public Viewer viewer() {
                 return viewer;

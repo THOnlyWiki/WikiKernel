@@ -17,7 +17,7 @@ import cc.thonly.wikikernel.user.UserSession;
 import cc.thonly.wikikernel.web.RequestActionContext;
 import cc.thonly.wikikernel.web.Viewers;
 import cc.thonly.wikikernel.web.WikiTitles;
-import cc.thonly.wikikernel.web.WikiUrls;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -178,6 +178,71 @@ public class PageApiController {
             data.put("warnings", protectDecision.warnings());
         }
         return AjaxResult.success(message(protectedFlag ? "protect.successOn" : "protect.successOff"), data);
+    }
+
+    /**
+     * 删除页面：{@code title} 页面标题，{@code reason} 删除理由（可选）。
+     * 与 action API 的 {@code action=delete} 一致：软删除（管理员可从删除日志恢复并写入日志）；
+     * 受保护页面只有管理员能删除。
+     */
+    @PostMapping("/delete")
+    public AjaxResult<Map<String, Object>> delete(@RequestParam("title") String title,
+                                                  @RequestParam(value = "reason", required = false, defaultValue = "") String reason,
+                                                  HttpServletRequest request) {
+        WikiUser user = UserSession.current(request);
+        if (user == null) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED, message("permissions.loginRequired"));
+        }
+        Optional<WikiBlock> block = blockService.currentBlock(user);
+        if (block.isPresent()) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, blockService.notice(block.get()));
+        }
+        String pageTitle = Strings.trimToEmpty(title);
+        WikiPage page = wikiPageService.getByTitle(pageTitle).orElse(null);
+        if (page == null) {
+            return AjaxResult.error(AjaxCode.NOT_FOUND, message("error.pageMissing", pageTitle));
+        }
+        if (!accessControlService.can(AccessAction.DELETE, page.getTitle(), user)) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("delete.forbidden"));
+        }
+        if (Boolean.TRUE.equals(page.getProtectedPage()) && !isAdmin(user)) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("delete.protected"));
+        }
+        wikiPageService.deletePage(user, page.getTitle());
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("title", page.getTitle());
+        // 页面本身已经不存在：删除后回首页（与 MediaWiki 删除后的跳转一致）
+        data.put("url", "/");
+        return AjaxResult.success(message("delete.success", page.getTitle()), data);
+    }
+
+    /**
+     * 恢复已删除的页面（仿 MediaWiki {@code Special:Undelete} 的恢复）：deleted → false 并写 restore 日志。
+     * 仅管理员 / 行政员可用（与 MediaWiki 的 undelete 权限一致）。
+     */
+    @PostMapping("/restore")
+    public AjaxResult<Map<String, Object>> restore(@RequestParam("title") String title,
+                                                   HttpServletRequest request) {
+        WikiUser user = UserSession.current(request);
+        if (user == null) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED, message("permissions.loginRequired"));
+        }
+        Optional<WikiBlock> block = blockService.currentBlock(user);
+        if (block.isPresent()) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, blockService.notice(block.get()));
+        }
+        if (!isAdmin(user)) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("restore.forbidden"));
+        }
+        String pageTitle = Strings.trimToEmpty(title);
+        WikiPage restored = wikiPageService.restorePage(user, pageTitle);
+        if (restored == null) {
+            return AjaxResult.error(AjaxCode.NOT_FOUND, message("restore.notDeleted", pageTitle));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("title", restored.getTitle());
+        data.put("url", WikiUrls.pagePath(restored.getTitle()));
+        return AjaxResult.success(message("restore.success", restored.getTitle()), data);
     }
 
     /**
