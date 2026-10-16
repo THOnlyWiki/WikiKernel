@@ -1,0 +1,6 @@
+[submodule "plugin/thonly-wiki-extensions"]
+	path = plugin/thonly-wiki-extensions
+	url = https://github.com/THOnlyWiki/thonly-wiki-extensions.git
+[submodule "plugin/kawaii-timeless"]
+	path = plugin/kawaii-timeless
+	url = https://github.com/THOnlyWiki/kawaii-timeless.git
