@@ -91,6 +91,90 @@ class LuaExtensionTest {
     // ==================== mw.loadData + 模块依赖追踪 ====================
 
     @Test
+    void luaPairsAndIpairsHonorMetamethods() throws Exception {
+        wikiPageService.editPage(null, "模块:Lua元方法", """
+                local p = {}
+                function p.main()
+                    local t = setmetatable({}, {
+                        __pairs = function()
+                            return next, { a = 1, b = 2 }, nil
+                        end,
+                        __ipairs = function()
+                            return function(_, i)
+                                i = i + 1
+                                if i <= 2 then return i, i * 10 end
+                            end, nil, 0
+                        end
+                    })
+                    local pc, ic = 0, 0
+                    for _ in pairs(t) do pc = pc + 1 end
+                    for _ in ipairs(t) do ic = ic + 1 end
+                    return pc .. '/' .. ic
+                end
+                return p
+                """);
+        String html = render("Lua元方法页", "{{#invoke:Lua元方法|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("2/2"), html);
+    }
+
+    @Test
+    void requireLoadsModuleAndTracksDependency() throws Exception {
+        wikiPageService.editPage(null, "模块:Lua依赖值", "return { value = '一' }");
+        wikiPageService.editPage(null, "模块:Lua依赖用户", """
+                local dep = require('Module:Lua依赖值')
+                local p = {}
+
+                function p.main()
+                    return dep.value
+                end
+
+                return p
+                """);
+        String html1 = render("Lua依赖页", "{{#invoke:Lua依赖用户|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html1.contains("一"), html1);
+
+        wikiPageService.editPage(null, "模块:Lua依赖值", "return { value = '二' }");
+        String html2 = render("Lua依赖页", "{{#invoke:Lua依赖用户|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html2.contains("二"), html2);
+    }
+
+    @Test
+    void requireProvidesLibraryUtilAndRejectsMissingOrCyclicModules() throws Exception {
+        wikiPageService.editPage(null, "模块:Lua工具依赖", """
+                local libraryUtil = require('libraryUtil')
+                local p = {}
+
+                function p.main()
+                    libraryUtil.checkType('main', 1, '文本', 'string')
+                    libraryUtil.checkType('main', 2, nil, 'table', true)
+                    return '工具通过'
+                end
+
+                return p
+                """);
+        String html1 = render("Lua工具页", "{{#invoke:Lua工具依赖|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html1.contains("工具通过"), html1);
+
+        wikiPageService.editPage(null, "模块:Lua缺依赖", """
+                local dep = require('Module:绝对不存在的依赖')
+                return {}
+                """);
+        String html2 = render("Lua缺依赖页", "{{#invoke:Lua缺依赖|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html2.contains("找不到模块"), html2);
+
+        wikiPageService.editPage(null, "模块:Lua环A", """
+                local b = require('Module:Lua环B')
+                return { b = b }
+                """);
+        wikiPageService.editPage(null, "模块:Lua环B", """
+                local a = require('Module:Lua环A')
+                return { a = a }
+                """);
+        String html3 = render("Lua环页", "{{#invoke:Lua环A|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html3.contains("循环"), html3);
+    }
+
+    @Test
     void loadDataReadsTableAndTracksRevisionDependency() throws Exception {
         wikiPageService.editPage(null, "模块:Lua数据", """
                 return {

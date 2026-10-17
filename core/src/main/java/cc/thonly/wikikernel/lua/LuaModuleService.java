@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.lua;
 
 import cc.thonly.wikikernel.actionapi.ActionApiNamespaces;
 import cc.thonly.wikikernel.common.data.WikiPage;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiTitles;
 import org.luaj.vm2.Globals;
@@ -41,8 +42,9 @@ import java.util.function.Function;
  * Lua 模块（仿 MediaWiki Scribunto 的子集）：
  * <ul>
  *     <li>{@code {{#invoke:模块|函数|…}}} 运行「模块:」命名空间页面的 Lua 代码；</li>
- *     <li>沙盒：没有 {@code os} / {@code io} / {@code package} / {@code require} / {@code dofile} /
- *     {@code loadfile} / {@code load&#42;} / {@code luajava} / {@code print}；Lua 5.1 兼容层
+ *     <li>沙盒：没有 {@code os} / {@code io} / {@code package} / {@code dofile} /
+ *     {@code loadfile} / {@code load&#42;} / {@code luajava} / {@code print}；
+ *     {@code require} 只允许「模块:」命名空间与内置 {@code libraryUtil}；Lua 5.1 兼容层
  *     （{@code unpack} / {@code table.getn} / {@code table.maxn}，见 {@link Lua51Shim}）；</li>
  *     <li>指令数上限：死循环以「运行超时」错误终止（pcall 也拦不住），不会卡住请求；</li>
  *     <li>按模块修订号缓存编译结果，模块一改立即重新编译；<b>模块依赖追踪</b>：模块用
@@ -96,6 +98,42 @@ public class LuaModuleService {
     private record DataEntry(long revisionId, Map<String, Long> dependencies, LuaValue table) {
     }
 
+    /**
+     * 一次 {@code #invoke} 的 {@code require} 上下文：
+     * 模块名 → 已加载表（同一页面内复用）、正在加载的模块（循环检测）、依赖修订号。
+     * <p>
+     * Scribunto 模块大量使用 {@code require('Module:…')} / {@code require('libraryUtil')}；
+     * 这里在沙盒里补一个受控 require，只允许「模块:」命名空间和内置 libraryUtil。
+     */
+    private final class RequireContext {
+
+        private final LuaTable frame;
+        private final String pageTitle;
+        private final Map<String, Long> dependencies;
+        private final Globals rootGlobals;
+        private final Map<String, LuaValue> loaded = new LinkedHashMap<>();
+        private final Set<String> loading = new LinkedHashSet<>();
+        private final LuaValue function;
+
+        private RequireContext(LuaTable frame, String pageTitle, Map<String, Long> dependencies,
+                               Globals rootGlobals) {
+            this.frame = frame;
+            this.pageTitle = pageTitle;
+            this.dependencies = dependencies;
+            this.rootGlobals = rootGlobals;
+            this.function = new OneArgFunction() {
+                @Override
+                public LuaValue call(LuaValue name) {
+                    return requireModule(name.checkjstring(), RequireContext.this);
+                }
+            };
+        }
+
+        private LuaValue function() {
+            return function;
+        }
+    }
+
     public LuaModuleService(WikiPageService wikiPageService, MessageSource messageSource,
                             LuaSiteInfoProvider siteInfoProvider) {
         this.wikiPageService = wikiPageService;
@@ -123,7 +161,7 @@ public class LuaModuleService {
      */
     public Result invoke(String moduleName, String functionName,
                          Map<String, String> positional, Map<String, String> named,
-                         Map<String, String> parentArgs, String pageTitle) {
+                         Map<String, String> parentArgs, String parentTitle, String pageTitle) {
         Optional<ModuleSource> module = findModule(moduleName);
         if (module.isEmpty()) {
             return Result.error(message("lua.error.moduleMissing", moduleName));
@@ -139,10 +177,10 @@ public class LuaModuleService {
             Map<String, Long> dependencies = new LinkedHashMap<>();
             try {
                 LuaTable frame = ScribuntoLibrary.frame(
-                        positional, named, parentArgs, pageTitle);
-                Function<String, LuaValue> loadDataCall = name -> loadData(name, dependencies);
-                compiled.globals().set("mw", ScribuntoLibrary.mw(compiled.globals(), frame, pageTitle,
-                        compiled.htmlLib(), siteInfoProvider, messageSource, loadDataCall));
+                        positional, named, parentArgs, parentTitle, pageTitle);
+                RequireContext requireContext = new RequireContext(
+                        frame, pageTitle, dependencies, compiled.globals());
+                installEnvironment(compiled, requireContext);
                 LuaValue moduleTable = compiled.chunk().call();
                 if (!moduleTable.istable()) {
                     return Result.error(message("lua.error.moduleTable", module.get().title()));
@@ -248,6 +286,65 @@ public class LuaModuleService {
         return compiled;
     }
 
+    // ==================== require（模块依赖 + libraryUtil） ====================
+
+    /** 给一个编译后的模块设置本次调用的 {@code mw} 与受控 {@code require}。 */
+    private void installEnvironment(Compiled compiled, RequireContext context) {
+        Function<String, LuaValue> loadDataCall = name -> loadData(name, context.dependencies);
+        compiled.globals().set("mw", ScribuntoLibrary.mw(compiled.globals(), context.frame,
+                context.pageTitle, compiled.htmlLib(), siteInfoProvider, messageSource, loadDataCall));
+        compiled.globals().set("require", context.function());
+    }
+
+    /**
+     * 受控 require：只允许「模块:」命名空间与 Scribunto 内置 {@code libraryUtil}；
+     * 同一页面内复用已加载表，循环 require 报错，并把依赖修订号记入当前调用。
+     */
+    private LuaValue requireModule(String name, RequireContext context) {
+        String raw = name == null ? "" : name.trim();
+        if (raw.isEmpty()) {
+            throw new LuaError(message("lua.error.moduleMissing", name));
+        }
+        if ("libraryUtil".equalsIgnoreCase(raw)) {
+            LuaValue cached = context.loaded.get("libraryUtil");
+            if (cached == null) {
+                cached = LuaLibraryUtil.load(context.rootGlobals);
+                context.loaded.put("libraryUtil", cached);
+            }
+            return cached;
+        }
+        Optional<ModuleSource> found = findModule(raw);
+        if (found.isEmpty()) {
+            throw new LuaError(message("lua.error.moduleMissing", raw));
+        }
+        ModuleSource module = found.get();
+        String title = module.title();
+        context.dependencies.put(title, module.revisionId());
+        LuaValue cached = context.loaded.get(title);
+        if (cached != null) {
+            return cached;
+        }
+        if (!context.loading.add(title)) {
+            throw new LuaError(message("lua.error.loop", title));
+        }
+        try {
+            Compiled compiled = compiled(module);
+            synchronized (compiled.globals()) {
+                compiled.debug().reset();
+                installEnvironment(compiled, context);
+                LuaValue value = compiled.chunk().call();
+                if (value.isnil()) {
+                    value = LuaValue.TRUE;
+                }
+                context.loaded.put(title, value);
+                compiled.dependencies().putAll(context.dependencies);
+                return value;
+            }
+        } finally {
+            context.loading.remove(title);
+        }
+    }
+
     // ==================== mw.loadData（数据模块 + 依赖追踪） ====================
 
     /**
@@ -274,14 +371,14 @@ public class LuaModuleService {
         LuaValue table;
         synchronized (compiled.globals()) {
             compiled.debug().reset();
-            Function<String, LuaValue> nestedLoad = nestedName -> loadData(nestedName, nested);
-            compiled.globals().set("mw", ScribuntoLibrary.mw(compiled.globals(), null, module.title(),
-                    compiled.htmlLib(), siteInfoProvider, messageSource, nestedLoad));
+            RequireContext requireContext = new RequireContext(
+                    null, module.title(), nested, compiled.globals());
+            installEnvironment(compiled, requireContext);
             table = compiled.chunk().call();
             validateData(table);
+            compiled.dependencies().putAll(nested);
+            recorder.putAll(nested);
         }
-        compiled.dependencies().putAll(nested);
-        recorder.putAll(nested);
         synchronized (dataCache) {
             dataCache.put(module.title(), new DataEntry(module.revisionId(), Map.copyOf(nested), table));
         }
@@ -405,6 +502,7 @@ public class LuaModuleService {
             case "lua.error.functionMissing" -> "脚本错误：模块「" + args[0] + "」没有函数「" + args[1] + "」。";
             case "lua.error.notFunction" -> "脚本错误：「" + args[0] + "」不是函数。";
             case "lua.error.moduleTable" -> "脚本错误：模块「" + args[0] + "」没有返回 table。";
+            case "lua.error.loop" -> "脚本错误：Lua 模块调用出现循环「" + args[0] + "」。";
             case "lua.error.timeout" -> "脚本错误：模块「" + args[0] + "」运行超时（可能有死循环）。";
             case "lua.error.returnType" -> "脚本错误：函数返回了不允许的类型「" + args[0]
                     + "」（只能返回字符串或数字）。";
@@ -428,7 +526,7 @@ public class LuaModuleService {
 
         /** frame：{@code args}（位置 + 命名）+ {@code getParent}（模板参数）+ {@code getTitle}。 */
         static LuaTable frame(Map<String, String> positional, Map<String, String> named,
-                              Map<String, String> parentArgs, String pageTitle) {
+                              Map<String, String> parentArgs, String parentTitle, String pageTitle) {
             LuaTable args = new LuaTable();
             positional.forEach((key, value) -> setArg(args, key, value));
             named.forEach((key, value) -> args.set(key, LuaValue.valueOf(value)));
@@ -449,16 +547,90 @@ public class LuaModuleService {
                             return LuaValue.NIL;
                         }
                     });
+                    parent.set("getTitle", new ZeroArgFunction() {
+                        @Override
+                        public LuaValue call() {
+                            // Scribunto 的 frame:getTitle() 返回字符串标题；父 frame = 调用 #invoke 的模板
+                            return LuaValue.valueOf(parentTitle == null || parentTitle.isBlank()
+                                    ? (pageTitle == null ? "" : pageTitle) : parentTitle);
+                        }
+                    });
                     return parent;
                 }
             });
             frame.set("getTitle", new ZeroArgFunction() {
                 @Override
                 public LuaValue call() {
-                    return titleTable(pageTitle);
+                    return LuaValue.valueOf(pageTitle == null ? "" : pageTitle);
+                }
+            });
+            frame.set("extensionTag", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return LuaValue.valueOf(extensionTag(values));
                 }
             });
             return frame;
+        }
+
+        /**
+         * {@code frame:extensionTag} 的最小兼容：
+         * <ul>
+         *   <li>{@code templatestyles}：返回空串（站点 Common.css 已包含 Navbox/Navbar 样式）；</li>
+         *   <li>其它标签：按 {@code <tag 属性>内容</tag>} 返回，最终仍走 HTML 白名单。</li>
+         * </ul>
+         * 支持 Scribunto 的两种写法：{@code extensionTag{name=…, args=…, content=…}} 与
+         * {@code extensionTag(name, content, args)}。
+         */
+        private static String extensionTag(Varargs values) {
+            String name;
+            String content = "";
+            LuaTable attributes = null;
+            if (values.arg(1).istable()) {
+                LuaTable spec = values.arg(1).checktable();
+                name = spec.get("name").optjstring("");
+                content = spec.get("content").optjstring("");
+                if (spec.get("args").istable()) {
+                    attributes = spec.get("args").checktable();
+                }
+            } else {
+                name = values.arg(1).optjstring("");
+                content = values.arg(2).optjstring("");
+                if (values.arg(3).istable()) {
+                    attributes = values.arg(3).checktable();
+                }
+            }
+            if (name.isBlank() || "templatestyles".equalsIgnoreCase(name)) {
+                return "";
+            }
+            StringBuilder out = new StringBuilder("<").append(name);
+            if (attributes != null) {
+                LuaValue key = LuaValue.NIL;
+                while (true) {
+                    Varargs next = attributes.next(key);
+                    key = next.arg1();
+                    if (key.isnil()) {
+                        break;
+                    }
+                    LuaValue value = next.arg(2);
+                    if (!value.isnil()) {
+                        out.append(' ').append(key.tojstring()).append("=\"")
+                                .append(escapeAttribute(value.tojstring())).append('"');
+                    }
+                }
+            }
+            out.append('>');
+            if (!content.isEmpty()) {
+                out.append(content).append("</").append(name).append('>');
+            } else {
+                out.append("</").append(name).append('>');
+            }
+            return out.toString();
+        }
+
+        private static String escapeAttribute(String value) {
+            return value == null ? "" : value.replace("&", "&amp;").replace("\"", "&quot;")
+                    .replace("<", "&lt;").replace(">", "&gt;");
         }
 
         /** {@code mw} 表：每次调用重建（函数捕获本次 frame / 页面标题，互不影响）。 */
@@ -505,11 +677,60 @@ public class LuaModuleService {
             });
             mw.set("text", text);
 
-            LuaTable title = new LuaTable();
-            title.set("new", new OneArgFunction() {
+            LuaTable ustring = new LuaTable();
+            LuaValue stringLib = globals.get("string");
+            ustring.set("find", forward(stringLib.get("find")));
+            ustring.set("match", forward(stringLib.get("match")));
+            ustring.set("gmatch", forward(stringLib.get("gmatch")));
+            ustring.set("gsub", forward(stringLib.get("gsub")));
+            ustring.set("rep", forward(stringLib.get("rep")));
+            ustring.set("format", forward(stringLib.get("format")));
+            ustring.set("byte", forward(stringLib.get("byte")));
+            ustring.set("char", forward(stringLib.get("char")));
+            ustring.set("lower", oneArg(value -> value == null ? "" : value.toLowerCase(Locale.ROOT)));
+            ustring.set("upper", oneArg(value -> value == null ? "" : value.toUpperCase(Locale.ROOT)));
+            ustring.set("len", new OneArgFunction() {
                 @Override
                 public LuaValue call(LuaValue value) {
-                    return titleTable(value.tojstring());
+                    String source = value.isnil() ? "" : value.tojstring();
+                    return LuaValue.valueOf(source.codePointCount(0, source.length()));
+                }
+            });
+            ustring.set("sub", new ThreeArgFunction() {
+                @Override
+                public LuaValue call(LuaValue value, LuaValue start, LuaValue end) {
+                    String source = value.tojstring();
+                    int length = source.codePointCount(0, source.length());
+                    int from = start.toint();
+                    int to = end.isnil() ? -1 : end.toint();
+                    if (from < 0) {
+                        from = length + from + 1;
+                    }
+                    if (to < 0) {
+                        to = length + to + 1;
+                    }
+                    from = Math.max(1, from);
+                    to = Math.min(length, to);
+                    if (from > to) {
+                        return LuaValue.valueOf("");
+                    }
+                    int startOffset = source.offsetByCodePoints(0, from - 1);
+                    int endOffset = source.offsetByCodePoints(0, to);
+                    return LuaValue.valueOf(source.substring(startOffset, endOffset));
+                }
+            });
+            mw.set("ustring", ustring);
+
+            LuaTable title = new LuaTable();
+            title.set("new", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    String text = values.arg(1).optjstring("");
+                    String namespace = values.arg(2).optjstring("");
+                    if (!namespace.isEmpty() && text.indexOf(':') < 0) {
+                        text = namespace + ":" + text;
+                    }
+                    return titleTable(text);
                 }
             });
             title.set("getCurrentTitle", new ZeroArgFunction() {
@@ -523,6 +744,8 @@ public class LuaModuleService {
             LuaTable uri = new LuaTable();
             uri.set("encode", oneArg(value -> URLEncoder.encode(value == null ? "" : value,
                     StandardCharsets.UTF_8).replace("+", "%20")));
+            uri.set("anchorEncode", oneArg(value -> URLEncoder.encode(value == null ? "" : value,
+                    StandardCharsets.UTF_8).replace("+", "_")));
             uri.set("decode", oneArg(value -> decodePercent(value == null ? "" : value)));
             mw.set("uri", uri);
 
@@ -707,6 +930,33 @@ public class LuaModuleService {
             return result;
         }
 
+        /** 主命名空间外的标题 → 对应讨论页标题（Navbar 的「讨论」链接用）。 */
+        private static String talkTitle(String value) {
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            String[][] pairs = {
+                    {"模板:", "模板讨论:"},
+                    {"模块:", "模块讨论:"},
+                    {"用户:", "用户讨论:"},
+                    {"帮助:", "帮助讨论:"},
+                    {"文件:", "文件讨论:"},
+                    {"分类:", "分类讨论:"},
+                    {"WikiKernel:", "WikiKernel讨论:"},
+                    {"MediaWiki:", "MediaWiki讨论:"},
+                    {"组件:", "组件讨论:"},
+                    {"小部件:", "小部件讨论:"},
+                    {"图表:", "图表讨论:"},
+                    {"讨论:", "讨论:"} // 主命名空间讨论页不做二次转换
+            };
+            for (String[] pair : pairs) {
+                if (value.startsWith(pair[0]) && !value.startsWith(pair[1])) {
+                    return pair[1] + value.substring(pair[0].length());
+                }
+            }
+            return null;
+        }
+
         /** {@code mw.title} 对象（MVP：fullText / text / nsText / namespace / fragment / id）。 */
         static LuaTable titleTable(String title) {
             String value = WikiTitles.normalize(title == null ? "" : title);
@@ -719,11 +969,31 @@ public class LuaModuleService {
             int namespace = ActionApiNamespaces.idOf(value);
             LuaTable table = new LuaTable();
             table.set("fullText", value.isEmpty() ? LuaValue.NIL : LuaValue.valueOf(value));
+            table.set("prefixedText", value.isEmpty() ? LuaValue.NIL : LuaValue.valueOf(value));
             table.set("text", LuaValue.valueOf(ActionApiNamespaces.bareTitle(value)));
             table.set("nsText", LuaValue.valueOf(ActionApiNamespaces.nameOf(namespace)));
             table.set("namespace", LuaValue.valueOf(namespace));
             table.set("fragment", fragment == null ? LuaValue.NIL : LuaValue.valueOf(fragment));
             table.set("id", LuaValue.ZERO);
+            String talk = talkTitle(value);
+            if (talk != null) {
+                table.set("talkPageTitle", titleTable(talk));
+            }
+            VarArgFunction url = new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    String title = values.arg(1).get("fullText").optjstring("");
+                    String query = values.arg(2).optjstring("");
+                    String path = WikiUrls.pagePath(title);
+                    if (!query.isBlank()) {
+                        path = path + (path.contains("?") ? "&" : "?") + query;
+                    }
+                    return LuaValue.valueOf(path);
+                }
+            };
+            table.set("fullUrl", url);
+            table.set("localUrl", url);
+            table.set("canonicalUrl", url);
             return table;
         }
 
@@ -741,6 +1011,15 @@ public class LuaModuleService {
             LuaTable table = new LuaTable();
             values.forEach((key, value) -> setArg(table, key, value));
             return table;
+        }
+
+        /** 把 Lua 字符串库的函数原样转发（mw.ustring 的 ASCII 兼容实现）。 */
+        private static VarArgFunction forward(LuaValue function) {            return new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return function.invoke(values);
+                }
+            };
         }
 
         /** 一元字符串函数：{@code nil} 视为空串。 */

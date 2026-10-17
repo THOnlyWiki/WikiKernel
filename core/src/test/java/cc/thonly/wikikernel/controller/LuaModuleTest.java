@@ -75,14 +75,15 @@ class LuaModuleTest {
                 function p.main(frame)
                     local parent = frame:getParent()
                     local fromParent = parent and parent.args["甲"] or "none"
-                    return fromParent .. "/" .. frame.args["乙"]
+                    local parentTitle = parent and parent:getTitle() or "none"
+                    return parentTitle .. "/" .. fromParent .. "/" .. frame.args["乙"]
                 end
                 return p
                 """);
         wikiPageService.editPage(null, "模板:Lua父框架", "{{#invoke:Lua父参数|main|乙={{{乙|}}}}}");
         String html = render("Lua父参数页", "{{Lua父框架|甲=值甲|乙=值乙}}");
 
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("值甲/值乙"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("模板:Lua父框架/值甲/值乙"), html);
     }
 
     // ==================== mw 库 ====================
@@ -170,7 +171,7 @@ class LuaModuleTest {
                 return p
                 """, "{{#invoke:Lua沙盒|main}}");
 
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("nilnilnilnilnilnilnil"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("nilnilfunctionnilnilnilnil"), html);
     }
 
     @Test

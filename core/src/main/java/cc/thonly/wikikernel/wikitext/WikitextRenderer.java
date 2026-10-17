@@ -78,7 +78,8 @@ public class WikitextRenderer {
     private static final Pattern BOLD = Pattern.compile("'''(.*?)'''", Pattern.DOTALL);
     private static final Pattern ITALIC = Pattern.compile("''(.*?)''", Pattern.DOTALL);
     private static final Pattern WIKI_LINK = Pattern.compile("\\[\\[([^\\[\\]|]+)(?:\\|([^\\[\\]]*))?\\]\\]");
-    private static final Pattern EXTERNAL_LINK = Pattern.compile("\\[((?:https?|ftp)://[^\\s\\]]+)(?:\\s+([^\\]]*))?\\]");
+    private static final Pattern EXTERNAL_LINK = Pattern.compile(
+            "\\[((?:(?:https?|ftp)://|/)[^\\s\\]]+)(?:\\s+([^\\]]*))?\\]");
     private static final Pattern NOWIKI = Pattern.compile("<nowiki>(.*?)</nowiki>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
     /** {@code <syntaxhighlight lang="java">…</syntaxhighlight>}（属性里取 lang= 做语法高亮）。 */
     private static final Pattern SYNTAX = Pattern.compile(
@@ -1011,8 +1012,9 @@ public class WikitextRenderer {
             return error("lua.error.loop", moduleName);
         }
         try {
+            String parentTitle = currentTemplateTitle(stack);
             LuaModuleService.Result result = this.luaModuleService.invoke(
-                    moduleName, functionName, positional, named, frame, pageTitle);
+                    moduleName, functionName, positional, named, frame, parentTitle, pageTitle);
             if (!result.ok()) {
                 return plainError(result.text());
             }
@@ -1026,6 +1028,18 @@ public class WikitextRenderer {
     /** 已本地化的纯文本错误（转义后包一层错误样式；与 {@link #error} 一致但不查消息源）。 */
     private static String plainError(String text) {
         return "<span class=\"wiki-error\">" + HtmlUtils.htmlEscape(text == null ? "" : text) + "</span>";
+    }
+
+    /** 当前正在展开的模板标题（栈里最后一个模板项）；直接写在页面里的 #invoke 没有模板标题。 */
+    private static String currentTemplateTitle(Set<String> stack) {
+        String current = null;
+        for (String entry : stack) {
+            if (entry.startsWith("模板:") || entry.startsWith("Template:")
+                    || entry.startsWith("模板讨论:") || entry.startsWith("Template talk:")) {
+                current = entry;
+            }
+        }
+        return current;
     }
 
     private TemplateSource findTemplate(String name) {

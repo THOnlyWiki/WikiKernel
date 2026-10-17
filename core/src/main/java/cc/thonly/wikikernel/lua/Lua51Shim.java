@@ -28,6 +28,25 @@ final class Lua51Shim {
                 end
                 return maxn
             end
+
+            -- Scribunto 的库（如 Module:Arguments）依赖 Lua 5.2 的 __pairs / __ipairs；
+            -- LuaJ 默认按 5.1 的原生 next 遍历，这里补上元方法分支。
+            local raw_pairs = pairs
+            local raw_ipairs = ipairs
+            pairs = function(t)
+                local mt = getmetatable(t)
+                if mt and mt.__pairs then
+                    return mt.__pairs(t)
+                end
+                return raw_pairs(t)
+            end
+            ipairs = function(t)
+                local mt = getmetatable(t)
+                if mt and mt.__ipairs then
+                    return mt.__ipairs(t)
+                end
+                return raw_ipairs(t)
+            end
             """;
 
     /** 在沙盒 Globals 里安装 5.1 兼容入口（幂等）。 */
