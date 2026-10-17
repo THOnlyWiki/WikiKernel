@@ -26,6 +26,7 @@ import java.util.List;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -383,6 +384,34 @@ class FileUploadTest {
     }
 
     // ==================== 工具 ====================
+
+    @Test
+    void svgUploadIsSanitizedAndServedWithCsp() throws Exception {
+        WikiUser user = insertUser("SVG用户" + System.nanoTime());
+        String name = "图标" + System.nanoTime() + ".svg";
+        String svg = """
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)">
+                  <script>alert(2)</script>
+                  <rect width="10" height="10" fill="#d8638c"/>
+                </svg>
+                """;
+        mockMvc.perform(multipart("/api/files/upload").session(sessionOf(user))
+                        .file(new MockMultipartFile("file", name, "image/svg+xml",
+                                svg.getBytes(StandardCharsets.UTF_8))))
+                .andExpect(jsonPath("$.code").value(200));
+
+        WikiFile file = fileService.findByName(name).orElseThrow();
+        String stored = new String(fileService.read(file), StandardCharsets.UTF_8);
+        assertFalse(stored.contains("<script"), stored);
+        assertFalse(stored.contains("onload"), stored);
+        assertTrue(stored.contains("<rect"), stored);
+
+        mockMvc.perform(get("/files/{stored}", file.getStoredName()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", containsString("image/svg+xml")))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("Content-Security-Policy", containsString("sandbox")));
+    }
 
     private void upload(WikiUser user, String name) throws Exception {
         upload(user, name, PNG, "测试说明");

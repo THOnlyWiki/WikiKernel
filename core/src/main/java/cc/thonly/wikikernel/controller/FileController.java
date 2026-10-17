@@ -76,6 +76,13 @@ public class FileController {
                     .filename(stored.name(), StandardCharsets.UTF_8)
                     .build());
         }
+        // 所有上传文件禁止 MIME 嗅探；SVG 额外用 CSP sandbox 阻断直接打开时的脚本执行。
+        headers.set("X-Content-Type-Options", "nosniff");
+        if ("svg".equals(MediaTypes.extensionOf(stored.name()))) {
+            headers.set("Content-Security-Policy",
+                    "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; "
+                            + "script-src 'none'; object-src 'none'; sandbox");
+        }
         // 支持 HTTP Range（音视频拖动进度条需要 206 Partial Content）
         headers.set("Accept-Ranges", "bytes");
         headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());

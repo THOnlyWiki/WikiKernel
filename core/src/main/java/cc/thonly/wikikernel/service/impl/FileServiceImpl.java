@@ -13,6 +13,7 @@ import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaTypes;
+import cc.thonly.wikikernel.web.SvgSanitizer;
 import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -38,14 +39,15 @@ import java.util.UUID;
  * <p>
  * 类型策略：图片（png/jpg/jpeg/gif/webp）内联预览；音视频（webm/ogv/mp4/ogg/mp3/wav/m4a/flac 等）
  * 在启用多媒体预览时内联播放（否则下载）；常见文档给对应 MIME；其余按二进制下载。
- * 禁止上传可执行 / 会被同源执行的类型（html/js/css/svg 等），防止存储型 XSS。
+ * 禁止上传可执行 / 会被同源执行的类型（html/js/css 等），防止存储型 XSS；SVG 例外，
+ * 上传时由 {@link SvgSanitizer} 清洗后按图片内联展示。
  */
 @Service
 public class FileServiceImpl implements FileService {
 
-    /** 禁止上传的扩展名（会被浏览器同源执行或注入脚本）。 */
+    /** 禁止上传的扩展名（会被浏览器同源执行或注入脚本）。SVG 经清洗后允许上传。 */
     private static final Set<String> BLOCKED_EXTENSIONS = Set.of(
-            "html", "htm", "xhtml", "xml", "svg", "js", "mjs", "cjs", "css",
+            "html", "htm", "xhtml", "xml", "js", "mjs", "cjs", "css",
             "jsp", "php", "asp", "aspx", "exe", "dll", "bat", "cmd", "sh", "ps1", "jar", "war");
 
     /** 常见文档类型 → MIME（不信任客户端提交的 Content-Type；图片 / 音视频见 {@link MediaTypes}）。 */
@@ -135,6 +137,7 @@ public class FileServiceImpl implements FileService {
         if (!typeAllowed(extension)) {
             throw new IllegalArgumentException("files.invalidType");
         }
+        content = sanitizeSvgIfNeeded(content, extension);
         WikiFile existing = findAnyByName(fileName).orElse(null);
         if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {
             throw new IllegalArgumentException("files.deletedExists");
@@ -315,6 +318,7 @@ public class FileServiceImpl implements FileService {
         } catch (IOException exception) {
             throw new IllegalStateException("files.readFailed", exception);
         }
+        content = sanitizeSvgIfNeeded(content, extensionOf(file.getName()));
         String storedName = uniqueStoredName(extensionOf(file.getName()));
         Path path = baseDirectory().resolve(storedName).normalize();
         try {
@@ -533,6 +537,18 @@ public class FileServiceImpl implements FileService {
 
     private static String extensionOf(String name) {
         return MediaTypes.extensionOf(name);
+    }
+
+    /** SVG 先清洗再落盘（移除 script / on* / foreignObject / 不安全外链）；其它类型原样返回。 */
+    private static byte[] sanitizeSvgIfNeeded(byte[] content, String extension) {
+        if (!"svg".equals(extension)) {
+            return content;
+        }
+        try {
+            return SvgSanitizer.sanitize(content);
+        } catch (SvgSanitizer.InvalidSvgException exception) {
+            throw new IllegalArgumentException("files.invalidSvg", exception);
+        }
     }
 
     private static String contentTypeOf(String extension) {

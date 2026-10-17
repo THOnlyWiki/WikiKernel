@@ -7,7 +7,7 @@ import java.util.Set;
 /**
  * 多媒体类型（仿 MediaWiki TimedMediaHandler 支持的常见音视频格式）：
  * <ul>
- *     <li>图片：png / jpg / jpeg / gif / webp；</li>
+ *     <li>图片：png / jpg / jpeg / gif / webp / svg（SVG 上传前由 {@code SvgSanitizer} 清洗）；</li>
  *     <li>音频：ogg / oga / opus / mp3 / wav / m4a / flac；</li>
  *     <li>视频：webm / ogv / mp4。</li>
  * </ul>
@@ -20,7 +20,7 @@ public final class MediaTypes {
         IMAGE, AUDIO, VIDEO, OTHER
     }
 
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp");
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "svg");
     private static final Set<String> AUDIO_EXTENSIONS = Set.of("ogg", "oga", "opus", "mp3", "wav", "m4a", "flac");
     private static final Set<String> VIDEO_EXTENSIONS = Set.of("webm", "ogv", "mp4");
 
@@ -30,6 +30,7 @@ public final class MediaTypes {
             Map.entry("jpeg", "image/jpeg"),
             Map.entry("gif", "image/gif"),
             Map.entry("webp", "image/webp"),
+            Map.entry("svg", "image/svg+xml"),
             Map.entry("ogg", "audio/ogg"),
             Map.entry("oga", "audio/ogg"),
             Map.entry("opus", "audio/ogg"),
