@@ -3,14 +3,17 @@ package cc.thonly.wikikernel.plugin.socialprofile.web;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.extension.Viewer;
+import cc.thonly.wikikernel.common.service.CurrentUser;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileFakes;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
+import cc.thonly.wikikernel.plugin.socialprofile.model.ProfileFields;
 import cc.thonly.wikikernel.plugin.socialprofile.service.AvatarSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.service.AwardService;
 import cc.thonly.wikikernel.plugin.socialprofile.service.BoardService;
 import cc.thonly.wikikernel.plugin.socialprofile.service.FriendsService;
 import cc.thonly.wikikernel.plugin.socialprofile.service.GiftService;
+import cc.thonly.wikikernel.plugin.socialprofile.service.PointsRulesProvider;
 import cc.thonly.wikikernel.plugin.socialprofile.service.PointsService;
 import cc.thonly.wikikernel.plugin.socialprofile.service.ProfileService;
 import org.junit.jupiter.api.Test;
@@ -70,13 +73,13 @@ class SocialProfileSpecialPagesTest {
         assertEquals("special/edit-profile", page.template());
         assertTrue(page.aliases().contains("EditProfile"));
 
-        profiles.save(1, new cc.thonly.wikikernel.plugin.socialprofile.model.ProfileFields("female", "03-09",
+        profiles.save(1, new ProfileFields("female", "03-09",
                 "上海", "", "", "", "", "关于我"));
         Map<String, Object> model = new LinkedHashMap<>();
         page.populate(request("编辑资料", Map.of(), wikiUser(1, "甲")), model);
         assertEquals(Boolean.FALSE, model.get("featureDisabled"));
         assertEquals(Boolean.FALSE, model.get("loginRequired"));
-        assertEquals("03-09", ((cc.thonly.wikikernel.plugin.socialprofile.model.ProfileFields) model.get("profile"))
+        assertEquals("03-09", ((ProfileFields) model.get("profile"))
                 .birthday());
         assertEquals(3, ((java.util.List<?>) model.get("genders")).size(), "未指定 / 男 / 女");
         assertEquals("/avatars/u1-1.png", model.get("avatarUrl"));
@@ -238,7 +241,7 @@ class SocialProfileSpecialPagesTest {
     @Test
     void topUsersPagePaginatesAndShowsLevelThresholds() {
         TopUsersSpecialPage page = new TopUsersSpecialPage(users, support, profiles, board, friends, giftService,
-                avatars, points, stats, new cc.thonly.wikikernel.plugin.socialprofile.service.PointsRulesProvider(
+                avatars, points, stats, new PointsRulesProvider(
                 support));
         assertEquals("积分排行", page.name());
         assertEquals("special/top-users", page.template());
@@ -263,7 +266,7 @@ class SocialProfileSpecialPagesTest {
         // 功能关闭：只给提示
         TopUsersSpecialPage disabled = new TopUsersSpecialPage(users, SocialProfileFakes.support(false),
                 profiles, board, friends, giftService, avatars, points, stats,
-                new cc.thonly.wikikernel.plugin.socialprofile.service.PointsRulesProvider(
+                new PointsRulesProvider(
                         SocialProfileFakes.support(false)));
         Map<String, Object> closed = new LinkedHashMap<>();
         disabled.populate(request("积分排行", Map.of(), null), closed);
@@ -275,9 +278,9 @@ class SocialProfileSpecialPagesTest {
 
     @Test
     void awardsPageHidesTheGrantFormFromNonAdmins() {
-        cc.thonly.wikikernel.common.service.CurrentUser admin = SocialProfileFakes.currentUser(
+        CurrentUser admin = SocialProfileFakes.currentUser(
                 SocialProfileFakes.viewer(1, "甲", "管理员"));
-        cc.thonly.wikikernel.common.service.CurrentUser normal = SocialProfileFakes.currentUser(
+        CurrentUser normal = SocialProfileFakes.currentUser(
                 SocialProfileFakes.viewer(2, "乙"));
         AwardsSpecialPage page = new AwardsSpecialPage(users, support, profiles, board, friends, giftService,
                 avatars, awardService, normal);

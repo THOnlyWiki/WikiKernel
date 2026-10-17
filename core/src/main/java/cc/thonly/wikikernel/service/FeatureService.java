@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.service;
 
+import cc.thonly.wikikernel.plugin.PluginFeatureSections;
 /**
  * **core 自己的**功能开关（存站点设置 {@code wiki_setting}，可在 {@code 特殊:权限配置 → 站点设置}
  * 或 {@code /init} 修改，也可以在 {@code LocalSettings.yaml} 的 {@code wikikernel.features} 里给默认值）。
@@ -15,7 +16,7 @@ package cc.thonly.wikikernel.service;
  *   plugin.featureDefault=true
  * </pre>
  * core 就会在「站点设置 → 插件设置」与安装向导里自动渲染该开关（见
- * {@code cc.thonly.wikikernel.plugin.PluginFeatureSections}），插件自己用 {@code common.service.SiteConfig}
+ * {@code PluginFeatureSections}），插件自己用 {@code common.service.SiteConfig}
  * 读同一个键——core 不需要为插件开关写任何代码，插件没加载时开关也不出现。
  */
 public interface FeatureService {

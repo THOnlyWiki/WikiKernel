@@ -21,6 +21,7 @@ import cc.thonly.wikikernel.plugin.comments.hook.CommentTag;
 import cc.thonly.wikikernel.plugin.comments.hook.CommentsHeadProvider;
 import cc.thonly.wikikernel.plugin.comments.service.CommentSection;
 import cc.thonly.wikikernel.plugin.comments.service.CommentStore;
+import cc.thonly.wikikernel.plugin.comments.service.CommentStoreJdbc;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 
@@ -80,7 +81,7 @@ public class CommentsPlugin implements WikiPlugin {
     /**
      * 插件自己的表 {@code wiki_comment}：core 在 {@code onStart} 之前按与 core 相同的
      * Auto-DDL 规则建表 / 补列（SQLite / MySQL / H2），数据访问见
-     * {@link cc.thonly.wikikernel.plugin.comments.service.CommentStoreJdbc}（走 JDBC 桥）。
+     * {@link CommentStoreJdbc}（走 JDBC 桥）。
      */
     @Override
     public List<Class<?>> schemaEntities() {

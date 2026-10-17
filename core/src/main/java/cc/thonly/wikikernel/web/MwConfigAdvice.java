@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
+import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -259,7 +260,7 @@ public class MwConfigAdvice {
         }
         try {
             List<String> result = new ArrayList<>();
-            for (cc.thonly.wikikernel.wikitext.WikiLinkScanner.CategoryRef ref
+            for (WikiLinkScanner.CategoryRef ref
                     : pageCategoryService.categoriesOf(page.getTitle())) {
                 String name = Strings.trimToEmpty(ref.title());
                 int colon = name.indexOf(':');

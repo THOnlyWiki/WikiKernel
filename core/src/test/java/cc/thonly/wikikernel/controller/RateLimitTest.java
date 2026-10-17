@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.controller;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.config.RateLimitProperties;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
+import cc.thonly.wikikernel.user.MediaWikiPassword;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -100,7 +101,7 @@ class RateLimitTest {
     private WikiUser insertUser(String username) {
         WikiUser user = new WikiUser();
         user.setUsername(username);
-        user.setPassword(cc.thonly.wikikernel.user.MediaWikiPassword.hash("correct-password"));
+        user.setPassword(MediaWikiPassword.hash("correct-password"));
         user.setEmail("");
         wikiUserMapper.insert(user);
         return user;

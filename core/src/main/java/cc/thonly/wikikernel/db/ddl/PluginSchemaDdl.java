@@ -1,6 +1,8 @@
 package cc.thonly.wikikernel.db.ddl;
 
 import cc.thonly.wikikernel.common.data.DbColumn;
+import cc.thonly.wikikernel.common.data.DbType;
+import cc.thonly.wikikernel.common.service.PluginDatabase;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -29,7 +31,7 @@ import java.util.Set;
  * 建表 / 补列（{@link DdlSchema}，支持 SQLite / MySQL / H2，只增不减）。
  * <p>
  * 这样<b>插件的数据表与实体都属于插件自己</b>（不再往 {@code common.data} 里塞插件专属实体），
- * 数据访问用 {@link cc.thonly.wikikernel.common.service.PluginDatabase}（JDBC 桥），
+ * 数据访问用 {@link PluginDatabase}（JDBC 桥），
  * 表结构与 core 的 Auto-DDL 保持同一套方言 / 变更策略；插件反复装卸（动态 reload）时是幂等的。
  * <p>
  * 尊重总开关 {@code wikikernel.database.auto-ddl: false}（关闭时插件表需要运维手工建）；
@@ -186,7 +188,7 @@ public class PluginSchemaDdl {
         return new DdlSchema.Column(
                 name,
                 javaType,
-                meta == null ? cc.thonly.wikikernel.common.data.DbType.AUTO : meta.type(),
+                meta == null ? DbType.AUTO : meta.type(),
                 meta == null ? 0 : meta.length(),
                 meta == null ? 19 : meta.precision(),
                 meta == null ? 4 : meta.scale(),

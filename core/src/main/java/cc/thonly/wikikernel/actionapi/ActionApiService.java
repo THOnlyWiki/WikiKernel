@@ -1250,7 +1250,7 @@ public class ActionApiService {
         if (!hasText && appendText == null) {
             throw new ApiError("missingparam", "The text parameter must be set.");
         }
-        Optional<cc.thonly.wikikernel.common.data.WikiBlock> block = blockService.currentBlock(user);
+        Optional<WikiBlock> block = blockService.currentBlock(user);
         if (block.isPresent()) {
             throw new ApiError("blocked", blockService.notice(block.get()));
         }
@@ -2088,7 +2088,7 @@ public class ActionApiService {
     }
 
     private static String normalizeTitle(String value) {
-        return cc.thonly.wikikernel.web.WikiTitles.normalize(value);
+        return WikiTitles.normalize(value);
     }
 
     private static String timestamp(LocalDateTime time) {

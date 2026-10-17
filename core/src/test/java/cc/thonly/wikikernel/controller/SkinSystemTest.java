@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.controller;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.service.UserService;
+import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,7 @@ class SkinSystemTest {
     private UserService userService;
 
     @Autowired
-    private cc.thonly.wikikernel.service.WikiPageService wikiPageService;
+    private WikiPageService wikiPageService;
 
     @Test
     void defaultSkinIsVectorWithServedAssets() throws Exception {

@@ -10,10 +10,12 @@ import cc.thonly.wikikernel.common.extension.ParserFunctionCall;
 import cc.thonly.wikikernel.common.extension.ParserTag;
 import cc.thonly.wikikernel.common.extension.ParserTagCall;
 import cc.thonly.wikikernel.common.extension.WikiRenderContext;
+import cc.thonly.wikikernel.lua.LuaModuleService;
 import cc.thonly.wikikernel.plugin.PluginManager;
 import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.InterwikiService;
+import cc.thonly.wikikernel.service.PageExistenceService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaPlayerHtml;
 import cc.thonly.wikikernel.web.WikiFileEmbedCall;
@@ -150,11 +152,11 @@ public class WikitextRenderer {
 
     /** 页面存在性（红链判断）；独立测试构造时为空（不标红）。 */
     @Autowired(required = false)
-    private cc.thonly.wikikernel.service.PageExistenceService pageExistenceService;
+    private PageExistenceService pageExistenceService;
 
     /** Lua 模块（{{#invoke:…}}）；独立测试构造时为空（显示「未启用」错误）。 */
     @Autowired(required = false)
-    private cc.thonly.wikikernel.lua.LuaModuleService luaModuleService;
+    private LuaModuleService luaModuleService;
 
     /** 跨 Wiki 前缀（{@code [[w:页面]]} / {@code [[en:页面]]}，仿 MediaWiki Interwiki）；独立测试构造时为空（按普通链接处理）。 */
     @Autowired(required = false)
@@ -220,16 +222,16 @@ public class WikitextRenderer {
         List<MagicWord> magicWords = List.of();
         List<BehaviorSwitch> switches = List.of();
         List<ParserTag> tags = List.of();
-        List<cc.thonly.wikikernel.common.extension.FileEmbedRenderer> fileEmbeds = List.of();
+        List<FileEmbedRenderer> fileEmbeds = List.of();
         if (pluginManager != null) {
             functions = pluginManager.extensions(ParserFunction.class);
             magicWords = pluginManager.extensions(MagicWord.class);
             switches = pluginManager.extensions(BehaviorSwitch.class);
             tags = pluginManager.extensions(ParserTag.class);
-            fileEmbeds = pluginManager.extensions(cc.thonly.wikikernel.common.extension.FileEmbedRenderer.class)
+            fileEmbeds = pluginManager.extensions(FileEmbedRenderer.class)
                     .stream()
                     .sorted(java.util.Comparator.comparingInt(
-                            cc.thonly.wikikernel.common.extension.FileEmbedRenderer::order))
+                            FileEmbedRenderer::order))
                     .toList();
         }
         return new RenderContextState(pageTitle, functions, magicWords, switches, tags, fileEmbeds);
@@ -1009,7 +1011,7 @@ public class WikitextRenderer {
             return error("lua.error.loop", moduleName);
         }
         try {
-            cc.thonly.wikikernel.lua.LuaModuleService.Result result = this.luaModuleService.invoke(
+            LuaModuleService.Result result = this.luaModuleService.invoke(
                     moduleName, functionName, positional, named, frame, pageTitle);
             if (!result.ok()) {
                 return plainError(result.text());

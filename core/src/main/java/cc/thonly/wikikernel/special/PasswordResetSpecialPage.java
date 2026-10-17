@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.special;
 
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
+import cc.thonly.wikikernel.controller.PasswordResetController;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -12,7 +13,7 @@ import java.util.Map;
 /**
  * {@code 特殊:重置密码} / {@code Special:PasswordReset}（仿 MediaWiki）：忘记密码入口。
  * <p>
- * 表单提交到 {@code POST /password/reset-request}（{@link cc.thonly.wikikernel.controller.PasswordResetController}），
+ * 表单提交到 {@code POST /password/reset-request}（{@link PasswordResetController}），
  * 成功后同页提示「重置邮件已发送」（不暴露账号是否存在）。
  */
 @Component

@@ -21,6 +21,7 @@ import cc.thonly.wikikernel.plugin.echo.hook.EchoListeners;
 import cc.thonly.wikikernel.plugin.echo.hook.EchoPreferenceSection;
 import cc.thonly.wikikernel.plugin.echo.hook.EchoSettingsSection;
 import cc.thonly.wikikernel.plugin.echo.hook.EchoToolbarHook;
+import cc.thonly.wikikernel.plugin.echo.service.EchoMailer;
 import cc.thonly.wikikernel.plugin.echo.service.EchoNotificationStoreJdbc;
 import cc.thonly.wikikernel.plugin.echo.service.EchoNotifier;
 import cc.thonly.wikikernel.plugin.echo.service.EchoView;
@@ -79,7 +80,7 @@ public class EchoPlugin implements WikiPlugin {
     private EchoEditHook editHook;
 
     @Autowired
-    private cc.thonly.wikikernel.plugin.echo.service.EchoMailer echoMailer;
+    private EchoMailer echoMailer;
 
     @Autowired
     private UserSettings userSettings;

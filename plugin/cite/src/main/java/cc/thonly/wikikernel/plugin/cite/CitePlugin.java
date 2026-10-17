@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.cite;
 
 import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
+import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.ParserTag;
 import cc.thonly.wikikernel.common.plugin.PluginContext;
 import cc.thonly.wikikernel.common.plugin.PluginDescriptor;
@@ -44,7 +45,7 @@ public class CitePlugin implements WikiPlugin {
 
     @Override
     public void onStart(PluginContext context) {
-        context.register(cc.thonly.wikikernel.common.extension.MessageBundle.class, new CiteMessages());
+        context.register(MessageBundle.class, new CiteMessages());
         context.register(ParserTag.class, refTag);
         context.register(ParserTag.class, referencesTag);
         context.register(HtmlHeadProvider.class, new CiteHeadProvider());

@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.special;
 
 import cc.thonly.wikikernel.common.extension.SpecialPage;
+import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.springframework.context.MessageSource;
@@ -12,7 +13,7 @@ import java.util.List;
 /**
  * 报告类特殊页基类（仿 MediaWiki 的 Special:LongPages / Special:WantedPages 等）：
  * 统一本地化、HTML 转义与简单的列表 / 表格输出；子类只需实现 {@link #name()}、{@link #messageKey()} 与
- * {@link #render(cc.thonly.wikikernel.common.extension.SpecialPageRequest)}。
+ * {@link #render(SpecialPageRequest)}。
  */
 abstract class AbstractReportPage implements SpecialPage {
 

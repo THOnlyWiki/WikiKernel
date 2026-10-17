@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.vuecomponents.service;
 
 import cc.thonly.wikikernel.common.service.PageQueryStore;
+import cc.thonly.wikikernel.plugin.vuecomponents.VueComponentsPlugin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +18,7 @@ import java.util.Map;
  *     <li>{@code 组件:} 命名空间下的 {@code *.vue} 页面（前缀查询，便宜、权威；同名时优先用它）；</li>
  *     <li>其它命名空间的 {@code *.vue} 页面（全站列表 + 后缀过滤；有上限与缓存）。</li>
  * </ol>
- * 缓存 {@link #TTL_MILLIS} 毫秒；页面保存（{@link cc.thonly.wikikernel.plugin.vuecomponents.hook.VueEditGuard}）
+ * 缓存 {@link #TTL_MILLIS} 毫秒；页面保存（{@link VueComponentsPlugin} 注册的保存钩子）
  * 时立即失效，所以「新建组件 → 立即可用」。
  * <p>
  * 标签名 = 文件名去掉 {@code .vue} 后转 kebab-case（{@code TestComponent.vue} → {@code test-component}），

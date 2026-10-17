@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.user.MediaWikiPassword;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -517,7 +518,7 @@ class ActionApiTest {
     private WikiUser insertUser(String username, String password) {
         WikiUser user = new WikiUser();
         user.setUsername(username);
-        user.setPassword(cc.thonly.wikikernel.user.MediaWikiPassword.hash(password));
+        user.setPassword(MediaWikiPassword.hash(password));
         user.setEmail("");
         wikiUserMapper.insert(user);
         permissionService.grantDefault(user.getId());

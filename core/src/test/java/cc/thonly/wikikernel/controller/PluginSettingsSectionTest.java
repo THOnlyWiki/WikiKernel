@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.common.extension.SettingField;
 import cc.thonly.wikikernel.common.plugin.PluginDescriptor;
 import cc.thonly.wikikernel.common.extension.SiteSettingsSection;
 import cc.thonly.wikikernel.common.util.AjaxCode;
+import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.plugin.LoadedPlugin;
 import cc.thonly.wikikernel.plugin.PluginManager;
 import cc.thonly.wikikernel.service.PermissionService;
@@ -56,7 +57,7 @@ class PluginSettingsSectionTest {
     private SiteSettingsService siteSettingsService;
 
     @Autowired
-    private cc.thonly.wikikernel.db.mapper.WikiUserMapper wikiUserMapper;
+    private WikiUserMapper wikiUserMapper;
 
     @MockitoBean
     private PluginManager pluginManager;

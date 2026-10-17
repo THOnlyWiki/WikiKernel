@@ -9,6 +9,7 @@ import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiRevision;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.EditFormContext;
+import cc.thonly.wikikernel.common.extension.EditFormField;
 import cc.thonly.wikikernel.common.extension.FileEmbedCall;
 import cc.thonly.wikikernel.common.extension.FileEmbedRenderer;
 import cc.thonly.wikikernel.common.extension.HeadContext;
@@ -43,6 +44,7 @@ import cc.thonly.wikikernel.service.SpecialPageMatch;
 import cc.thonly.wikikernel.service.SpecialWikiPageService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.TitleBlacklistService;
+import cc.thonly.wikikernel.service.UserProfileHookService;
 import cc.thonly.wikikernel.typescript.TypeScriptAssetService;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.service.WatchService;
@@ -53,6 +55,7 @@ import cc.thonly.wikikernel.special.FileViewMapper;
 import cc.thonly.wikikernel.special.PageInfoSpecialPage;
 import cc.thonly.wikikernel.special.UserToolsSidebar;
 import cc.thonly.wikikernel.time.WikiTime;
+import cc.thonly.wikikernel.typescript.TypeScriptCompiler;
 import cc.thonly.wikikernel.user.UserSession;
 import cc.thonly.wikikernel.web.CodePages;
 import cc.thonly.wikikernel.web.ConfigPages;
@@ -149,7 +152,7 @@ public class WikiPageController {
     private final BlockService blockService;
     private final FeatureService featureService;
     /** 用户页资料卡闸门（插件声明；没有插件时 true）。 */
-    private final cc.thonly.wikikernel.service.UserProfileHookService userProfileHooks;
+    private final UserProfileHookService userProfileHooks;
     private final TitleBlacklistService titleBlacklistService;
     private final EmailWhitelistService emailWhitelistService;
     private final EmailBlacklistService emailBlacklistService;
@@ -161,7 +164,7 @@ public class WikiPageController {
     /** TypeScript 服务端编译（{@code .ts} / {@code .tsx} 页面 → JavaScript）。 */
     private final TypeScriptAssetService typeScriptAssetService;
     /** TypeScript 编译器（把版本号写进 ETag：编译器升级后浏览器会自动拿到新产物）。 */
-    private final cc.thonly.wikikernel.typescript.TypeScriptCompiler typeScriptCompiler;
+    private final TypeScriptCompiler typeScriptCompiler;
     private final MessageSource messageSource;
     /** 皮肤注册表：取「本次请求真正生效的皮肤」，用于按皮肤注入站点 CSS / JS。 */
     private final SkinRegistry skinRegistry;
@@ -182,7 +185,7 @@ public class WikiPageController {
                               FileViewMapper fileViewMapper,
                               BlockService blockService,
                               FeatureService featureService,
-    cc.thonly.wikikernel.service.UserProfileHookService userProfileHooks,
+    UserProfileHookService userProfileHooks,
                               TitleBlacklistService titleBlacklistService,
                               EmailWhitelistService emailWhitelistService,
                               EmailBlacklistService emailBlacklistService,
@@ -190,7 +193,7 @@ public class WikiPageController {
                               EditHookService editHookService,
                               PageDisplayHookService pageDisplayHookService,
                               TypeScriptAssetService typeScriptAssetService,
-                              cc.thonly.wikikernel.typescript.TypeScriptCompiler typeScriptCompiler,
+                              TypeScriptCompiler typeScriptCompiler,
                               MessageSource messageSource,
                               SkinRegistry skinRegistry) {
         this.wikiPageService = wikiPageService;
@@ -1307,7 +1310,7 @@ public class WikiPageController {
     }
 
     /**
-     * 插件编辑页字段（{@link cc.thonly.wikikernel.common.extension.EditFormField}）：
+     * 插件编辑页字段（{@link EditFormField}）：
      * 编辑框下方的额外字段（验证码等）与保存按钮附近的提示；插件异常由 {@link EditHookService} 兜底跳过。
      */
     private void applyEditFormExtensions(ModelAndView modelAndView, String title, boolean newPage,

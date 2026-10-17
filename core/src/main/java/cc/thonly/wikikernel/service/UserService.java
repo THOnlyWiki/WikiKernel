@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.service;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.util.Strings;
+import cc.thonly.wikikernel.user.MediaWikiPassword;
 import jakarta.annotation.Nullable;
 
 import java.util.Collection;
@@ -52,7 +53,7 @@ public interface UserService {
     /** 按电子邮箱查用户（忽略大小写）。 */
     Optional<WikiUser> findByEmail(String email);
 
-    /** 更新密码（存 MediaWiki 格式哈希，见 {@link cc.thonly.wikikernel.user.MediaWikiPassword}），返回是否成功。 */
+    /** 更新密码（存 MediaWiki 格式哈希，见 {@link MediaWikiPassword}），返回是否成功。 */
     boolean updatePassword(long userId, String rawPassword);
 
     /** 按 ID 查用户（参数设置等取最新数据用）。 */

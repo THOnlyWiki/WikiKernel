@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.service.PluginDatabase;
 import cc.thonly.wikikernel.common.service.UserSettings;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.plugin.echo.EchoKeys;
+import cc.thonly.wikikernel.plugin.echo.EchoSupport;
 import cc.thonly.wikikernel.plugin.echo.data.WikiNotification;
 import org.springframework.beans.factory.annotation.Autowired;import org.springframework.stereotype.Service;
 
@@ -273,7 +274,7 @@ public class EchoNotifier {
 
     /** 讨论页标题 → 收件人用户 id（找不到用户返回 null）。 */
     private Long recipientOfTalkPage(String talkPageTitle) {
-        String name = cc.thonly.wikikernel.plugin.echo.EchoSupport.userNameFromTalk(talkPageTitle);
+        String name = EchoSupport.userNameFromTalk(talkPageTitle);
         if (name == null) {
             return null;
         }

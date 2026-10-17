@@ -23,6 +23,7 @@ import cc.thonly.wikikernel.plugin.moderation.hook.ModerationHeadProvider;
 import cc.thonly.wikikernel.plugin.moderation.hook.ModerationLogType;
 import cc.thonly.wikikernel.plugin.moderation.hook.ModerationPageDisplayHook;
 import cc.thonly.wikikernel.plugin.moderation.service.ModerationService;
+import cc.thonly.wikikernel.plugin.moderation.service.ModerationStoreJdbc;
 import cc.thonly.wikikernel.plugin.moderation.web.ModerationApiController;
 import cc.thonly.wikikernel.plugin.moderation.web.ModerationSpecialPage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,7 +90,7 @@ public class ModerationPlugin implements WikiPlugin {
     /**
      * 插件自己的表 {@code wiki_pending_change}：core 在 {@code onStart} 之前按与 core 相同的
      * Auto-DDL 规则建表 / 补列（SQLite / MySQL / H2），数据访问见
-     * {@link cc.thonly.wikikernel.plugin.moderation.service.ModerationStoreJdbc}（走 JDBC 桥）。
+     * {@link ModerationStoreJdbc}（走 JDBC 桥）。
      */
     @Override
     public List<Class<?>> schemaEntities() {

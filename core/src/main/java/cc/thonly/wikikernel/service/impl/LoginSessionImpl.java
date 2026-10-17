@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.service.impl;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.service.LoginSession;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
+import cc.thonly.wikikernel.user.UserSession;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * 有效期 30 天（记住我）/ 30 分钟（否则）。之后 core 的 {@code CurrentUser} / 模板 / 权限判断
  * 读到的就是同一个用户，和密码登录没有区别。
  * <p>
- * 两处与 core 的约定保持一致（core 侧常量在 {@code cc.thonly.wikikernel.user.UserSession}）：
+ * 两处与 core 的约定保持一致（core 侧常量在 {@code UserSession}）：
  * <ul>
  *     <li>会话属性名 {@value #SESSION_ATTRIBUTE}；</li>
  *     <li>会话有效期 30 天 / 30 分钟。</li>

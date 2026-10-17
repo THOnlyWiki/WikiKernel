@@ -12,6 +12,7 @@ import cc.thonly.wikikernel.service.ActionHookService;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.user.MediaWikiPassword;
 import cc.thonly.wikikernel.user.UserSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -325,7 +326,7 @@ class PluginActionHookTest {
     private WikiUser insertUser(String username, String password) {
         WikiUser user = new WikiUser();
         user.setUsername(username);
-        user.setPassword(cc.thonly.wikikernel.user.MediaWikiPassword.hash(password));
+        user.setPassword(MediaWikiPassword.hash(password));
         user.setEmail("");
         wikiUserMapper.insert(user);
         return user;

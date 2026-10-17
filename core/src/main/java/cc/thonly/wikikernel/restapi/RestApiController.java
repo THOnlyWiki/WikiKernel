@@ -12,6 +12,7 @@ import cc.thonly.wikikernel.search.SearchService;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.BlockService;
 import cc.thonly.wikikernel.service.PageBody;
+import cc.thonly.wikikernel.service.PageBodyRenderer;
 import cc.thonly.wikikernel.service.PageCacheService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
@@ -154,7 +155,7 @@ public class RestApiController {
 
     /** 正文渲染器（不写缓存：任意旧版本渲染结果不能污染「最新版本」的页面缓存）。 */
     @org.springframework.beans.factory.annotation.Autowired
-    private cc.thonly.wikikernel.service.PageBodyRenderer pageBodyRenderer;
+    private PageBodyRenderer pageBodyRenderer;
 
     /** {@code GET /rest.php/v1/revision/{id}}(+{@code /bare}、{@code /html})。 */
     @GetMapping("/revision/**")

@@ -39,14 +39,14 @@ public class SiteSettingsApiController {
     private final PluginFeatureSections featureSections;
     private final PermissionService permissionService;
     /** TypeScript 编译产物服务（读取生效的源码大小上限，用于校验设置值）。 */
-    private final cc.thonly.wikikernel.typescript.TypeScriptAssetService typescriptAssetService;
+    private final TypeScriptAssetService typescriptAssetService;
     private final MessageSource messageSource;
 
     public SiteSettingsApiController(SiteSettingsService siteSettingsService,
                                      FeatureService featureService,
                                      PluginFeatureSections featureSections,
                                      PermissionService permissionService,
-                                     cc.thonly.wikikernel.typescript.TypeScriptAssetService typescriptAssetService,
+                                     TypeScriptAssetService typescriptAssetService,
                                      MessageSource messageSource) {
         this.siteSettingsService = siteSettingsService;
         this.featureService = featureService;

@@ -86,7 +86,7 @@ class CheckUserTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("203.0.113.7")))
                 .andExpect(content().string(containsString("WikiKernelTest/1.0")))
-                .andExpect(content().string(containsString(cc.thonly.wikikernel.common.web.WikiUrls.pagePath(page))));
+                .andExpect(content().string(containsString(WikiUrls.pagePath(page))));
 
         // 核查员「按 IP」查：显示该 IP 上的用户名
         mockMvc.perform(get("/wiki/{title}", "特殊:用户核查")

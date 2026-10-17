@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.service;
 
 import cc.thonly.wikikernel.common.data.WikiKv;
+import cc.thonly.wikikernel.common.data.WikiLog;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.service.KvStore;
 import cc.thonly.wikikernel.common.service.KvValue;
@@ -122,26 +123,26 @@ class PluginDataBridgeTest {
     @Test
     void logWriterWritesIntoWikiLog() {
         WikiUser user = insertUser();
-        long before = wikiLogMapper.selectCount(Wrappers.<cc.thonly.wikikernel.common.data.WikiLog>lambdaQuery());
+        long before = wikiLogMapper.selectCount(Wrappers.<WikiLog>lambdaQuery());
         logWriter.record("edit", user.getId(), "日志桥测试页", "摘要");
         assertEquals(before + 1, wikiLogMapper.selectCount(
-                Wrappers.<cc.thonly.wikikernel.common.data.WikiLog>lambdaQuery()));
+                Wrappers.<WikiLog>lambdaQuery()));
     }
 
     @Test
     void pageWriterSavesWithOptimisticLockAndAiWatermark() {
         WikiUser user = insertUser();
         String title = "写入桥测试页" + System.nanoTime();
-        cc.thonly.wikikernel.common.service.PageWriter.Result created =
-                pageWriter.save(cc.thonly.wikikernel.common.service.PageWriter.Request.of(
+        PageWriter.Result created =
+                pageWriter.save(PageWriter.Request.of(
                         user.getId(), title, "初版正文", "写入桥创建"));
         assertTrue(created.saved(), String.valueOf(created.error()));
         assertTrue(created.revisionId() > 0);
         assertEquals("初版正文", wikiPageService.getLatestContent(created.pageId()).orElse(""));
 
         // 版本冲突：expectedRevisionId 过期时不落盘
-        cc.thonly.wikikernel.common.service.PageWriter.Result conflict =
-                pageWriter.save(new cc.thonly.wikikernel.common.service.PageWriter.Request(
+        PageWriter.Result conflict =
+                pageWriter.save(new PageWriter.Request(
                         user.getId(), title, "覆盖别人的修改", "冲突测试", false, false, null,
                         created.revisionId() + 1000, false, null));
         assertFalse(conflict.saved());
@@ -149,8 +150,8 @@ class PluginDataBridgeTest {
         assertEquals("初版正文", wikiPageService.getLatestContent(created.pageId()).orElse(""));
 
         // AI 标记 + 乐观锁正确时保存成功
-        cc.thonly.wikikernel.common.service.PageWriter.Result saved =
-                pageWriter.save(cc.thonly.wikikernel.common.service.PageWriter.Request.aiAssisted(
+        PageWriter.Result saved =
+                pageWriter.save(PageWriter.Request.aiAssisted(
                         user.getId(), title, "AI 改写的正文", "AI 提案", created.revisionId(), "mock/mock"));
         assertTrue(saved.saved(), String.valueOf(saved.error()));
         assertEquals("AI 改写的正文", wikiPageService.getLatestContent(created.pageId()).orElse(""));
@@ -158,9 +159,9 @@ class PluginDataBridgeTest {
                 .orElseThrow().getAiAssisted()), "AI 协助的版本应带标记");
 
         // 用户不存在 / 标题为空
-        assertFalse(pageWriter.save(cc.thonly.wikikernel.common.service.PageWriter.Request.of(
+        assertFalse(pageWriter.save(PageWriter.Request.of(
                 999_999_999L, title + "x", "内容", "")).saved());
-        assertFalse(pageWriter.save(cc.thonly.wikikernel.common.service.PageWriter.Request.of(
+        assertFalse(pageWriter.save(PageWriter.Request.of(
                 user.getId(), "  ", "内容", "")).saved());
 
         // 删除（软删除）
@@ -175,7 +176,7 @@ class PluginDataBridgeTest {
         String name = "文件写入桥" + System.nanoTime() + ".png";
         byte[] png = new byte[]{(byte) 0x89, 'P', 'N', 'G', 1, 2, 3};
 
-        cc.thonly.wikikernel.common.service.FileWriter.Result stored =
+        FileWriter.Result stored =
                 fileWriter.store(user.getId(), name, "写入桥说明", png);
         assertTrue(stored.ok(), stored.error());
         assertTrue(stored.id() > 0);
@@ -184,7 +185,7 @@ class PluginDataBridgeTest {
         assertTrue(stored.contentType().startsWith("image/"), stored.contentType());
         assertTrue(fileService.findByName(name).isPresent(), "写入桥应把文件写进正式存储");
         // 同名再写 = 新版本
-        cc.thonly.wikikernel.common.service.FileWriter.Result second =
+        FileWriter.Result second =
                 fileWriter.store(user.getId(), name, "第二次", new byte[]{1, 2, 3, 4, 5});
         assertTrue(second.ok(), second.error());
         assertEquals(5, second.size());

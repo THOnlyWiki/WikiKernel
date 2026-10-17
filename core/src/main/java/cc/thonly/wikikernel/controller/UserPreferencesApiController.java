@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.mail.EmailTokenService;
 import cc.thonly.wikikernel.mail.EmailTypeConfig;
 import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.PermissionService;
+import cc.thonly.wikikernel.service.RateLimiterService;
 import cc.thonly.wikikernel.service.UserPreferences;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.skin.SkinRegistry;
@@ -169,7 +170,7 @@ public class UserPreferencesApiController {
 
     /** 防爆破：改密接口里校验旧密码也算一次「密码尝试」，与登录共用限流规则（默认 5 次/5 分钟 → 锁 15 分钟）。 */
     @org.springframework.beans.factory.annotation.Autowired
-    private cc.thonly.wikikernel.service.RateLimiterService rateLimiterService;
+    private RateLimiterService rateLimiterService;
 
     /** 修改密码（仿 MediaWiki 参数设置里的「修改密码」）：校验旧密码 → 更新。 */
     @PostMapping("/password")
@@ -182,8 +183,8 @@ public class UserPreferencesApiController {
             return AjaxResult.error(AjaxCode.UNAUTHORIZED, message("permissions.loginRequired"));
         }
         String limitKey = "password-change|" + current.getUsername().toLowerCase(java.util.Locale.ROOT);
-        cc.thonly.wikikernel.service.RateLimiterService.Decision decision =
-                rateLimiterService.check(cc.thonly.wikikernel.service.RateLimiterService.LOGIN, limitKey);
+        RateLimiterService.Decision decision =
+                rateLimiterService.check(RateLimiterService.LOGIN, limitKey);
         if (decision.limited()) {
             return AjaxResult.error(AjaxCode.TOO_MANY_REQUESTS,
                     message("rateLimit.login", decision.retryAfterSeconds()));
@@ -197,10 +198,10 @@ public class UserPreferencesApiController {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.password.mismatch"));
         }
         if (userService.login(current.getUsername(), oldValue) == null) {
-            rateLimiterService.failure(cc.thonly.wikikernel.service.RateLimiterService.LOGIN, limitKey);
+            rateLimiterService.failure(RateLimiterService.LOGIN, limitKey);
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.password.oldWrong"));
         }
-        rateLimiterService.success(cc.thonly.wikikernel.service.RateLimiterService.LOGIN, limitKey);
+        rateLimiterService.success(RateLimiterService.LOGIN, limitKey);
         if (!userService.updatePassword(current.getId(), newValue)) {
             return AjaxResult.error(AjaxCode.NOT_FOUND, message("permissions.userNotFound"));
         }

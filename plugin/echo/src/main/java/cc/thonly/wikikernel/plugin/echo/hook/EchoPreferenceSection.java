@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.common.extension.PreferenceSection;
 import cc.thonly.wikikernel.common.service.UserSettings;
 import cc.thonly.wikikernel.plugin.echo.EchoKeys;
 import cc.thonly.wikikernel.plugin.echo.EchoSupport;
+import cc.thonly.wikikernel.plugin.echo.service.EchoMailer;
 import org.springframework.web.util.HtmlUtils;
 
 /**
@@ -17,10 +18,10 @@ public final class EchoPreferenceSection implements PreferenceSection {
 
     private final UserSettings userSettings;
     private final EchoSupport support;
-    private final cc.thonly.wikikernel.plugin.echo.service.EchoMailer mailer;
+    private final EchoMailer mailer;
 
     public EchoPreferenceSection(UserSettings userSettings, EchoSupport support,
-                                 cc.thonly.wikikernel.plugin.echo.service.EchoMailer mailer) {
+                                 EchoMailer mailer) {
         this.userSettings = userSettings;
         this.support = support;
         this.mailer = mailer;

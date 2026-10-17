@@ -48,7 +48,7 @@ public final class WikiTitles {
     private WikiTitles() {
     }
 
-    /** 由配置（{@link cc.thonly.wikikernel.web.WikiTitleProperties}）在启动时调用。 */
+    /** 由配置（{@link WikiTitleProperties}）在启动时调用。 */
     public static void setCapitalizeFirstLetter(boolean value) {
         capitalizeFirstLetter = value;
     }

@@ -15,6 +15,7 @@ import cc.thonly.wikikernel.plugin.fingerprintlogin.hook.FingerprintLoginPrefere
 import cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintLoginService;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintStore;
 import cc.thonly.wikikernel.common.service.LoginSession;
+import cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintStoreJdbc;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.web.FingerprintLoginSpecialPage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -75,7 +76,7 @@ public class FingerprintLoginPlugin implements WikiPlugin {
     /**
      * 插件自己的表 {@code wiki_fingerprint}：core 在 {@code onStart} 之前按与 core 相同的
      * Auto-DDL 规则建表 / 补列（SQLite / MySQL / H2），数据访问见
-     * {@link cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintStoreJdbc}（走 JDBC 桥）。
+     * {@link FingerprintStoreJdbc}（走 JDBC 桥）。
      */
     @Override
     public List<Class<?>> schemaEntities() {

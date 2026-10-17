@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.common.data;
 
+import cc.thonly.wikikernel.common.access.AccessAction;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -17,7 +18,7 @@ import lombok.NoArgsConstructor;
  *     <li>前缀（以 {@code *} 结尾）：如 {@code 帮助:*}，匹配所有以「帮助:」开头的标题。</li>
  * </ul>
  * {@link #groupNames} 为 {@code |} 分隔的用户组（任一即可）；{@code *} 表示所有人（含匿名）；空串表示无人（禁止）。
- * 动作 id 见 {@code cc.thonly.wikikernel.common.access.AccessAction}。
+ * 动作 id 见 {@code AccessAction}。
  */
 @Data
 @TableName("wiki_access_rule")

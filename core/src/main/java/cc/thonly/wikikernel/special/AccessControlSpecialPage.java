@@ -18,6 +18,8 @@ import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.SpecialWikiPageService;
 import cc.thonly.wikikernel.common.web.WikiUrls;
+import cc.thonly.wikikernel.typescript.TypeScriptAssetService;
+import cc.thonly.wikikernel.typescript.TypeScriptCompiler;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
@@ -57,9 +59,9 @@ public class AccessControlSpecialPage implements SpecialPage {
     private final SiteNameService siteNameService;
     /** AI 厂商密钥行（站点密钥）。 */
     /** TypeScript 服务端编译（站点设置里的开关与「编译器是否就绪」摘要）。 */
-    private final cc.thonly.wikikernel.typescript.TypeScriptAssetService typeScriptAssetService;
+    private final TypeScriptAssetService typeScriptAssetService;
     /** TypeScript 编译器（展示版本）。 */
-    private final cc.thonly.wikikernel.typescript.TypeScriptCompiler typeScriptCompiler;
+    private final TypeScriptCompiler typeScriptCompiler;
 
     public AccessControlSpecialPage(AccessControlService accessControlService,
                                     PermissionService permissionService,
@@ -71,8 +73,8 @@ public class AccessControlSpecialPage implements SpecialPage {
                                     MessageSource messageSource,
                                     PermissionGroupLabels groupLabels,
                                     SiteNameService siteNameService,
-                                    cc.thonly.wikikernel.typescript.TypeScriptAssetService typeScriptAssetService,
-                                    cc.thonly.wikikernel.typescript.TypeScriptCompiler typeScriptCompiler) {
+                                    TypeScriptAssetService typeScriptAssetService,
+                                    TypeScriptCompiler typeScriptCompiler) {
         this.accessControlService = accessControlService;
         this.permissionService = permissionService;
         this.siteSettingsService = siteSettingsService;

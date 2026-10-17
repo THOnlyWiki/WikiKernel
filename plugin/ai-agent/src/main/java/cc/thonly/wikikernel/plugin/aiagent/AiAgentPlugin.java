@@ -15,6 +15,7 @@ import cc.thonly.wikikernel.plugin.aiagent.hook.AiKeysPreferenceSection;
 import cc.thonly.wikikernel.plugin.aiagent.model.AiProperties;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiAgentService;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiConfig;
+import cc.thonly.wikikernel.plugin.aiagent.service.AiConfigService;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiProviderRegistry;
 import cc.thonly.wikikernel.plugin.aiagent.service.MarkdownRenderer;
 import cc.thonly.wikikernel.plugin.aiagent.web.AiAgentApiController;
@@ -38,7 +39,7 @@ import java.util.List;
  *     （{@code wiki_revision.ai_assisted} / {@code ai_model} 的渲染与页面元数据）；</li>
  *     <li><b>插件自己的东西</b>：{@code wikikernel.ai.*} 配置（{@link AiProperties}，插件子容器绑定）、
  *     {@code wiki_user_ai_key} 表与实体（{@link WikiUserAiKey}，{@code schemaEntities()} 声明、core 自动建表）、
- *     {@link AiConfig} 桥与 {@link cc.thonly.wikikernel.plugin.aiagent.service.AiConfigService}
+ *     {@link AiConfig} 桥与 {@link AiConfigService}
  *     （用户密钥走 {@code common.service.PluginDatabase}，站点密钥 / 运行时设置走 {@code common.service.SiteConfig}
  *     读写）；</li>
  *     <li><b>平台桥</b>：提交 {@code common.service.EditSubmitter}（先跑 {@code EditGuard}——插件版滥用过滤器等，
@@ -93,7 +94,7 @@ public class AiAgentPlugin implements WikiPlugin {
     /**
      * 插件自己的表：{@code wiki_user_ai_key}（用户个人厂商密钥）。
      * core 在 {@code onStart} 前按与 core 相同的 Auto-DDL 规则建表 / 补列；数据访问见
-     * {@link cc.thonly.wikikernel.plugin.aiagent.service.AiConfigService}（走 JDBC 桥）。
+     * {@link AiConfigService}（走 JDBC 桥）。
      */
     @Override
     public List<Class<?>> schemaEntities() {

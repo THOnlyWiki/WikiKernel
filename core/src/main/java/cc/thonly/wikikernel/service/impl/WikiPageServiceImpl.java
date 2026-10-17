@@ -11,6 +11,8 @@ import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.WikiPageChangedEvent;
 import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.skin.SkinRegistry;
+import cc.thonly.wikikernel.typescript.TypeScriptAssetService;
 import cc.thonly.wikikernel.web.InvalidTitleException;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiTitles;
@@ -68,14 +70,14 @@ public class WikiPageServiceImpl implements WikiPageService {
      * 用 {@code ObjectProvider} 取值，避免手工构造（测试）时必须提供。
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private cc.thonly.wikikernel.typescript.TypeScriptAssetService typeScriptAssetService;
+    private TypeScriptAssetService typeScriptAssetService;
 
     /**
      * 皮肤注册表：只用于**旧签名的兜底**（{@code getCSS(title)} / {@code getJS(title)} 按站点默认皮肤取皮肤页）。
      * 用 {@code required = false} 取值，避免手工构造（测试）时必须提供；请求级渲染一律由调用点显式传入皮肤 id。
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private cc.thonly.wikikernel.skin.SkinRegistry skinRegistry;
+    private SkinRegistry skinRegistry;
 
     public WikiPageServiceImpl(WikiPageMapper wikiPageMapper,
                                WikiRevisionMapper wikiRevisionMapper,
@@ -632,7 +634,7 @@ public class WikiPageServiceImpl implements WikiPageService {
                     .orderByAsc(WikiPage::getTitle));
             for (WikiPage page : subPages) {
                 // 类型声明（x.d.ts 也以 .ts 结尾）没有运行时代码，不能当页面脚本加载
-                if (cc.thonly.wikikernel.typescript.TypeScriptAssetService.isDeclarationPage(page.getTitle())) {
+                if (TypeScriptAssetService.isDeclarationPage(page.getTitle())) {
                     continue;
                 }
                 if (getLatestContent(page.getId()).isPresent()) {

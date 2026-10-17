@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.typescript;
 import cc.thonly.wikikernel.common.data.WikiCompiledScript;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.config.TypeScriptProperties;
 import cc.thonly.wikikernel.db.mapper.WikiCompiledScriptMapper;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.FeatureService;
@@ -359,7 +360,7 @@ class TypeScriptCompileTest {
 
     @Test
     void oversizedSourceIsRejectedWithoutCachingAndLimitIsDynamic() {
-        cc.thonly.wikikernel.common.data.WikiPage page = new cc.thonly.wikikernel.common.data.WikiPage(
+        WikiPage page = new WikiPage(
                 null, "超大源码测试.ts", 1000L, false, false, false,
                 java.time.LocalDateTime.now(), java.time.LocalDateTime.now());
         page.setId(999_999L);
@@ -483,7 +484,7 @@ class TypeScriptCompileTest {
             };
             TypeScriptAssetService service = new TypeScriptAssetService(
                     counting, compiledScriptMapper, featureService,
-                    new cc.thonly.wikikernel.config.TypeScriptProperties(), siteSettingsService);
+                    new TypeScriptProperties(), siteSettingsService);
             WikiPage page = wikiPageService.getByTitle(title).orElseThrow();
 
             int threads = 8;

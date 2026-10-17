@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.service.impl;
 import cc.thonly.wikikernel.common.data.WikiFile;
 import cc.thonly.wikikernel.common.data.WikiFileVersion;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.FileStorageProperties;
 import cc.thonly.wikikernel.db.mapper.WikiFileMapper;
@@ -59,14 +60,14 @@ public class FileServiceImpl implements FileService {
     private final FileStorageProperties properties;
     private final LogService logService;
     private final MessageSource messageSource;
-    private final cc.thonly.wikikernel.common.service.SiteConfig siteConfig;
+    private final SiteConfig siteConfig;
 
     public FileServiceImpl(WikiFileMapper wikiFileMapper,
                            WikiFileVersionMapper wikiFileVersionMapper,
                            FileStorageProperties properties,
                            LogService logService,
                            MessageSource messageSource,
-                           cc.thonly.wikikernel.common.service.SiteConfig siteConfig) {
+                           SiteConfig siteConfig) {
         this.wikiFileMapper = wikiFileMapper;
         this.wikiFileVersionMapper = wikiFileVersionMapper;
         this.properties = properties;

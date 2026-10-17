@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.web;
 
 import cc.thonly.wikikernel.i18n.PermissionGroupLabels;
+import cc.thonly.wikikernel.service.PermissionService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import java.util.Set;
  * 模板 {@code fragments/user-profile.html} 只做渲染（见 {@code web/UserProfileAdvice}）。
  *
  * <h2>隐式组（人人都有，资料卡不显示）</h2>
- * 与 {@link cc.thonly.wikikernel.service.PermissionService#IMPLICIT_GROUPS} 只含「用户」不同，
+ * 与 {@link PermissionService#IMPLICIT_GROUPS} 只含「用户」不同，
  * 资料卡还要挡掉「编辑满 N 次自动授予」的两类自动组（对齐 MediaWiki：{@code user} /
  * {@code autoconfirmed} / {@code emailconfirmed} 都不是「身份徽章」）。清单同时收录
  * **库里实际会出现的稳定中文组名**与 **MediaWiki 风格英文别名**（core 的

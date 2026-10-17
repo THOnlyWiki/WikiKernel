@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.common.plugin;
 
+import cc.thonly.wikikernel.common.service.PluginDatabase;
 import java.util.List;
 
 /**
@@ -32,7 +33,7 @@ public interface WikiPlugin {
      * core 会在 {@code onStart} **之前**按与 core 相同的规则（{@code @TableName} / {@code @TableId} /
      * {@code @TableField} / {@code @DbColumn}，支持 SQLite / MySQL / H2，只增不减）建表 / 补列，
      * 因此插件可以把专属实体留在自己的 jar 里，用
-     * {@link cc.thonly.wikikernel.common.service.PluginDatabase} 读写，不必再往 {@code common.data}
+     * {@link PluginDatabase} 读写，不必再往 {@code common.data}
      * 或 {@code common.service} 里放插件专属的实体 / 桥接口。
      * <pre>{@code
      *   @Override

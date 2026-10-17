@@ -8,6 +8,7 @@ import cc.thonly.wikikernel.plugin.echo.EchoKeys;
 import cc.thonly.wikikernel.plugin.echo.EchoSupport;
 import cc.thonly.wikikernel.plugin.echo.hook.EchoToolbarHook;
 import cc.thonly.wikikernel.plugin.echo.service.EchoNotificationStoreJdbc;
+import cc.thonly.wikikernel.plugin.echo.service.EchoNotifier;
 import cc.thonly.wikikernel.plugin.echo.service.EchoView;
 
 import java.util.ArrayList;
@@ -38,11 +39,11 @@ public class NotificationsSpecialPage implements SpecialPage {
     private final EchoView view;
     private final EchoSupport support;
     private final EchoToolbarHook toolbar;
-    private final cc.thonly.wikikernel.plugin.echo.service.EchoNotifier notifier;
+    private final EchoNotifier notifier;
 
     public NotificationsSpecialPage(EchoNotificationStoreJdbc store, EchoView view, EchoSupport support,
                                     EchoToolbarHook toolbar,
-                                    cc.thonly.wikikernel.plugin.echo.service.EchoNotifier notifier) {
+                                    EchoNotifier notifier) {
         this.store = store;
         this.view = view;
         this.support = support;

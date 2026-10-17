@@ -19,6 +19,7 @@ import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.skin.ActiveSkin;
 import cc.thonly.wikikernel.skin.SkinRegistry;
 import cc.thonly.wikikernel.time.WikiTime;
+import cc.thonly.wikikernel.web.RequestHeadContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -211,7 +212,7 @@ public class PreferencesSpecialPage implements SpecialPage {
                 instanceof org.springframework.web.context.request.ServletRequestAttributes attributes)) {
             return "";
         }
-        return cc.thonly.wikikernel.web.RequestHeadContext.buildBaseUrl(attributes.getRequest());
+        return RequestHeadContext.buildBaseUrl(attributes.getRequest());
     }
 
     private Map<String, Object> option(int value, String label) {        Map<String, Object> option = new LinkedHashMap<>();

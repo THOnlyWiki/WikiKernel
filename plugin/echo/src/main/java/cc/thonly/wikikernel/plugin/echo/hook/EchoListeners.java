@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.plugin.echo.hook;
 import cc.thonly.wikikernel.common.extension.CoreAopHook;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.service.DbRow;
 import cc.thonly.wikikernel.common.service.PageSnapshot;
 import cc.thonly.wikikernel.common.service.PluginDatabase;
 import cc.thonly.wikikernel.common.service.WikiPageStore;
@@ -162,7 +163,7 @@ public final class EchoListeners implements CoreAopHook {
     /** 该页最近的修订者（最新在前，回退发生前）。 */
     private List<Long> recentRevisionUserIds(long pageId) {
         List<Long> userIds = new ArrayList<>();
-        for (cc.thonly.wikikernel.common.service.DbRow row : database.query(
+        for (DbRow row : database.query(
                 "SELECT user_id FROM wiki_revision WHERE page_id = ? ORDER BY id DESC LIMIT 50", pageId)) {
             userIds.add(row.longOrNull("user_id"));
         }
