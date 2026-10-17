@@ -19,7 +19,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
-import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -320,7 +319,7 @@ public class SetupService {
                 Files.createDirectories(absolute.getParent());
             }
             Files.writeString(absolute, catalog.schemaDirective(path) + "\n" + HEADER
-                    + dumpConfig(merged), StandardCharsets.UTF_8);
+                    + catalog.renderConfigYaml(merged), StandardCharsets.UTF_8);
             log.info("安装向导：配置已写入 {}（{} 个顶层键）", absolute, merged.size());
         } catch (IOException | RuntimeException exception) {
             log.error("安装向导：写入配置失败", exception);
@@ -328,48 +327,6 @@ public class SetupService {
         }
         boolean restarted = properties.isRestartEnabled() && restartService.restart();
         return new FinishResult(restarted, key);
-    }
-
-    /**
-     * 把精简配置 dump 成 YAML 文本。
-     * <p>
-     * 两条硬要求：
-     * <ol>
-     *     <li><b>块状写法</b>：默认的 AUTO 样式会输出 {@code database: {type: sqlite, file: …}}
-     *     这类流式映射，行内看不出层级、手改容易漏逗号，所以固定用块状；</li>
-     *     <li><b>不输出锚点 / 别名</b>：{@code setup.email} 等段落里有「同一个空列表实例被多处引用」
-     *     的情况（如横幅图片池与白名单都是 {@code List.of()}），SnakeYAML 会写成
-     *     {@code &id001 []} + {@code *id001}。语义虽然正确，但用户改一处会意外影响另一处，
-     *     所以先把集合复制成互不相同的实例再 dump。</li>
-     * </ol>
-     */
-    private static String dumpConfig(Map<String, Object> config) {
-        DumperOptions options = new DumperOptions();
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        options.setIndent(2);
-        // 关掉 prettyFlow：否则空列表会写成「[\n]」两行，块状输出里很难看
-        options.setPrettyFlow(false);
-        options.setSplitLines(false);
-        return new Yaml(options).dump(copyCollections(config));
-    }
-
-    /** 深拷贝 Map / List（标量原样保留），打断对象共享，避免 dump 出锚点与别名。 */
-    private static Object copyCollections(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> copy = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                copy.put(String.valueOf(entry.getKey()), copyCollections(entry.getValue()));
-            }
-            return copy;
-        }
-        if (value instanceof List<?> list) {
-            List<Object> copy = new ArrayList<>(list.size());
-            for (Object item : list) {
-                copy.add(copyCollections(item));
-            }
-            return copy;
-        }
-        return value;
     }
 
     // ==================== 配置构建 ====================

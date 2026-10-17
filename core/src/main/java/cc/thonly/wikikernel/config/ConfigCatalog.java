@@ -247,6 +247,69 @@ public final class ConfigCatalog {
     }
 
     /**
+     * 生成「精简配置」的 YAML：只输出 {@code config} 里真实存在的键，
+     * 但保留配置目录里的中文分组注释与嵌套层级，全部使用块状写法
+     * （不再出现 {@code database: { type: sqlite, … }} 这类流式映射）。
+     * <p>
+     * 与 {@link #renderDocumentationYaml(Map)} 的区别：不把没配置过的默认项写进文件，
+     * 文件仍然只包含「向导里实际配置过的项」；但每段带说明、按层级缩进，手工修改更直观。
+     */
+    public String renderConfigYaml(Map<String, Object> config) {
+        StringBuilder out = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            String key = entry.getKey();
+            if (key == null || key.isBlank()) {
+                continue;
+            }
+            if (!first) {
+                out.append('\n');
+            }
+            writeConfigNode(out, key, entry.getValue(), key, "", true);
+            first = false;
+        }
+        return out.toString();
+    }
+
+    /**
+     * 输出精简配置的一个节点：映射递归展开成块状，列表 / 标量交给 {@link #writeValue}。
+     * 只在「分组映射」上输出目录注释，叶子键不逐行附默认值说明，保持文件精简可读。
+     */
+    private void writeConfigNode(StringBuilder out, String key, Object value, String path,
+                                 String padding, boolean topLevel) {
+        if (value instanceof Map<?, ?> map) {
+            String comment = groupComment(path);
+            if (comment == null || comment.isBlank()) {
+                ConfigCatalogEntry entry = byKey.get(path);
+                if (entry != null) {
+                    comment = entry.commentText(null);
+                }
+            }
+            if (comment != null && !comment.isBlank()) {
+                appendComment(out, comment, padding);
+            }
+            if (map.isEmpty()) {
+                out.append(padding).append(key).append(": {}\n");
+                return;
+            }
+            out.append(padding).append(key).append(":\n");
+            boolean firstChild = true;
+            for (Map.Entry<?, ?> child : map.entrySet()) {
+                String childKey = String.valueOf(child.getKey());
+                // 分组之间空一行，读起来层次更清楚；标量叶子保持紧凑
+                if (!firstChild && child.getValue() instanceof Map<?, ?>) {
+                    out.append('\n');
+                }
+                writeConfigNode(out, childKey, child.getValue(), path + "." + childKey,
+                        padding + "  ", false);
+                firstChild = false;
+            }
+            return;
+        }
+        writeValue(out, padding, key, value, 1);
+    }
+
+    /**
      * 完整模板用的「配置」：每一项都给值 —— 敏感项留空，其余用目录默认值
      * （目录没写默认值时按类型给出空值，保证模板里不缺键）。
      */

@@ -196,6 +196,10 @@ class SetupConfigTemplateTest {
         String raw = Files.readString(CONFIG, StandardCharsets.UTF_8);
         assertTrue(raw.startsWith("# yaml-language-server: $schema="), raw.lines().findFirst().orElse(""));
         assertFalse(raw.contains("&id001"), "不应输出锚点 / 别名：\n" + raw);
+        // 块状缩进：不应出现流式映射（空映射 {} 除外），分组前应有目录注释
+        assertFalse(raw.contains(": { "), "配置应为块状缩进，不应出现流式映射：\n" + raw);
+        assertTrue(raw.contains("  database:\n    type: sqlite"), "database 应为嵌套块状：\n" + raw);
+        assertTrue(raw.contains("  # "), "分组前应有中文注释：\n" + raw);
 
         Map<String, Object> parsed = parse(raw);
         Set<String> keys = flatten(parsed);
