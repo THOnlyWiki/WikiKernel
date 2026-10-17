@@ -91,6 +91,28 @@ class LuaExtensionTest {
     // ==================== mw.loadData + 模块依赖追踪 ====================
 
     @Test
+    void scribuntoCompatibilityHelpersWork() throws Exception {
+        wikiPageService.editPage(null, "模块:Lua兼容工具", """
+                local p = {}
+                function p.main()
+                    local parts = mw.text.split('甲,乙,丙', ',')
+                    local title = mw.title.new('Module:Lua兼容工具')
+                    local same = mw.title.equals(title, mw.title.makeTitle('Module', 'Lua兼容工具'))
+                    local cloned = mw.clone({ a = 1, b = { c = 2 } })
+                    local lang = mw.getContentLanguage()
+                    local nowiki = mw.text.nowiki('[[x]]')
+                    return table.concat(parts, '/') .. '|' .. title.prefixedText
+                        .. '|' .. tostring(same) .. '|' .. cloned.b.c
+                        .. '|' .. lang:getCode() .. '|' .. nowiki
+                end
+                return p
+                """);
+        String html = render("Lua兼容工具页", "{{#invoke:Lua兼容工具|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                html.contains("甲/乙/丙|模块:Lua兼容工具|true|2|zh|&amp;#91;&amp;#91;x&amp;#93;&amp;#93;"), html);
+    }
+
+    @Test
     void luaPairsAndIpairsHonorMetamethods() throws Exception {
         wikiPageService.editPage(null, "模块:Lua元方法", """
                 local p = {}

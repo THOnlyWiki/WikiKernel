@@ -39,6 +39,27 @@ class WikitextRendererTest {
     }
 
     @Test
+    void rendersCommonParserFunctions() {
+        String html = renderer.render(
+                "{{#expr:2+3*4}}|{{#time:Y|20200102030405}}|"
+                        + "{{#ifexist:不存在的页面|有|无}}|"
+                        + "{{#iferror:{{#invoke:不存在|main}}|错误|正常}}",
+                "测试");
+        assertTrue(html.contains("14|2020|无|错误"), html);
+    }
+
+    @Test
+    void rendersColonMagicWords() {
+        String html = renderer.render(
+                "{{lc:ABC}}|{{uc:abc}}|{{urlencode:a b}}|{{ns:Template}}|"
+                        + "{{fullurl:首页|action=edit}}|{{formatnum:1234}}",
+                "测试");
+        assertTrue(html.contains("abc|ABC|a%20b|模板|"), html);
+        assertTrue(html.contains("/wiki/") && html.contains("action=edit"), html);
+        assertTrue(html.contains("1,234"), html);
+    }
+
+    @Test
     void rendersHeadingListAndParagraph() {
         String html = renderer.render("== 标题 ==\n\n第一段\n\n* 甲\n* 乙\n\n# 一\n# 二", "测试");
         assertTrue(html.contains("<h2 id=\"标题\">标题</h2>"), html);

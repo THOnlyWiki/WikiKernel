@@ -1,7 +1,9 @@
 package cc.thonly.wikikernel.wikitext;
 
 import cc.thonly.wikikernel.common.data.WikiFile;
+import cc.thonly.wikikernel.common.data.WikiRevision;
 import cc.thonly.wikikernel.common.extension.BehaviorSwitch;
+import cc.thonly.wikikernel.actionapi.ActionApiNamespaces;
 import cc.thonly.wikikernel.common.extension.FileEmbedCall;
 import cc.thonly.wikikernel.common.extension.FileEmbedRenderer;
 import cc.thonly.wikikernel.common.extension.MagicWord;
@@ -16,10 +18,13 @@ import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.InterwikiService;
 import cc.thonly.wikikernel.service.PageExistenceService;
+import cc.thonly.wikikernel.service.UserService;
+import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaPlayerHtml;
 import cc.thonly.wikikernel.web.WikiFileEmbedCall;
 import cc.thonly.wikikernel.common.web.WikiUrls;
+import cc.thonly.wikikernel.WikiKernelInfo;
 
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
@@ -154,6 +159,14 @@ public class WikitextRenderer {
     /** 页面存在性（红链判断）；独立测试构造时为空（不标红）。 */
     @Autowired(required = false)
     private PageExistenceService pageExistenceService;
+
+    /** 页面 / 版本查询（REVISIONTIMESTAMP / REVISIONUSER 魔术字用）；独立测试构造时为空。 */
+    @Autowired(required = false)
+    private WikiPageService wikiPageService;
+
+    /** 用户名查询（REVISIONUSER 魔术字用）；独立测试构造时为空。 */
+    @Autowired(required = false)
+    private UserService userService;
 
     /** Lua 模块（{{#invoke:…}}）；独立测试构造时为空（显示「未启用」错误）。 */
     @Autowired(required = false)
@@ -558,6 +571,10 @@ public class WikitextRenderer {
         if (trimmed.isEmpty()) {
             return "";
         }
+        String colonMagic = colonMagicWord(trimmed, frame, pageTitle, depth, stack, trusted);
+        if (colonMagic != null) {
+            return colonMagic;
+        }
         String magic = magicWord(trimmed, pageTitle);
         if (magic != null) {
             return magic;
@@ -603,6 +620,113 @@ public class WikitextRenderer {
         return result;
     }
 
+    /** 无 {@code #} 的 MediaWiki 冒号魔术字（lc / fullurl / ns / formatnum / padleft …）。 */
+    private String colonMagicWord(String expression, Map<String, String> frame, String pageTitle,
+                                  int depth, Set<String> stack, List<String> trusted) {
+        int colon = expression.indexOf(':');
+        if (colon <= 0) {
+            return null;
+        }
+        String name = expression.substring(0, colon).trim().toLowerCase(Locale.ROOT);
+        String argument = expression.substring(colon + 1);
+        List<String> parts = splitTopLevel(argument, '|');
+        String first = parts.isEmpty() ? "" : expand(parts.get(0), frame, pageTitle, depth, stack, trusted);
+        String second = parts.size() > 1 ? expand(parts.get(1), frame, pageTitle, depth, stack, trusted) : "";
+        return switch (name) {
+            case "lc" -> first.toLowerCase(Locale.ROOT);
+            case "uc" -> first.toUpperCase(Locale.ROOT);
+            case "lcfirst" -> first.isEmpty() ? first
+                    : first.substring(0, 1).toLowerCase(Locale.ROOT) + first.substring(1);
+            case "ucfirst" -> first.isEmpty() ? first
+                    : first.substring(0, 1).toUpperCase(Locale.ROOT) + first.substring(1);
+            case "urlencode" -> java.net.URLEncoder.encode(first, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+            case "anchorencode" -> java.net.URLEncoder.encode(first, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "_");
+            case "fullurl", "canonicalurl", "localurl" -> {
+                String path = WikiUrls.pagePath(first.trim());
+                if (!second.isBlank()) {
+                    path = path + (path.contains("?") ? "&" : "?") + second;
+                }
+                yield path;
+            }
+            case "ns", "nse" -> {
+                int id;
+                try {
+                    id = Integer.parseInt(first.trim());
+                } catch (NumberFormatException exception) {
+                    id = switch (first.trim().toLowerCase(Locale.ROOT)) {
+                        case "template", "模板" -> 10;
+                        case "module", "模块" -> 828;
+                        case "file", "image", "文件" -> 6;
+                        case "category", "分类" -> 14;
+                        case "help", "帮助" -> 12;
+                        case "user", "用户" -> 2;
+                        case "talk", "讨论" -> 1;
+                        case "wikikernel" -> 4;
+                        default -> ActionApiNamespaces.idOf(first.trim() + ":X");
+                    };
+                }
+                String ns = ActionApiNamespaces.nameOf(id);
+                yield "nse".equals(name)
+                        ? java.net.URLEncoder.encode(ns, java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("+", "%20")
+                        : ns;
+            }
+            case "formatnum" -> {
+                try {
+                    java.text.NumberFormat format = java.text.NumberFormat.getNumberInstance(Locale.CHINA);
+                    yield format.format(Double.parseDouble(first.trim()));
+                } catch (NumberFormatException exception) {
+                    yield first;
+                }
+            }
+            case "padleft", "padright" -> {
+                int length;
+                try {
+                    length = Integer.parseInt(second.trim());
+                } catch (NumberFormatException exception) {
+                    yield first;
+                }
+                String fill = parts.size() > 2 ? expand(parts.get(2), frame, pageTitle, depth, stack, trusted) : "0";
+                if (fill.isEmpty()) {
+                    fill = "0";
+                }
+                int count = first.codePointCount(0, first.length());
+                if (count >= length) {
+                    yield first;
+                }
+                String padding = fill.repeat(length - count);
+                yield "padleft".equals(name) ? padding + first : first + padding;
+            }
+            case "plural" -> {
+                if (parts.size() <= 1) {
+                    yield "";
+                }
+                String number = first.trim();
+                String one = parts.size() > 1 ? expand(parts.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                String many = parts.size() > 2 ? expand(parts.get(2), frame, pageTitle, depth, stack, trusted) : one;
+                yield "1".equals(number) || "1.0".equals(number) ? one : many;
+            }
+            case "grammar" -> second;
+            case "gender" -> {
+                if (parts.size() > 1) {
+                    String unknown = expand(parts.get(parts.size() - 1), frame, pageTitle, depth, stack, trusted);
+                    yield unknown;
+                }
+                yield first;
+            }
+            case "int" -> {
+                if (messageSource == null) {
+                    yield first;
+                }
+                yield messageSource.getMessage(first, null, first, LocaleContextHolder.getLocale());
+            }
+            case "subst", "safesubst" -> first;
+            default -> null;
+        };
+    }
+
     private String magicWord(String expression, String pageTitle) {
         if ("!".equals(expression)) {
             return "|";
@@ -637,6 +761,12 @@ public class WikitextRenderer {
                     now.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear()));
             case "CURRENTTIMESTAMP" -> java.time.format.DateTimeFormatter
                     .ofPattern("yyyyMMddHHmmss").format(now);
+            case "CURRENTVERSION" -> WikiKernelInfo.VERSION;
+            case "REVISIONTIMESTAMP" -> revisionTimestamp(title);
+            case "REVISIONUSER" -> revisionUser(title);
+            case "SUBJECTPAGENAME" -> subjectPageName(title);
+            case "TALKSPACE" -> talkSpaceName(title);
+            case "NAMESPACENUMBER", "NSPN" -> String.valueOf(ActionApiNamespaces.idOf(title));
             // 统计类魔术字（wikiStatsService 缺失时渲染为空）
             case "NUMBEROFPAGES" -> stats(0);
             case "NUMBEROFARTICLES" -> stats(1);
@@ -661,9 +791,133 @@ public class WikitextRenderer {
         return null;
     }
 
+    /** {{REVISIONTIMESTAMP}}：当前页面最新修订时间（14 位）。 */
+    private String revisionTimestamp(String pageTitle) {
+        if (wikiPageService == null || pageTitle == null || pageTitle.isBlank()) {
+            return "";
+        }
+        return wikiPageService.getVisibleByTitle(pageTitle)
+                .flatMap(page -> wikiPageService.getLatestRevision(page.getId()))
+                .map(revision -> revision.getCreateAt() == null ? ""
+                        : java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
+                        .format(revision.getCreateAt()))
+                .orElse("");
+    }
+
+    /** {{REVISIONUSER}}：当前页面最新修订的作者名。 */
+    private String revisionUser(String pageTitle) {
+        if (wikiPageService == null || pageTitle == null || pageTitle.isBlank()) {
+            return "";
+        }
+        WikiRevision revision = wikiPageService.getVisibleByTitle(pageTitle)
+                .flatMap(page -> wikiPageService.getLatestRevision(page.getId()))
+                .orElse(null);
+        if (revision == null) {
+            return "";
+        }
+        if (revision.getUserId() != null && userService != null) {
+            return userService.usernames(List.of(revision.getUserId()))
+                    .getOrDefault(revision.getUserId(), "");
+        }
+        return revision.getUserText() == null ? "" : revision.getUserText();
+    }
+
+    /** 主题页标题（讨论页 → 对应主题页；普通页原样）。 */
+    private static String subjectPageName(String pageTitle) {
+        String value = pageTitle == null ? "" : pageTitle;
+        String[][] pairs = {
+                {"模板讨论:", "模板:"}, {"模块讨论:", "模块:"}, {"用户讨论:", "用户:"},
+                {"帮助讨论:", "帮助:"}, {"文件讨论:", "文件:"}, {"分类讨论:", "分类:"},
+                {"WikiKernel讨论:", "WikiKernel:"}, {"MediaWiki讨论:", "MediaWiki:"},
+                {"组件讨论:", "组件:"}, {"小部件讨论:", "小部件:"}, {"图表讨论:", "图表:"}
+        };
+        for (String[] pair : pairs) {
+            if (value.startsWith(pair[0])) {
+                return pair[1] + value.substring(pair[0].length());
+            }
+        }
+        return value;
+    }
+
+    /** {{TALKSPACE}}：当前页面对应讨论命名空间的名字。 */
+    private static String talkSpaceName(String pageTitle) {
+        String value = pageTitle == null ? "" : pageTitle;
+        String[][] pairs = {
+                {"模板:", "模板讨论"}, {"模块:", "模块讨论"}, {"用户:", "用户讨论"},
+                {"帮助:", "帮助讨论"}, {"文件:", "文件讨论"}, {"分类:", "分类讨论"},
+                {"WikiKernel:", "WikiKernel讨论"}, {"MediaWiki:", "MediaWiki讨论"},
+                {"组件:", "组件讨论"}, {"小部件:", "小部件讨论"}, {"图表:", "图表讨论"}
+        };
+        for (String[] pair : pairs) {
+            if (value.startsWith(pair[0])) {
+                return pair[1];
+            }
+        }
+        return "讨论";
+    }
+
+    /** {{#time:格式|时间戳}}：支持模块/模板常用的 MediaWiki 日期格式符。 */
+    private static String formatTime(String format, String timestamp) {
+        String pattern = format == null ? "" : format;
+        String raw = timestamp == null ? "" : timestamp.trim();
+        java.time.LocalDateTime time;
+        if (raw.isEmpty()) {
+            time = java.time.LocalDateTime.now();
+        } else if (raw.matches("\\d{10}")) {
+            time = java.time.Instant.ofEpochSecond(Long.parseLong(raw))
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+        } else if (raw.matches("\\d{14}")) {
+            time = java.time.LocalDateTime.parse(raw,
+                    java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        } else if (raw.matches("\\d{8}")) {
+            time = java.time.LocalDate.parse(raw,
+                    java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")).atStartOfDay();
+        } else {
+            try {
+                time = java.time.LocalDateTime.parse(raw.replace(' ', 'T'));
+            } catch (RuntimeException exception) {
+                time = java.time.LocalDateTime.now();
+            }
+        }
+        java.time.Instant instant = time.atZone(java.time.ZoneId.systemDefault()).toInstant();
+        java.util.Locale locale = LocaleContextHolder.getLocale();
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < pattern.length(); i++) {
+            char token = pattern.charAt(i);
+            switch (token) {
+                case 'Y' -> out.append(String.format("%04d", time.getYear()));
+                case 'y' -> out.append(String.format("%02d", time.getYear() % 100));
+                case 'n' -> out.append(time.getMonthValue());
+                case 'm' -> out.append(String.format("%02d", time.getMonthValue()));
+                case 'j' -> out.append(time.getDayOfMonth());
+                case 'd' -> out.append(String.format("%02d", time.getDayOfMonth()));
+                case 'H' -> out.append(String.format("%02d", time.getHour()));
+                case 'G' -> out.append(time.getHour());
+                case 'i' -> out.append(String.format("%02d", time.getMinute()));
+                case 's' -> out.append(String.format("%02d", time.getSecond()));
+                case 'U' -> out.append(instant.getEpochSecond());
+                case 'F' -> out.append(time.getMonth().getDisplayName(
+                        java.time.format.TextStyle.FULL, locale));
+                case 'M' -> out.append(time.getMonth().getDisplayName(
+                        java.time.format.TextStyle.SHORT, locale));
+                case 'l' -> out.append(time.getDayOfWeek().getDisplayName(
+                        java.time.format.TextStyle.FULL, locale));
+                case 'D' -> out.append(time.getDayOfWeek().getDisplayName(
+                        java.time.format.TextStyle.SHORT, locale));
+                case 'T' -> out.append(java.time.ZoneId.systemDefault().getId());
+                case '\\' -> {
+                    if (i + 1 < pattern.length()) {
+                        out.append(pattern.charAt(++i));
+                    }
+                }
+                default -> out.append(token);
+            }
+        }
+        return out.toString();
+    }
+
     /** {{NUMBEROF*}}：由 {@link WikiStatsService} 提供（带短缓存），无服务时返回空串。 */
-    private String stats(int index) {
-        if (wikiStatsService == null) {
+    private String stats(int index) {        if (wikiStatsService == null) {
             return "";
         }
         long[] values = wikiStatsService.values();
@@ -731,6 +985,46 @@ public class WikitextRenderer {
                     }
                 }
                 return expand(defaultValue, frame, pageTitle, depth, stack, trusted);
+            }
+            case "ifexist" -> {
+                String title = args.isEmpty() ? "" : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
+                boolean exists = this.pageExistenceService != null && this.pageExistenceService.exists(title);
+                String thenValue = args.size() > 1 ? args.get(1) : "";
+                String elseValue = args.size() > 2 ? args.get(2) : "";
+                return expand(exists ? thenValue : elseValue, frame, pageTitle, depth, stack, trusted);
+            }
+            case "iferror" -> {
+                String tested = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted);
+                boolean hasError = tested.contains("wiki-error") || tested.contains("脚本错误")
+                        || tested.contains("Script error");
+                if (hasError) {
+                    String thenValue = args.size() > 1 ? args.get(1) : "";
+                    return expand(thenValue, frame, pageTitle, depth, stack, trusted);
+                }
+                if (args.size() > 2) {
+                    return expand(args.get(2), frame, pageTitle, depth, stack, trusted);
+                }
+                return tested;
+            }
+            case "expr" -> {
+                String exprText = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted);
+                return LuaModuleService.evaluateExpression(exprText);
+            }
+            case "time" -> {
+                String format = args.isEmpty() ? "" : expand(args.get(0), frame, pageTitle, depth, stack, trusted);
+                String timestamp = args.size() > 1
+                        ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                return formatTime(format, timestamp);
+            }
+            case "special" -> {
+                String special = args.isEmpty() ? rest : args.get(0);
+                return WikiUrls.pagePath("特殊:" + (special == null ? "" : special.trim()));
+            }
+            case "css" -> {
+                // 内容页的 #CSS 目前不作为页面级样式注入（避免任意 CSS 注入）；不显示原始代码。
+                return "";
             }
             case "invoke" -> {
                 return invokeLua(args, frame, pageTitle, depth, stack, trusted);
@@ -1013,16 +1307,59 @@ public class WikitextRenderer {
         }
         try {
             String parentTitle = currentTemplateTitle(stack);
-            LuaModuleService.Result result = this.luaModuleService.invoke(
-                    moduleName, functionName, positional, named, frame, parentTitle, pageTitle);
-            if (!result.ok()) {
-                return plainError(result.text());
+            LuaModuleService.FrameExpander expander = new LuaModuleService.FrameExpander() {
+                @Override
+                public String preprocess(String text) {
+                    return expand(text == null ? "" : text, frame, pageTitle, depth + 1, stack, trusted);
+                }
+
+                @Override
+                public String expandTemplate(String name, Map<String, String> args) {
+                    return expand("{{" + name + frameArguments(args) + "}}",
+                            frame, pageTitle, depth + 1, stack, trusted);
+                }
+
+                @Override
+                public String callParserFunction(String name, Map<String, String> args) {
+                    String argumentText = frameArguments(args);
+                    if (argumentText.startsWith("|")) {
+                        argumentText = argumentText.substring(1);
+                    }
+                    return expand("{{#" + name + ":" + argumentText + "}}",
+                            frame, pageTitle, depth + 1, stack, trusted);
+                }
+            };
+            LuaModuleService.FrameExpander previous = LuaModuleService.swapFrameExpander(expander);
+            try {
+                LuaModuleService.Result result = this.luaModuleService.invoke(
+                        moduleName, functionName, positional, named, frame, parentTitle, pageTitle);
+                if (!result.ok()) {
+                    return plainError(result.text());
+                }
+                // 返回文本按 Wikitext 继续解析（模板 / 魔术字 / 内链等），与 Scribunto 行为一致
+                return expand(result.text(), frame, pageTitle, depth + 1, stack, trusted);
+            } finally {
+                LuaModuleService.swapFrameExpander(previous);
             }
-            // 返回文本按 Wikitext 继续解析（模板 / 魔术字 / 内链等），与 Scribunto 行为一致
-            return expand(result.text(), frame, pageTitle, depth + 1, stack, trusted);
         } finally {
             stack.remove(loopKey);
         }
+    }
+
+    /** frame 参数表 → wikitext 的 {@code |k=v} / {@code |value} 片段。 */
+    private static String frameArguments(Map<String, String> args) {
+        if (args == null || args.isEmpty()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        for (Map.Entry<String, String> entry : args.entrySet()) {
+            if (entry.getKey().matches("\\d+")) {
+                out.append('|').append(entry.getValue());
+            } else {
+                out.append('|').append(entry.getKey()).append('=').append(entry.getValue());
+            }
+        }
+        return out.toString();
     }
 
     /** 已本地化的纯文本错误（转义后包一层错误样式；与 {@link #error} 一致但不查消息源）。 */
