@@ -37,6 +37,12 @@
         <p class="edit-conflict-hint" th:text="#{editConflict.hint}">
             你的文字完整保留在下面的编辑框中；请对照下方差异手动合并后再次保存。
         </p>
+        <p class="edit-conflict-force" th:if="${canForceSave}">
+            <button type="submit" form="wiki-edit-form" class="wiki-button wiki-button-danger"
+                    name="force" value="1"
+                    th:attr="data-confirm=#{editConflict.forceConfirm}"
+                    th:text="#{editConflict.forceSave}">强制提交（覆盖最新版本）</button>
+        </p>
         <div class="edit-conflict-diff" th:unless="${#lists.isEmpty(editConflictDiffRows)}">
             <div class="edit-conflict-diff-title" th:text="#{editConflict.diffTitle}">
                 差异对照（− 你的提交 / + 服务器最新版本）
@@ -75,7 +81,7 @@
     </div>
 
     <form id="wiki-edit-form" class="wiki-form wiki-editor" method="post" th:action="${pageUrl}"
-          th:attr="data-title=${wikiTitle},data-revision=${page != null and page.latestRevisionId != null ? page.latestRevisionId : ''},data-section=${editSection != null ? editSection : ''}">
+          th:attr="data-title=${wikiTitle},data-revision=${baseRevisionId != null ? baseRevisionId : ''},data-section=${editSection != null ? editSection : ''}">
         <th:block th:if="${codeLanguage != null and !widgetPage}">
             <th:block th:replace="~{fragments/code-cache-notice :: notice}"/>
         </th:block>
@@ -155,10 +161,20 @@
         </th:block>
         <div class="edit-actions">
             <button type="submit" class="wiki-button" th:text="#{edit.save}">保存更改</button>
+            <button type="submit" class="wiki-button wiki-button-danger" id="wiki-force-save"
+                    th:if="${editConflictNotice != null and canForceSave}"
+                    name="force" value="1"
+                    th:attr="data-confirm=#{editConflict.forceConfirm}"
+                    th:text="#{editConflict.forceSave}">强制提交（覆盖最新版本）</button>
             <button type="button" id="wiki-preview-button" class="wiki-button" th:if="${codeLanguage == null}"
                     th:text="#{edit.preview}">显示预览</button>
             <a th:href="${pageUrl}" th:text="#{common.cancel}">取消</a>
         </div>
+        <p class="wiki-hint edit-conflict-force-hint"
+           th:if="${editConflictNotice != null and canForceSave}"
+           th:text="#{editConflict.forceHint}">
+            强制提交会跳过版本冲突检查，直接用编辑框中的文本生成新版本。
+        </p>
         <p id="visual-editor-message" class="form-message" hidden></p>
 
         <p class="wiki-hint" th:if="${widgetPage}" th:text="#{edit.widgetHint}">

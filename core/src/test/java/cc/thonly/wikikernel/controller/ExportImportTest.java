@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.common.data.WikiAccessRule;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiRevision;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.LogService;
@@ -57,6 +58,9 @@ class ExportImportTest {
 
     @Autowired
     private WikiPageService wikiPageService;
+
+    @Autowired
+    private WikiPageMapper wikiPageMapper;
 
     @Autowired
     private WikiUserMapper wikiUserMapper;
@@ -190,6 +194,60 @@ class ExportImportTest {
                 .andExpect(jsonPath("$.data.revisionsImported").value(0))
                 .andExpect(jsonPath("$.data.revisionsSkipped").value(2));
         assertEquals(2, wikiPageService.getHistory(page.getId()).size(), "重复导入不应新增版本");
+    }
+
+    /** 本地种子修订时间比导入的历史修订新时，页面指针必须仍指向最后导入的修订；重复导入也应修复过期指针。 */
+    @Test
+    void importHistoricalRevisionsRepairsLatestPointer() throws Exception {
+        WikiUser admin = adminUser();
+        String title = "导入历史指针页" + System.nanoTime();
+        wikiPageService.editPage(admin, title, "本地种子内容", "本地创建");
+        WikiPage local = wikiPageService.getByTitle(title).orElseThrow();
+        Long localRevisionId = local.getLatestRevisionId();
+        assertNotNull(localRevisionId);
+
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11">
+                  <siteinfo><sitename>Test</sitename></siteinfo>
+                  <page>
+                    <title>%s</title><ns>0</ns><id>1</id>
+                    <revision><id>1</id><timestamp>2020-01-02T03:04:05Z</timestamp>
+                      <contributor><username>旧作者</username><id>9</id></contributor>
+                      <comment>旧版一</comment><model>wikitext</model><format>text/x-wiki</format>
+                      <text bytes="6" xml:space="preserve">内容一</text></revision>
+                    <revision><id>2</id><parentid>1</parentid><timestamp>2020-01-03T03:04:05Z</timestamp>
+                      <contributor><username>旧作者</username><id>9</id></contributor>
+                      <comment>旧版二</comment><model>wikitext</model><format>text/x-wiki</format>
+                      <text bytes="6" xml:space="preserve">内容二</text></revision>
+                  </page>
+                </mediawiki>
+                """.formatted(title);
+        byte[] bytes = xml.getBytes(StandardCharsets.UTF_8);
+
+        mockMvc.perform(multipart("/api/import")
+                        .file(new MockMultipartFile("file", "export.xml", "text/xml", bytes))
+                        .session(sessionOf(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.pagesCreated").value(0))
+                .andExpect(jsonPath("$.data.revisionsImported").value(2));
+
+        WikiPage imported = wikiPageService.getByTitle(title).orElseThrow();
+        WikiRevision latest = wikiPageService.getLatestRevision(imported.getId()).orElseThrow();
+        assertEquals("内容二", latest.getContent());
+        assertEquals(latest.getId(), imported.getLatestRevisionId(),
+                "page.latest_revision_id 必须指向最新修订，否则编辑页会拿旧 baserevid 误报冲突");
+
+        // 模拟旧数据 / 手工改库：指针退回本地种子版本；再导一次（全部跳过）也应修复
+        imported.setLatestRevisionId(localRevisionId);
+        wikiPageMapper.updateById(imported);
+        mockMvc.perform(multipart("/api/import")
+                        .file(new MockMultipartFile("file", "export.xml", "text/xml", bytes))
+                        .session(sessionOf(admin)))
+                .andExpect(jsonPath("$.data.revisionsImported").value(0))
+                .andExpect(jsonPath("$.data.revisionsSkipped").value(2));
+
+        WikiPage repaired = wikiPageService.getByTitle(title).orElseThrow();
+        assertEquals(latest.getId(), repaired.getLatestRevisionId(), "重复导入也应修正过期指针");
     }
 
     /** 本地没有账号时保留原始作者名（user_text）；补齐账号后再导一次应回填 user_id。 */

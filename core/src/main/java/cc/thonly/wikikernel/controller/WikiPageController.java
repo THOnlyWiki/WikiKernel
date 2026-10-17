@@ -480,6 +480,7 @@ public class WikiPageController {
                              @RequestParam(value = "comment", required = false) String comment,
                               @RequestParam(value = "section", required = false) Integer section,
                               @RequestParam(value = "baserevid", required = false) Long baserevid,
+                              @RequestParam(value = "force", required = false) String force,
                               @RequestParam(value = "botEdit", required = false) String botEdit,
                               @RequestParam(value = "minor", required = false) String minor,
                               @RequestParam(value = "watch", required = false) String watch,
@@ -502,6 +503,8 @@ public class WikiPageController {
                 && this.permissionService.has(user.getId(), PermissionService.GROUP_BOT);
         boolean minorEditFlag = "1".equals(minor);
         boolean watchAfterSave = "1".equals(watch);
+        // 管理员「强制提交」：跳过版本冲突检查，直接把编辑框内容写成新版本（覆盖最新版本）
+        boolean forceSave = isAdmin(user) && "1".equals(force);
         AccessAction action = existing == null ? AccessAction.CREATE : AccessAction.EDIT;
         if (!this.accessControlService.can(action, normalized, user)) {
             String key = user == null ? "error.loginRequired"
@@ -522,7 +525,8 @@ public class WikiPageController {
         }
 
         // 整页编辑：基于的版本已被他人推进时进入「编辑冲突提示」页（不自动合并、不直接覆盖）。
-        if (section == null && existing != null) {
+        // 管理员带 force=1 时跳过检查，进入下面的强制写入路径。
+        if (!forceSave && section == null && existing != null) {
             WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
             if (latestRevision != null && baserevid != null
                     && !Objects.equals(baserevid, latestRevision.getId())) {
@@ -535,7 +539,7 @@ public class WikiPageController {
         boolean sectionEdit = existing != null && section != null && codeLanguage(normalized) == null;
         String saveContent = content;
         if (sectionEdit) {
-            saveContent = mergeSection(existing, section, content, baserevid);
+            saveContent = mergeSection(existing, section, content, baserevid, forceSave);
             if (saveContent == null) {
                 return conflictNoticeView(normalized, existing, user, content, section, comment);
             }
@@ -560,10 +564,16 @@ public class WikiPageController {
         String changeTags = changeTags(editContext);
 
         if (sectionEdit) {
-            WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
-            WikiPage saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
-                    botEditFlag, minorEditFlag, changeTags,
-                    latestRevision == null ? existing.getLatestRevisionId() : latestRevision.getId());
+            WikiPage saved;
+            if (forceSave) {
+                saved = this.wikiPageService.editPage(user, normalized, saveContent, comment,
+                        botEditFlag, minorEditFlag, changeTags);
+            } else {
+                WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
+                saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
+                        botEditFlag, minorEditFlag, changeTags,
+                        latestRevision == null ? existing.getLatestRevisionId() : latestRevision.getId());
+            }
             if (saved == null) {
                 WikiPage latestPage = this.wikiPageService.getByTitle(normalized).orElse(existing);
                 return conflictNoticeView(normalized, latestPage, user, content, section, comment);
@@ -574,11 +584,18 @@ public class WikiPageController {
         }
 
         if (existing != null && section == null) {
-            // 保存瞬间又被别人改写（竞态）时 CAS 会失败：同样进入冲突提示页
-            Long expected = this.wikiPageService.getLatestRevision(existing.getId())
-                    .map(WikiRevision::getId).orElse(existing.getLatestRevisionId());
-            WikiPage saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
-                    botEditFlag, minorEditFlag, changeTags, expected);
+            WikiPage saved;
+            if (forceSave) {
+                // 强制提交：不比较基准版本，直接用编辑框内容生成新版本
+                saved = this.wikiPageService.editPage(user, normalized, saveContent, comment,
+                        botEditFlag, minorEditFlag, changeTags);
+            } else {
+                // 保存瞬间又被别人改写（竞态）时 CAS 会失败：同样进入冲突提示页
+                Long expected = this.wikiPageService.getLatestRevision(existing.getId())
+                        .map(WikiRevision::getId).orElse(existing.getLatestRevisionId());
+                saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
+                        botEditFlag, minorEditFlag, changeTags, expected);
+            }
             if (saved == null) {
                 WikiPage latestPage = this.wikiPageService.getByTitle(normalized).orElse(existing);
                 return conflictNoticeView(normalized, latestPage, user, content, null, comment);
@@ -595,8 +612,10 @@ public class WikiPageController {
     /**
      * 段落编辑：把提交的段落文本替换进**最新版本**（其余段落逐字保留），返回实际会写入的整页内容。
      * 段落不存在 / 基准版本已过期且该段被别人改过 / 替换失败时返回 {@code null}（调用方进入编辑冲突提示页）。
+     * {@code force=true}（管理员强制提交）时跳过「该段是否被别人改过」的比较，直接替换最新版里的对应段落。
      */
-    private String mergeSection(WikiPage existing, Integer section, String content, Long baserevid) {
+    private String mergeSection(WikiPage existing, Integer section, String content, Long baserevid,
+                                boolean force) {
         WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
         String latest = latestRevision == null
                 ? this.wikiPageService.getLatestContent(existing.getId()).orElse("")
@@ -605,7 +624,7 @@ public class WikiPageController {
         if (latestSection == null) {
             return null;
         }
-        if (baserevid != null && (latestRevision == null
+        if (!force && baserevid != null && (latestRevision == null
                 || !Objects.equals(baserevid, latestRevision.getId()))) {
             String baseSection = this.wikiPageService.getRevision(baserevid)
                     .filter(revision -> Objects.equals(revision.getPageId(), existing.getId()))
@@ -1270,7 +1289,10 @@ public class WikiPageController {
                 loadedRevisionId = editingOldRevision.getId();
             } else {
                 content = this.wikiPageService.getLatestContent(page.getId()).orElse("");
-                loadedRevisionId = page.getLatestRevisionId();
+                // 用实际最新修订号，而不是页面行里的缓存指针：旧导入数据可能把指针留在种子版本上
+                loadedRevisionId = this.wikiPageService.getLatestRevision(page.getId())
+                        .map(WikiRevision::getId)
+                        .orElse(page.getLatestRevisionId());
             }
         }
 
@@ -1403,8 +1425,10 @@ public class WikiPageController {
         modelAndView.addObject("editSummary", comment);
         modelAndView.addObject("canBotEdit", user != null
                 && this.permissionService.has(user.getId(), PermissionService.GROUP_BOT));
-        // 保存基准改成最新版本：再次保存即生成新版本（不会反复回到冲突页）
-        modelAndView.addObject("baseRevisionId", page.getLatestRevisionId());
+        // 保存基准改成实际最新版本：再次保存即生成新版本（不会反复回到冲突页）
+        modelAndView.addObject("baseRevisionId", latestRevision == null
+                ? page.getLatestRevisionId() : latestRevision.getId());
+        modelAndView.addObject("canForceSave", isAdmin(user));
         modelAndView.addObject("editConflictNotice", intro);
         modelAndView.addObject("editConflictStructureChanged", structureChanged);
         modelAndView.addObject("editConflictDiffRows", DiffRows.build(submittedContent, latestForDiff));
@@ -1457,7 +1481,11 @@ public class WikiPageController {
         modelAndView.addObject("editSummary", comment);
         modelAndView.addObject("canBotEdit", user != null
                 && this.permissionService.has(user.getId(), PermissionService.GROUP_BOT));
-        modelAndView.addObject("baseRevisionId", page == null ? null : page.getLatestRevisionId());
+        Long baseRevisionId = page == null ? null
+                : this.wikiPageService.getLatestRevision(page.getId())
+                        .map(WikiRevision::getId)
+                        .orElse(page.getLatestRevisionId());
+        modelAndView.addObject("baseRevisionId", baseRevisionId);
         // 拒绝原因（如验证码答错）+ 重新渲染插件字段（验证码会换一道新题）
         if (!Strings.isBlank(errorMessage)) {
             modelAndView.addObject("editHookError", errorMessage);

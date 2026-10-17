@@ -175,6 +175,16 @@
         removeDraft();
     });
 
+    // data-confirm：提交前二次确认（如编辑冲突页的「强制提交」按钮）
+    Array.prototype.forEach.call(document.querySelectorAll('[data-confirm]'), function (button) {
+        button.addEventListener('click', function (event) {
+            var text = button.getAttribute('data-confirm') || '';
+            if (text && !window.confirm(text)) {
+                event.preventDefault();
+            }
+        });
+    });
+
     // ---------- 打开时恢复草稿 ----------
     /** 冲突：别人在草稿之后保存过（修订号 / 内容哈希任一不匹配）。 */
     function isConflicting(draft) {

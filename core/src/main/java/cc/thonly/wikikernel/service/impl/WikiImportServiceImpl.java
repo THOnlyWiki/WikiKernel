@@ -39,6 +39,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -220,19 +221,29 @@ public class WikiImportServiceImpl implements WikiImportService {
             imported++;
         }
 
-        if (imported == 0) {
-            return new ApplyResult(created, imported, skipped, limitHit);
-        }
-
-        // 最新版本 = 全部版本里时间最晚（同时间取 ID 大的）；新建页面的创建时间取最早版本时间
+        // 最新版本以修订 ID 为准（getLatestRevision 也是按 ID 取最后一个未删除版本）。
+        // 不能按 createAt：导入的历史修订时间通常早于安装时生成的种子修订，
+        // 否则 latest_revision_id 会留在种子版本上，编辑页拿旧 baserevid 保存就会误报编辑冲突。
         List<WikiRevision> all = wikiRevisionMapper.selectList(Wrappers.<WikiRevision>lambdaQuery()
                 .eq(WikiRevision::getPageId, existing.getId()));
         WikiRevision latest = all.stream()
-                .max(Comparator.comparing(WikiRevision::getCreateAt).thenComparing(WikiRevision::getId))
+                .filter(revision -> !Boolean.TRUE.equals(revision.getDeleted()))
+                .max(Comparator.comparing(WikiRevision::getId))
                 .orElse(null);
-        if (latest != null) {
-            existing.setLatestRevisionId(latest.getId());
+        Long latestId = latest == null ? null : latest.getId();
+        boolean pointerChanged = !Objects.equals(existing.getLatestRevisionId(), latestId);
+        if (pointerChanged) {
+            existing.setLatestRevisionId(latestId);
         }
+
+        if (imported == 0) {
+            // 重复导入：版本都跳过了，但页面指针可能仍是旧数据（例如旧版导入 bug），顺手修正。
+            if (pointerChanged) {
+                wikiPageMapper.updateById(existing);
+            }
+            return new ApplyResult(created, imported, skipped, limitHit);
+        }
+
         LocalDateTime last = latest == null ? now : latest.getCreateAt();
         if (created) {
             LocalDateTime earliest = all.stream()

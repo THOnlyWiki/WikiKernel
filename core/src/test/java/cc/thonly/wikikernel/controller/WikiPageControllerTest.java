@@ -313,6 +313,63 @@ class WikiPageControllerTest {
     }
 
     @Test
+    void adminForceSaveOverwritesLatestDespiteConflict() throws Exception {
+        insertPage("强制提交测试页", "第一行\n第二行", false);
+        WikiPage page = wikiPageMapper.selectOne(Wrappers.<WikiPage>lambdaQuery()
+                .eq(WikiPage::getTitle, "强制提交测试页"));
+        Long baseRevision = page.getLatestRevisionId();
+        appendRevision(page, "第一行\n对方改的第二行");
+
+        WikiUser admin = insertUser("强制提交管理员" + System.nanoTime());
+        permissionService.replaceFor(admin.getId(), List.of(PermissionService.GROUP_ADMIN));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(UserSession.ATTRIBUTE, admin.toTransferCopy());
+
+        // 管理员普通提交：冲突页提供「强制提交」按钮
+        mockMvc.perform(post("/wiki/{title}", "强制提交测试页")
+                        .session(session).with(csrf())
+                        .param("content", "第一行\n我的强制第二行")
+                        .param("baserevid", baseRevision.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("编辑冲突")))
+                .andExpect(content().string(containsString("强制提交")))
+                .andExpect(content().string(containsString("name=\"force\"")));
+        assertEquals(2, revisionsOf("强制提交测试页").size());
+
+        // force=1：跳过冲突检查，直接用编辑框内容生成新版本
+        mockMvc.perform(post("/wiki/{title}", "强制提交测试页")
+                        .session(session).with(csrf())
+                        .param("content", "第一行\n我的强制第二行")
+                        .param("baserevid", baseRevision.toString())
+                        .param("force", "1"))
+                .andExpect(status().is3xxRedirection());
+
+        WikiPage result = wikiPageMapper.selectOne(Wrappers.<WikiPage>lambdaQuery()
+                .eq(WikiPage::getTitle, "强制提交测试页"));
+        WikiRevision latest = wikiRevisionMapper.selectById(result.getLatestRevisionId());
+        assertEquals("第一行\n我的强制第二行", latest.getContent());
+        assertEquals(3, revisionsOf("强制提交测试页").size());
+    }
+
+    @Test
+    void forceSaveIsIgnoredForNonAdmin() throws Exception {
+        insertPage("非管理员强制页", "第一行\n第二行", false);
+        WikiPage page = wikiPageMapper.selectOne(Wrappers.<WikiPage>lambdaQuery()
+                .eq(WikiPage::getTitle, "非管理员强制页"));
+        Long baseRevision = page.getLatestRevisionId();
+        appendRevision(page, "第一行\n对方改的第二行");
+
+        mockMvc.perform(post("/wiki/{title}", "非管理员强制页")
+                        .session(loggedInSession()).with(csrf())
+                        .param("content", "第一行\n我的强制第二行")
+                        .param("baserevid", baseRevision.toString())
+                        .param("force", "1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("编辑冲突")));
+        assertEquals(2, revisionsOf("非管理员强制页").size(), "非管理员带 force 也不应绕过冲突");
+    }
+
+    @Test
     void sectionEditOfUnchangedSectionStillMerges() throws Exception {
         insertPage("段落合并测试页", "== 第一节 ==\n第一段\n\n== 第二节 ==\n第二段\n", false);
         WikiPage page = wikiPageMapper.selectOne(Wrappers.<WikiPage>lambdaQuery()
