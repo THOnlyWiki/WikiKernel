@@ -1,3 +1,7 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+
+# GitHub Linguist：本仓库按 Java 项目统计（前端资源 / 脚本不计入语言占比）
+* linguist-detectable=false
+*.java linguist-detectable=true
