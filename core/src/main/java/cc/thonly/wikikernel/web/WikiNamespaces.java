@@ -49,7 +49,10 @@ public final class WikiNamespaces {
             new Namespace("gadget-talk", "namespace.gadgetTalk", List.of("小部件讨论:", "Gadget talk:")),
             new Namespace("wikikernel", "namespace.wikikernel", List.of("WikiKernel:")),
             new Namespace("wikikernel-talk", "namespace.wikikernelTalk",
-                    List.of("WikiKernel讨论:", "WikiKernel talk:")));
+                    List.of("WikiKernel讨论:", "WikiKernel talk:")),
+            new Namespace("mediawiki", "namespace.mediawiki", List.of("MediaWiki:")),
+            new Namespace("mediawiki-talk", "namespace.mediawikiTalk",
+                    List.of("MediaWiki talk:", "MediaWiki讨论:")));
 
     /**
      * 特殊页前缀（规范名在前）：特殊页没有页面行，因此不进 {@link #NAMESPACES}（否则命名空间编号 /

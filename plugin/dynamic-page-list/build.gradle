@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+}
+
+description = 'DynamicPageList4 扩展移植：{{#dpl:...}} 页面列表、分类筛选、标题/时间排序与结果头尾'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+
+    testImplementation project(':common')
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties（pluginName / pluginVersion / pluginDescription），
+// 构建时展开进 META-INF/wiki-plugin.properties；给人看的本地化名称与描述在 i18n/messages*.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}
