@@ -57,7 +57,7 @@ public final class HtmlSanitizer {
     /**
      * 清洗一个 HTML 标签。
      *
-     * @return 安全的 HTML 标签文本；不在白名单时返回 {@code null}
+     * @return 安全的 HTML 标签文本；不在白名单时返回 {@code null}；空串表示静默丢弃（如没有 src 的 iframe）
      */
     public static String sanitizeTag(String rawTag) {
         Matcher matcher = TAG.matcher(rawTag);
@@ -83,6 +83,16 @@ public final class HtmlSanitizer {
             appendAttribute(out, name, attribute);
         }
         out.append('>');
+        // iframe 没有 src 就没有任何内容（迁移页里的 <iframe ... /> 靠原站 JS 填 src，
+        // WikiKernel 没有那段脚本）；返回空串 = 静默丢弃，不把标签当文字显示。
+        if ("iframe".equals(name) && out.indexOf(" src=\"") < 0) {
+            return "";
+        }
+        // 非空标签的 XML 自闭合（<iframe ... />、<div ... />）在 HTML 里会被当成「未闭合」，
+        // 浏览器会把后面的整页内容吞进这个元素（首页侧栏消失就是这个原因），这里补上结束标签。
+        if (!matcher.group(4).isEmpty() && !"img".equals(name)) {
+            out.append("</").append(name).append('>');
+        }
         return out.toString();
     }
 
