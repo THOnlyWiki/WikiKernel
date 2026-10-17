@@ -23,10 +23,12 @@
     <span class="rc-bytes" th:if="${change.bytesText != null}" th:classappend="${change.bytesClass}"
           th:text="${change.bytesText}">(+431)</span>
     <span class="rc-dot" th:if="${change.bytesText != null}">．</span>
-    <span class="rc-user" th:if="${change.userName != null}"><a th:href="${change.userUrl}"
+    <span class="rc-user" th:if="${change.userName != null and !change.userImported}"><a th:href="${change.userUrl}"
             th:text="${change.userName}">用户</a>（<a th:href="${change.talkUrl}"
             th:text="#{recentChanges.talk}">留言</a> | <a th:href="${change.contributionsUrl}"
             th:text="#{recentChanges.contribs}">贡献</a>）</span>
+    <span class="rc-user rc-user-imported" th:if="${change.userName != null and change.userImported}"
+          th:text="${change.userName}" th:title="#{common.importedAuthorHint}">原始作者</span>
     <span class="rc-user" th:if="${change.userName == null}" th:text="#{common.anonymous}">匿名用户</span>
     <span class="rc-comment" th:if="${change.commentText != null}"
           th:classappend="${change.sectionOnly} ? ' rc-comment-section'"

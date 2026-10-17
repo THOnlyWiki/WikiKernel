@@ -324,6 +324,14 @@ public class RecentChangesSpecialPage implements SpecialPage {
     private Map<String, Object> change(WikiPage page, WikiRevision revision, Map<Long, String> userNames) {
         String pageUrl = WikiUrls.pagePath(page.getTitle());
         String userName = revision.getUserId() == null ? null : userNames.get(revision.getUserId());
+        boolean importedAuthor = false;
+        if (Strings.isBlank(userName)) {
+            String original = Strings.trimToEmpty(revision.getUserText());
+            if (!original.isEmpty()) {
+                userName = original;
+                importedAuthor = true;
+            }
+        }
 
         Map<String, Object> change = new LinkedHashMap<>();
         // 时间统一换算到用户时区：分组（按天）、动态更新键与显示都用换算后的值
@@ -337,9 +345,11 @@ public class RecentChangesSpecialPage implements SpecialPage {
         // 差异链接（仿 MediaWiki 最近更改：与该次编辑的上一版本对比）
         change.put("diffUrl", pageUrl + "?diff=prev&oldid=" + revision.getId());
         change.put("userName", userName);
-        change.put("userUrl", userName == null ? null : userUrl(userName));
-        change.put("talkUrl", userName == null ? null : WikiUrls.pagePath("用户讨论:" + userName) + "?action=edit");
-        change.put("contributionsUrl", userName == null ? null
+        change.put("userImported", importedAuthor);
+        change.put("userUrl", userName == null || importedAuthor ? null : userUrl(userName));
+        change.put("talkUrl", userName == null || importedAuthor ? null
+                : WikiUrls.pagePath("用户讨论:" + userName) + "?action=edit");
+        change.put("contributionsUrl", userName == null || importedAuthor ? null
                 : WikiUrls.pagePath(UserToolsSidebar.CONTRIBUTIONS_PAGE) + "?name=" + encode(userName));
         change.put("commentText", Strings.isBlank(revision.getComment()) ? null : revision.getComment());
         change.put("sectionOnly", isSectionOnly(revision.getComment()));

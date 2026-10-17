@@ -138,7 +138,8 @@ public class DeletedPagesSpecialPage implements SpecialPage {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", revision.getId());
             row.put("timeText", formatTime(revision.getCreateAt()));
-            row.put("userName", revision.getUserId() == null ? null
+            row.put("userName", revision.getUserId() == null
+                    ? Strings.trimToEmpty(revision.getUserText())
                     : names.getOrDefault(revision.getUserId(), "#" + revision.getUserId()));
             row.put("comment", revision.getComment());
             row.put("content", revision.getContent());

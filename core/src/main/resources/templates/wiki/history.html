@@ -15,7 +15,10 @@
             th:with="time=${@wikiTime.format(rev.createAt)}">
             <span class="history-date" th:text="${time}">2026年10月05日 12:00</span>
             <span class="history-user">
-                <th:block th:if="${rev.userId == null}" th:text="#{common.anonymous}">匿名用户</th:block>
+                <th:block th:if="${rev.userId == null and #strings.isEmpty(rev.userText)}" th:text="#{common.anonymous}">匿名用户</th:block>
+                <span th:if="${rev.userId == null and !#strings.isEmpty(rev.userText)}"
+                      class="history-user-imported" th:text="${rev.userText}"
+                      th:title="#{common.importedAuthorHint}">原始作者</span>
                 <th:block th:if="${rev.userId != null}" th:with="name=${userNames[rev.userId]}">
                     <a th:if="${name != null}" th:href="@{/wiki/{t}(t=${'用户:' + name})}"
                        th:text="${name}">用户名</a>

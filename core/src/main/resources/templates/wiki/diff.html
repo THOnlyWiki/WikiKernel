@@ -42,9 +42,11 @@
                         <th:block th:if="${older == null}" th:text="#{diff.noOldRevision}">（这是最早的版本）</th:block>
                     </div>
                     <div class="diff-title-meta" th:if="${older != null}">
-                        <span th:if="${oldUserName != null}"><a
+                        <span th:if="${oldUserName != null and !oldUserImported}"><a
                                 th:href="@{/wiki/{t}(t=${'用户:' + oldUserName})}"
                                 th:text="${oldUserName}">用户</a></span>
+                        <span th:if="${oldUserName != null and oldUserImported}"
+                              th:text="${oldUserName}" th:title="#{common.importedAuthorHint}">原始作者</span>
                         <span th:if="${oldUserName == null}" th:text="#{common.anonymous}">匿名用户</span>
                         <span class="diff-time" th:text="${@wikiTime.format(older.createAt)}">时间</span>
                     </div>
@@ -58,9 +60,11 @@
                            th:text="#{diff.revision(${newer.id})}">修订 456</a>
                     </div>
                     <div class="diff-title-meta">
-                        <span th:if="${newUserName != null}"><a
+                        <span th:if="${newUserName != null and !newUserImported}"><a
                                 th:href="@{/wiki/{t}(t=${'用户:' + newUserName})}"
                                 th:text="${newUserName}">用户</a></span>
+                        <span th:if="${newUserName != null and newUserImported}"
+                              th:text="${newUserName}" th:title="#{common.importedAuthorHint}">原始作者</span>
                         <span th:if="${newUserName == null}" th:text="#{common.anonymous}">匿名用户</span>
                         <span class="diff-time" th:text="${@wikiTime.format(newer.createAt)}">时间</span>
                     </div>

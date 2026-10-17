@@ -14,9 +14,15 @@
     </div>
     <!-- 查看旧版本时的提示（?oldid=N） -->
     <div class="wiki-warning old-revision-warning" th:if="${oldRevision != null}">
-        <span th:if="${oldRevision.userId == null}"
+        <span th:if="${oldRevision.userId == null and oldRevisionUserName == null}"
               th:with="time=${@wikiTime.format(oldRevision.createAt)}"
               th:text="#{view.oldRevisionAnon(${time})}">这是本页面于 … 的旧版本（由匿名用户编辑）。</span>
+        <th:block th:if="${oldRevision.userId == null and oldRevisionUserName != null}"
+                  th:with="time=${@wikiTime.format(oldRevision.createAt)}">
+            <span th:text="#{view.oldRevisionUserPrefix(${time})}">这是本页面于 … 的旧版本（由</span><span
+                    th:text="${oldRevisionUserName}" th:title="#{common.importedAuthorHint}">原始作者</span><span
+                    th:text="#{view.oldRevisionUserSuffix}">编辑）。</span>
+        </th:block>
         <th:block th:if="${oldRevision.userId != null}" th:with="time=${@wikiTime.format(oldRevision.createAt)}">
             <th:block th:if="${oldRevisionUserName != null}"><span
                     th:text="#{view.oldRevisionUserPrefix(${time})}">这是本页面于 … 的旧版本（由</span><a

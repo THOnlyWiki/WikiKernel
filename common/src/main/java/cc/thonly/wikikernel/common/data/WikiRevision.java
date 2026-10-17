@@ -38,6 +38,15 @@ public class WikiRevision {
     @DbColumn
     private Long userId;
 
+    /**
+     * 原始作者用户名（页面导入时保留）。
+     * <p>
+     * 本地有同名账号时 {@link #userId} 已经能显示；没有账号（例如用户数据还没迁移）时，
+     * 用它作为占位显示原名，而不是“匿名用户”。账号迁移后可以按它回填 {@link #userId}。
+     */
+    @DbColumn(length = 255)
+    private String userText = "";
+
     /** 编辑摘要。 */
     @DbColumn(length = 500)
     private String comment = "";

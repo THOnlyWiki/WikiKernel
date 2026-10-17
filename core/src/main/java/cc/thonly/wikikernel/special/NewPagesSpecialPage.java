@@ -124,15 +124,18 @@ public class NewPagesSpecialPage implements SpecialPage {
         for (WikiPage page : pages) {
             WikiRevision first = firstByPage.get(page.getId());
             String pageUrl = WikiUrls.pagePath(page.getTitle());
-            String userName = first == null || first.getUserId() == null
-                    ? null : names.get(first.getUserId());
+            String userName = first == null ? null : first.getUserId() == null
+                    ? (Strings.isBlank(first.getUserText()) ? null : first.getUserText().trim())
+                    : names.get(first.getUserId());
+            boolean importedAuthor = first != null && first.getUserId() == null && userName != null;
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("title", page.getTitle());
             row.put("url", pageUrl);
             row.put("time", page.getCreateAt() != null ? page.getCreateAt()
                     : (first == null ? null : first.getCreateAt()));
             row.put("userName", userName);
-            row.put("userUrl", userName == null ? null : WikiUrls.pagePath("用户:" + userName));
+            row.put("userImported", importedAuthor);
+            row.put("userUrl", userName == null || importedAuthor ? null : WikiUrls.pagePath("用户:" + userName));
             row.put("bytes", first == null || first.getContent() == null ? 0
                     : first.getContent().getBytes(StandardCharsets.UTF_8).length);
             row.put("comment", first == null ? "" : Strings.trimToEmpty(first.getComment()));

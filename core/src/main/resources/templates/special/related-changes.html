@@ -16,8 +16,10 @@
                       th:text="${@wikiTime.format(row.revision.createAt)}">时间</span>
                 <a th:if="${row.page != null}" th:href="${row.pageUrl}" th:text="${row.page.title}">页面</a>
                 <span class="history-user">
-                    <a th:if="${row.userName != null}" th:href="@{/wiki/{t}(t=${'用户:' + row.userName})}"
+                    <a th:if="${row.userName != null and !row.userImported}" th:href="@{/wiki/{t}(t=${'用户:' + row.userName})}"
                        th:text="${row.userName}">用户</a>
+                    <span th:if="${row.userName != null and row.userImported}" th:text="${row.userName}"
+                          th:title="#{common.importedAuthorHint}">原始作者</span>
                     <span th:if="${row.userName == null}" th:text="#{common.anonymous}">匿名用户</span>
                 </span>
                 <span class="history-comment"

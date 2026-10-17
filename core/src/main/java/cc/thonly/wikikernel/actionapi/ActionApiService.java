@@ -607,8 +607,13 @@ public class ActionApiService {
                 case "timestamp" -> item.put("timestamp", timestamp(revision.getCreateAt()));
                 case "user" -> {
                     if (revision.getUserId() == null) {
-                        item.put("user", anonName());
-                        item.put("anon", v2 ? Boolean.TRUE : "");
+                        String source = Strings.trimToEmpty(revision.getUserText());
+                        if (source.isEmpty()) {
+                            item.put("user", anonName());
+                            item.put("anon", v2 ? Boolean.TRUE : "");
+                        } else {
+                            item.put("user", source);
+                        }
                     } else {
                         item.put("user", names.getOrDefault(revision.getUserId(), ""));
                     }
@@ -868,7 +873,7 @@ public class ActionApiService {
                 if (page != null) {
                     item.put("pageid", page.getId());
                 }
-                rowUser(item, log.getActorUserId(), rvprop);
+                rowUser(item, log.getActorUserId(), null, rvprop);
                 if (rvprop.contains("timestamp")) {
                     item.put("timestamp", timestamp(log.getTime()));
                 }
@@ -888,7 +893,7 @@ public class ActionApiService {
                     item.put("old_revid", parentId(revision));
                     item.put("pageid", page.getId());
                 }
-                rowUser(item, revision.getUserId(), rvprop);
+                rowUser(item, revision.getUserId(), revision.getUserText(), rvprop);
                 if (rvprop.contains("timestamp")) {
                     item.put("timestamp", timestamp(revision.getCreateAt()));
                 }
@@ -927,13 +932,18 @@ public class ActionApiService {
         return new ListResult(items, null);
     }
 
-    private void rowUser(Map<String, Object> item, Long userId, List<String> rvprop) {
+    private void rowUser(Map<String, Object> item, Long userId, String userText, List<String> rvprop) {
         if (!rvprop.contains("user")) {
             return;
         }
         if (userId == null) {
-            item.put("user", anonName());
-            item.put("anon", Boolean.TRUE);
+            String source = Strings.trimToEmpty(userText);
+            if (source.isEmpty()) {
+                item.put("user", anonName());
+                item.put("anon", Boolean.TRUE);
+            } else {
+                item.put("user", source);
+            }
         } else {
             item.put("user", userService.usernames(List.of(userId)).getOrDefault(userId, ""));
             item.put("userid", userId);

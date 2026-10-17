@@ -231,7 +231,7 @@ public class PageInfoSpecialPage implements SpecialPage {
         rows.add(row(message("pageInfo.fileSize"), number(file.getSize() == null ? 0 : file.getSize())));
         rows.add(row(message("pageInfo.fileType"), escape(Strings.trimToEmpty(file.getContentType()))));
         rows.add(row(message("pageInfo.fileVersion"), String.valueOf(file.getVersion() == null ? 1 : file.getVersion())));
-        rows.add(row(message("pageInfo.fileUploader"), userLink(file.getUploaderId(), userNames)));
+        rows.add(row(message("pageInfo.fileUploader"), userLink(file.getUploaderId(), null, userNames)));
         rows.add(row(message("pageInfo.fileUploadedAt"), escape(wikiTime.format(file.getCreatedAt()))));
         return rows;
     }
@@ -243,10 +243,12 @@ public class PageInfoSpecialPage implements SpecialPage {
         WikiRevision first = revisions.isEmpty() ? null : revisions.get(revisions.size() - 1);
 
         List<Map<String, String>> rows = new ArrayList<>();
-        rows.add(row(message("pageInfo.creator"), userLink(first == null ? null : first.getUserId(), userNames)));
+        rows.add(row(message("pageInfo.creator"), userLink(first == null ? null : first.getUserId(),
+                first == null ? null : first.getUserText(), userNames)));
         rows.add(row(message("pageInfo.creationDate"),
                 escape(wikiTime.format(first != null ? first.getCreateAt() : page.getCreateAt()))));
-        rows.add(row(message("pageInfo.lastEditor"), userLink(latest == null ? null : latest.getUserId(), userNames)));
+        rows.add(row(message("pageInfo.lastEditor"), userLink(latest == null ? null : latest.getUserId(),
+                latest == null ? null : latest.getUserText(), userNames)));
         rows.add(row(message("pageInfo.lastEditedAt"),
                 escape(wikiTime.format(latest != null ? latest.getCreateAt() : page.getUpdateAt()))));
         rows.add(row(message("pageInfo.totalEdits"), String.valueOf(revisions.size())));
@@ -297,23 +299,30 @@ public class PageInfoSpecialPage implements SpecialPage {
         return userId == null ? Map.of() : userService.usernames(List.of(userId));
     }
 
-    /** 不同作者总数：注册用户按 ID 去重；匿名编辑合并为一个（数据库没有存 IP）。 */
+    /** 不同作者总数：注册用户按 ID 去重；导入的原始作者名按名字去重；真正的匿名合并为一个。 */
     private static int distinctAuthors(List<WikiRevision> revisions) {
         Set<Long> ids = new LinkedHashSet<>();
+        Set<String> importedNames = new LinkedHashSet<>();
         boolean anonymous = false;
         for (WikiRevision revision : revisions) {
             if (revision.getUserId() == null) {
-                anonymous = true;
+                String source = Strings.trimToEmpty(revision.getUserText());
+                if (source.isEmpty()) {
+                    anonymous = true;
+                } else {
+                    importedNames.add(source);
+                }
             } else {
                 ids.add(revision.getUserId());
             }
         }
-        return ids.size() + (anonymous ? 1 : 0);
+        return ids.size() + importedNames.size() + (anonymous ? 1 : 0);
     }
 
-    private String userLink(Long userId, Map<Long, String> userNames) {
+    private String userLink(Long userId, String userText, Map<Long, String> userNames) {
         if (userId == null) {
-            return escape(message("pageInfo.anonymous"));
+            String source = Strings.trimToEmpty(userText);
+            return escape(source.isEmpty() ? message("pageInfo.anonymous") : source);
         }
         String name = userNames.get(userId);
         if (name == null) {

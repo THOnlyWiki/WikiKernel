@@ -776,12 +776,23 @@ public class WikiPageController {
         modelAndView.addObject("pageUrl", WikiUrls.pagePath(page.getTitle()));
         modelAndView.addObject("activeTab", "view");
         modelAndView.addObject("oldRevision", oldRevision);
-        // 旧版本提示里的编辑者：把用户名渲染成指向用户页的蓝链（找不到用户名时退回「用户 #编号」样式）
-        modelAndView.addObject("oldRevisionUserName",
-                oldRevision == null || oldRevision.getUserId() == null
-                        ? null
-                        : this.userService.usernames(List.of(oldRevision.getUserId()))
-                        .get(oldRevision.getUserId()));
+        // 旧版本提示里的编辑者：本地账号显示为用户页链接；导入的修订显示原始用户名（纯文本占位）
+        String oldRevisionUserName = null;
+        boolean oldRevisionImported = false;
+        if (oldRevision != null) {
+            if (oldRevision.getUserId() != null) {
+                oldRevisionUserName = this.userService.usernames(List.of(oldRevision.getUserId()))
+                        .get(oldRevision.getUserId());
+            } else {
+                String source = Strings.trimToEmpty(oldRevision.getUserText());
+                if (!source.isEmpty()) {
+                    oldRevisionUserName = source;
+                    oldRevisionImported = true;
+                }
+            }
+        }
+        modelAndView.addObject("oldRevisionUserName", oldRevisionUserName);
+        modelAndView.addObject("oldRevisionImported", oldRevisionImported);
         // 页脚「此页面最后编辑于…」：旧版本查看用该版本时间，否则用页面的最后编辑时间
         modelAndView.addObject("footerLastEdited",
                 oldRevision != null ? oldRevision.getCreateAt() : page.getUpdateAt());
@@ -1350,10 +1361,16 @@ public class WikiPageController {
             }
         }
 
-        String editorName = latestRevision == null || latestRevision.getUserId() == null
-                ? message("editConflict.anonymous")
-                : this.userService.usernames(List.of(latestRevision.getUserId()))
-                        .getOrDefault(latestRevision.getUserId(), message("editConflict.anonymous"));
+        String editorName;
+        if (latestRevision == null) {
+            editorName = message("editConflict.anonymous");
+        } else if (latestRevision.getUserId() != null) {
+            editorName = this.userService.usernames(List.of(latestRevision.getUserId()))
+                    .getOrDefault(latestRevision.getUserId(), message("editConflict.anonymous"));
+        } else {
+            String source = Strings.trimToEmpty(latestRevision.getUserText());
+            editorName = source.isEmpty() ? message("editConflict.anonymous") : source;
+        }
         String timeText = latestRevision == null ? ""
                 : WikiTime.format(latestRevision.getCreateAt(), WikiTime.DEFAULT_DATE_TIME_PATTERN);
         String latestComment = latestRevision == null ? "" : Strings.trimToEmpty(latestRevision.getComment());
@@ -1849,9 +1866,11 @@ public class WikiPageController {
             userIds.add(newer.getUserId());
         }
         Map<Long, String> userNames = this.userService.usernames(userIds);
-        String oldUserName = older == null || older.getUserId() == null
-                ? null : userNames.get(older.getUserId());
-        String newUserName = newer.getUserId() == null ? null : userNames.get(newer.getUserId());
+        String oldUserName = revisionAuthor(older, userNames);
+        String newUserName = revisionAuthor(newer, userNames);
+        boolean oldUserImported = older != null && older.getUserId() == null
+                && !Strings.isBlank(older.getUserText());
+        boolean newUserImported = newer.getUserId() == null && !Strings.isBlank(newer.getUserText());
 
         String pageUrl = WikiUrls.pagePath(page.getTitle());
         // 上一差异 / 下一差异（仿 MediaWiki 的 prevlink / nextlink）
@@ -1871,6 +1890,8 @@ public class WikiPageController {
         modelAndView.addObject("newer", newer);
         modelAndView.addObject("oldUserName", oldUserName);
         modelAndView.addObject("newUserName", newUserName);
+        modelAndView.addObject("oldUserImported", oldUserImported);
+        modelAndView.addObject("newUserImported", newUserImported);
         modelAndView.addObject("prevDiffUrl", prevDiffUrl);
         modelAndView.addObject("nextDiffUrl", nextDiffUrl);
         modelAndView.addObject("diffRows", rows);
@@ -1920,6 +1941,18 @@ public class WikiPageController {
                     WikiUrls.pagePath("特殊:已删除页面") + "?page=" + encodeQueryValue(page.getTitle()));
         }
         return modelAndView;
+    }
+
+    /** 修订作者显示名：本地账号优先；导入修订回退到原始用户名（无账号时作占位显示）。 */
+    private String revisionAuthor(WikiRevision revision, Map<Long, String> userNames) {
+        if (revision == null) {
+            return null;
+        }
+        if (revision.getUserId() != null) {
+            return userNames.get(revision.getUserId());
+        }
+        String source = Strings.trimToEmpty(revision.getUserText());
+        return source.isEmpty() ? null : source;
     }
 
     private ModelAndView renderHistory(String title, HttpServletRequest request) {

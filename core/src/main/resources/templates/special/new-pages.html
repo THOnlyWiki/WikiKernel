@@ -44,7 +44,9 @@
                     <a th:href="${row.historyUrl}" th:text="#{newPages.history}">历史</a>）</span>
             </td>
             <td>
-                <a th:if="${row.userName != null}" th:href="${row.userUrl}" th:text="${row.userName}">用户</a>
+                <a th:if="${row.userName != null and row.userUrl != null}" th:href="${row.userUrl}" th:text="${row.userName}">用户</a>
+                <span th:if="${row.userName != null and row.userUrl == null}" th:text="${row.userName}"
+                      th:title="#{common.importedAuthorHint}">原始作者</span>
                 <span th:if="${row.userName == null}" th:text="#{common.anonymous}">匿名用户</span>
             </td>
             <td class="newpages-bytes" th:text="${row.bytes}">0</td>

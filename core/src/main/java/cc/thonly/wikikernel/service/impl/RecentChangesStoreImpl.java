@@ -57,8 +57,11 @@ public class RecentChangesStoreImpl implements RecentChangesStore {
                     .last("LIMIT 1"));
             WikiUser author = revision.getUserId() == null
                     ? null : wikiUserMapper.selectById(revision.getUserId());
+            String authorName = author == null
+                    ? Strings.trimToEmpty(revision.getUserText())
+                    : Strings.trimToEmpty(author.getUsername());
             edits.add(new RecentEdit(revision.getId(), page.getId(), page.getTitle(),
-                    revision.getUserId(), author == null ? "" : Strings.trimToEmpty(author.getUsername()),
+                    revision.getUserId(), authorName,
                     revision.getCreateAt(), Strings.trimToEmpty(revision.getComment()),
                     revision.getContent() == null ? "" : revision.getContent(),
                     previous == null || previous.getContent() == null ? "" : previous.getContent()));

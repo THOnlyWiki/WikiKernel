@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -189,6 +190,51 @@ class ExportImportTest {
                 .andExpect(jsonPath("$.data.revisionsImported").value(0))
                 .andExpect(jsonPath("$.data.revisionsSkipped").value(2));
         assertEquals(2, wikiPageService.getHistory(page.getId()).size(), "重复导入不应新增版本");
+    }
+
+    /** 本地没有账号时保留原始作者名（user_text）；补齐账号后再导一次应回填 user_id。 */
+    @Test
+    void importPreservesAuthorNameWhenAccountMissing() throws Exception {
+        WikiUser admin = adminUser();
+        String author = "未迁移作者" + System.nanoTime();
+        String title = "导入占位作者页" + System.nanoTime();
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11">
+                  <siteinfo><sitename>Test</sitename></siteinfo>
+                  <page>
+                    <title>%s</title><ns>0</ns><id>1</id>
+                    <revision><id>1</id><timestamp>2020-02-02T03:04:05Z</timestamp>
+                      <contributor><username>%s</username><id>9</id></contributor>
+                      <comment>导入</comment><model>wikitext</model><format>text/x-wiki</format>
+                      <text bytes="6" xml:space="preserve">内容</text></revision>
+                  </page>
+                </mediawiki>
+                """.formatted(title, author);
+        byte[] bytes = xml.getBytes(StandardCharsets.UTF_8);
+
+        mockMvc.perform(multipart("/api/import")
+                        .file(new MockMultipartFile("file", "export.xml", "text/xml", bytes))
+                        .session(sessionOf(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.pagesCreated").value(1))
+                .andExpect(jsonPath("$.data.revisionsImported").value(1));
+
+        WikiPage page = wikiPageService.getByTitle(title).orElseThrow();
+        WikiRevision imported = wikiPageService.getLatestRevision(page.getId()).orElseThrow();
+        assertNull(imported.getUserId(), "本地无账号时 user_id 应为空");
+        assertEquals(author, imported.getUserText(), "应保留原始作者名作为占位");
+
+        // 用户数据迁移后（同名账号出现），再导入一次：幂等跳过 + 回填 user_id
+        WikiUser migrated = insertUser(author);
+        mockMvc.perform(multipart("/api/import")
+                        .file(new MockMultipartFile("file", "export.xml", "text/xml", bytes))
+                        .session(sessionOf(admin)))
+                .andExpect(jsonPath("$.data.revisionsImported").value(0))
+                .andExpect(jsonPath("$.data.revisionsSkipped").value(1));
+
+        WikiRevision backfilled = wikiPageService.getLatestRevision(page.getId()).orElseThrow();
+        assertEquals(migrated.getId(), backfilled.getUserId(), "再次导入应把作者回填到本地账号");
+        assertEquals(author, backfilled.getUserText(), "原始作者名不应被覆盖");
     }
 
     @Test

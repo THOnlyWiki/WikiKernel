@@ -120,7 +120,17 @@ public class RelatedChangesSpecialPage implements SpecialPage {
             row.put("page", page);
             row.put("pageUrl", page == null ? null : WikiUrls.pagePath(page.getTitle()));
             row.put("revision", revision);
-            row.put("userName", revision.getUserId() == null ? null : userNames.get(revision.getUserId()));
+            String userName = revision.getUserId() == null ? null : userNames.get(revision.getUserId());
+            boolean importedAuthor = false;
+            if (Strings.isBlank(userName)) {
+                String source = Strings.trimToEmpty(revision.getUserText());
+                if (!source.isEmpty()) {
+                    userName = source;
+                    importedAuthor = true;
+                }
+            }
+            row.put("userName", userName);
+            row.put("userImported", importedAuthor);
             rows.add(row);
         }
         model.put("changes", rows);

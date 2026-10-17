@@ -36,10 +36,10 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * 导入实现：
@@ -179,12 +179,11 @@ public class WikiImportServiceImpl implements WikiImportService {
             wikiPageMapper.insert(existing);
         }
 
-        Set<String> fingerprints = new HashSet<>();
+        Map<String, WikiRevision> existingByFingerprint = new HashMap<>();
         for (WikiRevision revision : wikiRevisionMapper.selectList(Wrappers.<WikiRevision>lambdaQuery()
                 .eq(WikiRevision::getPageId, existing.getId()))) {
-            fingerprints.add(fingerprint(revision.getContent(), revision.getCreateAt()));
+            existingByFingerprint.put(fingerprint(revision.getContent(), revision.getCreateAt()), revision);
         }
-
         List<ImportedRevision> ordered = new ArrayList<>(page.revisions());
         ordered.sort(Comparator.comparing(revision ->
                 revision.time() == null ? LocalDateTime.MAX : revision.time()));
@@ -199,13 +198,17 @@ public class WikiImportServiceImpl implements WikiImportService {
             }
             String content = source.content() == null ? "" : source.content();
             String fingerprint = fingerprint(content, source.time());
-            if (fingerprints.contains(fingerprint)) {
+            WikiRevision duplicate = existingByFingerprint.get(fingerprint);
+            if (duplicate != null) {
+                // 同一版本重复导入：只回填缺失的作者信息（用户数据迁移后可再导一次补全）
+                backfillAuthor(duplicate, source);
                 skipped++;
                 continue;
             }
             WikiRevision revision = new WikiRevision();
             revision.setPageId(existing.getId());
             revision.setContent(content);
+            revision.setUserText(authorText(source));
             revision.setUserId(resolveUserId(source));
             revision.setComment(source.comment() == null ? "" : source.comment().trim());
             revision.setBot(source.bot());
@@ -213,7 +216,7 @@ public class WikiImportServiceImpl implements WikiImportService {
             revision.setDeleted(source.deleted());
             revision.setCreateAt(source.time() == null ? now : source.time());
             wikiRevisionMapper.insert(revision);
-            fingerprints.add(fingerprint);
+            existingByFingerprint.put(fingerprint, revision);
             imported++;
         }
 
@@ -275,6 +278,32 @@ public class WikiImportServiceImpl implements WikiImportService {
             }
         }
         return title;
+    }
+
+    /** 原始作者名（去空白；没有则空串）。 */
+    private static String authorText(ImportedRevision source) {
+        return Strings.trimToEmpty(source.username());
+    }
+
+    /**
+     * 重复版本只回填作者：把 XML 里的原始用户名写进 {@code user_text}；
+     * 能匹配到本地账号时再补 {@code user_id}（用于“先导页面、后迁移用户”的场景）。
+     */
+    private void backfillAuthor(WikiRevision existing, ImportedRevision source) {
+        boolean changed = false;
+        String username = authorText(source);
+        if (Strings.isBlank(existing.getUserText()) && !username.isEmpty()) {
+            existing.setUserText(username);
+            changed = true;
+        }
+        Long userId = resolveUserId(source);
+        if (existing.getUserId() == null && userId != null) {
+            existing.setUserId(userId);
+            changed = true;
+        }
+        if (changed) {
+            wikiRevisionMapper.updateById(existing);
+        }
     }
 
     /** 贡献者：按用户名关联本地账号（先精确、再首字母大写重试）；找不到 = 匿名。 */

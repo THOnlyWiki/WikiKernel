@@ -146,7 +146,11 @@ public class WatchlistSpecialPage extends AbstractReportPage {
                     + escape(message("watch.histLink")) + "</a>）";
             String userCell;
             if (revision.getUserId() == null) {
-                userCell = escape(message("pageInfo.anonymous"));
+                String source = Strings.trimToEmpty(revision.getUserText());
+                userCell = source.isEmpty()
+                        ? escape(message("pageInfo.anonymous"))
+                        : "<span title=\"" + escape(message("common.importedAuthorHint")) + "\">"
+                        + escape(source) + "</span>";
             } else {
                 String name = names.getOrDefault(revision.getUserId(), "#" + revision.getUserId());
                 userCell = link("用户:" + name, name);
