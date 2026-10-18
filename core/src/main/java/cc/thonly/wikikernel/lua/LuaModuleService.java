@@ -272,10 +272,28 @@ public class LuaModuleService {
         if (raw.isEmpty()) {
             return Optional.empty();
         }
-        List<String> candidates = raw.indexOf(':') >= 0
-                ? List.of(raw)
-                : MODULE_PREFIXES.stream().map(prefix -> prefix + raw).toList();
-        for (String title : candidates) {
+        List<String> candidates = new ArrayList<>();
+        if (raw.indexOf(':') >= 0) {
+            candidates.add(raw);
+            if (raw.regionMatches(true, 0, "Module:", 0, 7)) {
+                candidates.add("模块:" + raw.substring(7));
+            } else if (raw.startsWith("模块:")) {
+                candidates.add("Module:" + raw.substring(3));
+            }
+            if (raw.indexOf('_') >= 0) {
+                candidates.add(raw.replace('_', ' '));
+            }
+        } else {
+            for (String prefix : MODULE_PREFIXES) {
+                candidates.add(prefix + raw);
+            }
+            if (raw.indexOf('_') >= 0) {
+                for (String prefix : MODULE_PREFIXES) {
+                    candidates.add(prefix + raw.replace('_', ' '));
+                }
+            }
+        }
+        for (String title : candidates.stream().distinct().toList()) {
             Optional<WikiPage> page = wikiPageService.getVisibleByTitle(title);
             if (page.isPresent()) {
                 String source = wikiPageService.getLatestContent(page.get().getId()).orElse("");
@@ -353,7 +371,18 @@ public class LuaModuleService {
             return cached;
         }
         Optional<ModuleSource> found = findModule(raw);
+        if (found.isEmpty() && raw.indexOf('_') >= 0) {
+            // MediaWiki 标题里下划线等价于空格（Citation/CS1/Date_validation 等）
+            found = findModule(raw.replace('_', ' '));
+        }
+        if (found.isEmpty() && raw.matches("(?i).*Date[ _]validation/sandbox$")) {
+            found = findModule(raw.replaceAll("(?i)/sandbox$", "").replace('_', ' '));
+        }
         if (found.isEmpty()) {
+            LuaValue fallback = fallbackModule(raw);
+            if (fallback != null) {
+                return fallback;
+            }
             throw new LuaError(message("lua.error.moduleMissing", raw));
         }
         ModuleSource module = found.get();
@@ -382,6 +411,123 @@ public class LuaModuleService {
         } finally {
             context.loading.remove(title);
         }
+    }
+
+    /**
+     * 少数扩展依赖模块在本地缺失时的最小兼容实现（不写入页面内容）：
+     * Fullurl、Submit an edit request、Vandal-m、Color contrast。
+     * 只在 require 找不到页面时使用，不会覆盖真实模块。
+     */
+    private LuaValue fallbackModule(String name) {
+        String key = name == null ? "" : name.toLowerCase(Locale.ROOT).replace('_', ' ').trim();
+        int colon = key.indexOf(':');
+        String bare = colon >= 0 ? key.substring(colon + 1).trim() : key;
+        if (bare.startsWith("citation/cs1/date validation")) {
+            LuaTable table = new LuaTable();
+            table.set("dates", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return LuaValue.NIL;
+                }
+            });
+            table.set("year_date_check", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return LuaValue.NIL;
+                }
+            });
+            return table;
+        }
+        if (bare.equals("fullurl")) {            LuaTable table = new LuaTable();
+            table.set("_fullurl2", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    String page = values.arg(1).optjstring("");
+                    String url = siteInfoProvider == null ? WikiUrls.pagePath(page)
+                            : siteInfoProvider.server() + WikiUrls.pagePath(page);
+                    String query = queryString(values.arg(2));
+                    if (!query.isEmpty()) {
+                        url += (url.contains("?") ? "&" : "?") + query;
+                    }
+                    String display = values.arg(3).optjstring("");
+                    return LuaValue.valueOf(display.isBlank() ? url : "[" + url + " " + display + "]");
+                }
+            });
+            return table;
+        }
+        if (bare.equals("submit an edit request")) {
+            LuaTable table = new LuaTable();
+            VarArgFunction link = new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    LuaTable args = values.arg(1).istable() ? values.arg(1).checktable() : new LuaTable();
+                    String type = args.get("type").optjstring("");
+                    String display = args.get("display").optjstring("提交编辑请求");
+                    String url = WikiUrls.pagePath("特殊:编辑请求") + "?type="
+                            + URLEncoder.encode(type, StandardCharsets.UTF_8);
+                    return LuaValue.valueOf("[" + url + " " + display + "]");
+                }
+            };
+            table.set("_link", link);
+            table.set("_main", link);
+            return table;
+        }
+        if (bare.equals("vandal-m")) {
+            LuaTable table = new LuaTable();
+            table.set("_main", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    LuaTable args = values.arg(1).istable() ? values.arg(1).checktable() : new LuaTable();
+                    String user = args.get(1).optjstring("");
+                    if (user.isBlank()) {
+                        return LuaValue.valueOf("");
+                    }
+                    return LuaValue.valueOf("[[" + WikiUrls.pagePath("特殊:用户贡献/" + user)
+                            + "|" + user + "]]");
+                }
+            });
+            return table;
+        }
+        if (bare.equals("color contrast")) {
+            LuaTable table = new LuaTable();
+            table.set("_contrast_ratio", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return LuaValue.valueOf(0);
+                }
+            });
+            table.set("_greatercontrast", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return values.arg(1);
+                }
+            });
+            return table;
+        }
+        return null;
+    }
+
+    private static String queryString(LuaValue value) {
+        if (value == null || !value.istable()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        LuaTable table = value.checktable();
+        LuaValue key = LuaValue.NIL;
+        while (true) {
+            Varargs next = table.next(key);
+            key = next.arg1();
+            if (key.isnil()) {
+                break;
+            }
+            if (out.length() > 0) {
+                out.append('&');
+            }
+            out.append(URLEncoder.encode(key.tojstring(), StandardCharsets.UTF_8))
+                    .append('=')
+                    .append(URLEncoder.encode(next.arg(2).tojstring(), StandardCharsets.UTF_8));
+        }
+        return out.toString();
     }
 
     // ==================== mw.loadData（数据模块 + 依赖追踪） ====================
@@ -563,6 +709,11 @@ public class LuaModuleService {
         return ScribuntoLibrary.evaluateExpression(expression);
     }
 
+    /** 解析器函数 {@code #language} / 模块共用的语言名称。 */
+    public static String languageDisplayName(String code) {
+        return ScribuntoLibrary.languageName(code);
+    }
+
     /** {@code mw.title:getContent()} 的页面正文来源（不存在 / 空页面返回 null）。 */
     private String pageContent(String title) {
         if (title == null || title.isBlank()) {
@@ -586,6 +737,7 @@ public class LuaModuleService {
             named.forEach((key, value) -> args.set(key, LuaValue.valueOf(value)));
 
             LuaTable frame = new LuaTable();
+            frame.set("__frame", LuaValue.TRUE);
             frame.set("args", args);
             frame.set("getParent", new ZeroArgFunction() {
                 @Override
@@ -620,15 +772,16 @@ public class LuaModuleService {
             frame.set("extensionTag", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {
-                    return LuaValue.valueOf(extensionTag(values));
+                    return LuaValue.valueOf(extensionTag(values, selfOffset(values)));
                 }
             });
 
             FrameExpander expander = currentFrameExpander();
-            frame.set("preprocess", new OneArgFunction() {
+            frame.set("preprocess", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
-                    String text = value.optjstring("");
+                public Varargs invoke(Varargs values) {
+                    int offset = selfOffset(values);
+                    String text = values.arg(1 + offset).optjstring("");
                     return LuaValue.valueOf(expander == null ? text : expander.preprocess(text));
                 }
             });
@@ -638,12 +791,13 @@ public class LuaModuleService {
                     if (expander == null) {
                         return LuaValue.valueOf("");
                     }
-                    LuaTable spec = values.arg(1).istable() ? values.arg(1).checktable() : null;
+                    int offset = selfOffset(values);
+                    LuaTable spec = values.arg(1 + offset).istable() ? values.arg(1 + offset).checktable() : null;
                     String name = spec == null
-                            ? values.arg(1).optjstring("")
+                            ? values.arg(1 + offset).optjstring("")
                             : spec.get("title").optjstring(spec.get("name").optjstring(""));
                     LuaTable argTable = spec == null
-                            ? (values.arg(2).istable() ? values.arg(2).checktable() : null)
+                            ? (values.arg(2 + offset).istable() ? values.arg(2 + offset).checktable() : null)
                             : (spec.get("args").istable() ? spec.get("args").checktable() : null);
                     return LuaValue.valueOf(expander.expandTemplate(name, mapOf(argTable)));
                 }
@@ -654,28 +808,33 @@ public class LuaModuleService {
                     if (expander == null) {
                         return LuaValue.valueOf("");
                     }
-                    LuaTable spec = values.arg(1).istable() ? values.arg(1).checktable() : null;
+                    int offset = selfOffset(values);
+                    LuaTable spec = values.arg(1 + offset).istable() ? values.arg(1 + offset).checktable() : null;
                     String name = spec == null
-                            ? values.arg(1).optjstring("")
+                            ? values.arg(1 + offset).optjstring("")
                             : spec.get("name").optjstring("");
                     LuaTable argTable = spec == null
-                            ? (values.arg(2).istable() ? values.arg(2).checktable() : null)
+                            ? (values.arg(2 + offset).istable() ? values.arg(2 + offset).checktable() : null)
                             : (spec.get("args").istable() ? spec.get("args").checktable() : null);
                     return LuaValue.valueOf(expander.callParserFunction(name, mapOf(argTable)));
                 }
             });
-            frame.set("newChild", new OneArgFunction() {
+            frame.set("newChild", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
+                public Varargs invoke(Varargs values) {
+                    int offset = selfOffset(values);
+                    LuaValue value = values.arg(1 + offset);
                     LuaTable spec = value.istable() ? value.checktable() : new LuaTable();
                     LuaTable childArgs = spec.get("args").istable()
                             ? spec.get("args").checktable() : new LuaTable();
                     return childFrame(childArgs, frame);
                 }
             });
-            frame.set("getArgument", new OneArgFunction() {
+            frame.set("getArgument", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
+                public Varargs invoke(Varargs values) {
+                    int offset = selfOffset(values);
+                    LuaValue value = values.arg(1 + offset);
                     return value.isnumber() ? args.get(value.toint()) : args.get(value.tojstring());
                 }
             });
@@ -685,6 +844,7 @@ public class LuaModuleService {
         /** 子 frame（{@code frame:newChild}）：沿用父 frame 的能力，只替换 args。 */
         private static LuaTable childFrame(LuaTable childArgs, LuaTable parent) {
             LuaTable child = new LuaTable();
+            child.set("__frame", LuaValue.TRUE);
             child.set("args", childArgs);
             child.set("getParent", new ZeroArgFunction() {
                 @Override
@@ -698,10 +858,10 @@ public class LuaModuleService {
                     return parent.get("getTitle").call();
                 }
             });
-            child.set("preprocess", new OneArgFunction() {
+            child.set("preprocess", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
-                    return parent.get("preprocess").call(value);
+                public Varargs invoke(Varargs values) {
+                    return parent.get("preprocess").invoke(values);
                 }
             });
             child.set("expandTemplate", new VarArgFunction() {
@@ -722,7 +882,24 @@ public class LuaModuleService {
                     return parent.get("extensionTag").invoke(values);
                 }
             });
+            child.set("newChild", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return parent.get("newChild").invoke(values);
+                }
+            });
+            child.set("getArgument", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    return parent.get("getArgument").invoke(values);
+                }
+            });
             return child;
+        }
+
+        /** 冒号调用 {@code frame:method(...)} 时跳过第一个 frame 参数。 */
+        private static int selfOffset(Varargs values) {
+            return values.arg(1).istable() && values.arg(1).get("__frame").toboolean() ? 1 : 0;
         }
 
         /** Lua 表 → Java 有序 Map（解析器函数 / 模板参数用）。 */
@@ -752,26 +929,34 @@ public class LuaModuleService {
          * 支持 Scribunto 的两种写法：{@code extensionTag{name=…, args=…, content=…}} 与
          * {@code extensionTag(name, content, args)}。
          */
-        private static String extensionTag(Varargs values) {
+        private static String extensionTag(Varargs values, int offset) {
             String name;
             String content = "";
             LuaTable attributes = null;
-            if (values.arg(1).istable()) {
-                LuaTable spec = values.arg(1).checktable();
+            if (values.arg(1 + offset).istable()) {
+                LuaTable spec = values.arg(1 + offset).checktable();
                 name = spec.get("name").optjstring("");
                 content = spec.get("content").optjstring("");
                 if (spec.get("args").istable()) {
                     attributes = spec.get("args").checktable();
                 }
             } else {
-                name = values.arg(1).optjstring("");
-                content = values.arg(2).optjstring("");
-                if (values.arg(3).istable()) {
-                    attributes = values.arg(3).checktable();
+                name = values.arg(1 + offset).optjstring("");
+                content = values.arg(2 + offset).optjstring("");
+                if (values.arg(3 + offset).istable()) {
+                    attributes = values.arg(3 + offset).checktable();
                 }
             }
-            if (name.isBlank() || "templatestyles".equalsIgnoreCase(name)) {
+            if (name.isBlank()) {
                 return "";
+            }
+            if ("templatestyles".equalsIgnoreCase(name)) {
+                String src = attributes == null ? "" : attributes.get("src").optjstring("");
+                if (src.isBlank()) {
+                    src = content;
+                }
+                return src.isBlank() ? ""
+                        : "<templatestyles src=\"" + escapeAttribute(src) + "\"/>";
             }
             StringBuilder out = new StringBuilder("<").append(name);
             if (attributes != null) {
@@ -877,48 +1062,7 @@ public class LuaModuleService {
                     StandardCharsets.UTF_8).replace("+", "%20")));
             mw.set("text", text);
 
-            LuaTable ustring = new LuaTable();
-            LuaValue stringLib = globals.get("string");
-            ustring.set("find", forward(stringLib.get("find")));
-            ustring.set("match", forward(stringLib.get("match")));
-            ustring.set("gmatch", forward(stringLib.get("gmatch")));
-            ustring.set("gsub", forward(stringLib.get("gsub")));
-            ustring.set("rep", forward(stringLib.get("rep")));
-            ustring.set("format", forward(stringLib.get("format")));
-            ustring.set("byte", forward(stringLib.get("byte")));
-            ustring.set("char", forward(stringLib.get("char")));
-            ustring.set("lower", oneArg(value -> value == null ? "" : value.toLowerCase(Locale.ROOT)));
-            ustring.set("upper", oneArg(value -> value == null ? "" : value.toUpperCase(Locale.ROOT)));
-            ustring.set("len", new OneArgFunction() {
-                @Override
-                public LuaValue call(LuaValue value) {
-                    String source = value.isnil() ? "" : value.tojstring();
-                    return LuaValue.valueOf(source.codePointCount(0, source.length()));
-                }
-            });
-            ustring.set("sub", new ThreeArgFunction() {
-                @Override
-                public LuaValue call(LuaValue value, LuaValue start, LuaValue end) {
-                    String source = value.tojstring();
-                    int length = source.codePointCount(0, source.length());
-                    int from = start.toint();
-                    int to = end.isnil() ? -1 : end.toint();
-                    if (from < 0) {
-                        from = length + from + 1;
-                    }
-                    if (to < 0) {
-                        to = length + to + 1;
-                    }
-                    from = Math.max(1, from);
-                    to = Math.min(length, to);
-                    if (from > to) {
-                        return LuaValue.valueOf("");
-                    }
-                    int startOffset = source.offsetByCodePoints(0, from - 1);
-                    int endOffset = source.offsetByCodePoints(0, to);
-                    return LuaValue.valueOf(source.substring(startOffset, endOffset));
-                }
-            });
+            LuaTable ustring = LuaUstringLibrary.load(globals);
             mw.set("ustring", ustring);
 
             LuaTable title = new LuaTable();
@@ -980,17 +1124,25 @@ public class LuaModuleService {
                     return LuaValue.valueOf(languageName(values.arg(1).optjstring("")));
                 }
             });
-            language.set("fetchLanguageNames", new ZeroArgFunction() {
+            language.set("fetchLanguageNames", new VarArgFunction() {
                 @Override
-                public LuaValue call() {
+                public Varargs invoke(Varargs values) {
+                    String inLanguage = values.arg(1).optjstring("zh");
                     LuaTable names = new LuaTable();
-                    for (String code : List.of("zh", "en", "ja", "ko", "de", "fr", "ru", "es")) {
+                    for (String code : List.of("zh", "zh-hans", "zh-hant", "en", "ja", "ko", "de", "fr",
+                            "ru", "es", "it", "pt", "pl", "nl", "sv", "uk", "vi", "th", "id", "ar")) {
                         names.set(code, LuaValue.valueOf(languageName(code)));
                     }
                     return names;
                 }
             });
             language.set("isSupportedLanguage", new OneArgFunction() {
+                @Override
+                public LuaValue call(LuaValue value) {
+                    return LuaValue.valueOf(!languageName(value.optjstring("")).equals(value.optjstring("")));
+                }
+            });
+            language.set("isKnownLanguageTag", new OneArgFunction() {
                 @Override
                 public LuaValue call(LuaValue value) {
                     return LuaValue.valueOf(!languageName(value.optjstring("")).equals(value.optjstring("")));
@@ -1022,9 +1174,13 @@ public class LuaModuleService {
                     }
                 }
             });
-            uri.set("new", new OneArgFunction() {
+            uri.set("new", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
+                public Varargs invoke(Varargs values) {
+                    LuaValue value = values.arg(1);
+                    if (value.istable()) {
+                        return uriTable(value.checktable());
+                    }
                     return uriTable(value.optjstring(""));
                 }
             });
@@ -1129,6 +1285,58 @@ public class LuaModuleService {
             return table;
         }
 
+        /** {@code mw.uri.new} 的表参形式：{@code protocol/host/path/query/fragment} 字段构建 URI。 */
+        static LuaTable uriTable(LuaTable source) {
+            LuaTable table = new LuaTable();
+            for (String key : List.of("protocol", "host", "port", "path", "query", "queryString",
+                    "fragment", "userInfo")) {
+                table.set(key, source.get(key));
+            }
+            table.set("toString", new ZeroArgFunction() {
+                @Override
+                public LuaValue call() {
+                    return LuaValue.valueOf(buildUri(table));
+                }
+            });
+            table.set("fullUrl", LuaValue.valueOf(buildUri(table)));
+            return table;
+        }
+
+        private static String buildUri(LuaTable table) {
+            String protocol = table.get("protocol").optjstring("");
+            String userInfo = table.get("userInfo").optjstring("");
+            String host = table.get("host").optjstring("");
+            int port = table.get("port").optint(-1);
+            String path = table.get("path").optjstring("");
+            String query = table.get("query").istable()
+                    ? queryString(table.get("query")) : table.get("query").optjstring("");
+            String fragment = table.get("fragment").optjstring("");
+            StringBuilder out = new StringBuilder();
+            if (!protocol.isEmpty()) {
+                out.append(protocol).append("://");
+            }
+            if (!userInfo.isEmpty()) {
+                out.append(userInfo).append('@');
+            }
+            out.append(host);
+            if (port > 0) {
+                out.append(':').append(port);
+            }
+            if (!path.isEmpty()) {
+                if (!path.startsWith("/")) {
+                    out.append('/');
+                }
+                out.append(path);
+            }
+            if (!query.isEmpty()) {
+                out.append('?').append(query);
+            }
+            if (!fragment.isEmpty()) {
+                out.append('#').append(fragment);
+            }
+            return out.toString();
+        }
+
         /** {@code mw.ext}：站点已安装扩展的少量兼容入口。 */
         static LuaTable extensionLibrary(TitleBlacklistService titleBlacklist) {
             LuaTable ext = new LuaTable();
@@ -1192,6 +1400,51 @@ public class LuaModuleService {
             }
 
             private double expression() {
+                double value = comparison();
+                while (true) {
+                    skipSpace();
+                    if (take('+')) {
+                        value += comparison();
+                    } else if (take('-')) {
+                        value -= comparison();
+                    } else {
+                        return value;
+                    }
+                }
+            }
+
+            private double comparison() {
+                double left = additive();
+                while (true) {
+                    skipSpace();
+                    if (take('>')) {
+                        boolean equal = take('=');
+                        double right = additive();
+                        left = equal ? (left >= right ? 1 : 0) : (left > right ? 1 : 0);
+                    } else if (take('<')) {
+                        if (take('>')) {
+                            left = left != additive() ? 1 : 0;
+                        } else {
+                            boolean equal = take('=');
+                            double right = additive();
+                            left = equal ? (left <= right ? 1 : 0) : (left < right ? 1 : 0);
+                        }
+                    } else if (take('=')) {
+                        take('=');
+                        left = left == additive() ? 1 : 0;
+                    } else if (take('!')) {
+                        if (take('=')) {
+                            left = left != additive() ? 1 : 0;
+                        } else {
+                            throw new IllegalArgumentException("operator");
+                        }
+                    } else {
+                        return left;
+                    }
+                }
+            }
+
+            private double additive() {
                 double value = term();
                 while (true) {
                     skipSpace();
@@ -1295,57 +1548,101 @@ public class LuaModuleService {
             language.set("formatNum", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {
-                    String value = values.arg(1).optjstring("");
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    String value = values.arg(1 + offset).optjstring("");
+                    String format = values.arg(2 + offset).optjstring("");
+                    if (format.contains("R")) {
+                        return LuaValue.valueOf(value);
+                    }
                     try {
-                        java.text.NumberFormat format = java.text.NumberFormat.getNumberInstance(Locale.CHINA);
-                        return LuaValue.valueOf(format.format(Double.parseDouble(value)));
+                        java.text.DecimalFormatSymbols symbols = java.text.DecimalFormatSymbols
+                                .getInstance(Locale.CHINA);
+                        java.text.DecimalFormat formatter = new java.text.DecimalFormat("#,##0.################", symbols);
+                        formatter.setGroupingUsed(!format.contains("NOSEP"));
+                        String result = formatter.format(Double.parseDouble(value));
+                        if (format.contains("NOSEP")) {
+                            result = result.replace(",", "");
+                        }
+                        return LuaValue.valueOf(result);
                     } catch (NumberFormatException exception) {
                         return LuaValue.valueOf(value);
+                    }
+                }
+            });
+            language.set("parseFormattedNumber", new VarArgFunction() {
+                @Override
+                public Varargs invoke(Varargs values) {
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    String text = values.arg(1 + offset).optjstring("").replace(",", "").trim();
+                    try {
+                        return LuaValue.valueOf(Double.parseDouble(text));
+                    } catch (NumberFormatException exception) {
+                        return LuaValue.ZERO;
                     }
                 }
             });
             language.set("formatDate", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {
-                    return LuaValue.valueOf(values.arg(2).optjstring(values.arg(1).optjstring("")));
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    return LuaValue.valueOf(values.arg(2 + offset).optjstring(values.arg(1 + offset).optjstring("")));
                 }
             });
             language.set("plural", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {
-                    return LuaValue.ZERO;
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    double number = values.arg(1 + offset).optdouble(0);
+                    if (values.narg() <= 2 + offset) {
+                        return values.arg(2 + offset);
+                    }
+                    int form = Math.abs(number - 1) < 1e-9 ? 1 : 2;
+                    LuaValue chosen = values.arg(form + 1 + offset);
+                    return chosen.isnil() ? values.arg(2 + offset) : chosen;
                 }
             });
             language.set("grammar", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {
-                    return LuaValue.valueOf(values.arg(2).optjstring(values.arg(1).optjstring("")));
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    return values.arg(2 + offset).isnil() ? values.arg(1 + offset) : values.arg(2 + offset);
                 }
             });
             language.set("gender", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {
-                    return LuaValue.valueOf(values.arg(2).optjstring(values.arg(1).optjstring("")));
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    String gender = values.arg(1 + offset).optjstring("");
+                    int index = "f".equalsIgnoreCase(gender) || "female".equalsIgnoreCase(gender) ? 3 + offset
+                            : "n".equalsIgnoreCase(gender) || "neutral".equalsIgnoreCase(gender) ? 4 + offset : 2 + offset;
+                    LuaValue value = values.arg(index);
+                    if (value.isnil()) {
+                        value = values.arg(2 + offset);
+                    }
+                    return value.isnil() ? LuaValue.valueOf("") : value;
                 }
             });
-            language.set("convert", new OneArgFunction() {
+            language.set("convert", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
-                    return value;
+                public Varargs invoke(Varargs values) {
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    return values.arg(1 + offset);
                 }
             });
-            language.set("ucfirst", new OneArgFunction() {
+            language.set("ucfirst", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
-                    String text = value.optjstring("");
+                public Varargs invoke(Varargs values) {
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    String text = values.arg(1 + offset).optjstring("");
                     return LuaValue.valueOf(text.isEmpty() ? text
                             : text.substring(0, 1).toUpperCase(Locale.ROOT) + text.substring(1));
                 }
             });
-            language.set("lcfirst", new OneArgFunction() {
+            language.set("lcfirst", new VarArgFunction() {
                 @Override
-                public LuaValue call(LuaValue value) {
-                    String text = value.optjstring("");
+                public Varargs invoke(Varargs values) {
+                    int offset = values.arg(1).istable() ? 1 : 0;
+                    String text = values.arg(1 + offset).optjstring("");
                     return LuaValue.valueOf(text.isEmpty() ? text
                             : text.substring(0, 1).toLowerCase(Locale.ROOT) + text.substring(1));
                 }
@@ -1359,10 +1656,22 @@ public class LuaModuleService {
             language.set("getDirMark", new ZeroArgFunction() {
                 @Override
                 public LuaValue call() {
-                    return LuaValue.valueOf("");
+                    return LuaValue.valueOf("\u200E");
                 }
             });
-            language.set("isRTL", LuaValue.FALSE);
+            language.set("isRTL", new ZeroArgFunction() {
+                @Override
+                public LuaValue call() {
+                    return LuaValue.FALSE;
+                }
+            });
+            language.set("isKnownLanguageTag", new OneArgFunction() {
+                @Override
+                public LuaValue call(LuaValue value) {
+                    String code = value.optjstring("");
+                    return LuaValue.valueOf(!languageName(code).equals(code));
+                }
+            });
             LuaTable fallbacks = new LuaTable();
             fallbacks.set(1, LuaValue.valueOf("en"));
             language.set("getFallbackLanguages", new ZeroArgFunction() {
@@ -1376,8 +1685,8 @@ public class LuaModuleService {
 
         private static String languageName(String code) {
             return switch (code == null ? "" : code.toLowerCase(Locale.ROOT)) {
-                case "zh", "zh-hans", "zh-cn" -> "中文";
-                case "zh-hant", "zh-tw" -> "中文（繁體）";
+                case "zh", "zh-hans", "zh-cn", "zh-sg" -> "中文";
+                case "zh-hant", "zh-tw", "zh-hk", "zh-mo" -> "中文（繁體）";
                 case "en" -> "English";
                 case "ja" -> "日本語";
                 case "ko" -> "한국어";
@@ -1385,6 +1694,16 @@ public class LuaModuleService {
                 case "fr" -> "français";
                 case "ru" -> "русский";
                 case "es" -> "español";
+                case "it" -> "italiano";
+                case "pt" -> "português";
+                case "pl" -> "polski";
+                case "nl" -> "Nederlands";
+                case "sv" -> "svenska";
+                case "uk" -> "українська";
+                case "vi" -> "Tiếng Việt";
+                case "th" -> "ไทย";
+                case "id" -> "Bahasa Indonesia";
+                case "ar" -> "العربية";
                 default -> code == null ? "" : code;
             };
         }
@@ -1470,8 +1789,15 @@ public class LuaModuleService {
             message.set("params", new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs args) {
-                    params.addAll(paramsFrom(args, 1));
+                    int from = args.arg(1).istable() ? 2 : 1;
+                    params.addAll(paramsFrom(args, from));
                     return message;
+                }
+            });
+            message.set("numParams", new ZeroArgFunction() {
+                @Override
+                public LuaValue call() {
+                    return LuaValue.valueOf(params.size());
                 }
             });
             message.set("text", new ZeroArgFunction() {
@@ -1587,6 +1913,7 @@ public class LuaModuleService {
             }
             int namespace = ActionApiNamespaces.idOf(value);
             String content = contentLookup == null ? null : contentLookup.apply(value);
+            final String currentTitle = value;
             LuaTable table = new LuaTable();
             table.set("fullText", value.isEmpty() ? LuaValue.NIL : LuaValue.valueOf(value));
             table.set("prefixedText", value.isEmpty() ? LuaValue.NIL : LuaValue.valueOf(value));
@@ -1644,6 +1971,29 @@ public class LuaModuleService {
             });
             table.set("isProtected", LuaValue.FALSE);
             table.set("isIncorrect", LuaValue.FALSE);
+            table.set("isContentPage", LuaValue.valueOf(namespace == 0));
+            table.set("contentModel", LuaValue.valueOf("wikitext"));
+            table.set("pageLanguage", LuaValue.valueOf("zh"));
+            table.set("hasSubjectPage", LuaValue.valueOf(content != null));
+            table.set("protectionLevels", new LuaTable());
+            LuaTable cascading = new LuaTable();
+            cascading.set("protection", new LuaTable());
+            cascading.set("source", LuaValue.NIL);
+            table.set("cascadingProtection", cascading);
+            if (content != null) {
+                java.util.regex.Matcher redirect = java.util.regex.Pattern
+                        .compile("(?is)^\\s*#redirect\\s*\\[\\[\\s*([^\\]|#]+)")
+                        .matcher(content);
+                if (redirect.find()) {
+                    table.set("redirectTarget", titleTable(redirect.group(1).trim(), contentLookup, false));
+                }
+            }
+            table.set("getCurrentTitle", new ZeroArgFunction() {
+                @Override
+                public LuaValue call() {
+                    return titleTable(currentTitle, contentLookup);
+                }
+            });
             VarArgFunction url = new VarArgFunction() {
                 @Override
                 public Varargs invoke(Varargs values) {

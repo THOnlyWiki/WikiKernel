@@ -345,6 +345,116 @@ class LuaExtensionTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("甲乙/3/5"), html);
     }
 
+    @Test
+    void ustringUsesUnicodeCodePointsAndPatterns() throws Exception {
+        wikiPageService.editPage(null, "模块:Ustring演示", """
+                local p = {}
+                function p.main()
+                    local a, b = mw.ustring.find('中文abc', '文a')
+                    local len = mw.ustring.len('中文')
+                    local sub = mw.ustring.sub('中文abc', 2, 3)
+                    local digits = mw.ustring.match('abc123', '%d+')
+                    local replaced = mw.ustring.gsub('甲乙丙', '乙', 'X')
+                    return table.concat({ a, b, len, sub, digits, replaced }, '|')
+                end
+                return p
+                """);
+        String html = render("Ustring演示页", "{{#invoke:Ustring演示|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("2|3|2|文a|123|甲X丙"), html);
+    }
+
+    @Test
+    void titleAndLanguageAdvancedMetadataWork() throws Exception {
+        wikiPageService.editPage(null, "模块:标题语言演示", """
+                local p = {}
+                function p.main()
+                    local title = mw.title.new('模块:演示/子页')
+                    local lang = mw.getContentLanguage()
+                    return table.concat({
+                        tostring(title.namespace),
+                        tostring(title.text),
+                        tostring(title.isSubpage),
+                        tostring(title.subpageText),
+                        tostring(title.isContentPage),
+                        tostring(title.contentModel),
+                        tostring(lang:formatNum(1234)),
+                        tostring(lang:formatNum(1234, 'R')),
+                        tostring(lang:plural(1, 'one', 'many')),
+                        tostring(lang:gender('f', 'male', 'female', 'neutral'))
+                    }, '|')
+                end
+                return p
+                """);
+        String html = render("标题语言演示页", "{{#invoke:标题语言演示|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                html.contains("828|演示/子页|true|子页|false|wikitext|1,234|1234|one|female"), html);
+    }
+
+    @Test
+    void templateStylesAndCssParserFunctionAreCollected() throws Exception {
+        wikiPageService.editPage(null, "模板:测试样式/styles.css", ".from-template { color: red; }");
+        String html = render("样式收集页", """
+                <templatestyles src="模板:测试样式/styles.css" />
+                {{#css:.from-css { color: blue; } }}
+                <div class="from-template from-css">内容</div>
+                """);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                html.contains("<style data-mw-source=\"templatestyles:模板:测试样式/styles.css\">")
+                        && html.contains(".from-template { color: red; }"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains(".from-css { color: blue; }"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(!html.contains("<templatestyles"), html);
+    }
+
+    @Test
+    void frameColonMethodsWork() throws Exception {
+        wikiPageService.editPage(null, "模块:Frame方法演示", """
+                local p = {}
+                function p.main(frame)
+                    local processed = frame:preprocess('{{#expr:2+3}}')
+                    local argument = frame:getArgument(1)
+                    local child = frame:newChild{ args = { 'child' } }
+                    return processed .. '|' .. tostring(argument) .. '|' .. tostring(child.args[1])
+                end
+                return p
+                """);
+        String html = render("Frame方法演示页", "{{#invoke:Frame方法演示|main|参数}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("5|参数|child"), html);
+    }
+
+    @Test
+    void missingExtensionModulesHaveSafeFallbacks() throws Exception {
+        wikiPageService.editPage(null, "模块:缺失依赖演示", """
+                local p = {}
+                function p.main()
+                    local fullurl = require('Module:Fullurl')
+                    local submit = require('Module:Submit an edit request')
+                    local vandal = require('Module:Vandal-m')
+                    local contrast = require('Module:Color contrast')
+                    local ok, validation = pcall(require, 'Module:Citation/CS1/Date_validation/sandbox')
+                    return fullurl._fullurl2('首页', { action = 'edit' }, '编辑')
+                        .. '|' .. submit._link{ type = 'edit', display = '请求' }
+                        .. '|' .. vandal._main{ 'Foo' }
+                        .. '|' .. tostring(contrast._contrast_ratio())
+                        .. '|' .. tostring(ok) .. '|' .. (ok and type(validation.dates) or 'nil')
+                end
+                return p
+                """);
+        String html = render("缺失依赖演示页", "{{#invoke:缺失依赖演示|main}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("编辑"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("请求"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Foo"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("|true|function"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(!html.contains("脚本错误"), html);
+    }
+
+    @Test
+    void extraParserFunctionsWork() throws Exception {
+        String html = render("额外解析器函数页", "{{#ifexpr:2>1|yes|no}}|{{#padleft:7|3|0}}|"
+                + "{{#replace:abc|b|X}}|{{#explode:a,b,c|,|1}}|"
+                + "{{#titleparts:A/B/C|2|1}}|{{#len:中文}}|{{#count:abab|ab}}");
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("yes|007|aXc|b|B|2|2"), html);
+    }
+
     // ==================== 复杂页面（解析器类测试约定） ====================
 
     @Test

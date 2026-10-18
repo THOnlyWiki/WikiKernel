@@ -23,6 +23,7 @@ import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaPlayerHtml;
 import cc.thonly.wikikernel.web.WikiFileEmbedCall;
+import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.WikiKernelInfo;
 
@@ -102,6 +103,9 @@ public class WikitextRenderer {
     /** {@code <gallery>文件:甲.jpg|说明（每行一张）</gallery>}（仿 MediaWiki 画廊）。 */
     private static final Pattern GALLERY = Pattern.compile(
             "<gallery(\\s[^>]*)?>(.*?)</gallery\\s*>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    /** {@code <templatestyles src="模板:…/styles.css" />}（TemplateStyles 扩展）。 */
+    private static final Pattern TEMPLATESTYLES = Pattern.compile(
+            "<templatestyles\\b([^<>]*?)/?>", Pattern.CASE_INSENSITIVE);
     /** {@code <indicator name="…">…</indicator>}（仿 MediaWiki 页面状态指示器，显示在标题右上角）。 */
     private static final Pattern INDICATOR = Pattern.compile(
             "<indicator(\\s[^>]*)?>(.*?)</indicator\\s*>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
@@ -112,6 +116,12 @@ public class WikitextRenderer {
     private static final Pattern HTML_COMMENT = Pattern.compile("(?s)<!--.*?-->");
     private static final Pattern ATTR = Pattern.compile(
             "([a-zA-Z_:][-a-zA-Z0-9_:.]*)\\s*(?:=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'=<>`]+)))?");
+
+    /** 模板参数切分时整体跳过的扩展标签：标签内的 {@code |} 不是参数分隔符。 */
+    private static final Set<String> OPAQUE_TAGS = Set.of(
+            "gallery", "nowiki", "ref", "references", "math", "syntaxhighlight",
+            "source", "pre", "poem", "indicator", "inputbox", "markdown", "tabber",
+            "templatestyles");
 
     /** [[文件:...|200px]] 的宽度。 */
     private static final Pattern FILE_WIDTH = Pattern.compile("^(\\d+)\\s*(?:x\\s*\\d+)?\\s*px$", Pattern.CASE_INSENSITIVE);
@@ -288,12 +298,14 @@ public class WikitextRenderer {
         String direct = prepareDirect(wikitext);
         List<String> preBlocks = new ArrayList<>();
         String protectedText = protectPreBlocks(direct, preBlocks);
+        protectedText = extractTemplateStyles(protectedText);
         List<String> trustedBlocks = new ArrayList<>();
         // 页面横幅（{{PAGEBANNER:文件名|caption=说明}} 与 <exclude-banner-page />）已迁到插件 page-banner：
         // 前者在展开时由插件注册的解析器函数写页面属性，后者由插件注册的同名标签写属性，
         // 横幅 HTML 由插件在页面显示阶段生成（core 只提供 #page-banner 容器）
         String expanded = expand(protectedText, null, pageTitle == null ? "" : pageTitle,
                 0, new LinkedHashSet<>(), trustedBlocks);
+        expanded = extractTemplateStyles(expanded);
         // 插件延迟占位（Variables 的 #var_final）：解析结束后求值并展开（放在分类剥离之前）
         expanded = resolveDeferred(expanded, trustedBlocks);
         List<WikiLinkScanner.CategoryRef> categories = new ArrayList<>();
@@ -371,8 +383,77 @@ public class WikitextRenderer {
                 html = html.replace(marker, value == null ? "" : value);
             }
         }
+        if (deferredState != null) {
+            String styles = renderCollectedStyles(deferredState);
+            if (!styles.isEmpty()) {
+                html = styles + html;
+            }
+        }
         return new RenderResult(html, List.copyOf(categories), finalDisplayTitle,
                 List.copyOf(interwikiLinks));
+    }
+
+    /** 把渲染期间收集的 TemplateStyles / #CSS 输出为页面开头的 style 块。 */
+    private static String renderCollectedStyles(RenderContextState state) {
+        StringBuilder out = new StringBuilder();
+        for (Map.Entry<String, String> entry : state.styles().entrySet()) {
+            out.append(CssSanitizer.styleBlock(entry.getKey(), entry.getValue()));
+        }
+        return out.toString();
+    }
+
+    /**
+     * 提取 {@code <templatestyles src="…" />}：加载目标页面的原始 CSS，按来源去重，
+     * 由 {@link CssSanitizer} 清洗后统一输出。标签本身从正文中移除。
+     */
+    private String extractTemplateStyles(String text) {
+        if (text == null || text.toLowerCase(Locale.ROOT).indexOf("<templatestyles") < 0) {
+            return text;
+        }
+        Matcher matcher = TEMPLATESTYLES.matcher(text);
+        StringBuilder out = new StringBuilder();
+        while (matcher.find()) {
+            String src = parseAttributes(matcher.group(1)).getOrDefault("src", "").trim();
+            if (!src.isEmpty() && wikiPageService != null) {
+                for (String title : templateStylesTitles(src)) {
+                    Optional<String> css = wikiPageService.getVisibleByTitle(title)
+                            .flatMap(page -> wikiPageService.getLatestContent(page.getId()));
+                    if (css.isPresent()) {
+                        RenderContextState state = CURRENT.get();
+                        if (state != null) {
+                            state.addStyle("templatestyles:" + title, css.get());
+                        }
+                        break;
+                    }
+                }
+            }
+            matcher.appendReplacement(out, "");
+        }
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
+    /** {@code <templatestyles src="Foo/styles.css">} 默认位于模板命名空间。 */
+    private static List<String> templateStylesTitles(String src) {
+        String value = src.trim();
+        if (value.isEmpty()) {
+            return List.of();
+        }
+        if (value.indexOf(':') < 0) {
+            return List.of(WikiTitles.normalize("模板:" + value), WikiTitles.normalize("模块:" + value));
+        }
+        List<String> titles = new ArrayList<>();
+        titles.add(WikiTitles.normalize(value));
+        if (value.regionMatches(true, 0, "Module:", 0, 7)) {
+            titles.add(WikiTitles.normalize("模块:" + value.substring(7)));
+        } else if (value.regionMatches(true, 0, "Template:", 0, 9)) {
+            titles.add(WikiTitles.normalize("模板:" + value.substring(9)));
+        } else if (value.regionMatches(true, 0, "模块:", 0, 3)) {
+            titles.add(WikiTitles.normalize("Module:" + value.substring(3)));
+        } else if (value.regionMatches(true, 0, "模板:", 0, 3)) {
+            titles.add(WikiTitles.normalize("Template:" + value.substring(3)));
+        }
+        return titles;
     }
 
     /**
@@ -531,12 +612,13 @@ public class WikitextRenderer {
             }
             out.append(text, i, open);
             if (text.startsWith("{{{", open)) {
-                int close = text.indexOf("}}}", open + 3);
+                int close = findParameterEnd(text, open + 3);
                 if (close < 0) {
                     out.append(text.substring(open));
                     break;
                 }
-                out.append(resolveParameter(text.substring(open + 3, close), frame));
+                out.append(resolveParameter(text.substring(open + 3, close), frame,
+                        pageTitle, depth, stack, trusted));
                 i = close + 3;
             } else {
                 int close = findExpressionEnd(text, open + 2);
@@ -551,7 +633,8 @@ public class WikitextRenderer {
         return out.toString();
     }
 
-    private String resolveParameter(String expression, Map<String, String> frame) {
+    private String resolveParameter(String expression, Map<String, String> frame,
+                                    String pageTitle, int depth, Set<String> stack, List<String> trusted) {
         int pipe = expression.indexOf('|');
         String name = (pipe < 0 ? expression : expression.substring(0, pipe)).trim();
         String defaultValue = pipe < 0 ? null : expression.substring(pipe + 1);
@@ -560,7 +643,8 @@ public class WikitextRenderer {
             return value;
         }
         if (defaultValue != null) {
-            return defaultValue;
+            // MediaWiki：默认值里的模板 / 解析器函数 / 参数需要继续展开
+            return expand(defaultValue, frame, pageTitle, depth, stack, trusted);
         }
         return "{{{" + expression + "}}}";
     }
@@ -956,27 +1040,31 @@ public class WikitextRenderer {
         List<String> args = splitTopLevel(rest, '|');
         switch (name) {
             case "if" -> {
-                String condition = args.isEmpty() ? "" : args.get(0).trim();
+                String condition = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
                 String thenValue = args.size() > 1 ? args.get(1) : "";
                 String elseValue = args.size() > 2 ? args.get(2) : "";
                 return expand(condition.isEmpty() ? elseValue : thenValue, frame, pageTitle, depth, stack, trusted);
             }
             case "ifeq" -> {
-                String left = args.isEmpty() ? "" : args.get(0).trim();
-                String right = args.size() > 1 ? args.get(1).trim() : "";
+                String left = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
+                String right = args.size() > 1
+                        ? expand(args.get(1), frame, pageTitle, depth, stack, trusted).trim() : "";
                 String thenValue = args.size() > 2 ? args.get(2) : "";
                 String elseValue = args.size() > 3 ? args.get(3) : "";
                 return expand(left.equals(right) ? thenValue : elseValue, frame, pageTitle, depth, stack, trusted);
             }
             case "switch" -> {
-                String value = args.isEmpty() ? "" : args.get(0).trim();
+                String value = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
                 String defaultValue = "";
                 for (int i = 1; i < args.size(); i++) {
                     int equals = indexOfTopLevel(args.get(i), '=');
                     if (equals < 0) {
                         continue;
                     }
-                    String key = args.get(i).substring(0, equals).trim();
+                    String key = expand(args.get(i).substring(0, equals), frame, pageTitle, depth, stack, trusted).trim();
                     String result = args.get(i).substring(equals + 1);
                     if ("#default".equalsIgnoreCase(key)) {
                         defaultValue = result;
@@ -1007,6 +1095,181 @@ public class WikitextRenderer {
                 }
                 return tested;
             }
+            case "ifexpr" -> {
+                String condition = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted);
+                String thenValue = args.size() > 1 ? args.get(1) : "";
+                String elseValue = args.size() > 2 ? args.get(2) : "";
+                return expand(expressionTruthy(condition) ? thenValue : elseValue,
+                        frame, pageTitle, depth, stack, trusted);
+            }
+            case "language" -> {
+                String code = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
+                return LuaModuleService.languageDisplayName(code);
+            }
+            case "tag" -> {
+                return parserTagFunction(args, frame, pageTitle, depth, stack, trusted);
+            }
+            case "formatnum" -> {
+                String number = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
+                String format = args.size() > 1
+                        ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                return formatNumber(number, format);
+            }
+            case "padleft", "padright" -> {
+                String value = args.isEmpty() ? ""
+                        : expand(args.get(0), frame, pageTitle, depth, stack, trusted);
+                int length;
+                try {
+                    length = args.size() > 1 ? Integer.parseInt(args.get(1).trim()) : 0;
+                } catch (NumberFormatException exception) {
+                    length = 0;
+                }
+                String pad = args.size() > 2
+                        ? expand(args.get(2), frame, pageTitle, depth, stack, trusted) : "0";
+                if (pad.isEmpty()) {
+                    pad = "0";
+                }
+                String result = padTo(value, length, pad, "padleft".equals(name));
+                return result;
+            }
+            case "replace" -> {
+                String source = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                String search = args.size() > 1 ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                String replacement = args.size() > 2
+                        ? expand(args.get(2), frame, pageTitle, depth, stack, trusted) : "";
+                return search.isEmpty() ? source : source.replace(search, replacement);
+            }
+            case "explode" -> {
+                String source = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                String delimiter = args.size() > 1
+                        ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                int index = 0;
+                try {
+                    index = args.size() > 2 ? Integer.parseInt(args.get(2).trim()) : 0;
+                } catch (NumberFormatException ignored) {
+                    // 按 0 处理
+                }
+                int limit = args.size() > 3 ? parseInt(args.get(3).trim(), -1) : -1;
+                String[] pieces = delimiter.isEmpty()
+                        ? source.split("", -1) : source.split(Pattern.quote(delimiter), limit);
+                int position = index < 0 ? pieces.length + index : index;
+                return position >= 0 && position < pieces.length ? pieces[position] : "";
+            }
+            case "titleparts" -> {
+                String title = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim()
+                        : pageTitle;
+                int start = args.size() > 1 ? parseInt(args.get(1).trim(), 1) : 1;
+                int count = args.size() > 2 ? parseInt(args.get(2).trim(), 0) : 0;
+                return titleParts(title, start, count);
+            }
+            case "rel2abs" -> {
+                String relative = args.size() > 0
+                        ? expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim() : "";
+                String base = args.size() > 1
+                        ? expand(args.get(1), frame, pageTitle, depth, stack, trusted).trim() : pageTitle;
+                return relativeToAbsolute(relative, base);
+            }
+            case "len" -> {
+                String value = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                return String.valueOf(value.codePointCount(0, value.length()));
+            }
+            case "pos" -> {
+                String source = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                String search = args.size() > 1 ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                int start = args.size() > 2 ? parseInt(args.get(2).trim(), 1) : 1;
+                int offset = start <= 0 ? 0 : source.offsetByCodePoints(0,
+                        Math.min(source.codePointCount(0, source.length()), Math.max(0, start - 1)));
+                int index = source.indexOf(search, offset);
+                return index < 0 ? "0" : String.valueOf(source.codePointCount(0, index) + 1);
+            }
+            case "rpos" -> {
+                String source = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                String search = args.size() > 1 ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                int index = source.lastIndexOf(search);
+                return index < 0 ? "0" : String.valueOf(source.codePointCount(0, index) + 1);
+            }
+            case "sub" -> {
+                String source = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                int length = source.codePointCount(0, source.length());
+                int start = args.size() > 1 ? parseInt(args.get(1).trim(), 1) : 1;
+                int count = args.size() > 2 ? parseInt(args.get(2).trim(), length) : length;
+                int from = start < 0 ? length + start + 1 : start;
+                int to = count < 0 ? length + count + 1 : from + count - 1;
+                from = Math.max(1, from);
+                to = Math.min(length, to);
+                if (from > to) {
+                    return "";
+                }
+                return source.substring(source.offsetByCodePoints(0, from - 1),
+                        source.offsetByCodePoints(0, to));
+            }
+            case "count" -> {
+                String source = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                String search = args.size() > 1 ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                if (search.isEmpty()) {
+                    return "0";
+                }
+                int count = 0;
+                int index = 0;
+                while ((index = source.indexOf(search, index)) >= 0) {
+                    count++;
+                    index += search.length();
+                }
+                return String.valueOf(count);
+            }
+            case "urlencode" -> {
+                String value = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                String mode = args.size() > 1 ? args.get(1).trim() : "";
+                String encoded = java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);
+                if ("PATH".equalsIgnoreCase(mode)) {
+                    encoded = encoded.replace("+", "%20").replace("%2F", "/");
+                } else if ("WIKI".equalsIgnoreCase(mode)) {
+                    encoded = encoded.replace("+", "_");
+                } else {
+                    encoded = encoded.replace("+", "%20");
+                }
+                return encoded;
+            }
+            case "urldecode" -> {
+                String value = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                try {
+                    return java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8);
+                } catch (IllegalArgumentException exception) {
+                    return value;
+                }
+            }
+            case "anchorencode" -> {
+                String value = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted) : "";
+                return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("+", "_").replace("%", ".");
+            }
+            case "ns" -> {
+                String value = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim() : "";
+                int id = ActionApiNamespaces.idOf(value + ":X");
+                return String.valueOf(id);
+            }
+            case "nse" -> {
+                String value = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim() : "";
+                int id;
+                try {
+                    id = Integer.parseInt(value);
+                } catch (NumberFormatException exception) {
+                    id = ActionApiNamespaces.idOf(value + ":X");
+                }
+                return ActionApiNamespaces.nameOf(id);
+            }
+            case "localurl", "fullurl", "canonicalurl" -> {
+                String title = args.size() > 0 ? expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim() : "";
+                String query = args.size() > 1 ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+                String path = WikiUrls.pagePath(title);
+                if (!query.isBlank()) {
+                    path = path + (path.contains("?") ? "&" : "?") + query;
+                }
+                return path;
+            }
             case "expr" -> {
                 String exprText = args.isEmpty() ? ""
                         : expand(args.get(0), frame, pageTitle, depth, stack, trusted);
@@ -1023,7 +1286,12 @@ public class WikitextRenderer {
                 return WikiUrls.pagePath("特殊:" + (special == null ? "" : special.trim()));
             }
             case "css" -> {
-                // 内容页的 #CSS 目前不作为页面级样式注入（避免任意 CSS 注入）；不显示原始代码。
+                // {{#css:…}}：收集到页面级 style，由 CssSanitizer 过滤；不把原始 CSS 当正文。
+                String css = expand(rest, frame, pageTitle, depth, stack, trusted).trim();
+                RenderContextState state = CURRENT.get();
+                if (state != null && !css.isEmpty()) {
+                    state.addStyle("css:" + Integer.toHexString(css.hashCode()), css);
+                }
                 return "";
             }
             case "invoke" -> {
@@ -1041,9 +1309,145 @@ public class WikitextRenderer {
         }
     }
 
-    // ==================== 插件扩展点支持 ====================
+    /** {@code {{#tag:标签|内容|属性=值}}}}：生成扩展标签；属性值转义，正文继续展开。 */
+    private String parserTagFunction(List<String> args, Map<String, String> frame, String pageTitle,
+                                     int depth, Set<String> stack, List<String> trusted) {
+        String tag = args.isEmpty() ? ""
+                : expand(args.get(0), frame, pageTitle, depth, stack, trusted).trim();
+        if (!tag.matches("[a-zA-Z][a-zA-Z0-9]*")) {
+            return "";
+        }
+        String content = args.size() > 1
+                ? expand(args.get(1), frame, pageTitle, depth, stack, trusted) : "";
+        StringBuilder attributes = new StringBuilder();
+        for (int i = 2; i < args.size(); i++) {
+            int equals = indexOfTopLevel(args.get(i), '=');
+            if (equals <= 0) {
+                continue;
+            }
+            String key = args.get(i).substring(0, equals).trim();
+            if (!key.matches("[a-zA-Z_:][-a-zA-Z0-9_:.]*")) {
+                continue;
+            }
+            String value = expand(args.get(i).substring(equals + 1), frame, pageTitle, depth, stack, trusted);
+            attributes.append(' ').append(key).append("=\"")
+                    .append(HtmlSanitizer.escapeAttribute(value)).append('"');
+        }
+        if ("templatestyles".equalsIgnoreCase(tag)) {
+            String src = "";
+            for (int i = 2; i < args.size(); i++) {
+                int equals = indexOfTopLevel(args.get(i), '=');
+                if (equals > 0 && "src".equalsIgnoreCase(args.get(i).substring(0, equals).trim())) {
+                    src = expand(args.get(i).substring(equals + 1), frame, pageTitle, depth, stack, trusted);
+                }
+            }
+            return src.isBlank() ? "" : "<templatestyles src=\""
+                    + HtmlSanitizer.escapeAttribute(src.trim()) + "\"/>";
+        }
+        return "<" + tag + attributes + ">" + content + "</" + tag + ">";
+    }
 
-    /** {@link ParserFunctionCall} 的 core 实现：参数是顶层 {@code |} 拆分后的原文。 */
+    /** {@code #ifexpr} 的真值判断（数值非 0；非数值按非空字符串）。 */
+    private static boolean expressionTruthy(String expression) {
+        String value = LuaModuleService.evaluateExpression(expression == null ? "" : expression).trim();
+        if (value.isEmpty()) {
+            return false;
+        }
+        try {
+            return Double.parseDouble(value) != 0;
+        } catch (NumberFormatException exception) {
+            return !"false".equalsIgnoreCase(value) && !"0".equals(value);
+        }
+    }
+
+    /** {@code #formatnum}（支持 R / NOSEP 修饰）。 */
+    private static String formatNumber(String number, String format) {
+        if (format != null && format.contains("R")) {
+            return number;
+        }
+        try {
+            java.text.DecimalFormatSymbols symbols = java.text.DecimalFormatSymbols.getInstance(Locale.CHINA);
+            java.text.DecimalFormat formatter = new java.text.DecimalFormat("#,##0.################", symbols);
+            formatter.setGroupingUsed(format == null || !format.contains("NOSEP"));
+            String value = formatter.format(Double.parseDouble(number.replace(",", "").trim()));
+            return format != null && format.contains("NOSEP") ? value.replace(",", "") : value;
+        } catch (NumberFormatException exception) {
+            return number;
+        }
+    }
+
+    /** {@code #padleft} / {@code #padright}：按 Unicode 码点补足到指定长度。 */
+    private static String padTo(String value, int length, String padding, boolean left) {
+        int current = value.codePointCount(0, value.length());
+        if (length <= current || padding.isEmpty()) {
+            return value;
+        }
+        StringBuilder pad = new StringBuilder();
+        while (current + pad.codePointCount(0, pad.length()) < length) {
+            pad.append(padding);
+        }
+        int available = length - current;
+        String padText = pad.toString();
+        int cut = padText.offsetByCodePoints(0, Math.min(available,
+                padText.codePointCount(0, padText.length())));
+        padText = padText.substring(0, cut);
+        return left ? padText + value : value + padText;
+    }
+
+    /** {@code #titleparts}：按 / 切分标题；start 从 1 开始，负数从末尾数；count=0 表示剩余全部。 */
+    private static String titleParts(String title, int start, int count) {
+        String[] parts = title.split("/", -1);
+        int from = start < 0 ? parts.length + start : start - 1;
+        from = Math.max(0, from);
+        if (from >= parts.length) {
+            return "";
+        }
+        int to = count <= 0 ? parts.length : Math.min(parts.length, from + count);
+        return String.join("/", Arrays.copyOfRange(parts, from, to));
+    }
+
+    /** {@code #rel2abs}：把相对标题解析到当前页面所在路径。 */
+    private static String relativeToAbsolute(String relative, String base) {
+        String value = relative == null ? "" : relative.trim();
+        if (value.isEmpty()) {
+            return value;
+        }
+        if (value.matches("(?i)^[a-z][a-z0-9+.-]*://.*")) {
+            return value;
+        }
+        String baseValue = base == null ? "" : base.replace('_', ' ').trim();
+        if (value.startsWith("/")) {
+            return value.substring(1).replace('_', ' ');
+        }
+        int slash = baseValue.lastIndexOf('/');
+        String prefix = slash >= 0 ? baseValue.substring(0, slash + 1) : "";
+        String combined = prefix + value;
+        String[] parts = combined.split("/");
+        Deque<String> result = new ArrayDeque<>();
+        for (String part : parts) {
+            if (part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if ("..".equals(part)) {
+                if (!result.isEmpty()) {
+                    result.removeLast();
+                }
+            } else {
+                result.addLast(part);
+            }
+        }
+        return String.join("/", result);
+    }
+
+    private static int parseInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(value == null ? "" : value.trim());
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
+    // ==================== 插件扩展点支持 ====================
     private final class PluginFunctionCall implements ParserFunctionCall {
 
         private final RenderContextState state;
@@ -1900,7 +2304,9 @@ public class WikitextRenderer {
             }
         }
 
-        String image = "<img class=\"wiki-media-image\" src=\"" + HtmlSanitizer.escapeAttribute(fileService.urlOf(file))
+        String image = "<img class=\"wiki-media-image\" src=\""
+                + HtmlSanitizer.escapeAttribute(fileService.thumbnailUrl(file,
+                width > 0 ? width : (thumb ? 220 : 0)))
                 + "\" alt=\"" + attributeText(alt) + "\""
                 + (width > 0 ? " width=\"" + width + "\"" : "")
                 + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
@@ -2218,17 +2624,26 @@ public class WikitextRenderer {
                     + HtmlSanitizer.escapeText("文件:" + fileName) + "</a></li>";
         }
         WikiFile file = found.get();
+        int displayWidth = widths;
+        int displayHeight = heights;
+        if (heights > 0 && file.getWidth() != null && file.getHeight() != null && file.getHeight() > 0) {
+            displayWidth = Math.max(20, (int) Math.round(
+                    file.getWidth() * (double) heights / file.getHeight()));
+            displayHeight = heights;
+        }
         String alt = HtmlSanitizer.escapeText(captionPart.isEmpty() ? file.getName() : captionPart);
         String image = "<img class=\"wiki-media-image\" src=\""
-                + HtmlSanitizer.escapeAttribute(fileService.urlOf(file)) + "\" alt=\"" + attributeText(alt) + "\""
-                + " style=\"max-width:" + widths + "px" + (heights > 0 ? ";max-height:" + heights + "px" : "") + "\""
+                + HtmlSanitizer.escapeAttribute(fileService.thumbnailUrl(file, displayWidth)) + "\" alt=\"" + attributeText(alt) + "\""
+                + " style=\"" + (displayHeight > 0
+                ? "width:" + displayWidth + "px;height:" + displayHeight + "px;object-fit:cover;"
+                : "max-width:" + displayWidth + "px") + "\""
                 + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
                 + (captionPart.isEmpty() ? ""
                 : " data-caption=\"" + attributeText(HtmlSanitizer.escapeText(captionPart)) + "\"")
                 + " loading=\"lazy\">";
         StringBuilder html = new StringBuilder(256);
         html.append("<li class=\"gallerybox\"><div class=\"thumb\"><div class=\"thumbinner\" style=\"width:")
-                .append(widths).append("px\"><a class=\"image\" href=\"")
+                .append(displayWidth).append("px\"><a class=\"image\" href=\"")
                 .append(HtmlSanitizer.escapeAttribute(fileService.pageUrlOf(file))).append("\">")
                 .append(image).append("</a>");
         if (!captionPart.isEmpty()) {
@@ -2254,7 +2669,9 @@ public class WikitextRenderer {
     /** 数字属性（带范围限制；非法 / 缺省用 fallback）。 */
     private static int option(Map<String, String> params, String key, int fallback, int min, int max) {
         try {
-            int value = Integer.parseInt(params.getOrDefault(key, "").trim());
+            String raw = params.getOrDefault(key, "").trim()
+                    .replaceAll("(?i)\\s*px$", "");
+            int value = Integer.parseInt(raw);
             return Math.max(min, Math.min(max, value));
         } catch (NumberFormatException exception) {
             return fallback;
@@ -2353,27 +2770,59 @@ public class WikitextRenderer {
     // ==================== 工具 ====================
 
     private int findExpressionEnd(String text, int from) {
-        int depth = 1;
+        return findBalancedEnd(text, from, 2);
+    }
+
+    /** 找到 {@code {{{…}}} 的结束位置（支持内部嵌套 {{…}} / {{{…}}}）。 */
+    private int findParameterEnd(String text, int from) {
+        return findBalancedEnd(text, from, 3);
+    }
+
+    /**
+     * 从 {@code from} 开始按花括号平衡找结束标记；返回结束标记的第一个字符位置。
+     * 初始 {@code depth} 为 2（{{）或 3（{{{）；嵌套按 2 / 3 累加，避免把嵌套参数默认值截断。
+     */
+    private int findBalancedEnd(String text, int from, int depth) {
+        Deque<Integer> stack = new ArrayDeque<>();
+        stack.push(depth);
         int i = from;
-        while (i < text.length() - 1) {
-            // {{{参数}}}：模板参数整体跳过，不参与 {{ }} 的深度（#invoke 参数里很常见）
-            if (text.startsWith("{{{", i)) {
-                int parameterClose = text.indexOf("}}}", i + 3);
-                if (parameterClose < 0) {
-                    return -1;
-                }
-                i = parameterClose + 3;
+        while (i < text.length()) {
+            int opaqueEnd = opaqueTagEnd(text, i);
+            if (opaqueEnd > i) {
+                i = opaqueEnd;
                 continue;
             }
-            if (text.charAt(i) == '{' && text.charAt(i + 1) == '{') {
-                depth++;
+            if (text.startsWith("{{{", i)) {
+                stack.push(3);
+                i += 3;
+            } else if (text.startsWith("{{", i)) {
+                stack.push(2);
                 i += 2;
-            } else if (text.charAt(i) == '}' && text.charAt(i + 1) == '}') {
-                depth--;
-                if (depth == 0) {
-                    return i;
+            } else if (text.charAt(i) == '}') {
+                int runEnd = i;
+                while (runEnd < text.length() && text.charAt(runEnd) == '}') {
+                    runEnd++;
                 }
-                i += 2;
+                int run = runEnd - i;
+                int cursor = i;
+                while (!stack.isEmpty()) {
+                    int top = stack.peek();
+                    if (top == 3 && run >= 3) {
+                        stack.pop();
+                        cursor += 3;
+                        run -= 3;
+                    } else if (top == 2 && run >= 2) {
+                        stack.pop();
+                        cursor += 2;
+                        run -= 2;
+                    } else {
+                        break;
+                    }
+                    if (stack.isEmpty()) {
+                        return cursor - (top == 3 ? 3 : 2);
+                    }
+                }
+                i = cursor + Math.max(0, run);
             } else {
                 i++;
             }
@@ -2381,26 +2830,94 @@ public class WikitextRenderer {
         return -1;
     }
 
+    /**
+     * 如果 {@code i} 处是扩展标签的开始，返回整段标签（含结束标签）之后的位置；否则返回 {@code -1}。
+     * 只吞掉白名单里的标签，普通 HTML 仍按字符扫描。
+     */
+    private static int opaqueTagEnd(String text, int i) {
+        if (i < 0 || i >= text.length() || text.charAt(i) != '<') {
+            return -1;
+        }
+        int openEnd = text.indexOf('>', i + 1);
+        if (openEnd < 0) {
+            return -1;
+        }
+        int nameStart = i + 1;
+        if (nameStart >= text.length() || text.charAt(nameStart) == '/') {
+            return -1;
+        }
+        int nameEnd = nameStart;
+        while (nameEnd < openEnd && (Character.isLetterOrDigit(text.charAt(nameEnd))
+                || text.charAt(nameEnd) == '-' || text.charAt(nameEnd) == '_')) {
+            nameEnd++;
+        }
+        String name = text.substring(nameStart, nameEnd).toLowerCase(Locale.ROOT);
+        if (!OPAQUE_TAGS.contains(name)) {
+            return -1;
+        }
+        String openTag = text.substring(i, openEnd + 1);
+        if (openTag.stripTrailing().endsWith("/>")) {
+            return openEnd + 1;
+        }
+        String closing = "</" + name;
+        int from = openEnd + 1;
+        while (from < text.length()) {
+            if (text.regionMatches(true, from, closing, 0, closing.length())) {
+                int closeEnd = text.indexOf('>', from + closing.length());
+                return closeEnd < 0 ? text.length() : closeEnd + 1;
+            }
+            from++;
+        }
+        return text.length();
+    }
+
     private List<String> splitTopLevel(String text, char delimiter) {
         List<String> parts = new ArrayList<>();
-        int braceDepth = 0;
+        Deque<Integer> braces = new ArrayDeque<>();
         int bracketDepth = 0;
         int start = 0;
         for (int i = 0; i < text.length(); i++) {
+            int opaqueEnd = opaqueTagEnd(text, i);
+            if (opaqueEnd > i) {
+                i = opaqueEnd - 1;
+                continue;
+            }
             char c = text.charAt(i);
-            if (c == '{' && i + 1 < text.length() && text.charAt(i + 1) == '{') {
-                braceDepth++;
+            if (text.startsWith("{{{", i)) {
+                braces.push(3);
+                i += 2;
+            } else if (text.startsWith("{{", i)) {
+                braces.push(2);
                 i++;
-            } else if (c == '}' && i + 1 < text.length() && text.charAt(i + 1) == '}') {
-                braceDepth--;
-                i++;
+            } else if (c == '}') {
+                int runEnd = i;
+                while (runEnd < text.length() && text.charAt(runEnd) == '}') {
+                    runEnd++;
+                }
+                int run = runEnd - i;
+                int cursor = i;
+                while (!braces.isEmpty()) {
+                    int top = braces.peek();
+                    if (top == 3 && run >= 3) {
+                        braces.pop();
+                        cursor += 3;
+                        run -= 3;
+                    } else if (top == 2 && run >= 2) {
+                        braces.pop();
+                        cursor += 2;
+                        run -= 2;
+                    } else {
+                        break;
+                    }
+                }
+                i = cursor + Math.max(0, run) - 1;
             } else if (c == '[' && i + 1 < text.length() && text.charAt(i + 1) == '[') {
                 bracketDepth++;
                 i++;
             } else if (c == ']' && i + 1 < text.length() && text.charAt(i + 1) == ']') {
                 bracketDepth--;
                 i++;
-            } else if (c == delimiter && braceDepth == 0 && bracketDepth == 0) {
+            } else if (c == delimiter && braces.isEmpty() && bracketDepth == 0) {
                 parts.add(text.substring(start, i));
                 start = i + 1;
             }
@@ -2410,23 +2927,50 @@ public class WikitextRenderer {
     }
 
     private int indexOfTopLevel(String text, char target) {
-        int braceDepth = 0;
+        Deque<Integer> braces = new ArrayDeque<>();
         int bracketDepth = 0;
         for (int i = 0; i < text.length(); i++) {
+            int opaqueEnd = opaqueTagEnd(text, i);
+            if (opaqueEnd > i) {
+                i = opaqueEnd - 1;
+                continue;
+            }
             char c = text.charAt(i);
-            if (c == '{' && i + 1 < text.length() && text.charAt(i + 1) == '{') {
-                braceDepth++;
+            if (text.startsWith("{{{", i)) {
+                braces.push(3);
+                i += 2;
+            } else if (text.startsWith("{{", i)) {
+                braces.push(2);
                 i++;
-            } else if (c == '}' && i + 1 < text.length() && text.charAt(i + 1) == '}') {
-                braceDepth--;
-                i++;
+            } else if (c == '}') {
+                int runEnd = i;
+                while (runEnd < text.length() && text.charAt(runEnd) == '}') {
+                    runEnd++;
+                }
+                int run = runEnd - i;
+                int cursor = i;
+                while (!braces.isEmpty()) {
+                    int top = braces.peek();
+                    if (top == 3 && run >= 3) {
+                        braces.pop();
+                        cursor += 3;
+                        run -= 3;
+                    } else if (top == 2 && run >= 2) {
+                        braces.pop();
+                        cursor += 2;
+                        run -= 2;
+                    } else {
+                        break;
+                    }
+                }
+                i = cursor + Math.max(0, run) - 1;
             } else if (c == '[' && i + 1 < text.length() && text.charAt(i + 1) == '[') {
                 bracketDepth++;
                 i++;
             } else if (c == ']' && i + 1 < text.length() && text.charAt(i + 1) == ']') {
                 bracketDepth--;
                 i++;
-            } else if (c == target && braceDepth == 0 && bracketDepth == 0) {
+            } else if (c == target && braces.isEmpty() && bracketDepth == 0) {
                 return i;
             }
         }

@@ -33,6 +33,8 @@ public final class RenderContextState implements WikiRenderContext {
     private final List<ParserTag> rawTags = new ArrayList<>();
     private final List<ParserTag> expandableTags = new ArrayList<>();
     private final List<FileEmbedRenderer> fileEmbeds;
+    /** 渲染过程中收集的页面级 CSS（TemplateStyles / #CSS）；按来源去重，最后输出 <style>。 */
+    private final Map<String, String> styles = new LinkedHashMap<>();
 
     public RenderContextState(String pageTitle, List<ParserFunction> parserFunctions,
                               List<MagicWord> magicWords, List<BehaviorSwitch> behaviorSwitches,
@@ -182,5 +184,18 @@ public final class RenderContextState implements WikiRenderContext {
     /** 插件提供的媒体文件嵌入渲染器（多媒体预览等；按注册顺序）。 */
     List<FileEmbedRenderer> fileEmbedRenderers() {
         return fileEmbeds;
+    }
+
+    /** 收集一段页面级 CSS；{@code key} 相同（如重复 TemplateStyles 页面）只保留一次。 */
+    void addStyle(String key, String css) {
+        if (css == null || css.isBlank()) {
+            return;
+        }
+        styles.putIfAbsent(key == null || key.isBlank() ? css : key, css);
+    }
+
+    /** 本次渲染收集的 CSS（插入顺序）。 */
+    Map<String, String> styles() {
+        return styles;
     }
 }

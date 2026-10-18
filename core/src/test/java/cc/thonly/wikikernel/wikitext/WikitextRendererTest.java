@@ -43,9 +43,29 @@ class WikitextRendererTest {
         String html = renderer.render(
                 "{{#expr:2+3*4}}|{{#time:Y|20200102030405}}|"
                         + "{{#ifexist:不存在的页面|有|无}}|"
-                        + "{{#iferror:{{#invoke:不存在|main}}|错误|正常}}",
+                        + "{{#iferror:{{#invoke:不存在|main}}|错误|正常}}|"
+                        + "{{#ifexpr:0>1|YES|NO}}",
                 "测试");
-        assertTrue(html.contains("14|2020|无|错误"), html);
+        assertTrue(html.contains("14|2020|无|错误|NO"), html);
+    }
+
+    @Test
+    void optionalParameterWithoutValueDoesNotLeakInsideIf() {
+        String parameter = renderer.render("{{{foo|}}}", "测试");
+        assertEquals("", parameter.trim());
+        String direct = renderer.render("{{#if:{{{foo|}}}|YES|NO}}", "测试");
+        assertTrue(direct.contains("NO"), direct);
+        assertFalse(direct.contains("YES"), direct);
+        WikitextRenderer local = new WikitextRenderer(new WikitextProperties(), name -> Optional.ofNullable(
+                Map.of(
+                        "模板:Info", "<div style=\"{{#if:{{{backgroundColor|}}}|background-color:{{{backgroundColor}}};}}\">x</div>",
+                        "模板:Nested", "<div>y</div><includeonly>{{#ifeq:{{NAMESPACE}}|Template|{{#ifeq:{{{option|}}}|nocategory||CAT}}}}</includeonly>")
+                        .get(name)));
+        String html = local.render("{{Info|color=blue}}", "测试");
+        assertFalse(html.contains("{{{backgroundColor}}}"), html);
+        assertFalse(html.contains("background-color:"), html);
+        String nested = local.render("{{Nested}}", "测试");
+        assertFalse(nested.contains("{{#ifeq"), nested);
     }
 
     @Test
