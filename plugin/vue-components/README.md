@@ -50,9 +50,24 @@ export default {
 
 ## 嵌套与写法约定（v1）
 
-- `<script>` 里用 `export default defineComponent({...})`（options 或 setup 函数都可以）；**暂不支持 `<script setup>` 宏**；
+- `<script>` 里用 `export default defineComponent({...})`（options 或 setup 函数都可以）；也支持 `<script setup>`：
+  ```vue
+  <script setup>
+  import { ref, computed } from 'vue';
+
+  const props = defineProps({ title: String });
+  const emit = defineEmits(['change']);
+  const count = ref(0);
+  const doubled = computed(() => count.value * 2);
+  </script>
+  ```
+  浏览器端轻量编译器会把顶层变量 / 函数 / import 暴露给模板，并支持
+  `defineProps`（运行时对象 / 数组）、`defineEmits`、`withDefaults`、`defineOptions`、
+  `defineExpose`、`defineSlots`、`defineModel` 的常用写法；
+  **不支持** `<script setup lang="ts">`（只支持 JavaScript）、TypeScript 类型宏、顶层 `await`。
 - `<style>` 注入全局（暂不支持 `<style scoped>`），建议类名前缀（如 `test-`）避免冲突；
 - `<script>` 里 `import` 请用**绝对路径**或 `mw.wikiImport('组件:工具.ts')`（Blob 模块没有相对基址）；
+  从 `'vue'` 导入会自动指向插件自带的 Vue ESM 文件；
 - 组件脚本由**界面管理员**维护，等价于交互式脚本权限。
 
 ## 权限与开关
