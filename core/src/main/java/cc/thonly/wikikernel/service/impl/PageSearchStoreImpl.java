@@ -39,17 +39,21 @@ public class PageSearchStoreImpl implements PageSearchStore {
     private final WikiPageMapper wikiPageMapper;
     private final WikiPageCategoryMapper categoryMapper;
     private final WikiPageService wikiPageService;
+    private final PageIndexGate indexGate;
 
     public PageSearchStoreImpl(WikiPageMapper wikiPageMapper,
                                WikiPageCategoryMapper categoryMapper,
-                               WikiPageService wikiPageService) {
+                               WikiPageService wikiPageService,
+                               PageIndexGate indexGate) {
         this.wikiPageMapper = wikiPageMapper;
         this.categoryMapper = categoryMapper;
         this.wikiPageService = wikiPageService;
+        this.indexGate = indexGate;
     }
 
     @Override
     public List<PageRow> query(PageQuery query) {
+        indexGate.awaitIdle();
         if (query == null) {
             return List.of();
         }

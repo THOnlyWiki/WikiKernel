@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.service.impl.PageIndexGate;
 import cc.thonly.wikikernel.user.UserSession;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,9 @@ class TypeScriptCompileTest {
     private FeatureService featureService;
     @Autowired
     private SiteSettingsService siteSettingsService;
+
+    @Autowired
+    private PageIndexGate indexGate;
 
 
     @Autowired
@@ -212,6 +216,7 @@ class TypeScriptCompileTest {
             mockMvc.perform(post("/wiki/{title}", title).with(csrf()).session(session)
                             .param("content", "const bad: number = ;\n"))
                     .andExpect(status().is3xxRedirection());
+            awaitIndex();
             mockMvc.perform(get("/wiki/{title}", title).session(session))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("TypeScript 编译失败")))
@@ -222,6 +227,7 @@ class TypeScriptCompileTest {
             mockMvc.perform(post("/wiki/{title}", title).with(csrf()).session(session)
                             .param("content", "export const ok: number = 1;\n"))
                     .andExpect(status().is3xxRedirection());
+            awaitIndex();
             mockMvc.perform(get("/wiki/{title}", title).session(session))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("已编译")))
@@ -239,6 +245,7 @@ class TypeScriptCompileTest {
             featureService.setTypescript(true);
             String eventTitle = "事件保存测试" + System.nanoTime() + ".ts";
             wikiPageService.editPage(null, eventTitle, "export const viaService: string = 'x';\n");
+            awaitIndex();
             long revisionId = wikiPageService.getByTitle(eventTitle).orElseThrow().getLatestRevisionId();
             assertTrue(assetService.cached(revisionId, TypeScriptAssetService.TARGET_JAVASCRIPT).isPresent(),
                     "服务层保存也应自动编译（页面变更事件）");
@@ -510,6 +517,12 @@ class TypeScriptCompileTest {
     }
 
     // ==================== 工具 ====================
+
+    /** 保存后的派生索引（含 TypeScript 编译）已全部在后台完成。 */
+    private void awaitIndex() {
+        indexGate.awaitIdle();
+        indexGate.awaitBackgroundIdle();
+    }
 
     private static String evalQuietly(org.graalvm.polyglot.Context context, String script) {
         try {

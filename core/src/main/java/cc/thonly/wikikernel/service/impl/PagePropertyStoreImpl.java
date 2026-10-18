@@ -29,18 +29,22 @@ public class PagePropertyStoreImpl implements PagePropertyStore {
     private static final Set<String> DURABLE = ConcurrentHashMap.newKeySet();
 
     private final WikiPagePropertyMapper mapper;
+    private final PageIndexGate indexGate;
 
-    public PagePropertyStoreImpl(WikiPagePropertyMapper mapper) {
+    public PagePropertyStoreImpl(WikiPagePropertyMapper mapper, PageIndexGate indexGate) {
         this.mapper = mapper;
+        this.indexGate = indexGate;
     }
 
     @Override
     public Optional<String> get(long pageId, String name) {
+        indexGate.awaitIdle();
         return select(pageId, name).map(WikiPageProperty::getPropValue);
     }
 
     @Override
     public Map<Long, Map<String, String>> batch(Collection<Long> pageIds, Collection<String> names) {
+        indexGate.awaitIdle();
         if (pageIds == null || pageIds.isEmpty() || names == null || names.isEmpty()) {
             return Map.of();
         }
@@ -52,6 +56,7 @@ public class PagePropertyStoreImpl implements PagePropertyStore {
 
     @Override
     public Map<Long, Map<String, String>> all(Collection<Long> pageIds) {
+        indexGate.awaitIdle();
         if (pageIds == null || pageIds.isEmpty()) {
             return Map.of();
         }
@@ -133,6 +138,7 @@ public class PagePropertyStoreImpl implements PagePropertyStore {
 
     @Override
     public long sumInt(String name) {
+        indexGate.awaitIdle();
         long total = 0;
         for (WikiPageProperty row : rowsOf(name)) {
             total += parseLong(row.getPropValue());
@@ -142,6 +148,7 @@ public class PagePropertyStoreImpl implements PagePropertyStore {
 
     @Override
     public List<PagePropertyValue> listByIntDesc(String name, int limit) {
+        indexGate.awaitIdle();
         List<PagePropertyValue> values = new ArrayList<>();
         for (WikiPageProperty row : rowsOf(name)) {
             values.add(new PagePropertyValue(row.getPageId(), parseLong(row.getPropValue())));

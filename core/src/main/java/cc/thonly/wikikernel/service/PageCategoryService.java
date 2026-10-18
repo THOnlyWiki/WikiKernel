@@ -7,8 +7,10 @@ import java.util.List;
 
 /**
  * 页面分类索引（{@code wiki_page_category}）：
- * 页面保存时按“模板展开后的渲染结果”重建；分类页 / 页面信息 / 分类列表都读索引。
- * 模板修改时会顺带重建其链入页面（{@code reindexDependents}），保证模板里的分类及时生效。
+ * 页面保存后由后台索引线程按「模板展开后的渲染结果」重建；模板修改时会顺带重建其链入页面
+ * （{@code reindexDependents}），保证模板里的分类及时生效。
+ * <p>
+ * 保存请求不等待索引；读取分类前只等待保存页自身的索引队列（有界），模板依赖页在后台最终一致。
  */
 public interface PageCategoryService {
 

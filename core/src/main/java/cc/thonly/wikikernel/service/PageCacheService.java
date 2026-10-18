@@ -59,6 +59,15 @@ public interface PageCacheService extends PageCache {
     /** 当前后端名：{@code memory} / {@code redis} / {@code none}（诊断与测试用；会触发一次探测）。 */
     String backendName();
 
+    /**
+     * 失效页面缓存，但保留已经是 {@code keepRevisionId} 版本的条目。
+     * 用于保存后的后台清理：如果页面已经被重新渲染并写入了新版本，不必再把它删掉。
+     *
+     * @param title          页面标题
+     * @param keepRevisionId 保存后的最新版本号；{@code null} 表示无条件失效
+     */
+    void invalidate(String title, Long keepRevisionId);
+
     /** 已完成预渲染的页面数（异步预渲染的观察点：日志与测试用）。 */
     long preloadedPages();
 }

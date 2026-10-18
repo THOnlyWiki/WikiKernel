@@ -17,7 +17,8 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,7 +31,9 @@ import java.util.Set;
 /**
  * 分类索引实现：索引按“渲染结果”（模板展开后）重建，模板里的 {@code [[分类:X]]} 也会归属到嵌入页面。
  * <p>
- * 启动时全量重建（@{@code @Order(4)}，在 DDL / 迁移 / 设置之后），保证旧数据与模板改动后的依赖页一致。
+ * 保存后由后台索引线程重建（{@code PageIndexService}）：本页索引在读取前做有界等待，
+ * 模板依赖页在独立后台队列重算，普通读取不等待。
+ * 启动时全量重建（{@code @Order(4)}，在 DDL / 迁移 / 设置之后），保证旧数据与模板改动后的依赖页一致。
  */
 @Service
 @Order(4)
@@ -52,70 +55,101 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
     private final WikiPageService wikiPageService;
     private final WikitextRenderer wikitextRenderer;
     private final PageLinkService pageLinkService;
+    private final PageIndexGate indexGate;
+    private final TransactionTemplate transactionTemplate;
+
+    /** 本服务的索引写入串行锁：本页索引队列与后台依赖队列可能同时重建同一页，避免删/插交错。 */
+    private final Object writeLock = new Object();
 
     public PageCategoryServiceImpl(WikiPageCategoryMapper categoryMapper,
                                    WikiPageMapper wikiPageMapper,
                                    WikiPageService wikiPageService,
                                    WikitextRenderer wikitextRenderer,
-                                   PageLinkService pageLinkService) {
+                                   PageLinkService pageLinkService,
+                                   PageIndexGate indexGate,
+                                   PlatformTransactionManager transactionManager) {
         this.categoryMapper = categoryMapper;
         this.wikiPageMapper = wikiPageMapper;
         this.wikiPageService = wikiPageService;
         this.wikitextRenderer = wikitextRenderer;
         this.pageLinkService = pageLinkService;
+        this.indexGate = indexGate;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
-    @Transactional
     public void run(ApplicationArguments args) {
         backfill();
     }
 
+    /**
+     * 重建一页的分类索引：读取正文 / 渲染（可能展开大量模板）在事务外完成，
+     * 只有删旧行 + 写新行放进短事务，避免长时间占住 SQLite 的单写连接。
+     */
     @Override
-    @Transactional
     public void reindex(long pageId) {
         WikiPage page = wikiPageMapper.selectById(pageId);
         if (page == null || Boolean.TRUE.equals(page.getDeleted())) {
-            clear(pageId);
+            clearRows(pageId);
             return;
         }
         String content = wikiPageService.getLatestContent(pageId).orElse("");
         List<WikiLinkScanner.CategoryRef> refs = wikitextRenderer.renderWithMeta(content, page.getTitle())
                 .categories();
-        categoryMapper.delete(Wrappers.<WikiPageCategory>lambdaQuery()
-                .eq(WikiPageCategory::getPageId, pageId));
-        Set<String> seen = new LinkedHashSet<>();
-        for (WikiLinkScanner.CategoryRef ref : refs) {
-            if (seen.add(ref.title())) {
-                categoryMapper.insert(new WikiPageCategory(null, pageId, ref.title(), ref.sortKey()));
-            }
+        replaceRows(pageId, refs);
+    }
+
+    private void replaceRows(long pageId, List<WikiLinkScanner.CategoryRef> refs) {
+        synchronized (writeLock) {
+            transactionTemplate.executeWithoutResult(status -> {
+                categoryMapper.delete(Wrappers.<WikiPageCategory>lambdaQuery()
+                        .eq(WikiPageCategory::getPageId, pageId));
+                Set<String> seen = new LinkedHashSet<>();
+                for (WikiLinkScanner.CategoryRef ref : refs) {
+                    if (seen.add(ref.title())) {
+                        categoryMapper.insert(new WikiPageCategory(null, pageId, ref.title(), ref.sortKey()));
+                    }
+                }
+            });
         }
     }
 
     @Override
-    @Transactional
     public void reindex(String title) {
         wikiPageService.getByTitle(Strings.trimToEmpty(title))
                 .ifPresent(page -> reindex(page.getId()));
     }
 
     @Override
-    @Transactional
     public void clear(long pageId) {
-        categoryMapper.delete(Wrappers.<WikiPageCategory>lambdaQuery()
-                .eq(WikiPageCategory::getPageId, pageId));
+        clearRows(pageId);
     }
 
+    private void clearRows(long pageId) {
+        synchronized (writeLock) {
+            transactionTemplate.executeWithoutResult(status -> categoryMapper.delete(
+                    Wrappers.<WikiPageCategory>lambdaQuery().eq(WikiPageCategory::getPageId, pageId)));
+        }
+    }
+
+    /**
+     * 模板修改后重建依赖页。每页自己的「渲染 + 短事务写」独立执行：一页失败不影响其它页，
+     * 也不会再出现「一个事务包住 200 页」导致保存请求拿不到数据库连接的情况。
+     */
     @Override
-    @Transactional
     public void reindexDependents(String templateTitle) {
         for (WikiPage page : pageLinkService.pagesTranscluding(templateTitle, DEPENDENT_LIMIT)) {
-            reindex(page.getId());
+            try {
+                reindex(page.getId());
+            } catch (RuntimeException exception) {
+                log.warn("重建依赖页分类索引失败: {}", page.getTitle(), exception);
+            }
         }
     }
 
     @Override
     public List<Member> members(String categoryTitle, int limit) {
+        indexGate.awaitIdle();
         String canonical = WikiLinkScanner.canonicalCategoryTitle(categoryTitle);
         if (limit <= 0) {
             return List.of();
@@ -150,6 +184,7 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
 
     @Override
     public List<WikiLinkScanner.CategoryRef> categoriesOf(String pageTitle) {
+        indexGate.awaitIdle();
         return wikiPageService.getVisibleByTitle(Strings.trimToEmpty(pageTitle))
                 .map(page -> categoryMapper.selectList(Wrappers.<WikiPageCategory>lambdaQuery()
                                 .eq(WikiPageCategory::getPageId, page.getId()))
@@ -162,6 +197,7 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
 
     @Override
     public List<CategoryCount> allCategories(int limit) {
+        indexGate.awaitIdle();
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (WikiPageCategory row : categoryMapper.selectList(null)) {
             counts.merge(row.getCategoryTitle(), 1, Integer::sum);
@@ -175,9 +211,9 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
 
     /**
      * 启动时全量重建：让旧数据与模板里的分类都进入索引。
+     * 每页独立事务（见 {@link #reindex(long)}），不再用一个长事务包住整轮回填。
      */
-    @Transactional
-    protected void backfill() {
+    private void backfill() {
         List<WikiPage> pages = wikiPageMapper.selectList(Wrappers.<WikiPage>lambdaQuery()
                 .eq(WikiPage::getDeleted, false)
                 .orderByAsc(WikiPage::getId)

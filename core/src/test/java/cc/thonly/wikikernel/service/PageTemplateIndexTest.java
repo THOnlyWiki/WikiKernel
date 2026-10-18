@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.service;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiPageTemplate;
 import cc.thonly.wikikernel.db.mapper.WikiPageTemplateMapper;
+import cc.thonly.wikikernel.service.impl.PageIndexGate;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,9 @@ class PageTemplateIndexTest {
     @Autowired
     private WikiPageTemplateMapper templateMapper;
 
+    @Autowired
+    private PageIndexGate indexGate;
+
     @Test
     void indexIsMaintainedInRealTimeAndLookupChecksLiveContent() {
         String suffix = String.valueOf(System.nanoTime());
@@ -46,6 +50,7 @@ class PageTemplateIndexTest {
         wikiPageService.editPage(null, pageA, "{{" + templateName + "}} 裸名调用");
         wikiPageService.editPage(null, pageB, "{{" + template + "}} 带前缀调用");
         wikiPageService.editPage(null, pageC, "没有使用模板");
+        indexGate.awaitIdle();
 
         // 索引已实时写入（裸名调用会被规范化为 模板:X，甲乙各一行）
         assertEquals(2L, indexRowCount(template));
@@ -62,13 +67,15 @@ class PageTemplateIndexTest {
         templateMapper.insert(new WikiPageTemplate(null, pageIdOf(pageC), template));
         assertEquals(List.of(pageA, pageB), titlesOf(pageTemplateService.pagesUsing(template, 50)));
 
-        // 实时更新：甲去掉模板调用 → 索引立即减少（只剩乙 + 脏行）
+        // 实时更新：甲去掉模板调用 → 索引减少（只剩乙 + 脏行）
         wikiPageService.editPage(null, pageA, "不再使用模板");
+        indexGate.awaitIdle();
         assertEquals(2L, indexRowCount(template));
         assertEquals(List.of(pageB), titlesOf(pageTemplateService.pagesUsing(template, 50)));
 
-        // 删除乙 → 索引行实时清空（只剩脏行），反查也没有结果
+        // 删除乙 → 索引行清空（只剩脏行），反查也没有结果
         wikiPageService.deletePage(null, pageB);
+        indexGate.awaitIdle();
         assertEquals(1L, indexRowCount(template));
         assertTrue(pageTemplateService.pagesUsing(template, 50).isEmpty());
     }

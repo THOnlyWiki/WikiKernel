@@ -1,39 +1,35 @@
 package cc.thonly.wikikernel.service.impl;
 
+import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.service.PageCacheService;
 import cc.thonly.wikikernel.service.WikiPageChangedEvent;
-import cc.thonly.wikikernel.wikitext.WikitextProperties;
+import cc.thonly.wikikernel.service.WikiPageService;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.List;
 
 /**
- * 页面变更 → 页面正文缓存失效（与分类 / 模板索引同一套事件机制）。
+ * 页面变更 → 页面正文缓存失效（由 {@link PageIndexService} 在后台线程调用）。
  * <ul>
  *     <li>页面创建 / 编辑 / 删除 / 移动：失效该页缓存（条目本身带版本号，双保险）；</li>
- *     <li>模板（{@code 模板:} 命名空间，前缀见 {@code wikikernel.wikitext.template-prefixes}）变更：
- *     额外失效<b>所有嵌入它的页面</b>，并按配置用虚拟线程批量预渲染预热；</li>
+ *     <li>模板变更：额外失效<b>所有嵌入它的页面</b>，并按配置用虚拟线程批量预渲染预热；</li>
  *     <li>移动页面时旧标题的条目不再被使用（标题下已无页面，且版本号对不上），由 TTL / 条数上限淘汰。</li>
  * </ul>
- * 用 {@link TransactionPhase#AFTER_COMMIT}：保存事务提交后才失效与预热，
- * 后台预渲染线程不会和写入事务抢数据库锁；没有事务时（例如脚本直接发事件）照常执行。
+ * 所有缓存操作都在后台队列执行；保存请求线程不再做任何 Redis / 失效工作。
+ * 读取缓存时会比对页面最新版本号，因此后台失效尚未执行也不会返回旧正文。
  */
 @Component
 public class PageCacheEventListener {
 
     private final PageCacheService pageCacheService;
-    private final WikitextProperties wikitextProperties;
+    private final WikiPageService wikiPageService;
 
     public PageCacheEventListener(PageCacheService pageCacheService,
-                                  WikitextProperties wikitextProperties) {
+                                  WikiPageService wikiPageService) {
         this.pageCacheService = pageCacheService;
-        this.wikitextProperties = wikitextProperties;
+        this.wikiPageService = wikiPageService;
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    /** 当前页面自身的缓存失效（非模板页面只做这一件事）。 */
     public void onPageChanged(WikiPageChangedEvent event) {
         if (!this.pageCacheService.enabled()) {
             // 缓存关闭：没有条目需要失效，也不必预热
@@ -43,23 +39,23 @@ public class PageCacheEventListener {
         if (Strings.isBlank(title)) {
             return;
         }
-        this.pageCacheService.invalidate(title);
-        if (isTemplate(title)) {
-            this.pageCacheService.invalidateTranscluding(title);
-        }
+        Long revisionId = event.deleted() || event.pageId() == null
+                ? null
+                : this.wikiPageService.getById(event.pageId())
+                        .map(WikiPage::getLatestRevisionId).orElse(null);
+        // 带版本号失效：保存后页面如果已经被重新渲染进缓存（重定向后的首次查看），保留新版本条目
+        this.pageCacheService.invalidate(title, revisionId);
     }
 
-    /** 是否是模板页（前缀来自 {@code wikikernel.wikitext.template-prefixes}，大小写不敏感）。 */
-    private boolean isTemplate(String title) {
-        List<String> prefixes = this.wikitextProperties.getTemplatePrefixes();
-        if (prefixes == null) {
-            return false;
+    /** 模板变更：失效所有嵌入该模板的页面并按配置预热（由后台依赖队列调用）。 */
+    public void onTemplateChanged(WikiPageChangedEvent event) {
+        if (!this.pageCacheService.enabled()) {
+            return;
         }
-        for (String prefix : prefixes) {
-            if (!Strings.isBlank(prefix) && title.regionMatches(true, 0, prefix, 0, prefix.length())) {
-                return true;
-            }
+        String title = event.title();
+        if (Strings.isBlank(title)) {
+            return;
         }
-        return false;
+        this.pageCacheService.invalidateTranscluding(title);
     }
 }

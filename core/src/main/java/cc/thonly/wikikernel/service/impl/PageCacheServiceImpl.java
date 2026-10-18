@@ -304,6 +304,22 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
     }
 
     @Override
+    public void invalidate(String title, Long keepRevisionId) {
+        if (Strings.isBlank(title)) {
+            return;
+        }
+        String key = key(title);
+        if (keepRevisionId != null) {
+            PageBody cached = readEntry(key);
+            if (cached != null && cached.revisionId() == keepRevisionId) {
+                // 已经缓存了保存后的新版本（例如刚保存就打开了页面），不要把它删掉
+                return;
+            }
+        }
+        removeEntry(key);
+    }
+
+    @Override
     public void invalidateAll() {
         this.memoryBackend.clear();
         if (BACKEND_REDIS.equals(backendName()) && this.redisBackend != null) {

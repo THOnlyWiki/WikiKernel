@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.service;
 
 import cc.thonly.wikikernel.common.data.WikiPage;
+import cc.thonly.wikikernel.service.impl.PageIndexGate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ class PageCacheTest {
 
     @Autowired
     private SiteSettingsService siteSettingsService;
+
+    @Autowired
+    private PageIndexGate indexGate;
 
     /** 每个用例之后恢复默认配置，避免污染同一 Spring 上下文里的其它测试类。 */
     @AfterEach
@@ -194,6 +198,7 @@ class PageCacheTest {
         wikiPageService.editPage(null, unrelated, "没有嵌入模板");
 
         // 先按「页面查看」的路径把三个页面渲染进缓存
+        indexGate.awaitIdle();
         warm(pageA);
         warm(pageB);
         warm(unrelated);
@@ -226,12 +231,15 @@ class PageCacheTest {
         String page = "缓存不预渲染页" + suffix;
         wikiPageService.editPage(null, template, "第一版");
         wikiPageService.editPage(null, page, "{{" + template + "}}");
+        indexGate.awaitIdle();
         warm(page);
         assertTrue(cachedHtmlOf(page).contains("第一版"));
 
         long before = pageCacheService.preloadedPages();
         wikiPageService.editPage(null, template, "第二版");
-        Thread.sleep(600L);
+        // 先等本页索引入队/处理，再等依赖页缓存失效（两者是不同队列）
+        indexGate.awaitIdle();
+        indexGate.awaitBackgroundIdle();
 
         assertEquals(before, pageCacheService.preloadedPages(), "关闭预渲染后不应后台渲染");
         assertTrue(pageCacheService.get(page, revisionOf(page)).isEmpty(),

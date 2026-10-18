@@ -53,14 +53,18 @@ public class CategoryStoreImpl implements CategoryStore {
 
     private final WikiPageCategoryMapper categoryMapper;
     private final WikiPageMapper pageMapper;
+    private final PageIndexGate indexGate;
 
-    public CategoryStoreImpl(WikiPageCategoryMapper categoryMapper, WikiPageMapper pageMapper) {
+    public CategoryStoreImpl(WikiPageCategoryMapper categoryMapper, WikiPageMapper pageMapper,
+                             PageIndexGate indexGate) {
         this.categoryMapper = categoryMapper;
         this.pageMapper = pageMapper;
+        this.indexGate = indexGate;
     }
 
     @Override
     public List<CategoryMember> members(String categoryTitle, int limit) {
+        indexGate.awaitIdle();
         String canonical = canonicalCategory(categoryTitle);
         if (canonical.isEmpty()) {
             return List.of();
@@ -96,6 +100,7 @@ public class CategoryStoreImpl implements CategoryStore {
 
     @Override
     public List<String> categoriesOf(long pageId) {
+        indexGate.awaitIdle();
         List<WikiPageCategory> rows = categoryMapper.selectList(Wrappers.<WikiPageCategory>lambdaQuery()
                 .eq(WikiPageCategory::getPageId, pageId)
                 .orderByAsc(WikiPageCategory::getId));
