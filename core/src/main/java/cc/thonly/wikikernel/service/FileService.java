@@ -89,6 +89,12 @@ public interface FileService {
 
     String urlOf(WikiFileVersion version);
 
+    /**
+     * 图片缩略图 URL：按请求宽度选择 1/4 / 1/2 WebP 变体；没有合适缩略图时回退原图。
+     * 非图片、未知尺寸或缩略图不存在时也回退原图。
+     */
+    String thumbnailUrl(WikiFile file, int requestedWidth);
+
     /** 文件页 URL：{@code /wiki/文件:<name>}。 */
     String pageUrlOf(WikiFile file);
 

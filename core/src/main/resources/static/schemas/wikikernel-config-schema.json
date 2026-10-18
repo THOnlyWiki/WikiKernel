@@ -87,6 +87,32 @@
           "default": 20,
           "description": "单个上传文件大小上限（MB）；同时受 spring.servlet.multipart 限制。"
         },
+        "thumbnail": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "是否在 <run-path>/thumbnail/ 下生成 1/2、1/4 两档 WebP 缩略图。"
+            },
+            "max-size-mb": {
+              "type": "integer",
+              "default": 2048,
+              "description": "缩略图总容量上限（MB，默认 2048 = 2GB）；超过后按修改时间删除最旧的缩略图。"
+            },
+            "quality": {
+              "type": "integer",
+              "default": 82,
+              "description": "WebP 缩略图质量（1-100）。"
+            },
+            "executable": {
+              "type": "string",
+              "default": "",
+              "description": "ImageMagick 可执行文件路径；留空 = 自动查找 magick 命令。"
+            }
+          }
+        },
         "sidebar": {
           "type": "object",
           "additionalProperties": true,

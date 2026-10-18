@@ -236,6 +236,7 @@ public class FileApiController {
         data.put("name", file.getName());
         data.put("version", file.getVersion() == null ? 1 : file.getVersion());
         data.put("url", fileService.urlOf(file));
+        data.put("thumbUrl", fileService.thumbnailUrl(file, 320));
         data.put("pageUrl", fileService.pageUrlOf(file));
         return data;
     }

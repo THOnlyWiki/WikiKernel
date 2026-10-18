@@ -23,6 +23,11 @@ public final class ConfigSchemaGenerator {
     private ConfigSchemaGenerator() {
     }
 
+    /** 命令行重新生成提交在仓库里的 Schema。 */
+    public static void main(String[] args) throws java.io.IOException {
+        java.nio.file.Files.writeString(java.nio.file.Path.of(ConfigCatalog.SCHEMA_REPO_PATH), generate());
+    }
+
     /** 生成完整 Schema 文本（以 LF 结尾）。 */
     public static String generate() {
         return generate(ConfigCatalog.get());

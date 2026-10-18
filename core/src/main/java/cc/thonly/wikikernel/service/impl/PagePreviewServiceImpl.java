@@ -138,7 +138,7 @@ public class PagePreviewServiceImpl implements PagePreviewService {
                 String name = matcher.group(1).trim().replace('_', ' ');
                 Optional<WikiFile> file = fileService.findByName(name);
                 if (file.isPresent() && fileService.isImage(file.get())) {
-                    return new Thumbnail(fileService.urlOf(file.get()), file.get().getName());
+                    return new Thumbnail(fileService.thumbnailUrl(file.get(), 320), file.get().getName());
                 }
             }
         }

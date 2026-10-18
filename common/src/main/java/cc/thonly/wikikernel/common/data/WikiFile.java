@@ -42,6 +42,14 @@ public class WikiFile {
     @DbColumn(nullable = false)
     private Long size;
 
+    /** 原图像素宽（非图片 / 未知为空）。 */
+    @DbColumn
+    private Integer width;
+
+    /** 原图像素高（非图片 / 未知为空）。 */
+    @DbColumn
+    private Integer height;
+
     /** 上传者用户 ID（匿名上传时为空）。 */
     @DbColumn
     private Long uploaderId;

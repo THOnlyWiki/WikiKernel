@@ -680,6 +680,7 @@ public class ActionApiService {
             switch (prop) {
                 case "url" -> {
                     item.put("url", baseUrl(requestOfPage()) + fileService.urlOf(file));
+                    item.put("thumburl", baseUrl(requestOfPage()) + fileService.thumbnailUrl(file, 320));
                     item.put("descriptionurl", baseUrl(requestOfPage())
                             + fileService.pageUrlOf(file).substring(1));
                 }
@@ -1159,6 +1160,7 @@ public class ActionApiService {
             item.put("name", file.getName());
             item.put("timestamp", timestamp(file.getCreatedAt()));
             item.put("url", baseUrl(request) + fileService.urlOf(file).substring(1));
+            item.put("thumburl", baseUrl(request) + fileService.thumbnailUrl(file, 320).substring(1));
             item.put("descriptionurl", baseUrl(request) + fileService.pageUrlOf(file).substring(1));
             item.put("size", file.getSize());
             item.put("mime", file.getContentType());

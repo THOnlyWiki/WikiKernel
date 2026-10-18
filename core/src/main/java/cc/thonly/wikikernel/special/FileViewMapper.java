@@ -54,6 +54,8 @@ public class FileViewMapper {
         row.put("id", file.getId());
         row.put("name", file.getName());
         row.put("url", fileService.urlOf(file));
+        row.put("thumbUrl", fileService.thumbnailUrl(file, 180));
+        row.put("previewUrl", fileService.thumbnailUrl(file, 800));
         row.put("pageUrl", fileService.pageUrlOf(file));
         row.put("image", fileService.isImage(file));
         row.put("kind", fileService.mediaKind(file));

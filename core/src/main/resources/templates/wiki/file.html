@@ -16,7 +16,7 @@
     <div class="file-preview" th:if="${not deleted or canDelete}">
         <div th:if="${mediaPlayerHtml != null}" th:utext="${mediaPlayerHtml}"></div>
         <a th:if="${mediaPlayerHtml == null and file.image}" th:href="${file.url}">
-            <img class="wiki-media-image" th:src="${file.url}" th:alt="${file.name}"
+            <img class="wiki-media-image" th:src="${file.previewUrl}" th:alt="${file.name}"
                  th:attr="data-file=${'文件:' + file.name},data-caption=${file.description}"/>
         </a>
         <p th:if="${mediaPlayerHtml == null and not file.image}">

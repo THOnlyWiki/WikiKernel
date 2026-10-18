@@ -49,7 +49,7 @@
     <ul class="file-gallery" th:unless="${#lists.isEmpty(recentFiles)}">
         <li th:each="item : ${recentFiles}">
             <a th:href="${item.pageUrl}" th:title="${item.name}">
-                <img th:if="${item.image}" th:src="${item.url}" th:alt="${item.name}"/>
+                <img th:if="${item.image}" th:src="${item.thumbUrl}" th:alt="${item.name}"/>
                 <span th:unless="${item.image}" class="file-placeholder" th:text="${item.name}">文件</span>
             </a>
             <div class="file-gallery-name">

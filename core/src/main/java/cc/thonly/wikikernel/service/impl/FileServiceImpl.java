@@ -11,6 +11,7 @@ import cc.thonly.wikikernel.db.mapper.WikiFileVersionMapper;
 import cc.thonly.wikikernel.log.LogTypeConfig;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.LogService;
+import cc.thonly.wikikernel.service.ThumbnailService;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.MediaTypes;
 import cc.thonly.wikikernel.web.SvgSanitizer;
@@ -63,19 +64,22 @@ public class FileServiceImpl implements FileService {
     private final LogService logService;
     private final MessageSource messageSource;
     private final SiteConfig siteConfig;
+    private final ThumbnailService thumbnailService;
 
     public FileServiceImpl(WikiFileMapper wikiFileMapper,
                            WikiFileVersionMapper wikiFileVersionMapper,
                            FileStorageProperties properties,
                            LogService logService,
                            MessageSource messageSource,
-                           SiteConfig siteConfig) {
+                           SiteConfig siteConfig,
+                           ThumbnailService thumbnailService) {
         this.wikiFileMapper = wikiFileMapper;
         this.wikiFileVersionMapper = wikiFileVersionMapper;
         this.properties = properties;
         this.logService = logService;
         this.messageSource = messageSource;
         this.siteConfig = siteConfig;
+        this.thumbnailService = thumbnailService;
     }
 
     /**
@@ -155,6 +159,9 @@ public class FileServiceImpl implements FileService {
         String comment = Strings.trimToEmpty(description);
         Long uploaderId = uploader == null ? null : uploader.getId();
         LocalDateTime now = LocalDateTime.now();
+        ThumbnailService.Dimensions dimensions = isImage(fileName) ? thumbnailService.measure(path) : null;
+        Integer imageWidth = dimensions == null ? null : dimensions.width();
+        Integer imageHeight = dimensions == null ? null : dimensions.height();
 
         WikiFile file;
         if (existing == null) {
@@ -163,6 +170,8 @@ public class FileServiceImpl implements FileService {
             file.setStoredName(storedName);
             file.setContentType(contentTypeOf(extension));
             file.setSize((long) content.length);
+            file.setWidth(imageWidth);
+            file.setHeight(imageHeight);
             file.setUploaderId(uploaderId);
             file.setDescription(comment);
             file.setCreatedAt(now);
@@ -179,14 +188,18 @@ public class FileServiceImpl implements FileService {
                     .set(WikiFile::getStoredName, storedName)
                     .set(WikiFile::getContentType, contentType)
                     .set(WikiFile::getSize, size)
+                    .set(WikiFile::getWidth, imageWidth)
+                    .set(WikiFile::getHeight, imageHeight)
                     .set(WikiFile::getUploaderId, uploaderId)
                     .set(WikiFile::getDescription, comment)
                     .set(WikiFile::getCreatedAt, now)
                     .set(WikiFile::getVersion, next));
-            applyVersion(existing, storedName, contentType, size, uploaderId, comment, now, next);
+            applyVersion(existing, storedName, contentType, size, imageWidth, imageHeight,
+                    uploaderId, comment, now, next);
             file = existing;
         }
 
+        thumbnailService.generate(file);
         logService.record(LogTypeConfig.UPLOAD, uploaderId, fileName, null, file.getDescription());
         return file;
     }
@@ -333,17 +346,24 @@ public class FileServiceImpl implements FileService {
         Long userId = user == null ? null : user.getId();
         String comment = message("files.revertComment", version);
         LocalDateTime now = LocalDateTime.now();
+        ThumbnailService.Dimensions dimensions = isImage(file.getName()) ? thumbnailService.measure(path) : null;
+        Integer imageWidth = dimensions == null ? null : dimensions.width();
+        Integer imageHeight = dimensions == null ? null : dimensions.height();
         wikiFileMapper.update(null, Wrappers.<WikiFile>lambdaUpdate()
                 .eq(WikiFile::getId, file.getId())
                 .set(WikiFile::getStoredName, storedName)
                 .set(WikiFile::getContentType, target.getContentType())
                 .set(WikiFile::getSize, target.getSize())
+                .set(WikiFile::getWidth, imageWidth)
+                .set(WikiFile::getHeight, imageHeight)
                 .set(WikiFile::getUploaderId, userId)
                 .set(WikiFile::getDescription, comment)
                 .set(WikiFile::getCreatedAt, now)
                 .set(WikiFile::getVersion, next));
-        applyVersion(file, storedName, target.getContentType(), target.getSize(), userId, comment, now, next);
+        applyVersion(file, storedName, target.getContentType(), target.getSize(), imageWidth, imageHeight,
+                userId, comment, now, next);
 
+        thumbnailService.generate(file);
         logService.record(LogTypeConfig.UPLOAD, userId, file.getName(), null, comment);
         return file;
     }
@@ -367,6 +387,7 @@ public class FileServiceImpl implements FileService {
             for (String storedName : storedNames) {
                 try {
                     Files.deleteIfExists(pathOf(storedName));
+                    thumbnailService.delete(storedName);
                 } catch (IOException exception) {
                     throw new IllegalStateException("files.deleteFailed", exception);
                 }
@@ -461,6 +482,32 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public String thumbnailUrl(WikiFile file, int requestedWidth) {
+        if (file == null) {
+            return "";
+        }
+        if (requestedWidth <= 0 || !isImage(file)) {
+            return urlOf(file);
+        }
+        Integer sourceWidth = file.getWidth();
+        if (sourceWidth == null || sourceWidth <= 0) {
+            return urlOf(file);
+        }
+        String variant;
+        if ((long) requestedWidth * 4 <= sourceWidth) {
+            variant = ThumbnailService.QUARTER;
+        } else if ((long) requestedWidth * 2 <= sourceWidth) {
+            variant = ThumbnailService.HALF;
+        } else {
+            return urlOf(file);
+        }
+        if (!thumbnailService.exists(file.getStoredName(), variant)) {
+            return urlOf(file);
+        }
+        return thumbnailService.url(file.getStoredName(), variant);
+    }
+
+    @Override
     public String pageUrlOf(WikiFile file) {
         return pageUrl(file.getName());
     }
@@ -493,11 +540,14 @@ public class FileServiceImpl implements FileService {
 
     /** 更新内存里的当前版本信息（与上面的 UPDATE 同步，返回值直接用）。 */
     private static void applyVersion(WikiFile file, String storedName, String contentType,
-                                     Long size, Long uploaderId, String comment,
+                                     Long size, Integer width, Integer height,
+                                     Long uploaderId, String comment,
                                      LocalDateTime createdAt, int version) {
         file.setStoredName(storedName);
         file.setContentType(contentType);
         file.setSize(size);
+        file.setWidth(width);
+        file.setHeight(height);
         file.setUploaderId(uploaderId);
         file.setDescription(comment);
         file.setCreatedAt(createdAt);

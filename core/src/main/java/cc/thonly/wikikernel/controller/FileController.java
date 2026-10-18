@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.FileService;
+import cc.thonly.wikikernel.service.ThumbnailService;
 import cc.thonly.wikikernel.user.UserSession;
 import cc.thonly.wikikernel.web.MediaTypes;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,13 +38,16 @@ public class FileController {
     private final FileService fileService;
     private final AccessControlService accessControlService;
     private final MessageSource messageSource;
+    private final ThumbnailService thumbnailService;
 
     public FileController(FileService fileService,
                           AccessControlService accessControlService,
-                          MessageSource messageSource) {
+                          MessageSource messageSource,
+                          ThumbnailService thumbnailService) {
         this.fileService = fileService;
         this.accessControlService = accessControlService;
         this.messageSource = messageSource;
+        this.thumbnailService = thumbnailService;
     }
 
     @GetMapping("/files/{storedName}")
@@ -96,6 +100,43 @@ public class FileController {
             headers.setContentLength(slice.length);
             return new ResponseEntity<>(slice, headers, HttpStatus.PARTIAL_CONTENT);
         }
+        headers.setContentLength(content.length);
+        return new ResponseEntity<>(content, headers, HttpStatus.OK);
+    }
+
+    @GetMapping("/files/thumbnail/{storedName}/{variant}")
+    public ResponseEntity<byte[]> serveThumbnail(@PathVariable("storedName") String storedName,
+                                                 @PathVariable("variant") String variant,
+                                                 HttpServletRequest request) {
+        FileService.StoredFile stored = fileService.resolveStored(storedName)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        message("files.notFound")));
+        WikiUser user = UserSession.current(request);
+        if (stored.deleted()) {
+            if (!accessControlService.can(AccessAction.DELETE, "文件:" + stored.name(), user)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, message("files.notFound"));
+            }
+        } else if (!accessControlService.canRead("文件:" + stored.name(), user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, message("files.readForbidden"));
+        }
+
+        String name = variant.endsWith(".webp")
+                ? variant.substring(0, variant.length() - ".webp".length())
+                : variant;
+        if (!ThumbnailService.HALF.equals(name) && !ThumbnailService.QUARTER.equals(name)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, message("files.notFound"));
+        }
+        byte[] content = thumbnailService.read(stored.storedName(), name).orElse(null);
+        if (content == null) {
+            // 缩略图可能因 2GB 配额清理被删除；回退原图，避免页面上的图片 404。
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(java.net.URI.create("/files/" + stored.storedName()))
+                    .build();
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("image/webp"));
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());
         headers.setContentLength(content.length);
         return new ResponseEntity<>(content, headers, HttpStatus.OK);
     }

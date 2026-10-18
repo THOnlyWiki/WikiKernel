@@ -96,7 +96,7 @@
                 </td>
                 <td class="listfiles-col-thumb">
                     <a th:if="${item.image}" th:href="${item.pageUrl}" class="image">
-                        <img class="listfiles-thumb" th:src="${item.url}" th:alt="''" loading="lazy"/>
+                        <img class="listfiles-thumb" th:src="${item.thumbUrl}" th:alt="''" loading="lazy"/>
                     </a>
                     <span th:unless="${item.image}" th:text="#{listFiles.noThumb}">—</span>
                 </td>

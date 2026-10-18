@@ -242,6 +242,18 @@ wikikernel:
   # 单个上传文件大小上限（MB）
   max-file-size-mb: 20
 
+  # ---------------- 图片缩略图 ----------------
+  # 上传图片时在 <run-path>/thumbnail/ 下生成 1/2、1/4 两档 WebP；
+  # 超过总容量后按修改时间删除最旧的缩略图（只删缩略图，不删原图）。
+  thumbnail:
+    enabled: true
+    # 总容量上限（MB，默认 2048 = 2GB）
+    max-size-mb: 2048
+    # WebP 质量（1-100）
+    quality: 82
+    # ImageMagick 可执行文件路径；留空 = 自动查找 magick
+    executable: ""
+
 
   # ---------------- 认证 ----------------
   # 持久登录令牌（记住登录状态时签发，存数据库，重启不掉线）
