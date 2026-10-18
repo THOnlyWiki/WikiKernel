@@ -2635,7 +2635,7 @@ public class WikitextRenderer {
         String image = "<img class=\"wiki-media-image\" src=\""
                 + HtmlSanitizer.escapeAttribute(fileService.thumbnailUrl(file, displayWidth)) + "\" alt=\"" + attributeText(alt) + "\""
                 + " style=\"" + (displayHeight > 0
-                ? "width:" + displayWidth + "px;height:" + displayHeight + "px;object-fit:cover;"
+                ? "width:" + displayWidth + "px;height:" + displayHeight + "px;object-fit:contain;"
                 : "max-width:" + displayWidth + "px") + "\""
                 + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
                 + (captionPart.isEmpty() ? ""
@@ -2643,7 +2643,9 @@ public class WikitextRenderer {
                 + " loading=\"lazy\">";
         StringBuilder html = new StringBuilder(256);
         html.append("<li class=\"gallerybox\"><div class=\"thumb\"><div class=\"thumbinner\" style=\"width:")
-                .append(displayWidth).append("px\"><a class=\"image\" href=\"")
+                .append(displayWidth).append("px")
+                .append(displayHeight > 0 ? ";padding:0" : "")
+                .append("\"><a class=\"image\" href=\"")
                 .append(HtmlSanitizer.escapeAttribute(fileService.pageUrlOf(file))).append("\">")
                 .append(image).append("</a>");
         if (!captionPart.isEmpty()) {
