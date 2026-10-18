@@ -19,9 +19,9 @@
     <div id="footer-places">
         <div class="footer-left">
             <ul class="footer-places-list" th:if="${footerLeftHtml == null}">
-                <li><a th:href="@{/wiki/WikiKernel:隐私政策}" th:text="#{footer.privacy}">隐私政策</a></li>
-                <li><a th:href="@{/wiki/WikiKernel:关于}" th:text="#{footer.about}">关于WikiKernel</a></li>
-                <li><a th:href="@{/wiki/WikiKernel:免责声明}" th:text="#{footer.disclaimers}">免责声明</a></li>
+                <li><a th:href="@{/wiki/{t}(t=${(siteName ?: 'WikiKernel') + ':隐私政策'})}" th:text="#{footer.privacy}">隐私政策</a></li>
+                <li><a th:href="@{/wiki/{t}(t=${(siteName ?: 'WikiKernel') + ':关于'})}" th:text="${#messages.msg('footer.about', siteName ?: 'WikiKernel')}">关于WikiKernel</a></li>
+                <li><a th:href="@{/wiki/{t}(t=${(siteName ?: 'WikiKernel') + ':免责声明'})}" th:text="#{footer.disclaimers}">免责声明</a></li>
             </ul>
             <div class="footer-custom footer-custom-left" th:if="${footerLeftHtml != null}"
                  th:utext="${footerLeftHtml}">页脚左侧（WikiKernel:Footer-Left）</div>
