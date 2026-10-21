@@ -2,9 +2,9 @@
 
 模块依赖方向、构建与运行（`installPlugins` / `run.bat` / `/init` / 动态装卸 / 日志）、插件里使用 Spring、
 新增一个插件的目录与包结构约定、插件加载原理（core 侧）、插件依赖声明与 `CoreAopHook`，
-以及**内置插件**的完整清单（能力、扩展点、平台能力、配置键与与 MediaWiki 原版的差异；
-下节正文里的「28 个」是原 README 的说法，插件目录实际是 29 个，见 [README](../README.md#内置插件一览表) 的更正）。
-每个插件自己的细节见仓库里的 `plugin/<id>/README.md`（清单表格里给出了直达链接）。
+以及内置插件的完整清单（能力、扩展点、平台能力、配置键与与 MediaWiki 原版的差异）。
+插件的用途分类见 [README](../README.md#扩展插件)；每个插件自己的细节见仓库里的
+`plugin/<id>/README.md`（清单表格里给出了直达链接）。
 
 其它文档：[README](../README.md) ｜ [接口与兼容 API](./API.md) ｜ [配置与数据](./CONFIG.md) ｜ [功能详述](./FEATURES.md) ｜ [皮肤与前端界面](./SKIN.md) ｜ [Wikitext 与内容标记](./WIKITEXT.md) ｜ [插件 Mixin](./MIXIN.md)
 
