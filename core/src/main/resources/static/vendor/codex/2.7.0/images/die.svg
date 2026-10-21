@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+	<title>die</title>
+	<path d="M19 19H1V1h18zM3 17h14V3H3z"/>
+	<circle cx="6.5" cy="6.5" r="1.5"/>
+	<circle cx="13.5" cy="6.5" r="1.5"/>
+	<circle cx="10" cy="10" r="1.5"/>
+	<circle cx="6.5" cy="13.5" r="1.5"/>
+	<circle cx="13.5" cy="13.5" r="1.5"/>
+</svg>

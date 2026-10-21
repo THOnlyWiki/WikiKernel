@@ -45,6 +45,14 @@ public class VisualEditorService {
     /** 模板源码里的参数使用：{@code {{{名字|默认值}}}}} 或 {@code {{{名字}}}}}。 */
     private static final Pattern PARAM_USE = Pattern.compile("\\{\\{\\{\\s*([^{}|]+?)\\s*(?:\\||\\}\\}\\})");
 
+    /** 图库源码：{@code <gallery 属性>每行一张图</gallery>}。 */
+    private static final Pattern GALLERY_SOURCE = Pattern.compile(
+            "(?is)^\\s*<gallery\\b([^>]*)>(.*?)</gallery\\s*>\\s*$");
+
+    /** 图库标签属性（name / name="value" / name='value'）。 */
+    private static final Pattern GALLERY_ATTRIBUTE = Pattern.compile(
+            "([A-Za-z_:][-A-Za-z0-9_:.]*)\\s*(?:=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'=<>`]+)))?");
+
     private static final Pattern POSITIONAL = Pattern.compile("\\d+");
 
     private final WikitextRenderer renderer;
@@ -66,6 +74,19 @@ public class VisualEditorService {
 
     /** 模板对话框里的一行参数。 */
     public record TemplateParam(String name, String value, boolean positional, boolean present, boolean known) {
+    }
+
+    /** 画廊对话框里的一行图片（{@code file} 保留用户写的文件名 / 文件链接原文）。 */
+    public record GalleryItem(String file, String caption) {
+    }
+
+    /** 画廊标签属性（保留未知属性，避免编辑后丢失）。 */
+    public record GalleryAttribute(String name, String value) {
+    }
+
+    /** 画廊对话框数据：解析后的图片、属性、标签与预览。 */
+    public record GalleryInfo(String source, List<GalleryItem> items,
+                              List<GalleryAttribute> attributes, String label, String previewHtml) {
     }
 
     /**
@@ -109,6 +130,7 @@ public class VisualEditorService {
         document.select(".catlinks-block").remove();
         wrapTokens(document.body(), tokenized.tokens());
         upgradeBlockTemplates(document.body(), tokenized.tokens(), pageTitle);
+        upgradeBlockGalleries(document.body(), tokenized.tokens(), pageTitle);
         return new Rendered(document.body().html(), tokenized.sources());
     }
 
@@ -172,19 +194,34 @@ public class VisualEditorService {
             chip.addClass("ve-template");
             chip.addClass("ve-template-inline");
             chip.text(templateLabel(source));
+        } else if (token != null && VisualWikitextTokenizer.Token.KIND_GALLERY.equals(token.kind())) {
+            chip.addClass("ve-gallery");
+            chip.addClass("ve-gallery-inline");
+            chip.text(galleryLabel(source));
         } else {
             chip.text(summary(source));
         }
         return chip;
     }
 
-    /**
-     * 独占一个段落的模板 → 升级成块级预览：直接展示渲染结果（点击打开模板对话框）。
-     * 行内模板保持小方块（预览在对话框里），避免破坏段落结构。
-     */
+    /** 独占一个段落的模板 → 升级成块级预览（点击打开模板对话框）。 */
     private void upgradeBlockTemplates(Element root, List<VisualWikitextTokenizer.Token> tokens,
                                        String pageTitle) {
-        for (Element chip : new ArrayList<>(root.select("span.ve-template-inline[data-token]"))) {
+        upgradeTokenBlocks(root, tokens, pageTitle, "span.ve-template-inline[data-token]",
+                "ve-template", this::templateLabel);
+    }
+
+    /** 独占一个段落的画廊 → 升级成渲染预览（点击打开画廊对话框）。 */
+    private void upgradeBlockGalleries(Element root, List<VisualWikitextTokenizer.Token> tokens,
+                                       String pageTitle) {
+        upgradeTokenBlocks(root, tokens, pageTitle, "span.ve-gallery-inline[data-token]",
+                "ve-gallery", this::galleryLabel);
+    }
+
+    private void upgradeTokenBlocks(Element root, List<VisualWikitextTokenizer.Token> tokens,
+                                    String pageTitle, String selector, String kind,
+                                    java.util.function.Function<String, String> labeler) {
+        for (Element chip : new ArrayList<>(root.select(selector))) {
             Element parent = chip.parent();
             if (parent == null) {
                 continue;
@@ -202,17 +239,17 @@ public class VisualEditorService {
             String source = token.source();
             Element block = new Element("div");
             block.addClass("ve-token");
-            block.addClass("ve-template");
-            block.addClass("ve-template-block");
+            block.addClass(kind);
+            block.addClass(kind + "-block");
             block.attr("data-token", chip.attr("data-token"));
             block.attr("contenteditable", "false");
             block.attr("title", source.length() > 400 ? source.substring(0, 400) : source);
 
             Element badge = new Element("div");
-            badge.addClass("ve-template-badge");
-            badge.text(templateLabel(source));
+            badge.addClass(kind + "-badge");
+            badge.text(labeler.apply(source));
             Element render = new Element("div");
-            render.addClass("ve-template-render");
+            render.addClass(kind + "-render");
             render.html(preview(source, pageTitle));
             block.appendChild(badge);
             block.appendChild(render);
@@ -288,6 +325,102 @@ public class VisualEditorService {
     private static String summary(String source) {
         String value = source.replaceAll("\\s+", " ").trim();
         return value.length() > 40 ? value.substring(0, 40) + "…" : value;
+    }
+
+    // ==================== 画廊对话框（图片列表 / 属性 / 预览） ====================
+
+    /** 打开画廊对话框：解析 {@code <gallery>} 标签、图片行与属性，并渲染预览。 */
+    public GalleryInfo openGallery(String pageTitle, String source) {
+        GallerySource parsed = parseGallery(source);
+        return new GalleryInfo(source == null ? "" : source, parsed.items(), parsed.attributes(),
+                galleryLabel(parsed.items().size()), preview(source, pageTitle));
+    }
+
+    /** 按图片列表与属性重建 {@code <gallery>} 源码，并渲染预览。 */
+    public GalleryInfo buildGallery(String pageTitle, List<GalleryAttribute> attributes,
+                                    List<GalleryItem> items) {
+        List<GalleryAttribute> safeAttributes = attributes == null ? List.of() : attributes.stream()
+                .filter(attribute -> attribute != null && attribute.name() != null
+                        && GALLERY_ATTRIBUTE_NAME.matcher(attribute.name()).matches())
+                .map(attribute -> new GalleryAttribute(attribute.name(),
+                        attribute.value() == null ? "" : attribute.value().replaceAll("[\\r\\n]+", " ").trim()))
+                .toList();
+        List<GalleryItem> safeItems = items == null ? List.of() : items.stream()
+                .filter(item -> item != null && item.file() != null && !item.file().isBlank())
+                .map(item -> new GalleryItem(item.file().replaceAll("[\\r\\n]+", " ").trim(),
+                        item.caption() == null ? "" : item.caption().replaceAll("[\\r\\n]+", " ").trim()))
+                .toList();
+        String source = renderGallerySource(safeAttributes, safeItems);
+        return new GalleryInfo(source, safeItems, safeAttributes,
+                galleryLabel(safeItems.size()), preview(source, pageTitle));
+    }
+
+    private static final Pattern GALLERY_ATTRIBUTE_NAME =
+            Pattern.compile("[A-Za-z_:][-A-Za-z0-9_:.]*");
+
+    private String galleryLabel(String source) {
+        try {
+            return galleryLabel(parseGallery(source).items().size());
+        } catch (RuntimeException exception) {
+            return galleryLabel(0);
+        }
+    }
+
+    private String galleryLabel(int count) {
+        return messageSource.getMessage("visualEditor.galleryLabel", new Object[]{count},
+                "画廊（" + count + " 张图片）", LocaleContextHolder.getLocale());
+    }
+
+    private static GallerySource parseGallery(String source) {
+        Matcher matcher = GALLERY_SOURCE.matcher(Strings.trimToEmpty(source));
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("not a gallery");
+        }
+        List<GalleryAttribute> attributes = new ArrayList<>();
+        Matcher attr = GALLERY_ATTRIBUTE.matcher(matcher.group(1) == null ? "" : matcher.group(1));
+        while (attr.find()) {
+            String value = attr.group(2) != null ? attr.group(2)
+                    : attr.group(3) != null ? attr.group(3)
+                    : attr.group(4) != null ? attr.group(4) : "";
+            attributes.add(new GalleryAttribute(attr.group(1), value.trim()));
+        }
+        List<GalleryItem> items = new ArrayList<>();
+        for (String rawLine : (matcher.group(2) == null ? "" : matcher.group(2)).split("\\R")) {
+            String line = rawLine.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            int pipe = line.indexOf('|');
+            String file = (pipe < 0 ? line : line.substring(0, pipe)).trim();
+            if (file.isEmpty()) {
+                continue;
+            }
+            String caption = pipe < 0 ? "" : line.substring(pipe + 1).trim();
+            items.add(new GalleryItem(file, caption));
+        }
+        return new GallerySource(List.copyOf(attributes), List.copyOf(items));
+    }
+
+    private static String renderGallerySource(List<GalleryAttribute> attributes, List<GalleryItem> items) {
+        StringBuilder out = new StringBuilder("<gallery");
+        for (GalleryAttribute attribute : attributes) {
+            out.append(' ').append(attribute.name());
+            if (!attribute.value().isBlank()) {
+                out.append("=\"").append(attribute.value().replace("\"", "&quot;")).append('"');
+            }
+        }
+        out.append(">\n");
+        for (GalleryItem item : items) {
+            out.append(item.file());
+            if (!item.caption().isBlank()) {
+                out.append('|').append(item.caption());
+            }
+            out.append('\n');
+        }
+        return out.append("</gallery>").toString();
+    }
+
+    private record GallerySource(List<GalleryAttribute> attributes, List<GalleryItem> items) {
     }
 
     // ==================== 模板对话框（参数发现 / 重建 / 预览） ====================

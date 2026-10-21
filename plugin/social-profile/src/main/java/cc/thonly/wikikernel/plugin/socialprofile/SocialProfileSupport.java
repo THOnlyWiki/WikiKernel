@@ -154,6 +154,11 @@ public final class SocialProfileSupport {
         return message("socialProfile.gift." + giftId);
     }
 
+    /** 礼物说明（{@code socialProfile.gift.desc.<id>}；没有这个键时显示键本身）。 */
+    public String giftDescription(String giftId) {
+        return message("socialProfile.gift.desc." + giftId);
+    }
+
     /** 奖励名（{@code socialProfile.award.<id>}；没有这个键时显示键本身）。 */
     public String awardName(String awardId) {
         return message("socialProfile.award." + awardId);

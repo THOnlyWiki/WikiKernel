@@ -25,6 +25,10 @@ subprojects {
             annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
             testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
             testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+            // 所有模块都可以编译 Mixin / MixinExtras 注解（运行时由 core 的 Java Agent 提供，插件 jar 不打包）
+            compileOnly "net.fabricmc:sponge-mixin:${mixinVersion}"
+            compileOnly "io.github.llamalad7:mixinextras-common:${mixinExtrasVersion}"
         }
 
         tasks.withType(JavaCompile).configureEach {

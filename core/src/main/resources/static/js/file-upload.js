@@ -103,6 +103,10 @@
             if (description) {
                 body.append('description', description.value);
             }
+            var license = document.getElementById('file-license');
+            if (license) {
+                body.append('license', license.value);
+            }
 
             post('/api/files/upload', body).then(function (result) {
                 if (result && result.code === 200 && result.data && result.data.pending) {

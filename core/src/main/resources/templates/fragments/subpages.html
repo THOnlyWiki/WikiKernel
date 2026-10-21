@@ -1,0 +1,15 @@
+<!--
+  子页面面包屑（仿 MediaWiki 的 #contentSub / span.subpages）：
+  a/b/c → < a/b < a（最近一级在前）。父页面不存在时仍显示普通链接，由访问时决定红链。
+  subpageBreadcrumb 为空（普通页面 / 特殊页）时不输出任何内容。
+-->
+<div id="contentSub" th:fragment="subpages(breadcrumb)"
+     th:if="${breadcrumb != null and !#lists.isEmpty(breadcrumb)}">
+    <span class="subpages">
+        <th:block th:each="parent, iter : ${breadcrumb}">
+            <span th:if="${iter.index > 0}"> </span><span>&lt; </span><a
+                    th:href="${parent.url}" th:title="${parent.title}"
+                    th:text="${parent.title}">父页面</a>
+        </th:block>
+    </span>
+</div>

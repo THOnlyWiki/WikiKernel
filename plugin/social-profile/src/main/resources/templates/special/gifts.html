@@ -25,6 +25,7 @@
                 <li><a th:href="@{/wiki/特殊:留言板}" th:text="#{socialProfile.nav.board}">留言板</a></li>
                 <li><a th:href="@{/wiki/特殊:好友}" th:text="#{socialProfile.nav.friends}">好友</a></li>
                 <li><a th:href="@{/wiki/特殊:礼物}" aria-current="page" th:text="#{socialProfile.nav.gifts}">礼物</a></li>
+                <li><a th:href="@{/wiki/特殊:GiftManager}" th:text="#{socialProfile.nav.giftManager}">礼物管理</a></li>
                 <li><a th:href="@{/wiki/特殊:积分排行}" th:text="#{socialProfile.nav.topUsers}">积分排行</a></li>
                 <li><a th:href="@{/wiki/特殊:奖励}" th:text="#{socialProfile.nav.awards}">奖励</a></li>
                 <li><a th:href="@{/wiki/特殊:随机用户}" th:text="#{socialProfile.nav.randomUsers}">随机用户</a></li>
@@ -61,9 +62,10 @@
             </ul>
 
             <p class="sp-board-count" th:text="#{socialProfile.gifts.received(${giftTotal})}">收到 0 个礼物</p>
-            <ul class="sp-gift-list" th:unless="${#maps.isEmpty(giftTypeRows)}">
+            <ul class="sp-gift-list" th:unless="${#lists.isEmpty(giftTypeRows)}">
                 <li class="sp-gift-item" th:each="entry : ${giftTypeRows}">
-                    <span th:text="#{socialProfile.gifts.item(${entry.key}, ${entry.value})}">礼物 × 1</span>
+                    <span class="sp-gift-icon" th:text="${entry['icon']}">🎁</span>
+                    <span th:text="|${entry['name']} × ${entry['count']}|">礼物 × 1</span>
                 </li>
             </ul>
 
@@ -103,8 +105,10 @@
                         <a class="sp-gift-other-link" th:href="${row['otherUrl']}"
                            th:aria-label="${row['other']}" th:text="${row['other']}">用户</a>
                     </td>
-                    <td class="sp-gift-name" data-label="#{socialProfile.gifts.colGift}"
-                        th:text="${row['giftName']}">礼物</td>
+                    <td class="sp-gift-name" data-label="#{socialProfile.gifts.colGift}">
+                        <span class="sp-gift-icon" th:text="${row['giftIcon']}">🎁</span>
+                        <span th:text="${row['giftName']}">礼物</span>
+                    </td>
                     <td class="sp-gift-message" data-label="#{socialProfile.gifts.colMessage}"
                         th:text="${row['message']}">附言</td>
                     <td class="message-time" data-label="#{socialProfile.gifts.colTime}"

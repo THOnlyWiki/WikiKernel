@@ -38,6 +38,7 @@ public class WikiUrlRewriteFilter extends OncePerRequestFilter {
             "api", "api.php", "wiki", "css", "js", "img", "vendor", "schemas",
             "skins", "plugins", "files", "avatars", "error",
             "email", "password", "init", "version", "render",
+            "load.php", "index.php", "thumb.php",
             "favicon.ico", "robots.txt", "index.html",
             // thonly-wiki-extensions 插件的独立页（活动表格编辑器 / 活动日历 / 日历下载）由插件 Controller 处理，
             // 不能被裸根改写当成 wiki 页面标题

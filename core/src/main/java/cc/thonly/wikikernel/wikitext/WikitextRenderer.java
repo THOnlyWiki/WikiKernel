@@ -123,6 +123,13 @@ public class WikitextRenderer {
             "source", "pre", "poem", "indicator", "inputbox", "markdown", "tabber",
             "templatestyles");
 
+    /** 内容按字面保留、模板/参数不展开的标签。 */
+    private static final Set<String> LITERAL_TAGS = Set.of(
+            "pre", "nowiki", "syntaxhighlight", "source");
+
+    private static final Pattern LITERAL_TAG_START = Pattern.compile(
+            "<(?:pre|nowiki|syntaxhighlight|source)\\b", Pattern.CASE_INSENSITIVE);
+
     /** [[文件:...|200px]] 的宽度。 */
     private static final Pattern FILE_WIDTH = Pattern.compile("^(\\d+)\\s*(?:x\\s*\\d+)?\\s*px$", Pattern.CASE_INSENSITIVE);
 
@@ -305,6 +312,9 @@ public class WikitextRenderer {
         // 横幅 HTML 由插件在页面显示阶段生成（core 只提供 #page-banner 容器）
         String expanded = expand(protectedText, null, pageTitle == null ? "" : pageTitle,
                 0, new LinkedHashSet<>(), trustedBlocks);
+        // 模板转交（transclude）的内容里可能第一次出现 <pre> / <nowiki> / 语法高亮标签：
+        // 展开阶段已跳过它们内部的模板，这里再把整段保护起来，避免后续按普通行内 HTML 处理。
+        expanded = protectPreBlocks(expanded, preBlocks);
         expanded = extractTemplateStyles(expanded);
         // 插件延迟占位（Variables 的 #var_final）：解析结束后求值并展开（放在分类剥离之前）
         expanded = resolveDeferred(expanded, trustedBlocks);
@@ -595,15 +605,19 @@ public class WikitextRenderer {
         int i = 0;
         while (i < text.length()) {
             int open = text.indexOf("{{", i);
-            int nowiki = text.indexOf("<nowiki", i);
-            if (nowiki >= 0 && (open < 0 || nowiki < open)) {
-                int end = text.indexOf("</nowiki>", nowiki);
-                if (end < 0) {
+            // <pre> / <nowiki> / <syntaxhighlight> / <source> 里的 {{…}} 不是模板，不能展开；
+            // 顶层页面在进入 expand 前已经保护过，模板转交的内容可能在这里才第一次出现。
+            Matcher literalMatcher = LITERAL_TAG_START.matcher(text);
+            literalMatcher.region(i, text.length());
+            int literal = literalMatcher.find() ? literalMatcher.start() : -1;
+            if (literal >= 0 && (open < 0 || literal < open)) {
+                int end = literalTagEnd(text, literal);
+                if (end <= literal) {
                     out.append(text.substring(i));
                     break;
                 }
-                out.append(text, i, end + "</nowiki>".length());
-                i = end + "</nowiki>".length();
+                out.append(text, i, end);
+                i = end;
                 continue;
             }
             if (open < 0) {
@@ -674,7 +688,9 @@ public class WikitextRenderer {
         }
 
         List<String> parts = splitTopLevel(expression, '|');
-        String name = parts.get(0).trim();
+        // 模板名本身也可以是参数 / 模板表达式（例如 {{ {{{1|{{Documentation/docname}}}}} }}）。
+        // 先展开名字再查模板；参数仍按原来的规则逐个展开。
+        String name = expand(parts.get(0).trim(), frame, pageTitle, depth, stack, trusted).trim();
         Map<String, String> arguments = new LinkedHashMap<>();
         int position = 1;
         for (int i = 1; i < parts.size(); i++) {
@@ -1803,6 +1819,8 @@ public class WikitextRenderer {
 
     private String prepareDirect(String content) {
         String result = removeTagPairs(content, "includeonly");
+        // 兼容导入内容里未闭合的包含标签：成对块已移除，残留的单个标签也不能进入正文
+        result = unwrapTagPairs(result, "includeonly");
         result = unwrapTagPairs(result, "noinclude");
         return unwrapTagPairs(result, "onlyinclude");
     }
@@ -1813,6 +1831,9 @@ public class WikitextRenderer {
             return only;
         }
         String result = removeTagPairs(content, "noinclude");
+        // 有些旧模板 / 导入页面存在未闭合的 <noinclude>（例如 Template:Documentation/docname）。
+        // 成对内容已被移除；残留的单个标签必须去掉，否则会进入标题 / fullurl / 链接文本。
+        result = unwrapTagPairs(result, "noinclude");
         return unwrapTagPairs(result, "includeonly");
     }
 
@@ -2074,19 +2095,46 @@ public class WikitextRenderer {
 
     // ==================== 行内解析 ====================
 
+    /** 行内文本里可直接保留的 HTML 实体（&nbsp; / &amp; / &#160; ……）；实体只会变成文字，不会生成标签。 */
+    private static final Pattern HTML_ENTITY = Pattern.compile(
+            "&(?:[A-Za-z][A-Za-z0-9]{1,31}|#\\d{1,7}|#[xX][0-9A-Fa-f]{1,6});");
+
     private String inline(String text) {
         if (text.isEmpty()) {
             return "";
         }
         List<String> tokens = new ArrayList<>();
         String staged = stashTags(text, tokens);
-        String escaped = HtmlSanitizer.escapeText(staged);
+        String escaped = escapeTextPreservingEntities(staged);
         escaped = BOTH.matcher(escaped).replaceAll("<b><i>$1</i></b>");
         escaped = BOLD.matcher(escaped).replaceAll("<b>$1</b>");
         escaped = ITALIC.matcher(escaped).replaceAll("<i>$1</i>");
         escaped = renderWikiLinks(escaped);
         escaped = renderExternalLinks(escaped);
         return restoreTokens(escaped, "\uE001", tokens);
+    }
+
+    /**
+     * 转义普通文本，但保留合法的 HTML 实体（如模板里常见的 {@code &nbsp;}）。
+     * <p>
+     * 直接把整段文本交给 {@code escapeText} 会把 {@code &} 变成 {@code &amp;}，
+     * 浏览器随后显示字面量 {@code &nbsp;}；而实体最终只会解码成文本字符，
+     * 不会像标签那样被当作 HTML 执行，所以可以安全保留。
+     */
+    private static String escapeTextPreservingEntities(String text) {
+        if (text.indexOf('&') < 0) {
+            return HtmlSanitizer.escapeText(text);
+        }
+        Matcher matcher = HTML_ENTITY.matcher(text);
+        StringBuilder out = new StringBuilder(text.length() + 16);
+        int last = 0;
+        while (matcher.find()) {
+            out.append(HtmlSanitizer.escapeText(text.substring(last, matcher.start())));
+            out.append(matcher.group());
+            last = matcher.end();
+        }
+        out.append(HtmlSanitizer.escapeText(text.substring(last)));
+        return out.toString();
     }
 
     private String stashTags(String text, List<String> tokens) {
@@ -2111,6 +2159,20 @@ public class WikitextRenderer {
             String target = matcher.group(1).trim();
             String rawLabel = matcher.group(2);
             String label = rawLabel != null ? rawLabel : target;
+            // {{fullurl:…}} 在旧模板里常写成 [[{{fullurl:…}} 创建]]：
+            // 展开后目标会变成 "/wiki/标题?action=edit 创建"（空格分隔 URL 与标签，不是竖线）。
+            // 识别这种 URL 形式，避免把 /wiki/ 再拼一遍、也避免把整段 URL 当显示文字。
+            String labelFromUrl = null;
+            int urlSpace = target.indexOf(' ');
+            if (urlSpace > 0 && (target.startsWith(WikiUrls.pagePrefix())
+                    || target.startsWith(WikiUrls.DEFAULT_PAGE_PREFIX)
+                    || target.matches("(?i)^(https?|ftp)://.*"))) {
+                labelFromUrl = target.substring(urlSpace + 1).trim();
+                target = target.substring(0, urlSpace).trim();
+            }
+            if (rawLabel == null && labelFromUrl != null && !labelFromUrl.isEmpty()) {
+                label = labelFromUrl;
+            }
             if (isFileTarget(target)) {
                 // 文件嵌入：[[文件:名称.png|thumb|说明|200px]]
                 matcher.appendReplacement(out, Matcher.quoteReplacement(renderFileEmbedding(target, rawLabel)));
@@ -2142,6 +2204,9 @@ public class WikitextRenderer {
                     label = real;
                 }
             } else if (target.matches("(?i)^(https?|ftp)://.*")) {
+                href = HtmlSanitizer.escapeAttribute(target);
+            } else if (target.startsWith("/")) {
+                // {{fullurl:…}} / {{localurl:…}} 已包含页面路径，不能再拼一次 /wiki/
                 href = HtmlSanitizer.escapeAttribute(target);
             } else {
                 href = WikiUrls.pagePrefix() + HtmlSanitizer.escapeAttribute(target.replace(' ', '_'));
@@ -2310,6 +2375,7 @@ public class WikitextRenderer {
                 + "\" alt=\"" + attributeText(alt) + "\""
                 + (width > 0 ? " width=\"" + width + "\"" : "")
                 + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
+                + " data-original-src=\"" + HtmlSanitizer.escapeAttribute(fileService.urlOf(file)) + "\""
                 + (caption.isEmpty() ? ""
                 : " data-caption=\"" + attributeText(HtmlSanitizer.escapeText(caption)) + "\"")
                 + " loading=\"lazy\">";
@@ -2638,6 +2704,7 @@ public class WikitextRenderer {
                 ? "width:" + displayWidth + "px;height:" + displayHeight + "px;object-fit:contain;"
                 : "max-width:" + displayWidth + "px") + "\""
                 + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
+                + " data-original-src=\"" + HtmlSanitizer.escapeAttribute(fileService.urlOf(file)) + "\""
                 + (captionPart.isEmpty() ? ""
                 : " data-caption=\"" + attributeText(HtmlSanitizer.escapeText(captionPart)) + "\"")
                 + " loading=\"lazy\">";
@@ -2837,6 +2904,14 @@ public class WikitextRenderer {
      * 只吞掉白名单里的标签，普通 HTML 仍按字符扫描。
      */
     private static int opaqueTagEnd(String text, int i) {
+        return opaqueTagEnd(text, i, OPAQUE_TAGS);
+    }
+
+    private static int literalTagEnd(String text, int i) {
+        return opaqueTagEnd(text, i, LITERAL_TAGS);
+    }
+
+    private static int opaqueTagEnd(String text, int i, Set<String> tags) {
         if (i < 0 || i >= text.length() || text.charAt(i) != '<') {
             return -1;
         }
@@ -2854,7 +2929,7 @@ public class WikitextRenderer {
             nameEnd++;
         }
         String name = text.substring(nameStart, nameEnd).toLowerCase(Locale.ROOT);
-        if (!OPAQUE_TAGS.contains(name)) {
+        if (!tags.contains(name)) {
             return -1;
         }
         String openTag = text.substring(i, openEnd + 1);

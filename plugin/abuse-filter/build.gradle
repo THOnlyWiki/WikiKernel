@@ -17,6 +17,8 @@ dependencies {
     testImplementation 'org.springframework:spring-context'
     testImplementation 'org.springframework:spring-web'
     testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.thymeleaf:thymeleaf-spring6'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testImplementation 'org.slf4j:slf4j-api'
     testImplementation 'com.h2database:h2'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'

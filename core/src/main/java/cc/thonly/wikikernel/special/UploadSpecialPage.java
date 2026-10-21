@@ -27,6 +27,14 @@ import java.util.Map;
 public class UploadSpecialPage implements SpecialPage {
 
     private static final int RECENT_LIMIT = 24;
+    /** 上传页可选的授权协议（文件页会原样展示）。 */
+    private static final List<String> LICENSE_OPTIONS = List.of(
+            FileService.DEFAULT_LICENSE,
+            "知识共享 署名-相同方式共享 4.0",
+            "知识共享 署名 4.0",
+            "CC0 1.0 公共领域贡献",
+            "公有领域",
+            "保留所有权利");
 
     private final FileService fileService;
     private final AccessControlService accessControlService;
@@ -81,6 +89,8 @@ public class UploadSpecialPage implements SpecialPage {
         String name = FileTitles.normalizeName(request.parameters().get("name"));
         model.put("prefillName", name);
         model.put("newVersion", !name.isEmpty() && fileService.findByName(name).isPresent());
+        model.put("licenseOptions", LICENSE_OPTIONS);
+        model.put("defaultLicense", FileService.DEFAULT_LICENSE);
 
         List<WikiFile> files = accessControlService.filterReadable(
                 fileService.recent(RECENT_LIMIT), file -> "文件:" + file.getName(), user);

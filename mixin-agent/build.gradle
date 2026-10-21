@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+}
+
+description = 'WikiKernel Mixin 启动器：在 core / Spring Boot 类加载前安装 Mixin + MixinExtras，并自动发现插件 Mixin 配置'
+
+dependencies {
+    // Fabric 维护的 SpongePowered Mixin 构建
+    implementation "net.fabricmc:sponge-mixin:${mixinVersion}"
+    // MixinExtras 本体，以及它编译时使用的 Commons Lang3（POM 未传递依赖，需要显式打入 agent）
+    implementation "io.github.llamalad7:mixinextras-common:${mixinExtrasVersion}"
+    implementation "org.apache.commons:commons-lang3:${commonsLangVersion}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+// 生成可直接用于 -javaagent 的瘦启动器 + Mixin/ASM/Guava/Gson 依赖。
+// 单独模块是为了保证 Mixin 在 Spring Boot 的 LaunchedClassLoader 创建前就位于系统类加载器上。
+tasks.register('agentJar', Jar) {
+    group = 'build'
+    description = '打包 WikiKernel Mixin Java Agent'
+    dependsOn tasks.named('classes')
+    archiveClassifier = 'agent'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(
+                'Premain-Class': 'cc.thonly.wikikernel.mixin.agent.WikiKernelMixinAgent',
+                'Agent-Class': 'cc.thonly.wikikernel.mixin.agent.WikiKernelMixinAgent',
+                'Can-Redefine-Classes': 'true',
+                'Can-Retransform-Classes': 'true'
+        )
+    }
+    from sourceSets.main.output
+    from({
+        configurations.runtimeClasspath.collect { file ->
+            file.isDirectory() ? file : zipTree(file)
+        }
+    })
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+}
+
+tasks.named('assemble') {
+    dependsOn tasks.named('agentJar')
+}

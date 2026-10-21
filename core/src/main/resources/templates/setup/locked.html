@@ -5,7 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{setup.locked.title} + ' - WikiKernel'">安装向导需要密钥</title>
+    <meta th:if="${@siteConfigImpl.getBoolean('site.no-referrer', false)}"
+          name="referrer" content="no-referrer">
     <link rel="stylesheet" th:href="@{/css/base.css}">
+    <link rel="stylesheet" th:href="@{/vendor/codex/2.7.0/codex.style.css}">
+    <link rel="stylesheet" th:href="@{/css/codex-bridge.css}">
     <script th:inline="javascript">
         window.SETUP_MESSAGES = {
             operationFailed: /*[[#{setup.operationFailed}]]*/ '',

@@ -6,7 +6,7 @@
 下节正文里的「28 个」是原 README 的说法，插件目录实际是 29 个，见 [README](../README.md#内置插件一览表) 的更正）。
 每个插件自己的细节见仓库里的 `plugin/<id>/README.md`（清单表格里给出了直达链接）。
 
-其它文档：[README](../README.md) ｜ [接口与兼容 API](./API.md) ｜ [配置与数据](./CONFIG.md) ｜ [功能详述](./FEATURES.md) ｜ [皮肤与前端界面](./SKIN.md) ｜ [Wikitext 与内容标记](./WIKITEXT.md)
+其它文档：[README](../README.md) ｜ [接口与兼容 API](./API.md) ｜ [配置与数据](./CONFIG.md) ｜ [功能详述](./FEATURES.md) ｜ [皮肤与前端界面](./SKIN.md) ｜ [Wikitext 与内容标记](./WIKITEXT.md) ｜ [插件 Mixin](./MIXIN.md)
 
 ## 依赖方向（不会产生循环依赖的关键）
 
@@ -171,6 +171,7 @@ cc.thonly.wikikernel.plugin.<id>.model      record / DTO / 枚举 / 常量表 / 
 | `plugin.requiresCore` | **core 版本约束**：`>=`、`>`、`<=`、`<`、`=` 或裸版本号（裸版本号 = 至少该版本；空 = 不限制）。比较**只看数字段**，因此 `>=0.0.1` 在 `0.0.1-SNAPSHOT` 上成立 | 不满足 → 跳过启动 + WARN（日志里给出要求值与当前 `WikiKernelInfo.VERSION`） |
 | `plugin.clientRequires` | **客户端（前端资源）依赖**的其它插件 id（逗号分隔，可空）：本插件的 `<head>` 片段需要那些插件的前端资源先加载 | 对方没加载 → **插件照常启动**，页面 `<head>` 里留一条 HTML 注释警告 + WARN 日志（前端能力降级，后端不受影响） |
 | `plugin.aop`（可选） | 本插件要用 `CoreAopHook` 对 core 的 Bean 加切面（`true` / 空）。**声明后 core 才会在默认配置下启用插件 AOP 桥**（`wikikernel.plugins.aop-bridge=auto`）；不声明则一个代理都不建（默认安全） | 未声明 → 桥不启用，`CoreAopHook` 注册了也不会生效（WARN 提示按需开启） |
+| `plugin.mixins`（可选） | 本插件的 Mixin / MixinExtras 配置资源（逗号分隔，如 `mixins.my-plugin.json`）。启动期 Java Agent 会在 core 类加载前注册；不写时自动发现 `*.mixins.json` / `mixins*.json`。详见 [插件 Mixin](./MIXIN.md) | 未加载 Agent → 插件照常启动但 Mixin 不生效（WARN）；运行期新增 → 跳过启动，重启后生效 |
 
 ```properties
 plugin.id=your-plugin
@@ -182,6 +183,7 @@ plugin.requires=comments,social-profile      # 运行期依赖（可空）
 plugin.requiresCore=>=0.0.1                    # core 版本约束（可空）
 plugin.clientRequires=comments                 # 前端资源依赖（可空）
 plugin.aop=true                                # 可选：声明要用 CoreAopHook 对 core Bean 加切面
+plugin.mixins=mixins.your-plugin.json          # 可选：插件 Mixin 配置（启动期生效）
 ```
 
 行为汇总（都是「只跳过 / 只告警」，**不会让应用启动失败**）：

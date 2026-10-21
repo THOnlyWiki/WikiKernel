@@ -132,6 +132,22 @@ curl -b cookies.txt -c cookies.txt -d 'action=login&lgname=用户&lgpassword=密
 curl -b cookies.txt -d 'action=edit&title=沙盒&text=内容&token=…' http://localhost:18080/api.php
 ```
 
+## MediaWiki 页面 / 资源兼容入口
+
+除了 `/api.php`，还提供三个直接从 MediaWiki 继承的入口，方便旧外链、脚本和工具继续工作：
+
+- **`/index.php?title=...`**：302 到本站规范页面 `/wiki/...`；`oldid` / `diff` / `action=edit` 等参数原样保留；
+  `action=raw` 直接返回源码，并支持 `ctype`（例如 `ctype=text/javascript`）；`curid` 会先解析成标题。
+- **`/load.php?modules=...`**：ResourceLoader 风格的最小兼容层。`site.styles`、`user.styles` 返回本站站点 CSS
+  （`Wiki.css` + `WikiKernel:Common.css` + 当前皮肤 CSS），`site`、`user` 返回站点 JS；未知模块返回注释占位，
+  不返回 404，避免旧页面因单个模块失败而中断。`only=styles|scripts` 与 `skin=` 会尽量遵循。
+- **`/thumb.php?f=文件名&w=宽度`**：按需生成 WebP 缩略图并从磁盘流式输出；宽度会限制为不超过原图（不放大），
+  生成结果缓存在 `thumbnail/<storedName>/w<宽度>.webp`。生成队列上限由
+  `wikikernel.thumbnail.queue-limit` 控制（默认 2），队列满时请求阻塞等待而不是直接拒绝。
+  也接受 `width=`、带 `文件:` 前缀的 `f=`；远端 OSS 原图不可本地读取时会 302 到外部原图。
+
+> `wgScript` 仍使用 `/wiki/`：本站规范页面路径优先；`index.php` 只作为兼容入口，不改变默认前端链接。
+
 ## MediaWiki JS API 兼容层（mw / mw.loader …）
 
 全站默认加载 `/js/mediawiki.js`（本地内置、同步加载）：页面自定义 JS、微件与 Gadgets 里可以直接用
@@ -179,10 +195,10 @@ URL 模块示例 `小部件:MwJsApiUrl模块.js`。
 - 页面就绪时会触发 `mw.hook('wikipage.content')`（传入 `mw.util.$content()`），Gadgets 常用。
 
 **与 MediaWiki 的差异（重要）**：
-- 没有 ResourceLoader 服务端：模块由 `register` / `implement` 声明；**已知未内置的常见模块会给出明确告警**，
+- 没有完整的 ResourceLoader 模块系统（`load.php` 仅兼容站点样式 / 脚本，见上一节）：模块由 `register` / `implement` 声明；**已知未内置的常见模块会给出明确告警**，
   仍按「空模块」解析（不会卡住 `using`）——详见下一节「未内置模块的告警」；
 - `mw.html#wikitext` 不做服务端解析（按纯文本，会打一次警告）；`mw.user.getRights()` 目前返回 `[]`；
-- `wgScript` 为 `/wiki/`（本站没有 `index.php`，非标准但已文档化）；`wgVersion` 是站点版本（不是 MediaWiki 版本号）；
+- `wgScript` 为 `/wiki/`（规范路径；另有兼容入口 `index.php`，见上一节）；`wgVersion` 是站点版本（不是 MediaWiki 版本号）；
 - `mw.loader.store`、package 模块（`module.exports`）、`skipFunction` 等高级特性未实现；
 - `mw.Api` 只走 `/api.php`：`edit` / `query` / `parse` / `login` 等都在，个别封装（`loadMessages`、`rollback` 等）未提供。
 

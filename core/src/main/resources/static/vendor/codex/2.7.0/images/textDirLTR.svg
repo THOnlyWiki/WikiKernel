@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+	<title>text direction left-to-right</title>
+	<path d="M6 19H0v-2h2V3H0V1h6v2H4v14h2zm13-9.708v1.416l-4.722 4.706L12.866 14l3.004-3H7V9h8.87l-3.004-2.999 1.412-1.415z"/>
+</svg>

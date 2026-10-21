@@ -39,7 +39,8 @@
 ## 与 MediaWiki AbuseFilter 的差异
 
 - 条件语法实现了常用子集（变量、字符串 / 数字 / 布尔运算、比较、`in` / `contains` / `matches`（正则）、
-  `+ - * / %`、括号、`!` / `&` / `|` / `^`、`if … then … else … end` 等），**没有** 100% 覆盖原版所有函数与关键字；
+  `+ - * / %`、括号、`!` / `&` / `|` / `^`、`if … then … else … end`、以及
+  `变量 := 表达式;` 赋值与分号分隔的多条语句等），**没有** 100% 覆盖原版所有函数与关键字；
 - 动作实现了 `disallow` / `warn` / `tag` / `block` / `blockautopromote` / `throttle` 里项目实际支持的几种
   （以插件代码为准），没有 `degroup`、`rangeblock` 等；
 - 条件求值没有原版的「运行时 / 语法 / 复杂度」三级限制与 `af_conditions_limit`，

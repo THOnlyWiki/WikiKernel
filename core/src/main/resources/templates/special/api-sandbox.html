@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="api-sandbox">
+    <p class="api-sandbox-intro" th:text="#{apiSandbox.intro}">
+        在当前登录会话中直接向 /api.php 发送请求；可以查看请求 URL 和原始响应。
+    </p>
+
+    <p class="wiki-hint" th:if="${!loggedIn}">
+        <span th:text="#{apiSandbox.notLoggedIn}">未登录：写操作会返回 notloggedin。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <form id="api-sandbox-form" class="wiki-form api-sandbox-form"
+          th:attr="data-endpoint=@{/api.php},data-logged-in=${loggedIn}">
+        <div class="api-sandbox-grid">
+            <label class="form-field" for="api-sandbox-action">
+                <span th:text="#{apiSandbox.action}">操作（action）</span>
+                <select id="api-sandbox-action" name="action">
+                    <option th:each="option : ${actionOptions}" th:value="${option['name']}"
+                            th:text="${option['name']}" th:selected="${option['selected']}"></option>
+                </select>
+            </label>
+            <label class="form-field" for="api-sandbox-format">
+                <span th:text="#{apiSandbox.format}">格式</span>
+                <select id="api-sandbox-format" name="format">
+                    <option value="json" th:selected="${defaultFormat == 'json'}">json</option>
+                    <option value="jsonfm" th:selected="${defaultFormat == 'jsonfm'}">jsonfm</option>
+                    <option value="xml" th:selected="${defaultFormat == 'xml'}">xml</option>
+                </select>
+            </label>
+            <label class="api-sandbox-check">
+                <input type="checkbox" id="api-sandbox-formatversion" value="2"
+                       th:checked="${formatVersion2}"/>
+                <span>formatversion=2</span>
+            </label>
+            <label class="api-sandbox-check">
+                <input type="checkbox" id="api-sandbox-autotoken" value="1" checked="checked"/>
+                <span th:text="#{apiSandbox.autoToken}">自动附加 CSRF token</span>
+            </label>
+        </div>
+
+        <fieldset class="api-sandbox-params-fieldset">
+            <legend th:text="#{apiSandbox.params}">参数</legend>
+            <p class="wiki-hint" th:text="#{apiSandbox.paramsHint}">
+                参数名和值分开填写；值支持多行，多值参数用 | 分隔，例如 prop=info|revisions。
+            </p>
+            <div id="api-sandbox-params" class="api-sandbox-params"></div>
+            <button type="button" id="api-sandbox-add-param" class="wiki-button"
+                    th:text="#{apiSandbox.addParam}">添加参数</button>
+        </fieldset>
+
+        <div class="form-field" id="api-sandbox-file-field" hidden="hidden">
+            <label for="api-sandbox-file" th:text="#{apiSandbox.file}">文件（upload）</label>
+            <input type="file" id="api-sandbox-file"/>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" id="api-sandbox-submit" class="wiki-button wiki-button-primary"
+                    th:text="#{apiSandbox.submit}">发送请求</button>
+            <button type="button" id="api-sandbox-reset" class="wiki-button"
+                    th:text="#{apiSandbox.clear}">清空参数</button>
+            <button type="button" id="api-sandbox-copy-url" class="wiki-button wiki-button-quiet"
+                    th:text="#{apiSandbox.copyUrl}">复制请求 URL</button>
+        </div>
+    </form>
+
+    <div class="api-sandbox-result">
+        <h2 th:text="#{apiSandbox.request}">请求</h2>
+        <p class="api-sandbox-request-line">
+            <strong id="api-sandbox-method">GET</strong>
+            <a id="api-sandbox-request-url" href="#" target="_blank" rel="noopener"></a>
+        </p>
+        <pre id="api-sandbox-request-body" class="api-sandbox-pre" hidden="hidden"></pre>
+
+        <h2 th:text="#{apiSandbox.response}">响应</h2>
+        <p id="api-sandbox-status" class="wiki-hint"></p>
+        <p id="api-sandbox-error" class="wiki-form-error" role="alert" hidden="hidden"></p>
+        <pre id="api-sandbox-response" class="api-sandbox-pre" aria-live="polite"></pre>
+    </div>
+
+    <template id="api-sandbox-param-row">
+        <div class="api-sandbox-param-row">
+            <input type="text" class="api-sandbox-param-name" th:attr="placeholder=#{apiSandbox.paramName}"
+                   aria-label="参数名"/>
+            <textarea class="api-sandbox-param-value" rows="1"
+                      th:attr="placeholder=#{apiSandbox.paramValue}" aria-label="值"></textarea>
+            <button type="button" class="wiki-button wiki-button-quiet api-sandbox-param-remove"
+                    th:text="#{apiSandbox.removeParam}">删除参数</button>
+        </div>
+    </template>
+
+    <script defer="defer" th:src="@{/js/api-sandbox.js(v=${assetVersion})}"></script>
+</section>
+</body>
+</html>

@@ -62,7 +62,7 @@
             <a th:if="${currentUser != null}" href="#" id="watch-toggle"
                th:attr="data-title=${wikiTitle},data-watched=${watched}"
                th:text="${watched} ? #{watch.unwatch} : #{watch.watch}">监视</a>
-            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录}"
+            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}"
                th:text="#{watch.watch}">监视</a>
         </li>
     </ul>
@@ -88,6 +88,8 @@
         <th:block th:each="fragment : ${pageBeforeTitleHtml}" th:utext="${fragment}"></th:block>
     </div>
     <h1 id="firstHeading" class="firstHeading" th:if="${hideTitle == null || !hideTitle}" th:text="${pageTitle}">页面标题</h1>
+    <!-- 子页面面包屑：a/b/c → < a/b < a（仿 MediaWiki 的 contentSub） -->
+    <div th:replace="~{fragments/subpages :: subpages(${subpageBreadcrumb})}"></div>
     <!-- 所有页面统一的内容容器：#bodyContent + .wiki-content（正文排版与词条一致） -->
     <div id="bodyContent" class="wiki-content" th:insert="${content}">
         <p>页面内容</p>

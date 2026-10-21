@@ -95,6 +95,81 @@ class AbuseExpressionTest {
     }
 
     @Test
+    void assignmentsAndSemicolonSequences() {
+        assertTrue(test("x := \"abc\"; x == \"abc\""));
+        assertTrue(test("x := \"a\"; y := x + \"b\"; y == \"ab\""));
+        assertFalse(test("x := \"a\"; x == \"b\""));
+        // 末尾分号允许
+        assertTrue(test("word := \"敏感词\"; \"敏感词\" rlike word;"));
+        // 赋值名可以遮蔽已知变量，但只在当前求值上下文生效
+        assertTrue(test("user_name := \"本地\"; user_name == \"本地\""));
+    }
+
+    @Test
+    void userSuppliedSensitiveWordFilterCompilesAndMatches() {
+        String pattern = """
+                pwords:="敏感词a|敏感词b|敏感词c";
+
+                (
+                    action == "edit" &
+                    ((lcase(added_lines) rlike pwords)
+                    |(lcase(summary) rlike pwords)
+                    |(lcase(page_title) rlike pwords))
+                )
+                |(
+                    action == "move" &
+                    lcase(moved_to_title) rlike pwords
+                )
+                """;
+        AbuseCondition condition = AbuseCondition.compile(pattern);
+        // 用户原文使用大写 A/B/C；语法也必须通过（是否命中取决于 rlike 的大小写语义）
+        assertTrue(AbuseCondition.compile(pattern.replace("敏感词a|敏感词b|敏感词c",
+                "敏感词A|敏感词B|敏感词C")) != null);
+        assertTrue(condition.test(context().put("added_lines", List.of("这里出现敏感词b"))));
+        assertTrue(condition.test(context().put("action", "move")
+                .put("moved_to_title", "含有敏感词a的页面")));
+        assertFalse(condition.test(context().put("added_lines", List.of("正常内容"))));
+    }
+
+    @Test
+    void pageTitleAliasesAndMediaWikiVariables() {
+        AbuseContext ctx = new AbuseContext()
+                .put("user_name", "ExampleUser")
+                .put("user_groups", List.of("用户", "sysop"))
+                .put("action", "edit")
+                .put("article_articleid", 0L)
+                .put("article_namespace", 2L)
+                .put("article_text", "ExampleUser")
+                .put("article_prefixedtext", "用户:ExampleUser")
+                .put("page_title", "ExampleUser")
+                .put("page_prefixedtitle", "用户:ExampleUser")
+                .put("edit_delta", 10L)
+                .put("new_text", "新正文")
+                .put("user_rights", List.of("read", "edit"));
+        assertTrue(AbuseCondition.compile("article_text == \"ExampleUser\"").test(ctx));
+        assertTrue(AbuseCondition.compile("article_prefixedtext == \"用户:ExampleUser\"").test(ctx));
+        assertTrue(AbuseCondition.compile("page_prefixedtitle == \"用户:ExampleUser\"").test(ctx));
+        assertTrue(AbuseCondition.compile("edit_delta == 10").test(ctx));
+        assertTrue(AbuseCondition.compile("new_text == \"新正文\"").test(ctx));
+        assertTrue(AbuseCondition.compile("\"sysop\" in user_groups").test(ctx));
+        assertTrue(AbuseCondition.compile("\"edit\" in user_rights").test(ctx));
+        // 用户给出的典型创建用户页过滤器（页面名与当前用户名不同）
+        AbuseContext creation = ctx.put("article_text", "OtherUser")
+                .put("article_prefixedtext", "用户:OtherUser")
+                .put("page_title", "OtherUser")
+                .put("page_prefixedtitle", "用户:OtherUser")
+                .put("user_groups", List.of("用户"));
+        assertTrue(AbuseCondition.compile("""
+                !("sysop" in user_groups) &
+                action == "edit" &
+                article_articleid == 0 &
+                article_namespace == 2 &
+                !("/" in article_text) &
+                user_name != article_text
+                """).test(creation));
+    }
+
+    @Test
     void syntaxCheckedOnCompile() {
         assertThrows(AbuseCondition.SyntaxException.class, () -> AbuseCondition.compile("action =="));
         assertThrows(AbuseCondition.SyntaxException.class, () -> AbuseCondition.compile("unknown_variable == 1"));

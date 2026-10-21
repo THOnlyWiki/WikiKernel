@@ -45,7 +45,11 @@ public final class AbuseFilterHeadProvider implements HtmlHeadProvider {
                         + "abuseTestUser: " + AbuseFilterSupport.json(support.message("abusefilter.tableUser")) + ","
                         + "abuseTestTime: " + AbuseFilterSupport.json(support.message("abusefilter.tableTime")) + ","
                         + "abuseTestSummary: " + AbuseFilterSupport.json(support.message("abusefilter.tableSummary")) + ","
-                        + "abuseTestResult: " + AbuseFilterSupport.json(support.message("abusefilter.tableResult"))
+                        + "abuseTestResult: " + AbuseFilterSupport.json(support.message("abusefilter.tableResult")) + ","
+                        + "abusePreviewShow: " + AbuseFilterSupport.json(support.message("abusefilter.previewShow")) + ","
+                        + "abusePreviewHide: " + AbuseFilterSupport.json(support.message("abusefilter.previewHide")) + ","
+                        + "abusePreviewEmpty: " + AbuseFilterSupport.json(support.message("abusefilter.previewEmpty")) + ","
+                        + "abusePreviewFailed: " + AbuseFilterSupport.json(support.message("abusefilter.previewFailed"))
                         + "});</script>",
                 "<script defer src=\"/plugins/abuse-filter/abuse-filter.js\"></script>");
     }

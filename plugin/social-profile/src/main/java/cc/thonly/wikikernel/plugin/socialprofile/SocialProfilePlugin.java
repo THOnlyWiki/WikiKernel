@@ -16,6 +16,7 @@ import cc.thonly.wikikernel.common.service.UserSettings;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.service.WikiText;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiMessage;
+import cc.thonly.wikikernel.plugin.socialprofile.data.WikiGift;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserAward;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserBoard;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserGift;
@@ -47,6 +48,7 @@ import cc.thonly.wikikernel.plugin.socialprofile.web.AwardsSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.EditProfileSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.FriendsSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.GiftsSpecialPage;
+import cc.thonly.wikikernel.plugin.socialprofile.web.GiftManagerSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.MessagesSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.RandomUsersSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.SendGiftSpecialPage;
@@ -204,7 +206,7 @@ public class SocialProfilePlugin implements WikiPlugin {
     @Override
     public List<Class<?>> schemaEntities() {
         return List.of(WikiUserBoard.class, WikiUserRelation.class, WikiUserGift.class,
-                WikiUserStats.class, WikiUserAward.class, WikiMessage.class);
+                WikiGift.class, WikiUserStats.class, WikiUserAward.class, WikiMessage.class);
     }
 
     @Override
@@ -227,6 +229,8 @@ public class SocialProfilePlugin implements WikiPlugin {
                 friends, gifts, avatars));
         context.register(SpecialPage.class, new GiftsSpecialPage(userStore, support, profiles, board,
                 friends, gifts, avatars));
+        context.register(SpecialPage.class, new GiftManagerSpecialPage(userStore, support, profiles, board,
+                friends, gifts, avatars, currentUser));
         context.register(SpecialPage.class, new TopUsersSpecialPage(userStore, support, profiles, board,
                 friends, gifts, avatars, points, userStatsStore, pointsRules));
         context.register(SpecialPage.class, new AwardsSpecialPage(userStore, support, profiles, board,

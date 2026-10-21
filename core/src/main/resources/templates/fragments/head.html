@@ -9,11 +9,20 @@
     <!-- 静态资源放在 core/src/main/resources/static/ 下 -->
     <!-- 基础样式（全皮肤共用）+ 当前皮肤样式（base 之后加载，可覆盖） -->
     <link rel="stylesheet" th:href="@{/css/base.css(v=${assetVersion})}">
-    <!--/* 站点图标：默认用内置 wiki-logo.svg（浏览器默认请求 /favicon.ico 会 404）。
-           想换成自己的图标：把 href 改成自己的图片 URL（或替换 core 的 static/img/wiki-logo.svg） */-->
-    <link rel="icon" th:href="@{/img/wiki-logo.svg(v=${assetVersion})}">
+    <!--/* 站点图标：站点设置 site.favicon 可配置站内路径 / http(s) URL；留空用内置 wiki-logo.svg。
+           /favicon.ico 也会跳转到同一配置（FaviconController），避免浏览器默认请求 404。 */-->
+    <link rel="icon" th:with="favicon=${@siteConfigImpl.get('site.favicon', '')}"
+          th:href="${#strings.isEmpty(favicon) ? '/img/wiki-logo.svg?v=' + assetVersion : favicon}">
+    <link rel="shortcut icon" th:with="favicon=${@siteConfigImpl.get('site.favicon', '')}"
+          th:href="${#strings.isEmpty(favicon) ? '/img/wiki-logo.svg?v=' + assetVersion : favicon}">
+    <!--/* 隐私开关：站点设置 site.no-referrer = true 时对所有页面输出 no-referrer。 */-->
+    <meta th:if="${@siteConfigImpl.getBoolean('site.no-referrer', false)}"
+          name="referrer" content="no-referrer">
     <link th:each="skinSheet : ${skin.stylesheets}" rel="stylesheet"
           th:href="@{${skinSheet}(v=${assetVersion})}">
+    <!-- Wikimedia Codex 2.7.0（本地内置，完整组件样式 + 图标）+ 本站旧 class 的 Codex 适配层 -->
+    <link rel="stylesheet" th:href="@{/vendor/codex/2.7.0/codex.style.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/css/codex-bridge.css(v=${assetVersion})}">
     <!-- 页面自定义样式（Wiki.css + {title}/XXX.css），服务端已转义 <，不会提前闭合 style -->
     <style th:each="css : ${pageCss}" th:utext="${css}">/* 页面自定义样式 */</style>
     <script th:inline="javascript">
@@ -31,6 +40,7 @@
             hardDeleteConfirm: /*[[#{files.hardDeleteConfirm}]]*/ '',
             revertConfirm: /*[[#{files.revertConfirm}]]*/ '',
             prefResetConfirm: /*[[#{preferences.resetConfirm}]]*/ '',
+            prefExternalUnlinkConfirm: /*[[#{preferences.externalUnlinkConfirm}]]*/ '',
             prefTabNoMatch: /*[[#{preferences.tabNoMatch}]]*/ '',
             timeZoneUnavailable: /*[[#{preferences.timezoneUnavailable}]]*/ '',
             prefCountrySearch: /*[[#{preferences.countrySearch}]]*/ '',

@@ -56,83 +56,299 @@
 
         <!-- ==================== 编辑 / 新建 ==================== -->
         <th:block th:if="${mode == 'edit'}">
-            <h2 th:if="${abuseFilter == null}" th:text="#{abusefilter.create}">创建过滤器</h2>
-            <h2 th:if="${abuseFilter != null}"
-                th:text="#{abusefilter.editTitle(${abuseFilter.id})}">编辑过滤器</h2>
-            <form id="abuse-filter-form" class="wiki-form" method="post"
+            <div class="abuse-filter-edit-head">
+                <h2 th:if="${abuseFilter == null}" th:text="#{abusefilter.createHeading}">创建滥用过滤器</h2>
+                <h2 th:if="${abuseFilter != null}"
+                    th:text="#{abusefilter.editHeading}">编辑滥用过滤器</h2>
+                <p class="wiki-hint" th:text="#{abusefilter.editIntro}">
+                    过滤器由条件表达式筛选编辑；匹配后按下面勾选的操作处理。保存时会做语法检查。
+                </p>
+                <p class="abuse-filter-tabs">
+                    <a th:href="@{/wiki/特殊:滥用过滤器}" th:text="#{abusefilter.tabs.filters}">过滤器列表</a>
+                    <span class="language-separator">·</span>
+                    <a th:href="@{/wiki/特殊:最近更改}" th:text="#{abusefilter.tabs.recent}">最近更改</a>
+                    <span class="language-separator">·</span>
+                    <a th:href="@{/wiki/特殊:滥用过滤器(test=1)}" th:text="#{abusefilter.tabs.examine}">检查已选的编辑</a>
+                    <span class="language-separator">·</span>
+                    <a th:href="@{/wiki/特殊:滥用日志}" th:text="#{abusefilter.tabs.log}">滥用日志</a>
+                    <span class="language-separator">·</span>
+                    <a th:href="@{/wiki/特殊:滥用过滤器(test=1)}" th:text="#{abusefilter.tabs.test}">测试工具</a>
+                </p>
+            </div>
+
+            <form id="abuse-filter-form" class="wiki-form abuse-filter-form" method="post"
                   th:attr="data-id=${abuseFilter != null ? abuseFilter.id : 0}">
                 <input type="hidden" name="id" th:value="${abuseFilter != null ? abuseFilter.id : 0}"/>
 
-                <div class="form-field">
-                    <label for="abuse-filter-description" th:text="#{abusefilter.description}">说明：</label>
-                    <input type="text" id="abuse-filter-description" name="description" maxlength="255"
-                           th:value="${abuseFilter != null ? abuseFilter.description : ''}"/>
-                </div>
+                <section class="abuse-filter-section">
+                    <h3 th:text="#{abusefilter.parameters}">过滤器参数</h3>
 
-                <div class="form-field">
-                    <label for="abuse-filter-pattern" th:text="#{abusefilter.pattern}">条件：</label>
-                    <textarea id="abuse-filter-pattern" name="pattern" rows="8" data-language="abusefilter"
-                              th:text="${abuseFilter != null ? abuseFilter.pattern : ''}"></textarea>
-                    <div class="wiki-hint" th:text="#{abusefilter.patternHint}">
-                        表达式语法：变量（action / page_title / user_name / added_lines …）与函数（lcase、
-                        contains_any、norm、ccnorm、ip_in_range …）；运算符 == != &lt; &gt; in contains like
-                        rlike irlike &amp; | ! + - * / % **；保存时会做语法检查。
+                    <div class="abuse-filter-fixed-row">
+                        <span class="abuse-filter-fixed-label" th:text="#{abusefilter.filterId}">过滤器ID：</span>
+                        <span th:if="${abuseFilter != null}" th:text="#{abusefilter.filterIdValue(${abuseFilter.id})}">#1</span>
+                        <span th:if="${abuseFilter == null}" th:text="#{abusefilter.newFilter}">新建过滤器</span>
                     </div>
-                </div>
 
-                <div class="form-field">
-                    <span th:text="#{abusefilter.actions}">操作：</span>
-                    <ul class="abuse-action-list">
-                        <li th:each="option : ${actionOptions}">
+                    <div class="form-field">
+                        <label for="abuse-filter-description">
+                            <span th:text="#{abusefilter.description}">说明：</span>
+                            <span class="abuse-filter-public-hint" th:text="#{abusefilter.publicHint}">（公开可见）</span>
+                        </label>
+                        <input type="text" id="abuse-filter-description" name="description" maxlength="255"
+                               th:value="${abuseFilter != null ? abuseFilter.description : ''}"/>
+                    </div>
+
+                    <div class="form-field abuse-filter-condition-field">
+                        <label for="abuse-filter-pattern" th:text="#{abusefilter.pattern}">条件：</label>
+                        <div class="abuse-condition-tools">
+                            <select id="abuse-filter-insert" th:attr="aria-label=#{abusefilter.insert}">
+                                <option value="" th:text="#{abusefilter.insert}">选择需要添加到光标的项</option>
+                                <optgroup th:attr="label=#{abusefilter.insertVariable}">
+                                    <option value="action">action</option>
+                                    <option value="page_title">page_title</option>
+                                    <option value="page_prefixedtitle">page_prefixedtitle</option>
+                                    <option value="article_text">article_text</option>
+                                    <option value="article_prefixedtext">article_prefixedtext</option>
+                                    <option value="page_age">page_age</option>
+                                    <option value="page_namespace">page_namespace</option>
+                                    <option value="user_name">user_name</option>
+                                    <option value="user_groups">user_groups</option>
+                                    <option value="user_rights">user_rights</option>
+                                    <option value="user_editcount">user_editcount</option>
+                                    <option value="summary">summary</option>
+                                    <option value="edit_delta">edit_delta</option>
+                                    <option value="added_lines">added_lines</option>
+                                    <option value="removed_lines">removed_lines</option>
+                                    <option value="all_links">all_links</option>
+                                    <option value="added_links">added_links</option>
+                                    <option value="removed_links">removed_links</option>
+                                    <option value="new_wikitext">new_wikitext</option>
+                                    <option value="old_wikitext">old_wikitext</option>
+                                    <option value="moved_to_title">moved_to_title</option>
+                                    <option value="file_size">file_size</option>
+                                    <option value="ip">ip</option>
+                                </optgroup>
+                                <optgroup th:attr="label=#{abusefilter.insertFunction}">
+                                    <option value="lcase()">lcase()</option>
+                                    <option value="ucase()">ucase()</option>
+                                    <option value="contains_any()">contains_any()</option>
+                                    <option value="contains_all()">contains_all()</option>
+                                    <option value="equals_to_any()">equals_to_any()</option>
+                                    <option value="length()">length()</option>
+                                    <option value="ccnorm()">ccnorm()</option>
+                                    <option value="ip_in_range()">ip_in_range()</option>
+                                </optgroup>
+                            </select>
+                            <button type="button" id="abuse-filter-toggle-editor" class="wiki-button"
+                                    th:text="#{abusefilter.toggleEditor}">切换编辑器</button>
+                            <button type="button" id="abuse-filter-check" class="wiki-button"
+                                    th:text="#{abusefilter.syntaxCheck}">语法检查</button>
+                            <span id="abuse-filter-check-message" class="abuse-check-message" hidden></span>
+                        </div>
+                        <textarea id="abuse-filter-pattern" name="pattern" rows="12" data-language="abusefilter"
+                                  th:text="${abuseFilter != null ? abuseFilter.pattern : ''}"></textarea>
+                        <div class="wiki-hint" th:text="#{abusefilter.patternHint}">
+                            表达式语法：变量、函数、比较与逻辑运算；支持 <code>变量 := 表达式;</code>
+                            赋值和分号分隔的多条语句。保存时会做语法检查。
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="abuse-filter-notes" th:text="#{abusefilter.notes}">备注：</label>
+                        <textarea id="abuse-filter-notes" name="notes" rows="4"
+                                  th:text="${abuseFilter != null ? abuseFilter.notes : ''}"></textarea>
+                        <div class="wiki-hint" th:text="#{abusefilter.notesHint}">
+                            备注只显示在过滤器编辑页，不会出现在命中提示里。
+                        </div>
+                    </div>
+
+                    <div class="form-field abuse-filter-flags">
+                        <span th:text="#{abusefilter.flags}">标记：</span>
+                        <label>
+                            <input type="checkbox" name="hidden" value="1"
+                                   th:checked="${abuseFilter != null and abuseFilter.hidden}"/>
+                            <span th:text="#{abusefilter.flagHiddenDetails}">向公众隐藏本过滤器的详细信息</span>
+                        </label>
+                        <label>
+                            <input type="checkbox" name="enabled" value="1"
+                                   th:checked="${abuseFilter != null and abuseFilter.enabled}"/>
+                            <span th:text="#{abusefilter.flagEnabled}">启用此过滤器</span>
+                        </label>
+                        <label>
+                            <input type="checkbox" name="deleted" value="1"
+                                   th:checked="${abuseFilter != null and abuseFilter.deleted}"/>
+                            <span th:text="#{abusefilter.flagDeleted}">标记为已删除</span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="abuse-filter-section abuse-filter-actions-section">
+                    <h3 th:text="#{abusefilter.actionsTitle}">当匹配时，要进行操作</h3>
+
+                    <div class="abuse-action-card abuse-action-throttle">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="throttle"
+                                   th:checked="${selectedActions != null and selectedActions.contains('throttle')}"/>
+                            <span th:text="#{abusefilter.throttleOnly}">只当用户触发频率上限后才触发这些操作</span>
+                        </label>
+                        <div class="abuse-inline-fields">
                             <label>
-                                <input type="checkbox" name="actions" th:value="${option.id}"
-                                       th:checked="${selectedActions != null and selectedActions.contains(option.id)}"/>
-                                <span th:text="${option.label}">阻止操作</span>
-                                <span class="abuse-restricted" th:if="${option.restricted}"
-                                      th:text="#{abusefilter.restrictedMark}">（受限操作）</span>
+                                <span th:text="#{abusefilter.throttleCount}">允许的操作次数</span>
+                                <input type="number" name="throttleCount" min="0" step="1"
+                                       th:value="${abuseFilter != null ? abuseFilter.throttleCount : 3}"/>
                             </label>
-                        </li>
-                    </ul>
-                </div>
+                            <label>
+                                <span th:text="#{abusefilter.throttlePeriod}">期间（秒）</span>
+                                <input type="number" name="throttlePeriod" min="0" step="1"
+                                       th:value="${abuseFilter != null ? abuseFilter.throttlePeriod : 60}"/>
+                            </label>
+                            <label>
+                                <span th:text="#{abusefilter.throttleGroupLabel}">受影响的群组</span>
+                                <select name="throttleGroup">
+                                    <option value="user" th:selected="${abuseFilter == null or abuseFilter.throttleGroup == 'user'}">user</option>
+                                    <option value="ip" th:selected="${abuseFilter != null and abuseFilter.throttleGroup == 'ip'}">ip</option>
+                                    <option value="page" th:selected="${abuseFilter != null and abuseFilter.throttleGroup == 'page'}">page</option>
+                                    <option value="user-ip" th:selected="${abuseFilter != null and abuseFilter.throttleGroup == 'user-ip'}">user-ip</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="wiki-hint" th:text="#{abusefilter.throttleHint}">
+                            达到允许次数后才会执行下面的警告 / 阻止 / 封禁等操作。
+                        </p>
+                    </div>
+
+                    <div class="abuse-action-card">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="warn"
+                                   th:checked="${selectedActions != null and selectedActions.contains('warn')}"/>
+                            <span th:text="#{abusefilter.warnAction}">向用户发出警告</span>
+                        </label>
+                        <div class="abuse-inline-fields">
+                            <label class="abuse-wide-field">
+                                <span th:text="#{abusefilter.warnMessage}">系统消息键或警告文案（留空使用说明）</span>
+                                <input type="text" name="warnMessage" maxlength="255"
+                                       th:value="${abuseFilter != null ? abuseFilter.warnMessage : ''}"/>
+                            </label>
+                            <label class="abuse-wide-field">
+                                <span th:text="#{abusefilter.warnPage}">备用信息页标题（警告文案为空时读取该页最新正文；不写命名空间自动使用 WikiKernel:）</span>
+                                <input type="text" name="warnPage" maxlength="255" placeholder="WikiKernel:Abusefilter-warning"
+                                       th:value="${abuseFilter != null ? abuseFilter.warnPage : ''}"/>
+                            </label>
+                        </div>
+                        <div class="abuse-message-tools">
+                            <button type="button" class="wiki-button abuse-message-preview"
+                                    data-message="warnMessage" data-page="warnPage"
+                                    data-target="abuse-warn-preview"
+                                    th:text="#{abusefilter.previewShow}">显示预览</button>
+                            <a class="abuse-message-page-link" data-page="warnPage" href="#" hidden
+                               th:text="#{abusefilter.editMessagePage}">创建 / 编辑信息页</a>
+                        </div>
+                        <div id="abuse-warn-preview" class="abuse-message-preview" hidden></div>
+                    </div>
+
+                    <div class="abuse-action-card">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="disallow"
+                                   th:checked="${selectedActions != null and selectedActions.contains('disallow')}"/>
+                            <span th:text="#{abusefilter.disallowAction}">阻止用户进行可疑的操作</span>
+                        </label>
+                        <div class="abuse-inline-fields">
+                            <label class="abuse-wide-field">
+                                <span th:text="#{abusefilter.disallowMessage}">系统消息键或阻止文案（留空使用说明）</span>
+                                <input type="text" name="disallowMessage" maxlength="255"
+                                       th:value="${abuseFilter != null ? abuseFilter.disallowMessage : ''}"/>
+                            </label>
+                            <label class="abuse-wide-field">
+                                <span th:text="#{abusefilter.disallowPage}">备用信息页标题（阻止文案为空时读取该页最新正文；不写命名空间自动使用 WikiKernel:）</span>
+                                <input type="text" name="disallowPage" maxlength="255" placeholder="WikiKernel:Abusefilter-disallowed"
+                                       th:value="${abuseFilter != null ? abuseFilter.disallowPage : ''}"/>
+                            </label>
+                        </div>
+                        <div class="abuse-message-tools">
+                            <button type="button" class="wiki-button abuse-message-preview"
+                                    data-message="disallowMessage" data-page="disallowPage"
+                                    data-target="abuse-disallow-preview"
+                                    th:text="#{abusefilter.previewShow}">显示预览</button>
+                            <a class="abuse-message-page-link" data-page="disallowPage" href="#" hidden
+                               th:text="#{abusefilter.editMessagePage}">创建 / 编辑信息页</a>
+                        </div>
+                        <div id="abuse-disallow-preview" class="abuse-message-preview" hidden></div>
+                    </div>
+
+                    <div class="abuse-action-card">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="blockautopromote"
+                                   th:checked="${selectedActions != null and selectedActions.contains('blockautopromote')}"/>
+                            <span th:text="#{abusefilter.blockAutopromoteAction}">撤销用户的自动确认状态</span>
+                            <span class="abuse-restricted" th:text="#{abusefilter.restrictedMark}">（受限操作）</span>
+                        </label>
+                    </div>
+
+                    <div class="abuse-action-card">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="block"
+                                   th:checked="${selectedActions != null and selectedActions.contains('block')}"/>
+                            <span th:text="#{abusefilter.blockAction}">封禁进行编辑的用户/IP地址</span>
+                            <span class="abuse-restricted" th:text="#{abusefilter.restrictedMark}">（受限操作）</span>
+                        </label>
+                        <div class="abuse-inline-fields">
+                            <label>
+                                <span th:text="#{abusefilter.blockAnon}">匿名用户封禁时间</span>
+                                <select name="blockAnonDays">
+                                    <option value="0" th:selected="${(abuseFilter != null ? abuseFilter.blockAnonDays : 3) == 0}" th:text="#{abusefilter.infinite}">不限期</option>
+                                    <option value="1" th:selected="${(abuseFilter != null ? abuseFilter.blockAnonDays : 3) == 1}">1天</option>
+                                    <option value="3" th:selected="${(abuseFilter != null ? abuseFilter.blockAnonDays : 3) == 3}">3天</option>
+                                    <option value="7" th:selected="${(abuseFilter != null ? abuseFilter.blockAnonDays : 3) == 7}">7天</option>
+                                    <option value="30" th:selected="${(abuseFilter != null ? abuseFilter.blockAnonDays : 3) == 30}">30天</option>
+                                    <option value="90" th:selected="${(abuseFilter != null ? abuseFilter.blockAnonDays : 3) == 90}">90天</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span th:text="#{abusefilter.blockUser}">注册用户封禁时间</span>
+                                <select name="blockUserDays">
+                                    <option value="0" th:selected="${(abuseFilter != null ? abuseFilter.blockUserDays : 3) == 0}" th:text="#{abusefilter.infinite}">不限期</option>
+                                    <option value="1" th:selected="${(abuseFilter != null ? abuseFilter.blockUserDays : 3) == 1}">1天</option>
+                                    <option value="3" th:selected="${(abuseFilter != null ? abuseFilter.blockUserDays : 3) == 3}">3天</option>
+                                    <option value="7" th:selected="${(abuseFilter != null ? abuseFilter.blockUserDays : 3) == 7}">7天</option>
+                                    <option value="30" th:selected="${(abuseFilter != null ? abuseFilter.blockUserDays : 3) == 30}">30天</option>
+                                    <option value="90" th:selected="${(abuseFilter != null ? abuseFilter.blockUserDays : 3) == 90}">90天</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label class="abuse-checkbox-line">
+                            <input type="checkbox" name="blockTalk" value="1"
+                                   th:checked="${abuseFilter != null and abuseFilter.blockTalk}"/>
+                            <span th:text="#{abusefilter.blockTalk}">封禁期间禁止编辑自己的讨论页</span>
+                        </label>
+                    </div>
+
+                    <div class="abuse-action-card">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="tag"
+                                   th:checked="${selectedActions != null and selectedActions.contains('tag')}"/>
+                            <span th:text="#{abusefilter.tagAction}">标记该编辑以便进一步检查</span>
+                        </label>
+                        <div class="abuse-inline-fields">
+                            <label class="abuse-wide-field">
+                                <span th:text="#{abusefilter.tagList}">要应用的标签</span>
+                                <input type="text" id="abuse-filter-tags" name="tags" maxlength="255"
+                                       th:value="${abuseFilter != null ? abuseFilter.tags : ''}"/>
+                            </label>
+                        </div>
+                        <p class="wiki-hint" th:text="#{abusefilter.tagHint}">一个标签一个，或用逗号分隔。</p>
+                    </div>
+
+                    <div class="abuse-action-card abuse-action-degrade">
+                        <label class="abuse-action-title">
+                            <input type="checkbox" name="actions" value="degrade"
+                                   th:checked="${selectedActions != null and selectedActions.contains('degrade')}"/>
+                            <span th:text="#{abusefilter.action.degrade}">降级为警告</span>
+                        </label>
+                    </div>
+                </section>
 
                 <div class="form-field">
-                    <label for="abuse-filter-tags" th:text="#{abusefilter.tags}">标签（tag 操作用，多个用逗号分隔）：</label>
-                    <input type="text" id="abuse-filter-tags" name="tags" maxlength="255"
-                           th:value="${abuseFilter != null ? abuseFilter.tags : ''}"/>
-                </div>
-
-                <div class="form-field abuse-throttle">
-                    <span th:text="#{abusefilter.throttle}">节流设置：</span>
-                    <label><span th:text="#{abusefilter.throttleCount}">允许次数</span>
-                        <input type="number" name="throttleCount" min="0" step="1"
-                               th:value="${abuseFilter != null ? abuseFilter.throttleCount : 0}"/></label>
-                    <label><span th:text="#{abusefilter.throttlePeriod}">期间（秒）</span>
-                        <input type="number" name="throttlePeriod" min="0" step="1"
-                               th:value="${abuseFilter != null ? abuseFilter.throttlePeriod : 0}"/></label>
-                    <label><span th:text="#{abusefilter.throttleGroup}">分组</span>
-                        <select name="throttleGroup">
-                            <option value="user" th:selected="${abuseFilter == null or abuseFilter.throttleGroup == 'user'}">user</option>
-                            <option value="ip" th:selected="${abuseFilter != null and abuseFilter.throttleGroup == 'ip'}">ip</option>
-                            <option value="page" th:selected="${abuseFilter != null and abuseFilter.throttleGroup == 'page'}">page</option>
-                            <option value="user-ip" th:selected="${abuseFilter != null and abuseFilter.throttleGroup == 'user-ip'}">user-ip</option>
-                        </select></label>
-                </div>
-
-                <div class="form-field">
-                    <span th:text="#{abusefilter.flags}">标记：</span>
-                    <label><input type="checkbox" name="enabled" value="1"
-                                  th:checked="${abuseFilter != null and abuseFilter.enabled}"/>
-                        <span th:text="#{abusefilter.flagEnabled}">启用此过滤器</span></label>
-                    <label><input type="checkbox" name="hidden" value="1"
-                                  th:checked="${abuseFilter != null and abuseFilter.hidden}"/>
-                        <span th:text="#{abusefilter.flagHidden}">隐藏此过滤器（只有管理员可见）</span></label>
-                    <label><input type="checkbox" name="deleted" value="1"
-                                  th:checked="${abuseFilter != null and abuseFilter.deleted}"/>
-                        <span th:text="#{abusefilter.flagDeleted}">删除此过滤器</span></label>
-                </div>
-
-                <div class="form-field">
-                    <label for="abuse-filter-comment" th:text="#{abusefilter.comment}">备注：</label>
+                    <label for="abuse-filter-comment" th:text="#{abusefilter.comment}">编辑摘要：</label>
                     <input type="text" id="abuse-filter-comment" name="comment" maxlength="255"/>
                 </div>
 

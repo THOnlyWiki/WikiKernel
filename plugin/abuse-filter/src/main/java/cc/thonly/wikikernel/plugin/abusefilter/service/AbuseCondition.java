@@ -3,8 +3,10 @@ package cc.thonly.wikikernel.plugin.abusefilter.service;
 import cc.thonly.wikikernel.plugin.abusefilter.model.AbuseContext;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * AbuseFilter 过滤条件的解析与求值（覆盖 MediaWiki 表达式的常用子集）：
@@ -64,7 +66,7 @@ public final class AbuseCondition {
         Parser parser = new Parser(expression);
         Node root = parser.parseExpression();
         parser.expectEnd();
-        validate(root);
+        validate(root, new LinkedHashSet<>());
         return new AbuseCondition(root, expression == null ? "" : expression);
     }
 
@@ -75,16 +77,34 @@ public final class AbuseCondition {
 
     /** 求值成布尔。 */
     public boolean test(AbuseContext context) {
-        return AbuseValues.toBoolean(root.eval(context));
+        if (context == null) {
+            return false;
+        }
+        context.clearLocals();
+        try {
+            return AbuseValues.toBoolean(root.eval(context));
+        } finally {
+            context.clearLocals();
+        }
     }
 
-    /** 语法检查：变量与函数名必须在已知集合里。 */
-    private static void validate(Node node) {
+    /** 语法检查：变量与函数名必须在已知集合里；赋值定义的局部变量在后续表达式可见。 */
+    private static void validate(Node node, Set<String> locals) {
         switch (node) {
             case Variable variable -> {
-                if (!AbuseContext.KNOWN_VARIABLES.contains(variable.name())) {
+                if (!AbuseContext.KNOWN_VARIABLES.contains(variable.name())
+                        && !locals.contains(variable.name())) {
                     throw new SyntaxException("未知变量：" + variable.name(),
                             "abusefilter.error.unknownVariable", variable.name());
+                }
+            }
+            case Assign assign -> {
+                validate(assign.value(), locals);
+                locals.add(assign.name());
+            }
+            case Sequence sequence -> {
+                for (Node statement : sequence.statements()) {
+                    validate(statement, locals);
                 }
             }
             case FunctionCall function -> {
@@ -92,12 +112,14 @@ public final class AbuseCondition {
                     throw new SyntaxException("未知函数：" + function.name(),
                             "abusefilter.error.unknownFunction", function.name());
                 }
-                function.args().forEach(AbuseCondition::validate);
+                for (Node arg : function.args()) {
+                    validate(arg, locals);
+                }
             }
-            case Unary unary -> validate(unary.operand());
+            case Unary unary -> validate(unary.operand(), locals);
             case Binary binary -> {
-                validate(binary.left());
-                validate(binary.right());
+                validate(binary.left(), locals);
+                validate(binary.right(), locals);
             }
             default -> {
             }
@@ -107,7 +129,7 @@ public final class AbuseCondition {
     // ==================== AST ====================
 
     private sealed interface Node
-            permits Literal, Variable, FunctionCall, Unary, Binary {
+            permits Literal, Variable, FunctionCall, Unary, Binary, Assign, Sequence {
         Object eval(AbuseContext context);
     }
 
@@ -145,6 +167,28 @@ public final class AbuseCondition {
                 default -> throw new SyntaxException("未知的一元运算符：" + op,
                         "abusefilter.error.unknownUnary", op);
             };
+        }
+    }
+
+    /** 过滤器局部赋值：{@code name := expression}（分号分隔的语句序列）。 */
+    private record Assign(String name, Node value) implements Node {
+        @Override
+        public Object eval(AbuseContext context) {
+            Object result = value.eval(context);
+            context.putLocal(name, result);
+            return result;
+        }
+    }
+
+    /** 多条语句：按顺序求值，返回最后一条的值。 */
+    private record Sequence(List<Node> statements) implements Node {
+        @Override
+        public Object eval(AbuseContext context) {
+            Object result = null;
+            for (Node statement : statements) {
+                result = statement.eval(context);
+            }
+            return result;
         }
     }
 
@@ -339,12 +383,12 @@ public final class AbuseCondition {
             }
             if (pos + 1 < text.length()) {
                 String two = text.substring(pos, pos + 2);
-                if (List.of("**", "==", "!=", "<=", ">=").contains(two)) {
+                if (List.of("**", "==", "!=", "<=", ">=", ":=").contains(two)) {
                     pos += 2;
                     return new Token(Type.OP, two, null);
                 }
             }
-            if ("=<>!&|^+-*/%".indexOf(ch) >= 0) {
+            if ("=<>!&|^+-*/%;".indexOf(ch) >= 0) {
                 pos++;
                 return new Token(Type.OP, String.valueOf(ch), null);
             }
@@ -384,7 +428,17 @@ public final class AbuseCondition {
         }
 
         Node parseExpression() {
-            return parseOr();
+            List<Node> statements = new ArrayList<>();
+            statements.add(parseOr());
+            // MediaWiki 过滤器允许多条语句：name := value; 后续表达式依次求值
+            while (isOperator(";")) {
+                advance();
+                if (current.type() == Type.END) {
+                    break;
+                }
+                statements.add(parseOr());
+            }
+            return statements.size() == 1 ? statements.get(0) : new Sequence(List.copyOf(statements));
         }
 
         private Node parseOr() {
@@ -496,6 +550,10 @@ public final class AbuseCondition {
             if (current.type() == Type.IDENT) {
                 String name = current.text();
                 advance();
+                if (isOperator(":=")) {
+                    advance();
+                    return new Assign(name, parseOr());
+                }
                 if (isOperator("(") || current.type() == Type.LPAREN) {
                     List<Node> args = new ArrayList<>();
                     advance();

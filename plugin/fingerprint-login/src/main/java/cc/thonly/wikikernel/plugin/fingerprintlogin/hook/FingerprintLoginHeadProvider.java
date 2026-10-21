@@ -57,6 +57,7 @@ public class FingerprintLoginHeadProvider implements HtmlHeadProvider {
                 .append("fingerprintDisabled: ").append(json("fingerprint.disabled"))
                 .append("});</script>");
         return List.of(script.toString(),
+                "<link rel=\"stylesheet\" href=\"/plugins/fingerprint-login/fingerprint-login.css\">",
                 "<script defer src=\"/plugins/fingerprint-login/fingerprint-login.js\"></script>");
     }
 

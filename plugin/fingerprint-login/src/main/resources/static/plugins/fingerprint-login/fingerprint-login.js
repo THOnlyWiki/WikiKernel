@@ -64,13 +64,6 @@
         return !!( window.crypto && window.crypto.subtle && window.crypto.subtle.digest );
     }
 
-    function isLoginPage() {
-        var path = decodeURIComponent( window.location.pathname );
-        return path.indexOf( '/wiki/特殊:登录' ) === 0
-            || path.indexOf( '/wiki/Special:UserLogin' ) === 0
-            || path.indexOf( '/wiki/Special:Login' ) === 0;
-    }
-
     /** JSON 解析（失败返回 null，不抛异常）。 */
     function parseJson( raw ) {
         try {
@@ -219,11 +212,12 @@
 
     function setupLoginPage() {
         var form = document.getElementById( 'wiki-login-form' );
-        if ( !form && !document.querySelector( '.wiki-auth' ) ) {
+        // 只增强真正的登录表单：注册页 / 其他页面也可能有 .wiki-auth，不能作为宿主。
+        if ( !form || !form.parentNode ) {
             return;
         }
-        var host = form || document.querySelector( '.wiki-auth' );
-        if ( !host || !host.parentNode ) {
+        var host = form;
+        if ( !host.parentNode ) {
             return;
         }
         var block = document.createElement( 'div' );
@@ -302,15 +296,21 @@
         } );
     }
 
-    /** 登录成功后的跳转：优先 ?returnto=（只接受站内路径），否则刷新回首页。 */
+    /** 登录成功后的跳转：优先读登录表单的隐藏 returnto（密码登录同一来源），否则读查询串。 */
     function redirectAfterLogin() {
-        var params = new URLSearchParams( window.location.search );
-        var returnto = params.get( 'returnto' );
+        var form = document.getElementById( 'wiki-login-form' );
+        var input = form ? form.querySelector( 'input[name="returnto"]' ) : null;
+        var returnto = input ? input.value : '';
+        if ( !returnto ) {
+            var params = new URLSearchParams( window.location.search );
+            returnto = params.get( 'returnto' ) || '';
+        }
         if ( returnto && returnto.charAt( 0 ) === '/' && returnto.indexOf( '//' ) !== 0 ) {
-            window.location.href = returnto;
+            window.location.assign( returnto );
             return;
         }
-        window.location.reload();
+        // 没有来源页时回首页；不要 reload 登录页（登录页不会因为已登录自动离开）。
+        window.location.assign( '/' );
     }
 
     // ==================== 管理界面 ====================

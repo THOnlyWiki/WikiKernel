@@ -122,8 +122,15 @@
             } else if (title) {
                 page = '/wiki/' + encodeURIComponent(title);
             }
+            var src = img.getAttribute('src') || img.src;
+            var original = img.getAttribute('data-original-src') || '';
+            // 旧缓存 HTML 没有 data-original-src：如果图片直接链到 /files/，它就是原图
+            if (!original && href.indexOf('/files/') === 0) {
+                original = href;
+            }
             return {
-                src: img.getAttribute('src') || img.src,
+                src: src,
+                original: original || src,
                 title: title,
                 caption: caption,
                 page: page
@@ -330,7 +337,7 @@
         elements.image.onerror = function () {
             showStatus(msg('imageViewerFailed'));
         };
-        elements.image.src = item.src;
+        elements.image.src = item.original || item.src;
     }
 
     // ==================== 缩放 ====================
@@ -357,7 +364,7 @@
     }
 
     function zoomBy(factor) {
-        state.zoom = Math.min(8, Math.max(0.25, state.zoom * factor));
+        state.zoom = Math.min(16, Math.max(0.25, state.zoom * factor));
         applyZoom();
     }
 
@@ -419,7 +426,7 @@
         elements.menu.innerHTML = '';
         var original = document.createElement('a');
         original.className = 'wiki-image-viewer-menu-item';
-        original.href = item.src;
+        original.href = item.original || item.src;
         original.setAttribute('download', fileNameOf(item));
         original.textContent = msg('imageViewerOriginal')
             + (state.naturalWidth ? '（' + state.naturalWidth + '×' + state.naturalHeight + '）' : '');
@@ -461,7 +468,7 @@
     function downloadScaled(item, width, button) {
         button.disabled = true;
         button.textContent = msg('imageViewerWorking');
-        fetch(item.src, { credentials: 'same-origin' })
+        fetch(item.original || item.src, { credentials: 'same-origin' })
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error('http ' + response.status);
@@ -579,3 +586,4 @@
         open(index);
     }, true);
 })();
+

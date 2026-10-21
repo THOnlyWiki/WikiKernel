@@ -18,7 +18,7 @@
     </p>
     <p class="wiki-warning source-warning" th:if="${sourceLogin}">
         <span th:text="#{source.notLoggedIn}">您尚未登录。您可以登录后编辑此页面。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${pageUrl + '?action=edit'})}" th:text="#{source.login}">登录</a>
+        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{source.login}">登录</a>
     </p>
     <p class="wiki-warning source-warning" th:if="${sourceNotice != null}" th:text="${sourceNotice}">
         您没有权限编辑本页面，只能查看源代码。
@@ -35,3 +35,4 @@
 </section>
 </body>
 </html>
+

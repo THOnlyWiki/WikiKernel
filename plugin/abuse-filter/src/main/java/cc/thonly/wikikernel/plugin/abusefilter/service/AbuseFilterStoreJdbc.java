@@ -60,13 +60,17 @@ public class AbuseFilterStoreJdbc implements AbuseFilterStore {
         if (filter.getId() == null) {
             long id = database.insert("INSERT INTO wiki_abuse_filter"
                             + "(description, pattern, actions, tags, throttle_count, throttle_period,"
-                            + " throttle_group, enabled, deleted, hidden, hits, last_editor_id, last_edit_at, create_at)"
-                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " throttle_group, enabled, deleted, hidden, notes, warn_message, warn_page,"
+                            + " disallow_message, disallow_page, block_talk, block_anon_days, block_user_days,"
+                            + " hits, last_editor_id, last_edit_at, create_at)"
+                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     text(filter.getDescription()), text(filter.getPattern()), text(filter.getActions()),
                     text(filter.getTags()), number(filter.getThrottleCount()), number(filter.getThrottlePeriod()),
                     text(filter.getThrottleGroup()), flag(filter.getEnabled()), flag(filter.getDeleted()),
-                    flag(filter.getHidden()), number(filter.getHits()), filter.getLastEditorId(),
-                    filter.getLastEditAt(), filter.getCreateAt());
+                    flag(filter.getHidden()), text(filter.getNotes()), text(filter.getWarnMessage()),
+                    text(filter.getWarnPage()), text(filter.getDisallowMessage()), text(filter.getDisallowPage()),
+                    flag(filter.getBlockTalk()), number(filter.getBlockAnonDays()), number(filter.getBlockUserDays()),
+                    number(filter.getHits()), filter.getLastEditorId(), filter.getLastEditAt(), filter.getCreateAt());
             filter.setId(id);
             return id;
         }
@@ -83,6 +87,14 @@ public class AbuseFilterStoreJdbc implements AbuseFilterStore {
         add(assignments, args, "enabled", filter.getEnabled());
         add(assignments, args, "deleted", filter.getDeleted());
         add(assignments, args, "hidden", filter.getHidden());
+        add(assignments, args, "notes", filter.getNotes());
+        add(assignments, args, "warn_message", filter.getWarnMessage());
+        add(assignments, args, "warn_page", filter.getWarnPage());
+        add(assignments, args, "disallow_message", filter.getDisallowMessage());
+        add(assignments, args, "disallow_page", filter.getDisallowPage());
+        add(assignments, args, "block_talk", filter.getBlockTalk());
+        add(assignments, args, "block_anon_days", filter.getBlockAnonDays());
+        add(assignments, args, "block_user_days", filter.getBlockUserDays());
         add(assignments, args, "hits", filter.getHits());
         add(assignments, args, "last_editor_id", filter.getLastEditorId());
         add(assignments, args, "last_edit_at", filter.getLastEditAt());
@@ -135,13 +147,19 @@ public class AbuseFilterStoreJdbc implements AbuseFilterStore {
     public void insertRevision(WikiAbuseFilterRevision revision) {
         long id = database.insert("INSERT INTO wiki_abuse_filter_revision"
                         + "(filter_id, description, pattern, actions, tags, throttle_count, throttle_period,"
-                        + " throttle_group, enabled, deleted, hidden, user_id, comment, create_at)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        + " throttle_group, enabled, deleted, hidden, notes, warn_message, warn_page,"
+                        + " disallow_message, disallow_page, block_talk, block_anon_days, block_user_days,"
+                        + " user_id, comment, create_at)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 revision.getFilterId(), text(revision.getDescription()), text(revision.getPattern()),
                 text(revision.getActions()), text(revision.getTags()), number(revision.getThrottleCount()),
                 number(revision.getThrottlePeriod()), text(revision.getThrottleGroup()),
                 flag(revision.getEnabled()), flag(revision.getDeleted()), flag(revision.getHidden()),
-                revision.getUserId(), text(revision.getComment()), revision.getCreateAt());
+                text(revision.getNotes()), text(revision.getWarnMessage()), text(revision.getWarnPage()),
+                text(revision.getDisallowMessage()), text(revision.getDisallowPage()),
+                flag(revision.getBlockTalk()), number(revision.getBlockAnonDays()),
+                number(revision.getBlockUserDays()), revision.getUserId(), text(revision.getComment()),
+                revision.getCreateAt());
         revision.setId(id);
     }
 
@@ -237,6 +255,14 @@ public class AbuseFilterStoreJdbc implements AbuseFilterStore {
         filter.setEnabled(row.boolValue("enabled", false));
         filter.setDeleted(row.boolValue("deleted", false));
         filter.setHidden(row.boolValue("hidden", false));
+        filter.setNotes(row.string("notes"));
+        filter.setWarnMessage(row.string("warn_message"));
+        filter.setWarnPage(row.string("warn_page"));
+        filter.setDisallowMessage(row.string("disallow_message"));
+        filter.setDisallowPage(row.string("disallow_page"));
+        filter.setBlockTalk(row.boolValue("block_talk", false));
+        filter.setBlockAnonDays(row.intValue("block_anon_days", 3));
+        filter.setBlockUserDays(row.intValue("block_user_days", 3));
         filter.setHits(row.intValue("hits", 0));
         filter.setLastEditorId(row.longOrNull("last_editor_id"));
         filter.setLastEditAt(row.dateTime("last_edit_at"));
@@ -258,6 +284,14 @@ public class AbuseFilterStoreJdbc implements AbuseFilterStore {
         revision.setEnabled(row.boolValue("enabled", false));
         revision.setDeleted(row.boolValue("deleted", false));
         revision.setHidden(row.boolValue("hidden", false));
+        revision.setNotes(row.string("notes"));
+        revision.setWarnMessage(row.string("warn_message"));
+        revision.setWarnPage(row.string("warn_page"));
+        revision.setDisallowMessage(row.string("disallow_message"));
+        revision.setDisallowPage(row.string("disallow_page"));
+        revision.setBlockTalk(row.boolValue("block_talk", false));
+        revision.setBlockAnonDays(row.intValue("block_anon_days", 3));
+        revision.setBlockUserDays(row.intValue("block_user_days", 3));
         revision.setUserId(row.longOrNull("user_id"));
         revision.setComment(row.string("comment"));
         revision.setCreateAt(row.dateTime("create_at"));

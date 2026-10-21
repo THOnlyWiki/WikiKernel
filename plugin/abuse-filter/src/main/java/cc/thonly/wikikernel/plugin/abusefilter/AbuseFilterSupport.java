@@ -4,7 +4,9 @@ import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.service.UserStore;
+import cc.thonly.wikikernel.common.util.Strings;
 import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
@@ -65,6 +67,19 @@ public final class AbuseFilterSupport {
         return message(key, null);
     }
 
+    /** 按消息键取文案；键不存在返回 {@code null}（用于兼容“系统消息键 / 字面文案”两种输入）。 */
+    public String messageOrNull(String key) {
+        if (messageSource == null || key == null || key.isBlank()) {
+            return null;
+        }
+        try {
+            String value = messageSource.getMessage(key, null, null, LocaleContextHolder.getLocale());
+            return value == null || value.isBlank() ? null : value;
+        } catch (NoSuchMessageException exception) {
+            return null;
+        }
+    }
+
     /** 时间显示：走消息键 {@code format.dateTime}（core 的本地化格式，与迁移前 {@code WikiTime} 一致）。 */
     public String formatTime(LocalDateTime time) {
         if (time == null) {
@@ -123,6 +138,26 @@ public final class AbuseFilterSupport {
     /** 查询参数值编码（空格 → {@code +}）。 */
     public static String encodeQuery(String value) {
         return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 系统消息页标题：没有命名空间时自动补 {@code WikiKernel:}。
+     * 例如 {@code Abusefilter-warning → WikiKernel:Abusefilter-warning}；
+     * 已经写了命名空间的标题原样保留，大小写不同的 {@code wikikernel:} 会归一为规范前缀。
+     */
+    public static String messagePageTitle(String value) {
+        String title = Strings.trimToEmpty(value);
+        if (title.isEmpty()) {
+            return "";
+        }
+        String namespace = "WikiKernel:";
+        if (title.regionMatches(true, 0, namespace, 0, namespace.length())) {
+            return namespace + title.substring(namespace.length());
+        }
+        if (title.indexOf(':') > 0) {
+            return title;
+        }
+        return namespace + title;
     }
 
     /** 路径段编码（空格 → {@code %20}，不能用 {@code +}）。 */

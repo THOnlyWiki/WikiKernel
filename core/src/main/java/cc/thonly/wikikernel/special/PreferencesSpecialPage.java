@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.special;
 
+import cc.thonly.wikikernel.auth.external.ExternalAuthService;
 import cc.thonly.wikikernel.common.data.WikiRevision;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.PreferenceContext;
@@ -57,6 +58,7 @@ public class PreferencesSpecialPage implements SpecialPage {
     private final MessageSource messageSource;
     private final FeatureService featureService;
     private final PluginManager pluginManager;
+    private final ExternalAuthService externalAuthService;
 
     public PreferencesSpecialPage(UserService userService,
                                   PermissionService permissionService,
@@ -66,7 +68,8 @@ public class PreferencesSpecialPage implements SpecialPage {
                                    CountryNames countryNames,
                                    MessageSource messageSource,
                                    FeatureService featureService,
-                                   PluginManager pluginManager) {
+                                   PluginManager pluginManager,
+                                   ExternalAuthService externalAuthService) {
         this.userService = userService;
         this.permissionService = permissionService;
         this.wikiRevisionMapper = wikiRevisionMapper;
@@ -76,6 +79,7 @@ public class PreferencesSpecialPage implements SpecialPage {
         this.messageSource = messageSource;
         this.featureService = featureService;
         this.pluginManager = pluginManager;
+        this.externalAuthService = externalAuthService;
     }
 
     @Override
@@ -107,6 +111,16 @@ public class PreferencesSpecialPage implements SpecialPage {
         }
         WikiUser user = userService.findById(viewer.getId()).orElse(viewer);
         model.put("user", user);
+        jakarta.servlet.http.HttpServletRequest httpRequest = currentRequest();
+        model.put("externalAccounts", httpRequest == null ? List.of()
+                : externalAuthService.accountsFor(user, externalAuthService.unlinkToken(httpRequest)));
+        model.put("externalError", request.parameters().get("external_error"));
+        String externalResult = request.parameters().get("external");
+        if ("linked".equals(externalResult)) {
+            model.put("externalSuccess", message("preferences.externalLinkedSuccess"));
+        } else if ("unlinked".equals(externalResult)) {
+            model.put("externalSuccess", message("preferences.externalUnlinkedSuccess"));
+        }
         model.put("groups", permissionService.namesOf(user.getId()));
         model.put("emailConfirmed", Boolean.TRUE.equals(user.getEmailConfirmed()));
         model.put("emailConfirmedAt", user.getEmailConfirmedAt());
@@ -204,6 +218,13 @@ public class PreferencesSpecialPage implements SpecialPage {
             }
         }
         return sections;
+    }
+
+    /** 当前请求（参数设置的特殊页上下文一定有；测试时可能为空）。 */
+    private static jakarta.servlet.http.HttpServletRequest currentRequest() {
+        return org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()
+                instanceof org.springframework.web.context.request.ServletRequestAttributes attributes
+                ? attributes.getRequest() : null;
     }
 
     /** 当前请求的站点根地址（供插件分区拼链接；无请求上下文时返回空串）。 */

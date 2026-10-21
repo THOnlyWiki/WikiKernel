@@ -1,26 +1,133 @@
 <!DOCTYPE html>
-<!-- 特殊:搜索 / Special:Search -->
+<!-- 特殊:搜索 / Special:Search：内容页面 / 多媒体 / 全部 / 高级 -->
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section>
-    <form class="wiki-form wiki-form-inline" th:action="@{/wiki/特殊:搜索}" method="get">
-        <input type="search" name="q" th:value="${q}" th:placeholder="#{search.placeholder}"
-               th:attr="aria-label=#{common.search}"/>
-        <button type="submit" class="wiki-button" th:text="#{common.search}">搜索</button>
+<section class="mw-search-page">
+    <form id="search" class="mw-search-form" th:action="@{/wiki/特殊:搜索}" method="get">
+        <div class="mw-search-form-row">
+            <input type="search" name="search" th:value="${q}"
+                   th:placeholder="#{search.placeholder}" th:attr="aria-label=#{common.search}"/>
+            <input type="hidden" name="profile" th:value="${profile}"/>
+            <input type="hidden" name="fulltext" value="1"/>
+            <button type="submit" class="wiki-button wiki-button-primary"
+                    th:text="#{common.search}">搜索</button>
+        </div>
+        <div class="results-info" th:if="${searchPerformed}"
+             th:text="#{search.summary(${q}, ${resultCount})}">
+            关键字“…”共 0 条结果
+        </div>
+        <div class="mw-search-profile-tabs">
+            <div class="search-types">
+                <ul>
+                    <li th:classappend="${profile == 'default'} ? 'current' : 'normal'">
+                        <a th:href="@{/wiki/特殊:搜索(search=${q},profile='default',fulltext='1')}"
+                           th:text="#{search.tab.content}">内容页面</a>
+                    </li>
+                    <li th:classappend="${profile == 'images'} ? 'current' : 'normal'">
+                        <a th:href="@{/wiki/特殊:搜索(search=${q},profile='images',fulltext='1')}"
+                           th:text="#{search.tab.media}">多媒体</a>
+                    </li>
+                    <li th:classappend="${profile == 'all'} ? 'current' : 'normal'">
+                        <a th:href="@{/wiki/特殊:搜索(search=${q},profile='all',fulltext='1')}"
+                           th:text="#{search.tab.all}">全部</a>
+                    </li>
+                    <li th:classappend="${profile == 'advanced'} ? 'current' : 'normal'">
+                        <a th:href="@{/wiki/特殊:搜索(search=${q},profile='advanced',fulltext='1')}"
+                           th:text="#{search.tab.advanced}">高级</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </form>
 
-    <p class="search-summary" th:if="${!#strings.isEmpty(q)}"
-       th:text="#{search.summary(${q}, ${results.size()})}">0 条结果</p>
+    <form th:if="${advanced}" class="mw-search-advanced wiki-form"
+          th:action="@{/wiki/特殊:搜索}" method="get">
+        <input type="hidden" name="search" th:value="${q}"/>
+        <input type="hidden" name="profile" value="advanced"/>
+        <input type="hidden" name="fulltext" value="1"/>
+        <fieldset>
+            <legend th:text="#{search.namespaces}">命名空间</legend>
+            <p class="wiki-hint" th:text="#{search.advancedHint}">
+                选择要搜索的命名空间；不勾选 = 主命名空间。
+            </p>
+            <div class="mw-search-namespace-grid">
+                <label class="pref-checkbox" th:each="option : ${namespaceOptions}">
+                    <input type="checkbox" th:attr="name=${option['name']}" value="1"
+                           th:checked="${option['selected']}"/>
+                    <span th:text="${option['label']}">主命名空间</span>
+                </label>
+            </div>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit" class="wiki-button wiki-button-primary"
+                    th:text="#{common.search}">搜索</button>
+        </div>
+    </form>
 
-    <ul class="search-results" th:if="${!#lists.isEmpty(results)}">
-        <li th:each="hit : ${results}">
-            <a th:href="${hit.url}" th:text="${hit.title}">标题</a>
-            <div class="search-snippet" th:text="${hit.snippet}">摘要</div>
-        </li>
-    </ul>
-    <p th:if="${!#strings.isEmpty(q) and #lists.isEmpty(results)}"
-       th:text="#{search.noResults}">没有找到匹配的词条。</p>
+    <div class="searchresults" th:if="${searchPerformed}">
+        <th:block th:if="${profile != 'images'}">
+            <h2 th:if="${!#lists.isEmpty(titleHits)}">
+                <span class="mw-headline" th:text="#{search.titleMatches}">页面标题匹配</span>
+            </h2>
+            <ul class="mw-search-results" th:if="${!#lists.isEmpty(titleHits)}">
+                <li class="mw-search-result" th:each="hit : ${titleHits}">
+                    <div class="mw-search-result-heading">
+                        <a th:href="${hit.url}" th:text="${hit.title}">页面标题</a>
+                    </div>
+                    <div class="searchresult" th:text="${hit.snippet}">页面摘要</div>
+                </li>
+            </ul>
+
+            <h2 th:if="${!#lists.isEmpty(contentHits)}">
+                <span class="mw-headline" th:text="#{search.contentMatches}">页面内容匹配</span>
+            </h2>
+            <ul class="mw-search-results" th:if="${!#lists.isEmpty(contentHits)}">
+                <li class="mw-search-result" th:each="hit : ${contentHits}">
+                    <div class="mw-search-result-heading">
+                        <a th:href="${hit.url}" th:text="${hit.title}">页面标题</a>
+                    </div>
+                    <div class="searchresult" th:text="${hit.snippet}">页面摘要</div>
+                </li>
+            </ul>
+
+            <p class="mw-search-empty"
+               th:if="${#lists.isEmpty(titleHits) and #lists.isEmpty(contentHits) and (profile != 'all' or #lists.isEmpty(fileHits))}"
+               th:text="#{search.noResults}">没有找到匹配的词条。</p>
+        </th:block>
+
+        <th:block th:if="${profile == 'images' or profile == 'all'}">
+            <h2 th:if="${!#lists.isEmpty(fileHits)}">
+                <span class="mw-headline" th:text="#{search.mediaResults}">多媒体</span>
+            </h2>
+            <ul class="mw-search-results mw-search-media-results" th:if="${!#lists.isEmpty(fileHits)}">
+                <li class="mw-search-result mw-search-result-media" th:each="file : ${fileHits}">
+                    <div class="mw-search-result-heading">
+                        <a th:href="${file['pageUrl']}" th:text="${file['name']}">文件名</a>
+                    </div>
+                    <div class="mw-search-result-thumb" th:if="${file['image']}">
+                        <a th:href="${file['url']}">
+                            <img th:src="${file['thumbnailUrl']}" th:alt="${file['name']}"/>
+                        </a>
+                    </div>
+                    <div class="searchresult" th:if="${!#strings.isEmpty(file['description'])}"
+                         th:text="${file['description']}">文件说明</div>
+                    <div class="mw-search-result-data">
+                        <span th:text="#{search.fileType(${file['kind']}, ${file['sizeText']})}">图片 · 12 KB</span>
+                    </div>
+                </li>
+            </ul>
+            <p class="mw-search-empty" th:if="${#lists.isEmpty(fileHits)}"
+               th:text="#{search.mediaEmpty}">没有匹配的多媒体文件。</p>
+        </th:block>
+
+        <p class="mw-search-empty"
+           th:if="${profile == 'all' and #lists.isEmpty(titleHits) and #lists.isEmpty(contentHits) and #lists.isEmpty(fileHits)}"
+           th:text="#{search.noResults}">没有找到匹配的词条。</p>
+    </div>
+
+    <p class="mw-search-empty" th:if="${!searchPerformed and !advanced}"
+       th:text="#{search.startHint}">输入关键字开始搜索。</p>
 </section>
 </body>
 </html>

@@ -44,6 +44,8 @@ wikikernel:
     quality: 82
     # ImageMagick 可执行文件路径；留空 = 自动查找 magick
     executable: ""
+    # thumb.php 按需生成队列上限（默认 2；队列满时阻塞当前请求并延迟响应）
+    queue-limit: 2
   # 皮肤：默认 vector（内置），可禁用；fallback 始终可用（不可禁用）
   skins:
     default-skin: vector
@@ -137,4 +139,3 @@ logging:
     org.mybatis.spring: warn
     org.springframework.boot.web.embedded: warn
     org.springframework.web.servlet.DispatcherServlet: warn
-

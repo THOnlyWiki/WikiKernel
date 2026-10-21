@@ -48,6 +48,12 @@ public class PermissionProperties {
      */
     private Boolean allowOtherUserPageEdit;
 
+    /**
+     * 是否允许未登录用户查看「特殊:最近更改」；null = 不改数据库里的设置。
+     * 关闭后匿名访问只显示登录提示，已登录用户不受影响。
+     */
+    private Boolean allowAnonymousRecentChanges;
+
     /** 一条访问控制规则的配置形态（LocalSettings.yaml）。 */
     @Data
     public static class AccessRuleConfig {

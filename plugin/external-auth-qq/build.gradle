@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+description = 'QQ 互联 OAuth 第三方登录 / 注册 provider（外部插件）。'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.slf4j:slf4j-api'
+    compileOnly 'tools.jackson.core:jackson-databind'
+}
+
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}

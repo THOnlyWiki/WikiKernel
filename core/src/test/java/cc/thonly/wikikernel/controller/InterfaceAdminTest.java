@@ -99,6 +99,32 @@ class InterfaceAdminTest {
     }
 
     @Test
+    void typescriptAndVuePagesAreInterfaceProtected() throws Exception {
+        String stamp = String.valueOf(System.nanoTime());
+        String ts = "界面TS" + stamp + ".ts";
+        String tsx = "界面TSX" + stamp + ".tsx";
+        String vue = "界面Vue" + stamp + ".vue";
+        wikiPageService.editPage(null, ts, "export const a: number = 1;");
+        wikiPageService.editPage(null, tsx, "export const b = () => <div/>;");
+        wikiPageService.editPage(null, vue, "<template><div/></template>");
+
+        WikiUser normal = insertUser("界面TS普通用户" + System.nanoTime());
+        WikiUser interfaceAdmin = interfaceAdminUser();
+        for (String title : List.of(ts, tsx, vue)) {
+            mockMvc.perform(get("/wiki/{title}", title).param("action", "edit").session(sessionOf(normal)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("只有界面管理员可以编辑")))
+                    .andExpect(content().string(not(containsString("id=\"wiki-edit-form\""))));
+            mockMvc.perform(post("/wiki/{title}", title).with(csrf()).session(sessionOf(normal))
+                            .param("content", "x"))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(post("/wiki/{title}", ts).with(csrf()).session(sessionOf(interfaceAdmin))
+                        .param("content", "export const c: number = 3;"))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
     void codePageRuleIsConfigurableAndGroupSeeded() throws Exception {
         String js = "界面可配置" + System.nanoTime() + ".js";
         wikiPageService.editPage(null, js, "var a = 1;");

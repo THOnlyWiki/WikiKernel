@@ -84,6 +84,14 @@ groups:
         default: WikiKernel
         write: false
         description: 站点名称；留空 / 不写 = 使用默认名 WikiKernel。
+      - key: wikikernel.site.favicon
+        type: string
+        default: ""
+        description: 站点图标 URL（站内路径或 http(s)）；留空 = 内置 wiki-logo.svg；也作为 /favicon.ico 的目标。
+      - key: wikikernel.site.no-referrer
+        type: boolean
+        default: false
+        description: 是否对所有页面输出 no-referrer Referrer 策略（默认关闭）。
 
   # ---------------- 运行目录与上传 ----------------
   - prefix: wikikernel.run-path
@@ -115,6 +123,10 @@ groups:
         type: string
         default: ""
         description: ImageMagick 可执行文件路径；留空 = 自动查找 magick 命令。
+      - key: wikikernel.thumbnail.queue-limit
+        type: integer
+        default: 2
+        description: thumb.php 按需生成队列上限；队列满时阻塞请求并延迟响应。
 
   # ---------------- 可配置路由重定向 ----------------
   - prefix: route
@@ -218,6 +230,11 @@ groups:
         default: false
         write: false
         description: 是否允许编辑其他用户的用户页；不写 = 不改动数据库里的设置。
+      - key: wikikernel.permissions.allow-anonymous-recent-changes
+        type: boolean
+        default: true
+        write: false
+        description: 是否允许未登录用户查看「特殊:最近更改」；不写 = 不改动数据库里的设置。
 
   # ---------------- 认证 ----------------
   - prefix: wikikernel.auth
@@ -463,6 +480,10 @@ groups:
         type: boolean
         default: false
         description: 保存 TypeScript 页面时立即编译（便于编辑后立刻看到语法诊断）。
+      - key: wikikernel.features.codex-example
+        type: boolean
+        default: true
+        description: 是否列出并允许访问「特殊:CodexExample」（Wikimedia Codex 组件 / 图标示例页）。
 
   # ---------------- TypeScript 服务端编译 ----------------
   - prefix: wikikernel.typescript

@@ -1,0 +1,1100 @@
+/*
+ * Wikimedia Codex 适配层
+ * ------------------------------------------------------------------
+ * Codex 的完整 CSS 在 /vendor/codex/2.7.0/codex.style.css。这里做两件事：
+ *   1. 把 core / 插件仍在使用的旧 class（.wiki-button、.wikitable、.form-message…）
+ *      映射到 Codex 的设计令牌和外观，避免全站模板必须一次性重写；
+ *   2. 针对 Kawaii-Timeless 覆盖 Codex token / 固定顶栏 z-index / 中文字体。
+ *
+ * 只做“外观映射”，不移除旧 class，插件和用户 CSS 仍可覆盖。
+ */
+
+/* ===== Timeless / 全站 Codex 设计令牌 ===== */
+body.skin-timeless .wiki-content,
+body.skin-timeless .cdx-dialog,
+body.skin-timeless .cdx-menu,
+body.skin-timeless .cdx-table {
+    --font-family-base: "Noto Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    --font-family-serif: Georgia, "Noto Serif SC", serif;
+    --font-family-monospace: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    --font-size-base: 0.875rem;
+    --line-height-base: 1.5;
+
+    --color-base: #202122;
+    --color-base--hover: #404244;
+    --color-emphasized: #101418;
+    --color-subtle: #54595d;
+    --color-placeholder: #72777d;
+    --color-disabled: #a2a9b1;
+
+    --background-color-base: #fff;
+    --background-color-neutral: #f8f9fa;
+    --background-color-neutral-subtle: #fafbfc;
+    --background-color-interactive: #eaecf0;
+    --background-color-interactive-subtle: #f8f9fa;
+    --background-color-disabled: #c8ccd1;
+
+    --border-color-base: #a2a9b1;
+    --border-color-subtle: #c8ccd1;
+    --border-color-muted: #dadde3;
+    --border-color-interactive: #72777d;
+    --border-color-progressive: var(--color-primary, #36c);
+    --border-color-destructive: #bf3c2c;
+
+    --color-progressive: var(--color-primary, #36c);
+    --color-progressive--hover: var(--color-primary--hover, #447ff5);
+    --color-progressive--active: var(--color-primary--active, #2a4b8d);
+    --background-color-progressive: var(--color-primary, #36c);
+    --background-color-progressive--hover: var(--color-primary--hover, #447ff5);
+    --background-color-progressive--active: var(--color-primary--active, #2a4b8d);
+
+    --color-destructive: #bf3c2c;
+    --color-destructive--hover: #9f3526;
+    --background-color-destructive: #bf3c2c;
+    --background-color-destructive--hover: #9f3526;
+    --background-color-destructive--active: #612419;
+
+    --color-success: #177860;
+    --background-color-success: #dff2eb;
+    --color-warning: #886425;
+    --background-color-warning: #fdf2d5;
+    --color-error: #bf3c2c;
+    --background-color-error: #fee7e6;
+
+    --border-radius-base: 2px;
+    --border-radius--small: 2px;
+    --border-radius--medium: 4px;
+    --border-radius--large: 8px;
+}
+
+/* Timeless 暗色主题：Codex 内容区跟随皮肤，而不是回到白底 */
+:root.skin-timeless-dark .wiki-content,
+:root.skin-timeless-dark .cdx-dialog,
+:root.skin-timeless-dark .cdx-menu,
+:root.skin-timeless-dark .cdx-table {
+    --color-base: #eaecf0;
+    --color-base--hover: #fff;
+    --color-emphasized: #fff;
+    --color-subtle: #a2a9b1;
+    --color-placeholder: #72777d;
+    --background-color-base: #1e1e1e;
+    --background-color-neutral: #27292d;
+    --background-color-neutral-subtle: #232529;
+    --background-color-interactive: #33363b;
+    --background-color-interactive-subtle: #2a2c30;
+    --background-color-disabled: #404244;
+    --border-color-base: #54595d;
+    --border-color-subtle: #404244;
+    --border-color-muted: #33363b;
+    --border-color-interactive: #72777d;
+    --border-color-progressive: var(--color-primary, #fb7299);
+    --color-progressive: var(--color-primary, #fb7299);
+    --color-progressive--hover: var(--color-primary--hover, #ff9bb5);
+    --color-progressive--active: var(--color-primary--active, #c94f75);
+}
+
+/* ===== 按钮 ===== */
+body .wiki-button,
+body .sp-button-primary,
+body .comment-form .wiki-button,
+body .cdx-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3em;
+    box-sizing: border-box;
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-color-interactive, #72777d);
+    border-radius: var(--border-radius-base, 2px);
+    background-color: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+}
+
+body .wiki-button:hover,
+body .sp-button-primary:hover,
+body .cdx-button:hover {
+    background-color: var(--background-color-interactive-subtle, #f8f9fa);
+    border-color: var(--color-base, #202122);
+    color: var(--color-emphasized, #101418);
+    text-decoration: none;
+}
+
+body .wiki-button:active,
+body .sp-button-primary:active,
+body .cdx-button:active {
+    background-color: var(--background-color-interactive, #eaecf0);
+    border-color: var(--color-base, #202122);
+}
+
+body .wiki-button:focus-visible,
+body .sp-button-primary:focus-visible,
+body .cdx-button:focus-visible {
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: -1px;
+}
+
+body .wiki-button-primary,
+body .sp-button-primary {
+    background-color: var(--background-color-progressive, #36c);
+    border-color: var(--color-progressive, #36c);
+    color: #fff;
+}
+
+body .wiki-button-primary:hover,
+body .sp-button-primary:hover {
+    background-color: var(--background-color-progressive--hover, #447ff5);
+    border-color: var(--color-progressive--hover, #447ff5);
+    color: #fff;
+}
+
+body .wiki-button-primary:active,
+body .sp-button-primary:active {
+    background-color: var(--background-color-progressive--active, #2a4b8d);
+    border-color: var(--color-progressive--active, #2a4b8d);
+}
+
+body .wiki-button-danger {
+    background-color: var(--background-color-destructive, #bf3c2c);
+    border-color: var(--color-destructive, #bf3c2c);
+    color: #fff;
+}
+
+body .wiki-button-danger:hover {
+    background-color: var(--background-color-destructive--hover, #9f3526);
+    border-color: var(--color-destructive--hover, #9f3526);
+    color: #fff;
+}
+
+body .wiki-button-quiet,
+body .link-button,
+body .rc-link-button,
+body .toolbar-button,
+body .version-tag-button {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--color-progressive, #36c);
+    font-weight: 700;
+    box-shadow: none;
+}
+
+body .wiki-button-quiet:hover,
+body .link-button:hover,
+body .rc-link-button:hover,
+body .toolbar-button:hover,
+body .version-tag-button:hover {
+    background-color: var(--background-color-interactive-subtle, #f8f9fa);
+    border-color: transparent;
+    color: var(--color-progressive--hover, #447ff5);
+}
+
+body .wiki-button:disabled,
+body .wiki-button[disabled],
+body .cdx-button:disabled,
+body .cdx-button[disabled] {
+    background-color: var(--background-color-disabled, #c8ccd1);
+    border-color: var(--border-color-subtle, #c8ccd1);
+    color: var(--color-subtle, #54595d);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Codex 图标在按钮 / 链接里的尺寸由 .cdx-icon 自己控制 */
+body .wiki-button .cdx-icon,
+body .cdx-button .cdx-icon {
+    flex: 0 0 auto;
+}
+
+/* ===== 表单控件 ===== */
+body .wiki-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+body .wiki-form textarea,
+body .wiki-form select,
+body .api-sandbox-param-name,
+body .api-sandbox-param-value,
+body .comment-form textarea,
+body .sp-gift-picker input[type="text"] {
+    box-sizing: border-box;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: var(--border-radius-base, 2px);
+    background-color: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+body .wiki-form input:focus,
+body .wiki-form textarea:focus,
+body .wiki-form select:focus,
+body .api-sandbox-param-name:focus,
+body .api-sandbox-param-value:focus,
+body .comment-form textarea:focus {
+    border-color: var(--color-progressive, #36c);
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: -1px;
+    box-shadow: none;
+}
+
+body .wiki-form select,
+body select.cdx-select {
+    padding-right: 2em;
+}
+
+body .wiki-form input[type="checkbox"],
+body .wiki-form input[type="radio"] {
+    accent-color: var(--color-progressive, #36c);
+}
+
+body .form-field,
+body .cdx-field {
+    margin-bottom: 0.7em;
+}
+
+body .form-field > label,
+body .cdx-label,
+body .cdx-label__label__text {
+    display: block;
+    margin-bottom: 0.2em;
+    color: var(--color-base, #202122);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+body .wiki-hint {
+    color: var(--color-subtle, #54595d);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+/* ===== 表格：Wikitable / 插件表格 ===== */
+body .wikitable,
+body .messages-table,
+body .listfiles-table,
+body .log-table,
+body .cdx-table__table {
+    border-collapse: collapse;
+    background-color: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* 普通内容表格占满正文宽度；信息框必须保留模板自己的宽度和右浮动。 */
+body .wikitable:not(.infobox),
+body .messages-table,
+body .listfiles-table,
+body .log-table,
+body .cdx-table__table {
+    width: 100%;
+}
+
+body .wikitable.infobox {
+    max-width: 100%;
+}
+
+@media screen and (max-width: 850px) {
+    body .wikitable.infobox {
+        float: none !important;
+        width: 100% !important;
+        margin-right: 0;
+        margin-left: 0;
+    }
+}
+
+body .wikitable > thead > tr > th,
+body .messages-table > thead > tr > th,
+body .listfiles-table > thead > tr > th,
+body .log-table > thead > tr > th,
+body .cdx-table__table > thead > tr > th {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color-subtle, #c8ccd1);
+    background-color: var(--background-color-neutral, #f8f9fa);
+    color: var(--color-emphasized, #101418);
+    font-weight: 700;
+    text-align: left;
+}
+
+body .wikitable > tbody > tr > td,
+body .messages-table > tbody > tr > td,
+body .listfiles-table > tbody > tr > td,
+body .log-table > tbody > tr > td,
+body .cdx-table__table > tbody > tr > td {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color-subtle, #c8ccd1);
+    vertical-align: top;
+}
+
+body .wikitable > tbody > tr:hover,
+body .messages-table > tbody > tr:hover,
+body .listfiles-table > tbody > tr:hover {
+    background-color: var(--background-color-neutral-subtle, #fafbfc);
+}
+
+/* ===== 消息 / 警告 / 错误 ===== */
+body .form-message,
+body .cdx-message {
+    box-sizing: border-box;
+    margin: 0.5em 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-left-width: 4px;
+    border-radius: var(--border-radius-base, 2px);
+    background-color: var(--background-color-neutral, #f8f9fa);
+    color: var(--color-base, #202122);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+body .form-message.success,
+body .cdx-message--success,
+body .cdx-message.cdx-message--success {
+    border-color: var(--color-success, #177860);
+    background-color: var(--background-color-success, #dff2eb);
+}
+
+body .wiki-warning,
+body .cdx-message--warning,
+body .cdx-message.cdx-message--warning {
+    border-color: var(--color-warning, #886425);
+    background-color: var(--background-color-warning, #fdf2d5);
+}
+
+body .wiki-form-error,
+body .wiki-error,
+body .cdx-message--error,
+body .cdx-message.cdx-message--error {
+    border-color: var(--color-error, #bf3c2c);
+    background-color: var(--background-color-error, #fee7e6);
+    color: var(--color-error, #bf3c2c);
+}
+
+body .cdx-message--progressive,
+body .cdx-message.cdx-message--progressive {
+    border-color: var(--color-progressive, #36c);
+    background-color: var(--background-color-progressive-subtle, #eaf3ff);
+}
+
+/* ===== 标签页 ===== */
+body .pref-tabs,
+body .setup-tabs,
+body .sp-tabs,
+body .ve-dialog-tabs,
+body .fallback-tabs,
+body .wiki-tabs-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0 0 0.8em;
+    padding: 0;
+    border-bottom: 1px solid var(--border-color-subtle, #c8ccd1);
+    list-style: none;
+}
+
+body .pref-tab,
+body .setup-tab,
+body .sp-tabs > li,
+body .ve-dialog-tabs > button,
+body .fallback-tabs > li {
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    background: transparent;
+    color: var(--color-progressive, #36c);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+body .pref-tab.selected,
+body .pref-tab[aria-selected="true"],
+body .setup-tab.active,
+body .sp-tabs > li.selected,
+body .ve-dialog-tabs > button.selected,
+body .fallback-tabs > li.selected {
+    border-color: var(--border-color-subtle, #c8ccd1);
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+}
+
+/* ===== 对话框 ===== */
+body .wiki-dialog,
+body .ve-dialog-box,
+body .cdx-dialog {
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: var(--border-radius--medium, 4px);
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+body .wiki-dialog-title,
+body .ve-dialog-title,
+body .cdx-dialog__header__title {
+    color: var(--color-emphasized, #101418);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+body .wiki-dialog-close,
+body .ve-dialog-close,
+body .cdx-dialog__header__close-button {
+    min-width: 32px;
+    min-height: 32px;
+    border: 0;
+    border-radius: var(--border-radius-base, 2px);
+    background: transparent;
+    color: var(--color-subtle, #54595d);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+body .wiki-dialog-close:hover,
+body .ve-dialog-close:hover,
+body .cdx-dialog__header__close-button:hover {
+    background: var(--background-color-interactive-subtle, #f8f9fa);
+    color: var(--color-base, #202122);
+}
+
+/* ===== 搜索 / 分页 / 链接 ===== */
+body .specialpages-search input,
+body .pref-search input,
+body .country-search input,
+body .fallback-search input,
+body #searchInput {
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font-family: inherit;
+}
+
+body .specialpages-search input:focus,
+body .pref-search input:focus,
+body #searchInput:focus {
+    border-color: var(--color-progressive, #36c);
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: -1px;
+}
+
+body .log-pager a,
+body .listfiles-nav a,
+body .allpages-nav a,
+body .mw-whatlinkshere-nav a {
+    color: var(--color-progressive, #36c);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+body .log-pager a:hover,
+body .listfiles-nav a:hover,
+body .allpages-nav a:hover {
+    text-decoration: underline;
+}
+
+/* ===== 代码 / 沙盒 ===== */
+body .api-sandbox-pre,
+body .cdx-table__table-wrapper {
+    border-radius: var(--border-radius-base, 2px);
+}
+
+body .codex-demo-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    align-items: center;
+    margin: 0.4em 0 1.2em;
+}
+
+body .codex-demo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1em;
+    margin-bottom: 1.2em;
+}
+
+body .codex-icon-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5em, 1fr));
+    gap: 0.35em;
+    margin-top: 0.6em;
+}
+
+body .codex-icon-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    min-width: 0;
+    padding: 5px 7px;
+    border: 1px solid var(--border-color-subtle, #c8ccd1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    font-size: 0.75rem;
+}
+
+body .codex-icon-item .cdx-icon {
+    flex: 0 0 auto;
+    color: var(--color-subtle, #54595d);
+}
+
+body .codex-icon-item code {
+    overflow: hidden;
+    color: var(--color-subtle, #54595d);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: transparent;
+}
+
+/* ===== 评论区 / SocialProfile 的旧组件 ===== */
+body .wiki-comments .comment-item {
+    border-color: var(--border-color-subtle, #c8ccd1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    box-shadow: none;
+}
+
+body .wiki-comments .comment-form {
+    border-color: var(--border-color-subtle, #c8ccd1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-neutral-subtle, #fafbfc);
+}
+
+body .comment-reply-link,
+body .comment-delete-link,
+body .comment-permalink {
+    border-radius: var(--border-radius-base, 2px);
+    font-weight: 700;
+}
+
+body .comment-reply-link:hover,
+body .comment-delete-link:hover {
+    background: var(--background-color-interactive-subtle, #f8f9fa);
+}
+
+body .sp-gift-card,
+body .sp-tabs,
+body .sp-gift-picker,
+body .sp-profile-head {
+    border-color: var(--border-color-subtle, #c8ccd1);
+    border-radius: var(--border-radius-base, 2px);
+}
+
+body .sp-gift-card:has(.sp-gift-radio:checked) {
+    border-color: var(--color-progressive, #36c);
+    background: var(--background-color-progressive-subtle, #eaf3ff);
+    box-shadow: inset 0 0 0 1px var(--color-progressive, #36c);
+}
+
+body .sp-gift-card:hover {
+    border-color: var(--color-progressive, #36c);
+    background: var(--background-color-neutral-subtle, #fafbfc);
+}
+
+/* ===== 皮肤细节 ===== */
+body.skin-timeless .cdx-dialog-backdrop {
+    z-index: 600;
+}
+
+body.skin-timeless .cdx-menu,
+body.skin-timeless .cdx-popover {
+    z-index: 550;
+}
+
+body.skin-timeless #mw-content .cdx-tabs__list__item,
+body.skin-timeless #mw-content .cdx-button {
+    font-family: inherit;
+}
+
+@media (max-width: 850px) {
+    body.skin-timeless .cdx-dialog-backdrop {
+        z-index: 600;
+    }
+}
+
+/* Timeless 窄屏：参数设置从「左侧 186px 竖排标签 + 窄内容」改为横向可滚动标签 + 全宽内容 */
+@media (max-width: 700px) {
+    body.skin-timeless .pref-layout {
+        display: block;
+    }
+
+    body.skin-timeless .pref-layout .pref-tabs {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: 100%;
+        flex: 0 0 auto;
+        margin: 0 0 0.7em;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-bottom: 1px solid var(--border-color-subtle, #e3e5e8);
+    }
+
+    body.skin-timeless .pref-layout .pref-tab {
+        width: auto;
+        min-width: max-content;
+        flex: 0 0 auto;
+        min-height: 36px;
+        padding: 8px 10px;
+    }
+
+    body.skin-timeless .pref-layout .pref-tab.selected::after {
+        display: none;
+    }
+
+    body.skin-timeless .pref-layout .pref-content {
+        height: calc(100vh - 270px);
+        min-height: 380px;
+        padding: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body .wiki-button,
+    body .cdx-button,
+    body .wiki-comments .comment-item {
+        transition: none;
+    }
+}
+
+/* ===== 参数设置：核心 / 插件共用的复选框、单选框、卡片选项统一为 Codex 外观 ===== */
+body .pref-checkbox input[type="checkbox"],
+body .pref-radios input[type="radio"],
+body .skin-option input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    display: inline-block;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    margin: 0.05em 0 0;
+    border: 1px solid var(--border-color-interactive, #72777d);
+    border-radius: 2px;
+    background: var(--background-color-base, #fff);
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background-color .1s ease, border-color .1s ease, box-shadow .1s ease;
+}
+
+body .pref-radios input[type="radio"],
+body .skin-option input[type="radio"] {
+    border-radius: 50%;
+}
+
+body .pref-checkbox input[type="checkbox"]:checked,
+body .pref-checkbox input[type="checkbox"]:indeterminate {
+    border-color: var(--background-color-progressive, #36c);
+    background: var(--background-color-progressive, #36c);
+}
+
+body .pref-checkbox input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+body .pref-checkbox input[type="checkbox"]:indeterminate::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    top: 9px;
+    height: 2px;
+    background: #fff;
+}
+
+body .pref-radios input[type="radio"]:checked,
+body .skin-option input[type="radio"]:checked {
+    border: 6px solid var(--background-color-progressive, #36c);
+    background: var(--background-color-base, #fff);
+}
+
+body .pref-checkbox input:focus-visible,
+body .pref-radios input:focus-visible,
+body .skin-option input:focus-visible {
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: 1px;
+}
+
+body .pref-checkbox input:disabled,
+body .pref-radios input:disabled,
+body .skin-option input:disabled {
+    background: var(--background-color-disabled, #c8ccd1);
+    border-color: var(--border-color-disabled, #c8ccd1);
+    cursor: not-allowed;
+}
+
+body .pref-checkbox {
+    align-items: flex-start;
+    gap: 0.45em;
+    line-height: 1.45;
+}
+
+body .pref-radios {
+    align-items: center;
+}
+
+body .pref-radios label {
+    gap: 0.4em;
+}
+
+body .skin-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+}
+
+body .skin-option input[type="radio"] {
+    margin-top: 0.15em;
+}
+
+/* ===== 特殊:搜索（MediaWiki 结构 + Codex 控件） ===== */
+body .mw-search-page {
+    color: var(--color-base, #202122);
+}
+
+body .mw-search-form-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    max-width: 58em;
+}
+
+body .mw-search-form-row input[type="search"] {
+    flex: 1 1 20em;
+    box-sizing: border-box;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font: inherit;
+}
+
+body .mw-search-form-row input[type="search"]:focus {
+    border-color: var(--color-progressive, #36c);
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: -1px;
+}
+
+body .results-info {
+    margin: 0.8em 0 0.55em;
+    color: var(--color-subtle, #54595d);
+    font-size: 0.875rem;
+}
+
+body .mw-search-profile-tabs {
+    margin: 0 0 1.1em;
+    border-bottom: 1px solid var(--border-color-subtle, #c8ccd1);
+}
+
+body .mw-search-profile-tabs .search-types ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body .mw-search-profile-tabs li {
+    margin: 0;
+}
+
+body .mw-search-profile-tabs li a {
+    display: block;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: var(--color-progressive, #36c);
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+body .mw-search-profile-tabs li a:hover {
+    background: var(--background-color-interactive-subtle, #f8f9fa);
+}
+
+body .mw-search-profile-tabs li.current a {
+    border-color: var(--border-color-subtle, #c8ccd1);
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+}
+
+body .searchresults h2 {
+    margin: 1.1em 0 0.45em;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid var(--border-color-subtle, #c8ccd1);
+    font-size: 1.15rem;
+}
+
+body .mw-search-results {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body .mw-search-result {
+    margin: 0 0 0.9em;
+    padding: 0.55em 0.7em;
+    border-bottom: 1px solid var(--border-color-subtle, #eaecf0);
+}
+
+body .mw-search-result-heading {
+    margin-bottom: 0.2em;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+body .mw-search-result-heading a {
+    color: var(--color-progressive, #36c);
+}
+
+body .searchresult {
+    color: var(--color-base, #202122);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+body .searchmatch {
+    background: #ffe49c;
+    color: inherit;
+    font-weight: 700;
+}
+
+body .mw-search-result-data {
+    margin-top: 0.25em;
+    color: var(--color-subtle, #72777d);
+    font-size: 0.8125rem;
+}
+
+body .mw-search-result-media {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: 0.35em 1em;
+    align-items: start;
+}
+
+body .mw-search-result-media .mw-search-result-heading,
+body .mw-search-result-media .searchresult,
+body .mw-search-result-media .mw-search-result-data {
+    grid-column: 1;
+}
+
+body .mw-search-result-thumb {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    justify-self: end;
+}
+
+body .mw-search-result-thumb img {
+    display: block;
+    max-width: 120px;
+    max-height: 90px;
+    border: 1px solid var(--border-color-subtle, #c8ccd1);
+    background: var(--background-color-neutral, #f8f9fa);
+    object-fit: contain;
+}
+
+body .mw-search-empty {
+    margin: 1em 0;
+    color: var(--color-subtle, #54595d);
+}
+
+body .mw-search-advanced {
+    max-width: 58em;
+    margin: 0 0 1.2em;
+    padding: 0.7em 0.9em;
+    border: 1px solid var(--border-color-subtle, #c8ccd1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-neutral-subtle, #fafbfc);
+}
+
+body .mw-search-advanced fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+body .mw-search-advanced legend {
+    margin-bottom: 0.25em;
+    padding: 0;
+    font-weight: 700;
+}
+
+body .mw-search-namespace-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11em, 1fr));
+    gap: 0.2em 1em;
+    margin: 0.5em 0 0.7em;
+}
+
+body .mw-search-namespace-grid .pref-checkbox {
+    margin: 0.2em 0;
+}
+
+@media (max-width: 700px) {
+    body .mw-search-result-media {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body .mw-search-result-thumb {
+        grid-column: 1;
+        grid-row: auto;
+        justify-self: start;
+    }
+}
+/* 插件偏好分区内的三级标题（如「指纹登录 → 添加当前浏览器」）按 Codex 小标题处理，避免继承皮肤的大号 h3 */
+body .pref-section .plugin-preference-section h3 {
+    margin: 1.1em 0 0.45em;
+    padding: 0;
+    border: 0;
+    color: var(--color-emphasized, #101418);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+/* 参数设置 →「更改密码」的旧 OOUI framed 按钮也统一成 Codex 按钮 */
+body .pref-layout .pref-password-button > .oo-ui-buttonElement-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-color-interactive, #72777d);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-interactive-subtle, #f8f9fa);
+    color: var(--color-base, #202122);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+body .pref-layout .pref-password-button > .oo-ui-buttonElement-button:hover {
+    border-color: var(--color-base, #202122);
+    background: var(--background-color-base, #fff);
+}
+/* ============================================================
+   特殊:最近更改：Codex 控件与 Timeless 行卡片
+   —— 皮肤把过滤菜单做成透明 Material 控件、把单行做成无阴影列表；这里统一成
+      Codex 的中性按钮 / 输入框，并让 Timeless 下每条更改都有轻量卡片阴影。
+   ============================================================ */
+body .mw-rc-page .rc-filters {
+    padding: 16px;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body .mw-rc-page .rc-filters-head {
+    padding: 0 0 8px;
+    color: var(--color-emphasized, #101418);
+    font-weight: 700;
+}
+
+body .mw-rc-page .rc-filter-row input,
+body .mw-rc-page .rc-chip {
+    border: 1px solid var(--border-color-interactive, #72777d);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+}
+
+body .mw-rc-page .rc-filter-row input {
+    min-height: 32px;
+    padding: 4px 8px;
+}
+
+body .mw-rc-page .rc-filter-actions .rc-menu > summary,
+body .mw-rc-page .rc-toolbar .rc-live,
+body .mw-rc-page .rc-range > summary {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 32px;
+    border: 1px solid var(--border-color-interactive, #72777d);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-interactive-subtle, #f8f9fa);
+    color: var(--color-base, #202122);
+    font-weight: 700;
+}
+
+body .mw-rc-page .rc-filter-actions .rc-menu > summary:hover,
+body .mw-rc-page .rc-filter-actions .rc-menu[open] > summary,
+body .mw-rc-page .rc-toolbar .rc-live:hover,
+body .mw-rc-page .rc-range > summary:hover {
+    border-color: var(--color-base, #202122);
+    background: var(--background-color-base, #fff);
+}
+
+body .mw-rc-page .rc-toolbar .rc-live.active {
+    border-color: var(--color-progressive, #36c);
+    background: var(--color-progressive, #36c);
+    color: #fff;
+}
+
+body.skin-timeless .mw-rc-page .rc-list {
+    border-top: 0;
+}
+
+body.skin-timeless .mw-rc-page .rc-list > .rc-entry {
+    margin: 0 0 6px;
+    padding: 10px 12px;
+    /*border: 1px solid var(--border-color-base, #c8ccd1);*/
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--background-color-base, #fff);
+    /*box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 5px rgba(0, 0, 0, 0.03);*/
+}
+
+body.skin-timeless .mw-rc-page .rc-list > .rc-entry:last-child {
+    margin-bottom: 0;
+}
+
+body.skin-timeless .mw-rc-page .rc-list > .rc-entry:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.09), 0 3px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ===== 特殊:导出离线 ===== */
+.offline-export-panel {
+    max-width: 48rem;
+}
+.offline-export-progress {
+    margin-top: 1rem;
+}
+.offline-export-progress-bar {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--background-color-neutral, #eaecf0);
+    overflow: hidden;
+}
+.offline-export-progress-value {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-progressive, #36c);
+    transition: width 0.25s ease;
+}
+.offline-export-progress p {
+    margin: 0.5rem 0 0;
+}

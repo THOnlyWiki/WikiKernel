@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+	<title>scatter chart</title>
+	<path d="M3 17h16v2H1V1h2z"/>
+	<circle cx="11.5" cy="3.5" r="1.5"/>
+	<circle cx="17.5" cy="4.5" r="1.5"/>
+	<circle cx="7.5" cy="7.5" r="1.5"/>
+	<circle cx="12.5" cy="8.5" r="1.5"/>
+	<circle cx="16.5" cy="11.5" r="1.5"/>
+	<circle cx="6.5" cy="12.5" r="1.5"/>
+	<circle cx="11.5" cy="13.5" r="1.5"/>
+</svg>

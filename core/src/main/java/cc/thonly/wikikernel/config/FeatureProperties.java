@@ -21,5 +21,8 @@ public class FeatureProperties {
     /** 保存 TypeScript 页面时立即编译（默认关闭）。 */
     private Boolean typescriptCompileOnSave;
 
+    /** 是否列出 / 允许访问 特殊:CodexExample（默认开启）。 */
+    private Boolean codexExample;
+
 
 }

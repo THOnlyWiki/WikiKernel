@@ -131,7 +131,8 @@ class CodePageTest {
 
         // 编辑页：代码编辑器 + 提示（不是 Wikitext 工具栏）
         WikiUser user = insertUser();
-        permissionService.replaceFor(user.getId(), java.util.List.of(PermissionService.GROUP_ADMIN));
+        // .ts/.tsx 会被编译为页面脚本，默认与 CSS / JS 一样只允许界面管理员编辑。
+        permissionService.replaceFor(user.getId(), java.util.List.of(PermissionService.GROUP_INTERFACE_ADMIN));
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(UserSession.ATTRIBUTE, user.toTransferCopy());
         mockMvc.perform(get("/wiki/{title}", "代码预览.ts").param("action", "edit").session(session))

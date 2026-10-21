@@ -9,10 +9,10 @@
 <body>
 <ul th:fragment="personal" class="personal-tools">
     <li th:if="${currentUser == null}">
-        <a th:href="@{/wiki/特殊:登录}" th:title="#{auth.login}" th:text="#{auth.login}">登录</a>
+        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:title="#{auth.login}" th:text="#{auth.login}">登录</a>
     </li>
     <li th:if="${currentUser == null and registerAvailable}">
-        <a th:href="@{/wiki/特殊:注册}" th:title="#{auth.registerTitle}" th:text="#{auth.register}">注册</a>
+        <a th:href="@{/wiki/特殊:注册(returnto=${loginReturnTo})}" th:title="#{auth.registerTitle}" th:text="#{auth.register}">注册</a>
     </li>
     <li class="personal-user" th:if="${currentUser != null}">
         <a th:href="@{/wiki/{t}(t=${'用户:' + currentUser.username})}"

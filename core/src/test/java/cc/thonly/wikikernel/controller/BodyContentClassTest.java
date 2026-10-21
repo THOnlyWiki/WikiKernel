@@ -50,7 +50,7 @@ class BodyContentClassTest {
         mockMvc.perform(get("/wiki/{title}", "特殊:特殊页面"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"bodyContent\" class=\"wiki-content\"")))
-                .andExpect(content().string(containsString("class=\"specialpages-group\"")));
+                .andExpect(content().string(containsString("class=\"mw-specialpagesgroup\"")));
 
         // 编辑页
         mockMvc.perform(get("/wiki/{title}", title).param("action", "edit").session(sessionOf(user)))

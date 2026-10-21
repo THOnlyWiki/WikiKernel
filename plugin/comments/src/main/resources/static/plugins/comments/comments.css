@@ -217,3 +217,68 @@
     font-size: 0.875em;
 }
 
+
+/* ===== Flow 风格评论区（自动 / 手动 + 嵌套回复） ===== */
+.comments-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6em;
+    margin-bottom: 0.5em;
+    border-bottom: 1px solid var(--border-color-subtle, #c8ccd1);
+}
+
+.comments-header .comments-title {
+    margin: 0;
+    padding: 0 0 0.25em;
+    border-bottom: 0;
+}
+
+.comments-count {
+    color: var(--color-subtle, #54595d);
+    font-size: 0.8125em;
+}
+
+.comment-thread-list,
+.comment-children {
+    list-style: none;
+}
+
+.comment-children {
+    margin: 4px 0 0 1.2em;
+    padding-left: 0.9em;
+    border-left: 2px solid var(--border-color-subtle, #eaecf0);
+}
+
+/* 嵌套结构本身已经表达层级，不再用 margin-left 叠缩进 */
+.comment-item[data-depth="1"],
+.comment-item[data-depth="2"],
+.comment-item[data-depth="3"],
+.comment-item[data-depth="4"] {
+    margin-left: 0;
+}
+
+.comment-reply {
+    background: var(--background-color-neutral-subtle, #fafbfc);
+}
+
+.comment-permalink {
+    margin-left: 0.55em;
+    color: var(--color-subtle, #72777d);
+    text-decoration: none;
+}
+
+.comment-permalink:hover {
+    color: var(--color-progressive, #36c);
+    text-decoration: underline;
+}
+
+.comment-inline-form {
+    margin-top: 6px;
+    margin-bottom: 0;
+    background: var(--background-color-base, #fff);
+}
+
+.comment-inline-form .comment-reply-note {
+    display: block;
+}

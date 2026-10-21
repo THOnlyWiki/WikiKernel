@@ -22,7 +22,6 @@ import cc.thonly.wikikernel.sidebar.SidebarProperties;
 import cc.thonly.wikikernel.web.WikiTitleProperties;
 import cc.thonly.wikikernel.wikitext.WikitextProperties;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
@@ -46,7 +45,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 public class WikiKernelApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(WikiKernelApplication.class, args);
+        // 兼容直接调用 WikiKernelApplication.main 的 IDE / 测试；正式启动类见 WikiKernelLauncher。
+        WikiKernelLauncher.main(args);
     }
 
 }

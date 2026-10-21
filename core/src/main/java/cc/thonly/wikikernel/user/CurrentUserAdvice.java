@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.user;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.PermissionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +49,37 @@ public class CurrentUserAdvice {
     @ModelAttribute("currentPath")
     public String currentPath(HttpServletRequest request) {
         return request.getRequestURI();
+    }
+
+    /**
+     * 顶栏「登录」链接的 returnto：当前页面（含查询串），并跟随本站页面路径配置
+     * （裸根部署时 /wiki/首页 → /首页）。登录页 / 注册页自身返回 /，避免登录后绕回登录页。
+     */
+    @ModelAttribute("loginReturnTo")
+    public String loginReturnTo(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        if (uri == null || uri.isBlank()) {
+            uri = "/";
+        } else {
+            // getRequestURI() 是百分号编码形式；先解码，否则 Thymeleaf 会再次编码成 %25E9…
+            try {
+                uri = java.net.URI.create(uri).getPath();
+            } catch (IllegalArgumentException ignored) {
+                // 非法 URI 时保留原值，后续仍按站内路径处理。
+            }
+        }
+        String path = WikiUrls.rewriteTemplateLink(uri);
+        String lower = path.toLowerCase(java.util.Locale.ROOT);
+        if (lower.contains("特殊:登录") || lower.contains("special:userlogin")
+                || lower.contains("特殊:注册") || lower.contains("special:createaccount")
+                || lower.contains("特殊:重置密码") || lower.contains("special:passwordreset")) {
+            return "/";
+        }
+        String query = request.getQueryString();
+        if (query != null && !query.isBlank()) {
+            path = path + "?" + query;
+        }
+        return path.startsWith("/") && !path.startsWith("//") ? path : "/";
     }
 
     @ModelAttribute("assetVersion")

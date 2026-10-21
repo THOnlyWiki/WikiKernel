@@ -53,6 +53,10 @@
         if ( description ) {
             body.append( 'description', description );
         }
+        var license = document.getElementById( 'file-license' );
+        if ( license && license.value ) {
+            body.append( 'license', license.value );
+        }
         return fetch( '/api/files/upload', {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },

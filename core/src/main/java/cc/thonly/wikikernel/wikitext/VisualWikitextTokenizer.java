@@ -26,12 +26,15 @@ public final class VisualWikitextTokenizer {
     public static final char TOKEN_END = '\uE011';
 
     /** 整块占位：内容与源码原样保存。 */
+    private static final Pattern GALLERY_PATTERN = Pattern.compile(
+            "(?si)<gallery\\b[^>]*>.*?</gallery\\s*>");
+
     private static final List<Pattern> BLOCK_PATTERNS = List.of(
             Pattern.compile("(?si)<pre\\b[^>]*>.*?</pre>"),
             Pattern.compile("(?si)<nowiki\\b[^>]*>.*?</nowiki>"),
             Pattern.compile("(?si)<syntaxhighlight\\b[^>]*>.*?</syntaxhighlight>"),
             Pattern.compile("(?si)<source\\b[^>]*>.*?</source>"),
-            Pattern.compile("(?si)<gallery\\b[^>]*>.*?</gallery>"),
+            GALLERY_PATTERN,
             Pattern.compile("(?si)<math\\b[^>]*>.*?</math>"),
             Pattern.compile("(?si)<chem\\b[^>]*>.*?</chem>"),
             Pattern.compile("(?si)<poem\\b[^>]*>.*?</poem>"),
@@ -73,6 +76,8 @@ public final class VisualWikitextTokenizer {
 
         /** 模板 / 解析器函数（可视化编辑器显示为可预览、可打开「模板对话框」的块）。 */
         public static final String KIND_TEMPLATE = "template";
+        /** 图库 {@code <gallery>…</gallery>}：可视化编辑器显示渲染预览，可打开「画廊对话框」。 */
+        public static final String KIND_GALLERY = "gallery";
         /** 其它源码块（引用 / 文件 / 分类 / 预格式 / 注释……）。 */
         public static final String KIND_OTHER = "other";
     }
@@ -99,10 +104,16 @@ public final class VisualWikitextTokenizer {
     }
 
     private static String replaceAll(Pattern pattern, String text, List<Token> tokens) {
-        return replaceAll(pattern, text, tokens, false);
+        return replaceAll(pattern, text, tokens, false,
+                pattern == GALLERY_PATTERN ? Token.KIND_GALLERY : Token.KIND_OTHER);
     }
 
     private static String replaceAll(Pattern pattern, String text, List<Token> tokens, boolean tagsOnly) {
+        return replaceAll(pattern, text, tokens, tagsOnly, Token.KIND_OTHER);
+    }
+
+    private static String replaceAll(Pattern pattern, String text, List<Token> tokens,
+                                     boolean tagsOnly, String kind) {
         Matcher matcher = pattern.matcher(text);
         StringBuilder out = new StringBuilder();
         int last = 0;
@@ -111,7 +122,7 @@ public final class VisualWikitextTokenizer {
                 continue;
             }
             out.append(text, last, matcher.start());
-            out.append(token(tokens, Token.KIND_OTHER, text.substring(matcher.start(), matcher.end())));
+            out.append(token(tokens, kind, text.substring(matcher.start(), matcher.end())));
             last = matcher.end();
         }
         out.append(text, last, text.length());

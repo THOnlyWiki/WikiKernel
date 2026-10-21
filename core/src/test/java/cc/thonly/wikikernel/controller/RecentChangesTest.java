@@ -9,6 +9,7 @@ import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.PermissionService;
+import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
@@ -60,6 +61,9 @@ class RecentChangesTest {
 
     @Autowired
     private PermissionService permissionService;
+
+    @Autowired
+    private SiteSettingsService siteSettingsService;
 
     @Test
     void groupsEditsOfSamePageIntoCollapsibleGroup() throws Exception {
@@ -189,6 +193,26 @@ class RecentChangesTest {
                 .andExpect(content().string(containsString(username)));
     }
 
+    @Test
+    void anonymousRecentChangesCanRequireLoginDynamically() throws Exception {
+        String original = siteSettingsService.get(
+                SiteSettingsService.ALLOW_ANONYMOUS_RECENT_CHANGES_KEY, "true");
+        WikiUser user = insertUser("最近更改登录用户" + System.nanoTime());
+        try {
+            siteSettingsService.set(SiteSettingsService.ALLOW_ANONYMOUS_RECENT_CHANGES_KEY, "false");
+            // 匿名：只看到登录提示
+            mockMvc.perform(get("/wiki/{title}", "特殊:最近更改"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("请先登录后再查看最近更改")));
+            // 已登录：正常看到列表（设置是动态读取的，不需重启）
+            mockMvc.perform(get("/wiki/{title}", "特殊:最近更改").session(sessionOf(user)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("此页面可以追踪本wiki的最近更改")));
+        } finally {
+            siteSettingsService.set(SiteSettingsService.ALLOW_ANONYMOUS_RECENT_CHANGES_KEY, original);
+        }
+    }
+
     // ==================== 工具 ====================
 
     private MockHttpSession sessionOf(WikiUser user) {
@@ -227,3 +251,4 @@ class RecentChangesTest {
         wikiPageMapper.updateById(page);
     }
 }
+

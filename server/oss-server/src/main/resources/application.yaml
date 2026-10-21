@@ -1,0 +1,29 @@
+server:
+  port: 18081
+
+spring:
+  application:
+    name: WikiKernelOssServer
+  datasource:
+    url: jdbc:sqlite:./data/oss.db
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: never
+
+oss:
+  # 写接口共享密钥；查看文件不需要密钥
+  key: change-me
+  # 原图和缩略图的磁盘目录
+  storage-dir: ./data/oss-files
+  # ImageMagick 可执行文件；空 = 自动查找 magick
+  magick: ""
+  thumbnail-quality: 82
+  # 公开读取域名（写接口 URL 由 Wiki 扩展单独配置）
+  public-base-url: http://127.0.0.1:18081
+  # 可选 CDN 读取域名；留空 = 使用 public-base-url
+  cdn-base-url: ""
+
+logging:
+  level:
+    cc.thonly.wikikernel.oss: info

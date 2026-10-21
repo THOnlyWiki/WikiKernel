@@ -18,7 +18,7 @@ import java.io.IOException;
  * 除安装页面 / 接口与静态资源外，所有请求都跳到 {@code /init}（API 返回 409）。
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class SetupFilter extends OncePerRequestFilter {
 
     private final SetupService setupService;
@@ -56,6 +56,7 @@ public class SetupFilter extends OncePerRequestFilter {
     private static boolean allowed(String path) {
         return path.equals("/init")
                 || path.startsWith("/api/setup")
+                || path.equals("/api/ready")
                 || path.equals("/api/version")
                 || path.startsWith("/css/")
                 || path.startsWith("/js/")

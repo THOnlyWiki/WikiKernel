@@ -272,4 +272,54 @@ class VisualEditorTest {
                 + "<div class=\"ve-template-render\"><p><b>甲</b></p></div></div>";
         assertEquals("前\n\n{{甲}}\n", service.serialize(html, List.of("{{甲}}")));
     }
+
+    // ==================== 画廊：预览 / 图片列表 / 属性 ====================
+
+    @Test
+    void galleryRendersPreviewBlockAndRoundTrips() {
+        String source = "<gallery widths=\"100\">\n文件:甲.png|说明\n文件:乙.png\n</gallery>\n";
+        VisualEditorService.Rendered rendered = service.render(source, "测试页");
+
+        assertTrue(rendered.html().contains("ve-gallery-block"), rendered.html());
+        assertTrue(rendered.html().contains("ve-gallery-render"), rendered.html());
+        assertTrue(rendered.html().contains("gallery"), rendered.html());
+        assertTrue(rendered.html().contains("画廊（2 张图片）"), rendered.html());
+        assertEquals(source, service.serialize(rendered.html(), rendered.tokens()));
+    }
+
+    @Test
+    void galleryDialogParsesItemsAndOptions() {
+        VisualEditorService.GalleryInfo info = service.openGallery("测试页",
+                "<gallery widths=\"100\" mode=\"nolines\" class=\"test\">\n"
+                        + "文件:甲.png|说明一\n乙.png|说明二\n</gallery>");
+
+        assertEquals(List.of("widths", "mode", "class"),
+                info.attributes().stream().map(VisualEditorService.GalleryAttribute::name).toList());
+        assertEquals(List.of("文件:甲.png", "乙.png"),
+                info.items().stream().map(VisualEditorService.GalleryItem::file).toList());
+        assertEquals("说明一", info.items().get(0).caption());
+        assertEquals("画廊（2 张图片）", info.label());
+        assertTrue(info.previewHtml().contains("gallery"), info.previewHtml());
+    }
+
+    @Test
+    void galleryBuildRebuildsSourceAndPreview() {
+        VisualEditorService.GalleryInfo info = service.buildGallery("测试页",
+                List.of(new VisualEditorService.GalleryAttribute("widths", "140"),
+                        new VisualEditorService.GalleryAttribute("mode", "packed")),
+                List.of(new VisualEditorService.GalleryItem("文件:甲.png", "说明"),
+                        new VisualEditorService.GalleryItem("乙.png", "")));
+
+        assertEquals("<gallery widths=\"140\" mode=\"packed\">\n"
+                + "文件:甲.png|说明\n乙.png\n</gallery>", info.source());
+        assertEquals("画廊（2 张图片）", info.label());
+        assertTrue(info.previewHtml().contains("gallery"), info.previewHtml());
+    }
+
+    @Test
+    void galleryInvalidSourceIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> service.openGallery("测试页", "不是画廊"));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.openGallery("测试页", "<gallery>没有结束标签"));
+    }
 }

@@ -17,3 +17,215 @@
     color: #72777d;
     font-style: italic;
 }
+
+/* ==================== 编辑页（仿 MediaWiki AbuseFilter 的分区表单） ==================== */
+
+.abuse-filter-form {
+    max-width: 72em;
+}
+
+.abuse-filter-edit-head h2 {
+    margin-bottom: 0.2em;
+}
+
+.abuse-filter-edit-head .wiki-hint {
+    margin-top: 0;
+}
+
+.abuse-filter-tabs {
+    margin: 0.4em 0 1em;
+    color: var(--wiki-text-muted);
+}
+
+.abuse-filter-tabs a {
+    font-weight: bold;
+}
+
+.abuse-filter-section {
+    margin: 1.2em 0 1.5em;
+}
+
+.abuse-filter-section > h3 {
+    margin: 0 0 0.7em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--wiki-border);
+    font-size: 1.05em;
+}
+
+.abuse-filter-fixed-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4em;
+    margin: 0.4em 0 0.9em;
+}
+
+.abuse-filter-fixed-label,
+.abuse-filter-form .form-field > label {
+    font-weight: bold;
+}
+
+.abuse-filter-public-hint {
+    margin-left: 0.25em;
+    color: var(--wiki-text-muted);
+    font-size: 0.9em;
+    font-weight: normal;
+}
+
+.abuse-filter-condition-field textarea {
+    min-height: 20em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92em;
+    line-height: 1.55;
+}
+
+.abuse-condition-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    margin-bottom: 0.45em;
+}
+
+.abuse-condition-tools select {
+    width: auto;
+    max-width: 22em;
+    margin: 0;
+}
+
+.abuse-check-message {
+    font-size: 0.9em;
+}
+
+.abuse-check-message.success {
+    color: var(--wiki-success, #14866d);
+}
+
+.abuse-check-message.error {
+    color: var(--wiki-error, #b32424);
+}
+
+.abuse-filter-form .CodeMirror {
+    height: auto;
+    min-height: 20em;
+    border: 1px solid var(--wiki-border);
+    border-radius: 2px;
+    font-size: 0.92em;
+}
+
+.abuse-filter-form .CodeMirror-scroll {
+    min-height: 20em;
+}
+
+.abuse-filter-actions-section .abuse-action-card {
+    margin: 0.7em 0;
+    padding: 0.7em 0.9em;
+    border: 1px solid var(--wiki-border-light, #c8ccd1);
+    border-radius: 3px;
+    background: var(--wiki-content-bg, #fff);
+}
+
+.abuse-action-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45em;
+    font-weight: bold;
+}
+
+.abuse-action-title input {
+    margin: 0;
+}
+
+.abuse-inline-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.8em 1.4em;
+    margin: 0.7em 0 0.3em 1.6em;
+}
+
+.abuse-inline-fields > label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+    min-width: 9em;
+    color: var(--wiki-text-muted);
+    font-size: 0.92em;
+}
+
+.abuse-inline-fields > label > span {
+    white-space: normal;
+}
+
+.abuse-inline-fields input[type="text"],
+.abuse-inline-fields input[type="number"],
+.abuse-inline-fields select {
+    width: auto;
+    min-width: 9em;
+    max-width: 22em;
+    margin: 0;
+}
+
+.abuse-inline-fields .abuse-wide-field {
+    flex: 1 1 24em;
+}
+
+.abuse-inline-fields .abuse-wide-field input {
+    width: 100%;
+    max-width: none;
+}
+
+.abuse-checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    margin: 0.5em 0 0 1.6em;
+    font-size: 0.92em;
+}
+
+.abuse-message-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.8em;
+    margin: 0.55em 0 0 1.6em;
+}
+
+.abuse-message-tools .wiki-button {
+    padding: 0.2em 0.7em;
+}
+
+.abuse-message-page-link {
+    font-size: 0.9em;
+}
+
+.abuse-message-preview {
+    margin: 0.5em 0 0 1.6em;
+    padding: 0.55em 0.8em;
+    border: 1px dashed var(--wiki-border);
+    background: var(--wiki-content-bg, #f8f9fa);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+}
+
+.abuse-action-degrade {
+    opacity: 0.9;
+}
+
+@media (max-width: 700px) {
+    .abuse-inline-fields {
+        display: block;
+        margin-left: 0;
+    }
+
+    .abuse-inline-fields > label {
+        margin-bottom: 0.5em;
+    }
+
+    .abuse-inline-fields input[type="text"],
+    .abuse-inline-fields input[type="number"],
+    .abuse-inline-fields select {
+        width: 100%;
+        max-width: none;
+    }
+}

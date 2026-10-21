@@ -20,8 +20,9 @@ import java.util.Map;
 /**
  * {@code 特殊:特殊页面} / {@code Special:SpecialPages}：列出注册表里的所有特殊页。
  * <p>
- * 排版仿 MediaWiki：顶部搜索框 + 目录 + 分组列表（{@link SpecialPageCategories}）；
- * 每个特殊页用 {@link SpecialPage#category()} 声明分组，未声明的归入「其他特殊页面」。
+ * 排版仿 MediaWiki：按分组输出标准 {@code .mw-specialpagesgroup} / {@code .mw-specialpages-list}
+ * （Timeless 皮肤据此渲染成与 thonly.cc 一致的两列列表）；
+ * 每个特殊页用 {@link SpecialPage#category()} 声明分组，未声明的归入「其它特殊页面」。
  * <p>
  * 用 {@link ObjectProvider} 延迟获取注册表，避免循环依赖
  * （注册表要收集所有 SpecialPage Bean，其中就包括本类）。

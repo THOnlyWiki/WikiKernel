@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,6 +59,49 @@ class SiteNameSettingTest {
 
     @Autowired
     private WikiUserMapper wikiUserMapper;
+
+    @Test
+    void customFaviconFlowsToHeadAndFaviconIco() throws Exception {
+        String original = siteSettingsService.get(SiteSettingsService.FAVICON_KEY, "");
+        String title = "站点图标页" + System.nanoTime();
+        wikiPageService.editPage(null, title, "内容");
+        siteSettingsService.set(SiteSettingsService.FAVICON_KEY, "/files/favicon-test.png");
+        try {
+            mockMvc.perform(get("/wiki/{title}", title))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString(
+                            "rel=\"icon\" href=\"/files/favicon-test.png\"")))
+                    .andExpect(content().string(containsString(
+                            "rel=\"shortcut icon\" href=\"/files/favicon-test.png\"")));
+            mockMvc.perform(get("/favicon.ico"))
+                    .andExpect(status().isFound())
+                    .andExpect(header().string("Location", "/files/favicon-test.png"));
+        } finally {
+            siteSettingsService.set(SiteSettingsService.FAVICON_KEY, original);
+        }
+    }
+
+    @Test
+    void noReferrerMetaFollowsSiteSetting() throws Exception {
+        String original = siteSettingsService.get(SiteSettingsService.NO_REFERRER_KEY, "false");
+        String title = "Referrer策略页" + System.nanoTime();
+        wikiPageService.editPage(null, title, "内容");
+        try {
+            siteSettingsService.set(SiteSettingsService.NO_REFERRER_KEY, "true");
+            mockMvc.perform(get("/wiki/{title}", title))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString(
+                            "<meta name=\"referrer\" content=\"no-referrer\">")));
+
+            siteSettingsService.set(SiteSettingsService.NO_REFERRER_KEY, "false");
+            mockMvc.perform(get("/wiki/{title}", title))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(org.hamcrest.Matchers.not(containsString(
+                            "<meta name=\"referrer\" content=\"no-referrer\">"))));
+        } finally {
+            siteSettingsService.set(SiteSettingsService.NO_REFERRER_KEY, original);
+        }
+    }
 
     @Test
     void normalizeFallsBackAndLimits() {
@@ -125,6 +169,8 @@ class SiteNameSettingTest {
                     .andExpect(content().string(containsString("id=\"settings-site-name\"")))
                     .andExpect(content().string(containsString("name=\"siteName\"")))
                     .andExpect(content().string(containsString("value=\"" + name + "\"")))
+                    .andExpect(content().string(containsString("id=\"settings-favicon\"")))
+                    .andExpect(content().string(containsString("name=\"favicon\"")))
                     .andExpect(content().string(containsString("站点信息")));
 
             // 空白值 = 回到默认名
@@ -149,6 +195,30 @@ class SiteNameSettingTest {
             assertEquals(name, siteNameService.name());
         } finally {
             siteSettingsService.set(SiteNameService.KEY, original);
+        }
+    }
+
+    @Test
+    void noReferrerCanBeToggledThroughSiteSettingsApi() throws Exception {
+        String original = siteSettingsService.get(SiteSettingsService.NO_REFERRER_KEY, "false");
+        WikiUser admin = admin("referrer-admin");
+        String title = "Referrer API 页" + System.nanoTime();
+        wikiPageService.editPage(null, title, "内容");
+        try {
+            mockMvc.perform(post("/api/site-settings").session(sessionOf(admin)).param("noReferrer", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(200));
+            assertEquals("true", siteSettingsService.get(SiteSettingsService.NO_REFERRER_KEY, "false"));
+            mockMvc.perform(get("/wiki/{title}", title))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString(
+                            "<meta name=\"referrer\" content=\"no-referrer\">")));
+
+            mockMvc.perform(post("/api/site-settings").session(sessionOf(admin)).param("popups", "1"))
+                    .andExpect(status().isOk());
+            assertEquals("false", siteSettingsService.get(SiteSettingsService.NO_REFERRER_KEY, "true"));
+        } finally {
+            siteSettingsService.set(SiteSettingsService.NO_REFERRER_KEY, original);
         }
     }
 

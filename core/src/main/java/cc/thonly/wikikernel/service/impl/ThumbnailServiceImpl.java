@@ -6,6 +6,7 @@ import cc.thonly.wikikernel.config.ThumbnailProperties;
 import cc.thonly.wikikernel.service.ThumbnailService;
 import cc.thonly.wikikernel.web.MediaTypes;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 /**
@@ -40,6 +46,8 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     private final ThumbnailProperties properties;
     private final FileStorageProperties storageProperties;
     private final Object quotaLock = new Object();
+    /** thumb.php 的按需缩放队列：最多 2 个 worker；满了由 CallerRunsPolicy 阻塞当前请求。 */
+    private final ThreadPoolExecutor renderPool;
 
     private volatile String executable;
     private volatile boolean executableSearched;
@@ -47,6 +55,9 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     public ThumbnailServiceImpl(ThumbnailProperties properties, FileStorageProperties storageProperties) {
         this.properties = properties;
         this.storageProperties = storageProperties;
+        int queue = Math.max(1, properties.getQueueLimit());
+        this.renderPool = new ThreadPoolExecutor(2, 2, 60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(queue), new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     /** 启动时执行一次配额清理（缩略图目录可能被手工拷贝 / 上次运行遗留撑大）。 */
@@ -148,6 +159,146 @@ public class ThumbnailServiceImpl implements ThumbnailService {
             }
         }
         enforceQuota();
+    }
+
+    @Override
+    public Optional<Path> ensureWidth(WikiFile file, int requestedWidth) {
+        if (!properties.isEnabled() || file == null || file.getStoredName() == null
+                || MediaTypes.kindOf(file.getName()) != MediaTypes.Kind.IMAGE) {
+            return Optional.empty();
+        }
+        Path source = baseDirectory().resolve(file.getStoredName()).normalize();
+        if (!Files.isRegularFile(source)) {
+            return Optional.empty();
+        }
+        int sourceWidth = file.getWidth() == null || file.getWidth() <= 0
+                ? dimensionWidth(measure(source)) : file.getWidth();
+        if (sourceWidth <= 0) {
+            return Optional.empty();
+        }
+        int targetWidth = requestedWidth <= 0 ? sourceWidth : Math.min(requestedWidth, sourceWidth);
+        if (targetWidth <= 0) {
+            return Optional.of(source);
+        }
+        Path output = thumbnailRoot().resolve(file.getStoredName())
+                .resolve("w" + targetWidth + ".webp").normalize();
+        if (!output.startsWith(thumbnailRoot())) {
+            return Optional.empty();
+        }
+        try {
+            if (Files.isRegularFile(output) && Files.size(output) > 0) {
+                return Optional.of(output);
+            }
+            Files.createDirectories(output.getParent());
+            Future<?> future = renderPool.submit(() -> generateWidth(source, output, targetWidth));
+            try {
+                future.get(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (TimeoutException exception) {
+                future.cancel(true);
+                log.warn("按需缩略图超时: {} w{}", file.getStoredName(), targetWidth);
+                return Optional.empty();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                return Optional.empty();
+            } catch (ExecutionException exception) {
+                log.warn("按需缩略图失败: {} w{}", file.getStoredName(), targetWidth, exception.getCause());
+                return Optional.empty();
+            }
+            return Files.isRegularFile(output) && Files.size(output) > 0
+                    ? Optional.of(output) : Optional.empty();
+        } catch (Exception exception) {
+            log.debug("按需缩略图异常: {} w{}", file.getStoredName(), targetWidth, exception);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<Path> ensureWidth(Path source, String cacheKey, int requestedWidth) {
+        if (!properties.isEnabled() || source == null || !Files.isRegularFile(source)) {
+            return Optional.empty();
+        }
+        Dimensions dimensions = measure(source);
+        if (dimensions == null || dimensions.width() <= 0 || dimensions.height() <= 0) {
+            return Optional.empty();
+        }
+        int targetWidth = requestedWidth <= 0
+                ? dimensions.width()
+                : Math.min(requestedWidth, dimensions.width());
+        if (targetWidth <= 0) {
+            return Optional.empty();
+        }
+        String key = Integer.toHexString((cacheKey == null ? source.toString() : cacheKey).hashCode());
+        Path output = thumbnailRoot().resolve("offline").resolve(key)
+                .resolve("w" + targetWidth + ".webp").normalize();
+        if (!output.startsWith(thumbnailRoot())) {
+            return Optional.empty();
+        }
+        try {
+            if (Files.isRegularFile(output) && Files.size(output) > 0) {
+                return Optional.of(output);
+            }
+            Files.createDirectories(output.getParent());
+            Future<?> future = renderPool.submit(() -> generateWidth(source, output, targetWidth));
+            try {
+                future.get(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (TimeoutException exception) {
+                future.cancel(true);
+                log.warn("离线导出缩略图超时: {}", cacheKey);
+                return Optional.empty();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                return Optional.empty();
+            } catch (ExecutionException exception) {
+                log.warn("离线导出缩略图失败: {}", cacheKey, exception.getCause());
+                return Optional.empty();
+            }
+            return Files.isRegularFile(output) && Files.size(output) > 0
+                    ? Optional.of(output) : Optional.empty();
+        } catch (Exception exception) {
+            log.debug("离线导出缩略图异常: {}", cacheKey, exception);
+            return Optional.empty();
+        }
+    }
+
+    private void generateWidth(Path source, Path output, int targetWidth) {
+        String tool = executable();
+        if (tool == null) {
+            return;
+        }
+        try {
+            Files.createDirectories(output.getParent());
+            ProcessResult result = run(List.of(
+                    tool, source.toString(),
+                    "-auto-orient",
+                    "-background", "none",
+                    // 只给宽度，不写 !：保持比例，且 targetWidth 已限制为不超过原图
+                    "-resize", targetWidth + "x",
+                    "-quality", String.valueOf(Math.max(1, Math.min(100, properties.getQuality()))),
+                    "-define", "webp:method=6",
+                    "-strip",
+                    output.toString()));
+            if (result.exitCode() != 0) {
+                Files.deleteIfExists(output);
+                log.warn("生成按需缩略图失败 {} w{}: {}", source.getFileName(), targetWidth,
+                        result.output().trim());
+            }
+        } catch (Exception exception) {
+            try {
+                Files.deleteIfExists(output);
+            } catch (Exception ignored) {
+                // 忽略清理失败
+            }
+            log.warn("生成按需缩略图异常 {} w{}", source.getFileName(), targetWidth, exception);
+        }
+    }
+
+    private static int dimensionWidth(Dimensions dimensions) {
+        return dimensions == null ? 0 : Math.max(0, dimensions.width());
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        renderPool.shutdownNow();
     }
 
     @Override

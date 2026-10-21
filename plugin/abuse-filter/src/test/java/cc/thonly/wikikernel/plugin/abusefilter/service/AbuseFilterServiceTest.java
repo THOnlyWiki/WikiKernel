@@ -7,6 +7,7 @@ import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.plugin.abusefilter.service.AbuseFilterStore;
 import cc.thonly.wikikernel.plugin.abusefilter.AbuseFilterFakes;
 import cc.thonly.wikikernel.plugin.abusefilter.AbuseFilterSupport;
+import cc.thonly.wikikernel.plugin.abusefilter.PluginContextFake;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -151,6 +152,51 @@ class AbuseFilterServiceTest {
         assertEquals(List.of("自定义标签"), outcome.tagList());
         assertEquals("warn,tag", fixture.service().logs(true, 10).get(0).getActionsTaken(),
                 "warn 与 degrade 同时勾选时按 warn 记录（与迁移前一致）");
+    }
+
+    @Test
+    void warningMessagePlaceholderUsesFilterDescription() {
+        AbuseFilterFakes.Fixture fixture = fixture();
+        fixture.service().save(0, new AbuseFilterService.FilterForm(
+                "禁止广告", "true", "warn", "", true, false, false,
+                0, 0, "user", "", "", "警告：$1", "", "", "",
+                false, 3, 3), 1L);
+
+        AbuseFilterService.Outcome outcome = fixture.service().evaluate("edit",
+                Viewer.of(1L, EDITOR, Set.of()), "203.0.113.7",
+                editVariables("测试页面", "新内容"));
+        assertEquals(List.of("警告：禁止广告"), outcome.warnings());
+    }
+
+    @Test
+    void messagePageTitlesUseWikiKernelNamespace() {
+        AbuseFilterFakes.Fixture fixture = fixture();
+        long id = fixture.service().save(0, new AbuseFilterService.FilterForm(
+                "消息页命名空间", "true", "warn", "", true, false, false,
+                0, 0, "user", "", "", "",
+                "Abusefilter-warning", "", "wikikernel:Abusefilter-disallowed",
+                false, 3, 3), 1L);
+
+        WikiAbuseFilter saved = fixture.service().find(id).orElseThrow();
+        assertEquals("WikiKernel:Abusefilter-warning", saved.getWarnPage());
+        assertEquals("WikiKernel:Abusefilter-disallowed", saved.getDisallowPage());
+    }
+
+    @Test
+    void warningMessagePageUsesWikiKernelNamespaceAndExpandsDescription() {
+        AbuseFilterFakes.Fixture fixture = fixture();
+        fixture.addPage("WikiKernel:Abusefilter-warning", "警告：$1");
+        PluginContextFake.inject(fixture.service(), "pageStore", fixture.pageStore());
+        fixture.service().save(0, new AbuseFilterService.FilterForm(
+                "禁止广告", "true", "warn", "", true, false, false,
+                0, 0, "user", "", "", "",
+                "Abusefilter-warning", "", "",
+                false, 3, 3), 1L);
+
+        AbuseFilterService.Outcome outcome = fixture.service().evaluate("edit",
+                Viewer.of(1L, EDITOR, Set.of()), "203.0.113.7",
+                editVariables("测试页面", "新内容"));
+        assertEquals(List.of("警告：禁止广告"), outcome.warnings());
     }
 
     @Test

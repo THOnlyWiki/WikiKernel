@@ -17,7 +17,7 @@
         <div th:if="${mediaPlayerHtml != null}" th:utext="${mediaPlayerHtml}"></div>
         <a th:if="${mediaPlayerHtml == null and file.image}" th:href="${file.url}">
             <img class="wiki-media-image" th:src="${file.previewUrl}" th:alt="${file.name}"
-                 th:attr="data-file=${'文件:' + file.name},data-caption=${file.description}"/>
+                 th:attr="data-file=${'文件:' + file.name},data-caption=${file.description},data-original-src=${file.url}"/>
         </a>
         <p th:if="${mediaPlayerHtml == null and not file.image}">
             <a class="wiki-button" th:href="${file.url}" th:text="#{files.download}">下载文件</a>
@@ -40,6 +40,10 @@
         <tr>
             <th th:text="#{files.type}">类型</th>
             <td th:text="${file.contentType}">image/png</td>
+        </tr>
+        <tr>
+            <th th:text="#{files.license}">授权协议</th>
+            <td th:text="${file.license}">共用领域协议</td>
         </tr>
         <tr>
             <th th:text="#{files.uploader}">上传者</th>

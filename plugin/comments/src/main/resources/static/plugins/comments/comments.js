@@ -1,10 +1,8 @@
 /*
- * 评论区前端（页面含 comment 标签时由 view.html 渲染）：
- *  - 发表：拦截 .comment-form 提交到 POST /api/comments；成功后立即清空输入框，
- *    用 Ajax 拉取当前页面并只替换评论区（不整页刷新，浏览器也就不会恢复输入内容），新评论高亮定位
- *  - 回复：.comment-reply-link 设置表单 parentId 并显示「正在回复」
- *  - 删除：.comment-delete-link 调 POST /api/comments/delete，同样只刷新评论区（保留已输入的草稿）
- * 事件都委托在 document 上，替换评论区后无需重新绑定。
+ * Flow 风格评论区前端：
+ *  - 默认自动显示；页面可用 <comment disabled /> 关闭，或用 <comment /> 手动开启
+ *  - 发表 / 回复 / 删除都只刷新评论区，并保留顶部输入框里的草稿
+ *  - 回复使用就地 composer（服务端输出 <template id="comment-composer-template">）
  */
 (function () {
     'use strict';
@@ -13,11 +11,6 @@
 
     function root() {
         return document.querySelector('.wiki-comments');
-    }
-
-    function form() {
-        var section = root();
-        return section ? section.querySelector('.comment-form') : null;
     }
 
     function apiBase() {
@@ -30,9 +23,12 @@
         return (section && section.getAttribute('data-page')) || '';
     }
 
-    function showMessage(text, success) {
-        var current = form();
-        var box = current ? current.querySelector('.form-message') : null;
+    function formOf(element) {
+        return element && element.closest ? element.closest('.comment-form') : null;
+    }
+
+    function showMessage(form, text, success) {
+        var box = form ? form.querySelector('.form-message') : null;
         if (!box) {
             return;
         }
@@ -41,16 +37,15 @@
         box.hidden = false;
     }
 
-    function resetReply() {
-        var current = form();
-        if (!current) {
+    function resetReply(form) {
+        if (!form) {
             return;
         }
-        var parentInput = current.querySelector('input[name="parentId"]');
+        var parentInput = form.querySelector('input[name="parentId"]');
         if (parentInput) {
             parentInput.value = '';
         }
-        var note = current.querySelector('.comment-reply-note');
+        var note = form.querySelector('.comment-reply-note');
         if (note) {
             note.hidden = true;
         }
@@ -76,34 +71,16 @@
 
     /**
      * 只替换评论区（拉当前页面 HTML），成功后显示提示并高亮新评论。
-     * {@code clearDraft=true}（发表成功）时不恢复输入框；否则（删除评论）恢复草稿与回复状态。
+     * clearDraft=true（发表成功）时不恢复顶部输入框；否则（删除）恢复草稿与回复状态。
      */
     function refreshComments(newId, successText, clearDraft) {
         var current = root();
         if (!current) {
             return;
         }
-        // 替换前保存当前草稿与回复状态
-        var draft = '';
-        var parentId = '';
-        var replyNameText = '';
-        var replyVisible = false;
-        var textarea = current.querySelector('.comment-form textarea');
-        if (textarea) {
-            draft = textarea.value;
-        }
-        var parentInput = current.querySelector('.comment-form input[name="parentId"]');
-        if (parentInput) {
-            parentId = parentInput.value;
-        }
-        var nameEl = current.querySelector('.comment-reply-name');
-        if (nameEl) {
-            replyNameText = nameEl.textContent;
-        }
-        var noteEl = current.querySelector('.comment-reply-note');
-        if (noteEl) {
-            replyVisible = !noteEl.hidden;
-        }
+        var topForm = current.querySelector('.comment-form:not(.comment-inline-form)');
+        var draft = topForm && topForm.querySelector('textarea')
+            ? topForm.querySelector('textarea').value : '';
 
         fetch(window.location.href, {
             headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest' }
@@ -113,38 +90,30 @@
             var doc = new DOMParser().parseFromString(html, 'text/html');
             var fresh = doc.querySelector('.wiki-comments');
             if (!fresh) {
+                window.location.reload();
                 return;
             }
-            // 先淡出旧评论区，替换后再淡入，避免整块生硬闪替
             current.classList.add('wiki-comments-fading');
             window.setTimeout(function () {
                 current.replaceWith(fresh);
                 fresh.classList.add('wiki-comments-fading');
-                // 下一拍去掉 class → CSS 过渡淡入（用 setTimeout 而不是 rAF：后台标签页 rAF 会被节流）
                 window.setTimeout(function () {
                     fresh.classList.remove('wiki-comments-fading');
                 }, 30);
                 if (!clearDraft) {
-                    // 恢复草稿与回复状态（删除评论时用户可能已经写了一半）
-                    var freshTextarea = fresh.querySelector('.comment-form textarea');
+                    var freshForm = fresh.querySelector('.comment-form:not(.comment-inline-form)');
+                    var freshTextarea = freshForm && freshForm.querySelector('textarea');
                     if (freshTextarea) {
                         freshTextarea.value = draft;
                     }
-                    var freshParent = fresh.querySelector('.comment-form input[name="parentId"]');
-                    if (freshParent) {
-                        freshParent.value = parentId;
-                    }
-                    var freshName = fresh.querySelector('.comment-reply-name');
-                    if (freshName) {
-                        freshName.textContent = replyNameText;
-                    }
-                    var freshNote = fresh.querySelector('.comment-reply-note');
-                    if (freshNote) {
-                        freshNote.hidden = !replyVisible;
-                    }
                 }
                 if (successText) {
-                    showMessage(successText, true);
+                    var box = fresh.querySelector('.comment-form:not(.comment-inline-form) .form-message');
+                    if (box) {
+                        box.textContent = successText;
+                        box.className = 'form-message success';
+                        box.hidden = false;
+                    }
                 }
                 if (newId) {
                     var item = document.querySelector('.comment-item[data-id="' + newId + '"]');
@@ -155,19 +124,60 @@
                         }
                     }
                 }
-            }, 150);
+            }, 120);
         }).catch(function () {
-            // 拉取失败就退回整页刷新
             window.location.reload();
         });
     }
 
-    /** 平滑滚动（尊重 prefers-reduced-motion）。 */
     function scrollBehavior() {
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             return 'auto';
         }
         return 'smooth';
+    }
+
+    function insertInlineComposer(reply) {
+        var item = reply.closest('.comment-item');
+        var template = document.getElementById('comment-composer-template');
+        if (!item || !template || !template.content) {
+            return false;
+        }
+        var main = item.querySelector(':scope > .comment-main');
+        if (!main) {
+            return false;
+        }
+        var existing = main.querySelector(':scope > .comment-inline-form');
+        if (existing) {
+            existing.remove();
+        }
+        var composer = template.content.firstElementChild.cloneNode(true);
+        var parent = composer.querySelector('input[name="parentId"]');
+        if (parent) {
+            parent.value = reply.getAttribute('data-id') || '';
+        }
+        var name = composer.querySelector('.comment-reply-name');
+        if (name) {
+            name.textContent = reply.getAttribute('data-author') || '';
+        }
+        var note = composer.querySelector('.comment-reply-note');
+        if (note) {
+            note.hidden = false;
+        }
+        var actions = main.querySelector(':scope > .comment-actions');
+        if (actions) {
+            actions.insertAdjacentElement('afterend', composer);
+        } else {
+            main.appendChild(composer);
+        }
+        var textarea = composer.querySelector('textarea');
+        if (textarea) {
+            textarea.focus();
+            if (textarea.scrollIntoView) {
+                textarea.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
+            }
+        }
+        return true;
     }
 
     document.addEventListener('click', function (event) {
@@ -177,32 +187,41 @@
         }
         var reply = target.closest('.comment-reply-link');
         if (reply) {
-            var current = form();
-            if (!current) {
-                return;
-            }
-            var parentInput = current.querySelector('input[name="parentId"]');
-            if (parentInput) {
-                parentInput.value = reply.getAttribute('data-id');
-            }
-            var name = current.querySelector('.comment-reply-name');
-            if (name) {
-                name.textContent = reply.getAttribute('data-author') || '';
-            }
-            var note = current.querySelector('.comment-reply-note');
-            if (note) {
-                note.hidden = false;
-            }
-            var textarea = current.querySelector('textarea');
-            if (textarea) {
-                textarea.focus();
+            if (!insertInlineComposer(reply)) {
+                var top = root() && root().querySelector('.comment-form:not(.comment-inline-form)');
+                if (!top) {
+                    return;
+                }
+                var parentInput = top.querySelector('input[name="parentId"]');
+                if (parentInput) {
+                    parentInput.value = reply.getAttribute('data-id') || '';
+                }
+                var note = top.querySelector('.comment-reply-note');
+                if (note) {
+                    note.hidden = false;
+                }
+                var name = top.querySelector('.comment-reply-name');
+                if (name) {
+                    name.textContent = reply.getAttribute('data-author') || '';
+                }
+                var textarea = top.querySelector('textarea');
+                if (textarea) {
+                    textarea.focus();
+                }
             }
             return;
         }
+
         if (target.closest('.comment-reply-cancel')) {
-            resetReply();
+            var current = formOf(target);
+            if (current && current.classList.contains('comment-inline-form')) {
+                current.remove();
+            } else {
+                resetReply(current);
+            }
             return;
         }
+
         var del = target.closest('.comment-delete-link');
         if (del) {
             if (!window.confirm(MESSAGES.commentDeleteConfirm)) {
@@ -211,7 +230,6 @@
             del.disabled = true;
             post(apiBase() + '/delete', { id: del.getAttribute('data-id') }).then(function (result) {
                 if (result && result.code === 200) {
-                    // 删除也只刷新评论区：输入框里未发表的草稿会保留
                     refreshComments(null, result.message || MESSAGES.commentDeleted, false);
                     return;
                 }
@@ -225,7 +243,7 @@
     });
 
     document.addEventListener('submit', function (event) {
-        var current = event.target && event.target.closest ? event.target.closest('.comment-form') : null;
+        var current = formOf(event.target);
         if (!current) {
             return;
         }
@@ -233,7 +251,7 @@
         var textarea = current.querySelector('textarea');
         var content = textarea ? textarea.value.trim() : '';
         if (!content) {
-            showMessage(MESSAGES.commentEmpty);
+            showMessage(current, MESSAGES.commentEmpty);
             return;
         }
         var parentInput = current.querySelector('input[name="parentId"]');
@@ -250,21 +268,19 @@
                 button.disabled = false;
             }
             if (result && result.code === 200) {
-                // 立刻清空输入框（不整页刷新，避免浏览器恢复表单内容）
                 if (textarea) {
                     textarea.value = '';
                 }
-                resetReply();
                 refreshComments(result.data && result.data.id,
                     result.message || MESSAGES.commentPosted, true);
                 return;
             }
-            showMessage((result && result.message) || MESSAGES.operationFailed || '操作失败，请稍后重试');
+            showMessage(current, (result && result.message) || MESSAGES.operationFailed || '操作失败，请稍后重试');
         }).catch(function () {
             if (button) {
                 button.disabled = false;
             }
-            showMessage(MESSAGES.networkError || '网络错误，请稍后重试');
+            showMessage(current, MESSAGES.networkError || '网络错误，请稍后重试');
         });
     });
 })();

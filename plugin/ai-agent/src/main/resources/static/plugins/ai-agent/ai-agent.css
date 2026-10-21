@@ -345,11 +345,23 @@
 
 .ai-agent-tab {
     padding: 0.25em 0.9em;
-    border: 1px solid var(--wiki-border);
+    border: 1px solid var(--wiki-border, #a2a9b1);
     border-bottom: none;
     border-radius: 2px 2px 0 0;
-    background: var(--wiki-subtle);
+    background: #f8f9fa;
+    color: #202122;
+    font: inherit;
+    line-height: 1.4;
     cursor: pointer;
+}
+
+.ai-agent-tab:hover {
+    background: #eaecf0;
+}
+
+.ai-agent-tab:focus-visible {
+    outline: 2px solid #36c;
+    outline-offset: 1px;
 }
 
 .ai-agent-tab.selected {

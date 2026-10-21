@@ -26,6 +26,14 @@ public final class PluginConstants {
     /** 插件入口类（必须是 WikiPlugin 实现类）。 */
     public static final String MAIN_CLASS = "plugin.mainClass";
 
+    /**
+     * 插件 Mixin / MixinExtras 配置资源（{@code plugin.mixins}，逗号分隔，可空）。
+     * <p>例如 {@code plugin.mixins=mixins.my-plugin.json}。带 Mixin 的插件会在
+     * Java Agent 启动期被加入应用类加载器；没有显式声明时 agent 也会自动发现
+     * 插件根目录 / 子目录下的 {@code *.mixins.json} / {@code mixins*.json}。</p>
+     */
+    public static final String MIXINS = "plugin.mixins";
+
     /** 运行期依赖的其它插件 id（逗号分隔，可空）：被依赖的插件先启动，缺失 / 被禁用 / 启动失败时本插件跳过启动。 */
     public static final String REQUIRES = "plugin.requires";
 

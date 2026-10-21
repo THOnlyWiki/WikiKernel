@@ -12,6 +12,9 @@ dependencyResolutionManagement {
 
 include 'common'
 include 'core'
+include 'mixin-agent'
+include 'server'
+include 'server:oss-server'
 
 file('plugin')
         .listFiles()

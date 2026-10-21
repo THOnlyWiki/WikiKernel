@@ -23,7 +23,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebCacheConfig implements WebMvcConfigurer {
 
     /** 静态资源路径前缀。 */
-    private static final String[] STATIC_PREFIXES = {"/css/", "/js/", "/img/"};
+    private static final String[] STATIC_PREFIXES = {"/css/", "/js/", "/img/", "/vendor/"};
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

@@ -656,6 +656,11 @@
     overflow-wrap: anywhere;
 }
 
+.sp-gift-card-icon {
+    font-size: 1.4em;
+    line-height: 1;
+}
+
 .sp-gift-card-desc {
     color: var(--wiki-text-muted);
     font-size: 0.8125em;

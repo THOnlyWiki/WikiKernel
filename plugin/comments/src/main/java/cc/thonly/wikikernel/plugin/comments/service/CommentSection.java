@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,31 +87,33 @@ public class CommentSection {
                 || viewer.inGroup(GROUP_BUREAUCRAT);
     }
 
-    /** 整个评论区 HTML（列表 + 表单）；调用方负责判断「页面含 {@code <comment />} 且功能开启」。 */
+    /** 评论功能是否自动显示（站点设置 {@code comments.auto-display}，默认开启）。 */
+    public boolean autoDisplay() {
+        return siteConfig == null || siteConfig.getBoolean(CommentsPlugin.AUTO_DISPLAY_KEY, true);
+    }
+
+    /** 整个评论区 HTML（列表 + 表单）；自动显示模式由调用方传入 {@code manual=false}。 */
     public String render(String pageTitle, Viewer viewer) {
+        return render(pageTitle, viewer, false);
+    }
+
+    /** 整个评论区 HTML；{@code manual=true} 表示页面显式写了 {@code <comment />}。 */
+    public String render(String pageTitle, Viewer viewer, boolean manual) {
         List<CommentRow> rows = rows(pageTitle, viewer);
+        List<CommentNode> threads = threads(rows);
         boolean canComment = canComment(pageTitle, viewer);
         StringBuilder html = new StringBuilder();
-        html.append("<div class=\"wiki-comments\" data-api=\"/api/comments\" data-page=\"")
-                .append(escape(pageTitle)).append("\">");
-        html.append("<h2 class=\"comments-title\">").append(escape(message("comment.title")))
-                .append("</h2>");
+        html.append("<div class=\"wiki-comments flow-comments\" data-api=\"/api/comments\" data-page=\"")
+                .append(escape(pageTitle)).append("\" data-mode=\"")
+                .append(manual ? "manual" : "auto").append("\" data-auto=\"")
+                .append(autoDisplay() ? "true" : "false").append("\">");
+        html.append("<div class=\"comments-header\"><h2 class=\"comments-title\">")
+                .append(escape(message("comment.title")))
+                .append("</h2><span class=\"comments-count\">")
+                .append(escape(messageArgs("comment.count", rows.size())))
+                .append("</span></div>");
         if (canComment) {
-            html.append("<form class=\"wiki-form comment-form\" method=\"post\" action=\"#\">")
-                    .append("<input type=\"hidden\" name=\"parentId\" value=\"\"/>")
-                    .append("<div class=\"form-field\"><label for=\"comment-content\">")
-                    .append(escape(message("comment.placeholder")))
-                    .append("</label><textarea id=\"comment-content\" name=\"content\" rows=\"3\" required=\"required\"></textarea></div>")
-                    .append("<div class=\"comment-reply-note\" hidden=\"hidden\"><span>")
-                    .append(escape(message("comment.replyingTo")))
-                    .append("</span><strong class=\"comment-reply-name\"></strong>")
-                    .append("<button type=\"button\" class=\"comment-reply-cancel\">")
-                    .append(escape(message("comment.cancelReply")))
-                    .append("</button></div>")
-                    .append("<div class=\"form-message\" role=\"alert\" hidden=\"hidden\"></div>")
-                    .append("<div class=\"form-actions\"><button type=\"submit\" class=\"wiki-button\">")
-                    .append(escape(message("comment.submit")))
-                    .append("</button></div></form>");
+            html.append(composer(null, true));
         } else {
             html.append("<p class=\"comment-intro\">")
                     .append(escape(message("comment.loginRequired")))
@@ -120,52 +123,99 @@ public class CommentSection {
             html.append("<p class=\"comment-empty\">").append(escape(message("comment.empty")))
                     .append("</p>");
         } else {
-            html.append("<ol class=\"comment-list\">");
-            for (CommentRow row : rows) {
-                html.append("<li class=\"comment-item")
-                        .append(row.deleted() ? " comment-deleted" : "")
-                        .append("\" data-id=\"").append(row.id())
-                        .append("\" data-depth=\"").append(row.depth()).append("\">");
-                if (row.avatarUrl() != null) {
-                    html.append("<img class=\"comment-avatar\" src=\"").append(escapeAttribute(row.avatarUrl()))
-                            .append("\" alt=\"\"/>");
-                }
-                html.append("<div class=\"comment-main\"><div class=\"comment-header\">");
-                if (row.authorUrl() != null) {
-                    html.append("<a class=\"comment-author\" href=\"").append(escapeAttribute(row.authorUrl()))
-                            .append("\">").append(escape(row.author())).append("</a>");
-                } else {
-                    html.append("<span class=\"comment-author\">").append(escape(row.author())).append("</span>");
-                }
-                html.append("<span class=\"comment-time\">").append(escape(row.timeText())).append("</span></div>");
-                if (row.deleted()) {
-                    html.append("<div class=\"comment-body comment-tombstone\">")
-                            .append(escape(message("comment.deleted"))).append("</div>");
-                } else {
-                    html.append("<div class=\"comment-body\">").append(row.contentHtml()).append("</div>");
-                }
-                if (!row.deleted()) {
-                    html.append("<div class=\"comment-actions\">");
-                    if (canComment) {
-                        html.append("<button type=\"button\" class=\"comment-reply-link\" data-id=\"")
-                                .append(row.id()).append("\" data-author=\"").append(escapeAttribute(row.author()))
-                                .append("\">").append(escape(message("comment.reply"))).append("</button>");
-                    }
-                    if (row.canDelete()) {
-                        html.append("<button type=\"button\" class=\"comment-delete-link\" data-id=\"")
-                                .append(row.id()).append("\">")
-                                .append(escape(message("comment.delete"))).append("</button>");
-                    }
-                    html.append("</div>");
-                }
-                html.append("</div></li>");
+            html.append("<ol class=\"comment-list comment-thread-list\">");
+            for (CommentNode node : threads) {
+                appendNode(html, node, canComment, new LinkedHashSet<>());
             }
             html.append("</ol>");
+        }
+        if (canComment) {
+            html.append("<template id=\"comment-composer-template\">")
+                    .append(composer(null, false))
+                    .append("</template>");
         }
         return html.append("</div>").toString();
     }
 
-    /** 评论行（拍平成「深度 + 内容」，回复用缩进展示；已删除的显示占位、不渲染内容）。 */
+    /** 递归渲染一个评论节点（子回复放在同一节点内部的嵌套列表里）。 */
+    private void appendNode(StringBuilder html, CommentNode node, boolean canComment, Set<Long> path) {
+        CommentRow row = node.row();
+        if (!path.add(row.id())) {
+            return;
+        }
+        html.append("<li class=\"comment-item comment-thread")
+                .append(row.deleted() ? " comment-deleted" : "")
+                .append(row.depth() > 0 ? " comment-reply" : "")
+                .append("\" id=\"comment-").append(row.id())
+                .append("\" data-id=\"").append(row.id())
+                .append("\" data-depth=\"").append(row.depth()).append("\" data-parent-id=\"")
+                .append(row.parentId() == null ? "" : row.parentId()).append("\">");
+        if (row.avatarUrl() != null) {
+            html.append("<img class=\"comment-avatar\" src=\"").append(escapeAttribute(row.avatarUrl()))
+                    .append("\" alt=\"\"/>");
+        }
+        html.append("<div class=\"comment-main\"><div class=\"comment-header\">");
+        if (row.authorUrl() != null) {
+            html.append("<a class=\"comment-author\" href=\"").append(escapeAttribute(row.authorUrl()))
+                    .append("\">").append(escape(row.author())).append("</a>");
+        } else {
+            html.append("<span class=\"comment-author\">").append(escape(row.author())).append("</span>");
+        }
+        html.append("<span class=\"comment-time\">").append(escape(row.timeText())).append("</span>")
+                .append("<a class=\"comment-permalink\" href=\"#comment-").append(row.id())
+                .append("\" aria-label=\"#\">#</a></div>");
+        if (row.deleted()) {
+            html.append("<div class=\"comment-body comment-tombstone\">")
+                    .append(escape(message("comment.deleted"))).append("</div>");
+        } else {
+            html.append("<div class=\"comment-body\">").append(row.contentHtml()).append("</div>");
+        }
+        if (!row.deleted()) {
+            html.append("<div class=\"comment-actions\">");
+            if (canComment) {
+                html.append("<button type=\"button\" class=\"comment-reply-link\" data-id=\"")
+                        .append(row.id()).append("\" data-author=\"").append(escapeAttribute(row.author()))
+                        .append("\">").append(escape(message("comment.reply"))).append("</button>");
+            }
+            if (row.canDelete()) {
+                html.append("<button type=\"button\" class=\"comment-delete-link\" data-id=\"")
+                        .append(row.id()).append("\">")
+                        .append(escape(message("comment.delete"))).append("</button>");
+            }
+            html.append("</div>");
+        }
+        if (!node.replies().isEmpty()) {
+            html.append("<ol class=\"comment-children\">");
+            for (CommentNode child : node.replies()) {
+                appendNode(html, child, canComment, path);
+            }
+            html.append("</ol>");
+        }
+        html.append("</div></li>");
+        path.remove(row.id());
+    }
+
+    /** 评论输入表单；{@code top=true} 是页面顶部的主表单，否则是可克隆的就地回复表单。 */
+    private String composer(Long parentId, boolean top) {
+        String idAttr = top ? " id=\"comment-content\"" : "";
+        return "<form class=\"wiki-form comment-form" + (top ? "" : " comment-inline-form")
+                + "\" method=\"post\" action=\"#\">"
+                + "<input type=\"hidden\" name=\"parentId\" value=\""
+                + (parentId == null ? "" : parentId) + "\"/>"
+                + "<div class=\"form-field\"><label" + (top ? " for=\"comment-content\"" : "")
+                + ">" + escape(message("comment.placeholder")) + "</label>"
+                + "<textarea" + idAttr + " name=\"content\" rows=\"3\" required=\"required\""
+                + " placeholder=\"" + escapeAttribute(message("comment.placeholder")) + "\"></textarea></div>"
+                + "<div class=\"comment-reply-note\" hidden=\"hidden\"><span>"
+                + escape(message("comment.replyingTo")) + "</span><strong class=\"comment-reply-name\"></strong>"
+                + "<button type=\"button\" class=\"comment-reply-cancel\">"
+                + escape(message("comment.cancelReply")) + "</button></div>"
+                + "<div class=\"form-message\" role=\"alert\" hidden=\"hidden\"></div>"
+                + "<div class=\"form-actions\"><button type=\"submit\" class=\"wiki-button\">"
+                + escape(message("comment.submit")) + "</button></div></form>";
+    }
+
+    /** 评论行（带父子关系，回复用嵌套列表展示）。 */
     public List<CommentRow> rows(String pageTitle, Viewer viewer) {
         List<WikiComment> found = comments.list(pageTitle);
         if (found.isEmpty()) {
@@ -201,6 +251,7 @@ public class CommentSection {
             }
             rows.add(new CommentRow(
                     comment.getId(),
+                    comment.getParentId(),
                     depth,
                     author,
                     comment.getUserId() == null ? null : WikiUrls.pagePrefix() + "用户:" + encodeSegment(author),
@@ -213,6 +264,43 @@ public class CommentSection {
         return List.copyOf(rows);
     }
 
+    /** 拍平的评论行 → 树（父评论不存在时按根节点处理，保证任何评论都不会丢）。 */
+    public List<CommentNode> threads(List<CommentRow> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, CommentRow> byId = new LinkedHashMap<>();
+        for (CommentRow row : rows) {
+            byId.put(row.id(), row);
+        }
+        Map<Long, List<CommentRow>> children = new LinkedHashMap<>();
+        List<CommentRow> roots = new ArrayList<>();
+        for (CommentRow row : rows) {
+            if (row.parentId() == null || !byId.containsKey(row.parentId())) {
+                roots.add(row);
+            } else {
+                children.computeIfAbsent(row.parentId(), key -> new ArrayList<>()).add(row);
+            }
+        }
+        List<CommentNode> result = new ArrayList<>();
+        for (CommentRow root : roots) {
+            result.add(node(root, children, new LinkedHashSet<>()));
+        }
+        return List.copyOf(result);
+    }
+
+    private CommentNode node(CommentRow row, Map<Long, List<CommentRow>> children, Set<Long> path) {
+        if (!path.add(row.id())) {
+            return new CommentNode(row, List.of());
+        }
+        List<CommentNode> replies = new ArrayList<>();
+        for (CommentRow child : children.getOrDefault(row.id(), List.of())) {
+            replies.add(node(child, children, path));
+        }
+        path.remove(row.id());
+        return new CommentNode(row, List.copyOf(replies));
+    }
+
     /** 头像 URL（空文件名 = 默认头像；与迁移前 AvatarStore.url 的行为一致）。 */
     private static String avatarUrl(String fileName) {
         return fileName == null || fileName.isBlank()
@@ -220,8 +308,12 @@ public class CommentSection {
     }
 
     /** 一行评论（渲染用）。 */
-    public record CommentRow(long id, int depth, String author, String authorUrl, String avatarUrl,
+    public record CommentRow(long id, Long parentId, int depth, String author, String authorUrl, String avatarUrl,
                              String timeText, boolean deleted, String contentHtml, boolean canDelete) {
+    }
+
+    /** 评论树节点（Flow 风格的父子关系）。 */
+    public record CommentNode(CommentRow row, List<CommentNode> replies) {
     }
 
     private String formatTime(LocalDateTime time) {
@@ -250,6 +342,18 @@ public class CommentSection {
             return messageSource.getMessage(key, null, fallback, LocaleContextHolder.getLocale());
         } catch (RuntimeException exception) {
             return fallback;
+        }
+    }
+
+    /** 带参数文案（{@code {0}} 等）；缺键时显示键本身。 */
+    public String messageArgs(String key, Object... args) {
+        if (messageSource == null) {
+            return key;
+        }
+        try {
+            return messageSource.getMessage(key, args, key, LocaleContextHolder.getLocale());
+        } catch (RuntimeException exception) {
+            return key;
         }
     }
 

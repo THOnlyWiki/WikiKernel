@@ -265,6 +265,13 @@ public class WikiPageController {
                                     HttpServletRequest request) {
         String requestedTitle = fullTitle(title, rest);
         String fullTitle = WikiTitles.normalize(requestedTitle);
+        // 英文 Help: 与中文 帮助: 是同一个命名空间：统一跳到规范标题，避免两个 URL 看起来是不同页面。
+        if (requestedTitle.regionMatches(true, 0, "Help:", 0, 5)
+                && !requestedTitle.equals(fullTitle)) {
+            String query = request.getQueryString();
+            return new ModelAndView("redirect:" + WikiUrls.pagePath(fullTitle)
+                    + (Strings.isBlank(query) ? "" : "?" + query));
+        }
         // 非法字符 / 过长 / 相对路径等：直接 400（仿 MediaWiki 的「标题无效」错误页）
         WikiTitles.validate(requestedTitle).ifPresent(error -> {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, titleErrorMessage(error));
@@ -314,8 +321,15 @@ public class WikiPageController {
             case "edit" -> renderEdit(fullTitle, parameters, request);
             case "history" -> renderHistory(fullTitle, request);
             case "info" -> renderPageInfo(fullTitle, parameters, request);
+            case "purge" -> renderPurge(fullTitle);
             default -> renderView(fullTitle, parameters, request);
         };
+    }
+
+    /** {@code ?action=purge}：清除该页正文缓存后回到页面（仿 MediaWiki 的刷新链接）。 */
+    private ModelAndView renderPurge(String title) {
+        this.pageCacheService.invalidate(title);
+        return new ModelAndView("redirect:" + WikiUrls.pagePath(title));
     }
 
     /** 可视化编辑是否可用：页面已存在、可编辑、且是 Wikitext 页面（代码页 / 微件页走源代码编辑）。 */
@@ -674,6 +688,27 @@ public class WikiPageController {
 
     // ==================== 各类页面 ====================
 
+    /**
+     * 子页面面包屑：{@code a/b/c → a/b → a}（最近一级在前）。
+     * <p>
+     * 只按标题里的 {@code /} 切分，不要求父页面存在；父页面缺失时由链接渲染成红链。
+     * 命名空间本身（如 {@code 模板:}）不进入列表。
+     */
+    private static List<Map<String, String>> subpageBreadcrumb(String title) {
+        String current = title == null ? "" : title;
+        List<Map<String, String>> result = new ArrayList<>();
+        int slash = current.lastIndexOf('/');
+        while (slash > 0) {
+            String parent = current.substring(0, slash);
+            if (!parent.isBlank() && !parent.endsWith(":")) {
+                result.add(Map.of("title", parent, "url", WikiUrls.pagePath(parent)));
+            }
+            current = parent;
+            slash = current.lastIndexOf('/');
+        }
+        return List.copyOf(result);
+    }
+
     private ModelAndView renderView(String title, Map<String, String> parameters, HttpServletRequest request) {
         WikiUser currentUser = UserSession.current(request);
         requireRead(title, currentUser);
@@ -793,6 +828,7 @@ public class WikiPageController {
         modelAndView.addObject("wikiTitle", page.getTitle());
         modelAndView.addObject("displayTitle", displayTitle);
         modelAndView.addObject("pageUrl", WikiUrls.pagePath(page.getTitle()));
+        modelAndView.addObject("subpageBreadcrumb", subpageBreadcrumb(page.getTitle()));
         modelAndView.addObject("activeTab", "view");
         modelAndView.addObject("oldRevision", oldRevision);
         // 旧版本提示里的编辑者：本地账号显示为用户页链接；导入的修订显示原始用户名（纯文本占位）

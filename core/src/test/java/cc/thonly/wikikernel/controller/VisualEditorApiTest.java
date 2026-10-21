@@ -128,6 +128,38 @@ class VisualEditorApiTest {
                 .andExpect(jsonPath("$.code").value(400));
     }
 
+    @Test
+    void galleryDialogEndpointParsesAndRebuilds() throws Exception {
+        wikiPageService.editPage(null, "可视化画廊页", "旧内容");
+        MockHttpSession session = sessionOf(insertUser("ve-gallery-" + System.nanoTime()));
+
+        String body = mockMvc.perform(post("/api/pages/visual/gallery").session(session)
+                        .param("title", "可视化画廊页")
+                        .param("source", "<gallery widths=\"100\">\n文件:甲.png|说明\n</gallery>"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals("文件:甲.png", JsonPath.read(body, "$.data.items[0].file"));
+        assertEquals("说明", JsonPath.read(body, "$.data.items[0].caption"));
+        assertEquals("widths", JsonPath.read(body, "$.data.attributes[0].name"));
+        assertTrue(((String) JsonPath.read(body, "$.data.previewHtml")).contains("gallery"));
+
+        String built = mockMvc.perform(post("/api/pages/visual/gallery").session(session)
+                        .param("title", "可视化画廊页")
+                        .param("items", "[{\"file\":\"文件:乙.png\",\"caption\":\"乙\"}]")
+                        .param("attributes", "[{\"name\":\"mode\",\"value\":\"packed\"}]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals("<gallery mode=\"packed\">\n文件:乙.png|乙\n</gallery>",
+                JsonPath.read(built, "$.data.source"));
+
+        mockMvc.perform(post("/api/pages/visual/gallery").session(session)
+                        .param("title", "可视化画廊页")
+                        .param("source", "不是画廊"))
+                .andExpect(jsonPath("$.code").value(400));
+    }
+
     private MockHttpSession sessionOf(WikiUser user) {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(UserSession.ATTRIBUTE, user.toTransferCopy());

@@ -4,6 +4,12 @@
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
 <section class="mw-rc-page">
+    <p class="wiki-warning" th:if="${loginRequired}">
+        <span th:text="#{recentChanges.loginRequired}">请先登录后再查看最近更改。</span>
+        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${loginRequired}">
     <a class="rc-help" href="https://www.mediawiki.org/wiki/Help:Recent_changes" target="_blank" rel="nofollow">
         <span class="rc-help-icon">?</span><span th:text="#{recentChanges.help}">帮助</span>
     </a>
@@ -149,6 +155,8 @@
             </ul>
         </div>
     </div>
+    </th:block>
 </section>
 </body>
 </html>
+

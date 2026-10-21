@@ -175,6 +175,24 @@ class LuaModuleTest {
     }
 
     @Test
+    void sandboxBlocksDynamicLoadingPackageAndDebugLibraries() throws Exception {
+        String html = invoke("Lua深度沙盒页", "模块:Lua深度沙盒", """
+                local p = {}
+                function p.main()
+                    return type(package) .. type(package and package.loaded) .. type(debug)
+                        .. type(load) .. type(loadstring) .. type(collectgarbage)
+                        .. type(string.dump) .. type(coroutine)
+                end
+                return p
+                """, "{{#invoke:Lua深度沙盒|main}}");
+
+        // package/debug/load/loadstring/collectgarbage/coroutine 全部不可用；string.dump 只是字节码导出，
+        // 没有 load/loadstring 无法执行，保留它不影响沙盒边界。
+        org.junit.jupiter.api.Assertions.assertTrue(
+                html.contains("nilnilnilnilnilnilfunctionnil"), html);
+    }
+
+    @Test
     void infiniteLoopIsAbortedWithTimeoutError() throws Exception {
         long started = System.currentTimeMillis();
         String html = invoke("Lua死循环页", "模块:Lua死循环", """

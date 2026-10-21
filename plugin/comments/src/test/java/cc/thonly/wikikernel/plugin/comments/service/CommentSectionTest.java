@@ -67,6 +67,20 @@ class CommentSectionTest {
     }
 
     @Test
+    void tagDisabledAttributeWritesDisabledProperty() {
+        Map<String, String> properties = new LinkedHashMap<>();
+        ParserTagCall call = tagCall(properties, Map.of("disabled", ""));
+        assertEquals("", new CommentTag().render(call));
+        assertEquals("1", properties.get(CommentTag.DISABLED_PROPERTY));
+        assertNull(properties.get(CommentTag.PROPERTY));
+
+        Map<String, String> enabled = new LinkedHashMap<>();
+        new CommentTag().render(tagCall(enabled, Map.of("disabled", "false")));
+        assertEquals("1", enabled.get(CommentTag.PROPERTY));
+        assertNull(enabled.get(CommentTag.DISABLED_PROPERTY));
+    }
+
+    @Test
     void rendersRowsWithDepthDeletedPlaceholderAndPermissions() {
         Fixture fixture = new Fixture();
         fixture.store.put(1L, comment(1, "首页", null, 7L, "第一条 **粗体**", false));
@@ -77,10 +91,12 @@ class CommentSectionTest {
         CommentSection section = fixture.section(true, true);
         String html = section.render("首页", fixture.viewer(7L, "作者"));
 
-        assertTrue(html.contains("<div class=\"wiki-comments\" data-api=\"/api/comments\" data-page=\"首页\">"), html);
+        assertTrue(html.contains("<div class=\"wiki-comments flow-comments\" data-api=\"/api/comments\" data-page=\"首页\""), html);
         assertTrue(html.contains("data-id=\"1\" data-depth=\"0\""), html);
         assertTrue(html.contains("data-id=\"2\" data-depth=\"1\""), html);
         assertTrue(html.contains("data-id=\"3\" data-depth=\"2\""), html);
+        assertTrue(html.contains("class=\"comment-children\""), "回复应嵌套在父评论内：" + html);
+        assertTrue(html.contains("data-parent-id=\"1\""), html);
         assertTrue(html.contains("comment-tombstone"), html);
         assertFalse(html.contains("旧内容"), "已删除的评论不渲染内容");
         assertTrue(html.contains("匿名"), html);
@@ -124,20 +140,30 @@ class CommentSectionTest {
     }
 
     @Test
-    void hookOnlyRendersWhenPropertyPresentAndEnabled() {
+    void hookAutoDisplaysAndHonorsManualAndDisabledTags() {
         Fixture fixture = new Fixture();
         fixture.store.put(1L, comment(1, "首页", null, 7L, "内容", false));
-        CommentSectionHook hook = new CommentSectionHook(fixture.section(true, true));
         Viewer viewer = fixture.viewer(7L, "作者");
 
-        // 没有 <comment />（页面属性没有标记）→ 不注入评论区
-        assertNull(hook.afterContent(context("首页", Map.of(), viewer)));
-        // 有标记 → 注入评论区
-        String html = hook.afterContent(context("首页", Map.of(CommentTag.PROPERTY, "1"), viewer));
-        assertTrue(html != null && html.contains("wiki-comments"), String.valueOf(html));
-        // 功能关闭 → 不注入
-        CommentSectionHook disabled = new CommentSectionHook(fixture.section(false, true));
-        assertNull(disabled.afterContent(context("首页", Map.of(CommentTag.PROPERTY, "1"), viewer)));
+        CommentSectionHook auto = new CommentSectionHook(fixture.section(true, true, true));
+        String autoHtml = auto.afterContent(context("首页", Map.of(), viewer));
+        assertTrue(autoHtml != null && autoHtml.contains("wiki-comments"), String.valueOf(autoHtml));
+        assertTrue(autoHtml.contains("data-mode=\"auto\""), autoHtml);
+
+        // 自动显示关闭：普通页面不显示，但显式 <comment /> 仍然显示
+        CommentSectionHook manualOnly = new CommentSectionHook(fixture.section(true, true, false));
+        assertNull(manualOnly.afterContent(context("首页", Map.of(), viewer)));
+        String manualHtml = manualOnly.afterContent(context("首页", Map.of(CommentTag.PROPERTY, "1"), viewer));
+        assertTrue(manualHtml != null && manualHtml.contains("data-mode=\"manual\""), String.valueOf(manualHtml));
+
+        // <comment disabled /> 优先于自动模式 / 普通标签
+        assertNull(auto.afterContent(context("首页", Map.of(CommentTag.DISABLED_PROPERTY, "1"), viewer)));
+        assertNull(auto.afterContent(context("首页", Map.of(
+                CommentTag.PROPERTY, "1", CommentTag.DISABLED_PROPERTY, "1"), viewer)));
+
+        // 功能关闭 → 永不注入
+        CommentSectionHook disabled = new CommentSectionHook(fixture.section(false, true, true));
+        assertNull(disabled.afterContent(context("首页", Map.of(), viewer)));
     }
 
     @Test
@@ -180,6 +206,10 @@ class CommentSectionTest {
     }
 
     private static ParserTagCall tagCall(Map<String, String> properties) {
+        return tagCall(properties, Map.of());
+    }
+
+    private static ParserTagCall tagCall(Map<String, String> properties, Map<String, String> attributes) {
         return new ParserTagCall() {
             private final WikiRenderContext context = new WikiRenderContext() {
                 private final Map<String, Object> store = new LinkedHashMap<>();
@@ -227,7 +257,7 @@ class CommentSectionTest {
 
             @Override
             public Map<String, String> attributes() {
-                return Map.of();
+                return attributes;
             }
 
             @Override
@@ -303,6 +333,10 @@ class CommentSectionTest {
         private final Map<Long, WikiComment> store = new LinkedHashMap<>();
 
         CommentSection section(boolean enabled, boolean userInteraction) {
+            return section(enabled, userInteraction, true);
+        }
+
+        CommentSection section(boolean enabled, boolean userInteraction, boolean autoDisplay) {
             SiteConfig config = new SiteConfig() {
                 @Override
                 public String get(String key, String defaultValue) {
@@ -313,6 +347,9 @@ class CommentSectionTest {
                 public boolean getBoolean(String key, boolean defaultValue) {
                     if (CommentsPlugin.ENABLED_KEY.equals(key)) {
                         return enabled;
+                    }
+                    if (CommentsPlugin.AUTO_DISPLAY_KEY.equals(key)) {
+                        return autoDisplay;
                     }
                     if ("features.social-profile".equals(key) || "features.user-interaction".equals(key)) {
                         // 插件改名（user-interaction → social-profile）前后的两个键在替身里返回同一个值：

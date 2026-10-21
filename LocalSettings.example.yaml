@@ -56,6 +56,8 @@ wikikernel:
     user-interaction: true
     # 关闭后：所有页面都不再显示评论区，评论接口停用
     comments: true
+    # 是否列出 / 允许访问「特殊:CodexExample」（Codex 组件与图标总览；默认开启）
+    codex-example: true
     # 勾选后：特殊:上传文件与编辑器上传对话框可一次选择多个文件（逐个上传，默认关闭）
     multi-upload: false
     # 关闭后：所有页面里的 {{#widget:…}} 都不生效（显示「未启用」提示，微件页本身仍保留）
@@ -231,10 +233,21 @@ wikikernel:
     #     allow-tag: true
     #     max-children: 200
     #     default-mode: categories
+    #   # OSS 扩展（见 plugin/oss-extension/README.md）
+    #   oss-extension:
+    #     enabled: false
+    #     operation-url: http://127.0.0.1:18081
+    #     read-url: http://127.0.0.1:18081
+    #     cdn-url: ""
+    #     key: change-me
+    #     mode: thumbnail
+    #     migrate-existing: true
 
   # ---------------- 站点（预留） ----------------
   # site:
   #   name: WikiKernel
+  #   favicon: /files/站点图标.png
+  #   no-referrer: false
 
   # ---------------- 文件上传 ----------------
   # 运行文件目录：上传文件存放位置（相对启动目录；通过 /files/<存储名> 访问）
@@ -253,6 +266,8 @@ wikikernel:
     quality: 82
     # ImageMagick 可执行文件路径；留空 = 自动查找 magick
     executable: ""
+    # thumb.php 按需生成队列上限（默认 2；队列满时请求阻塞等待并延迟响应）
+    queue-limit: 2
 
 
   # ---------------- 认证 ----------------

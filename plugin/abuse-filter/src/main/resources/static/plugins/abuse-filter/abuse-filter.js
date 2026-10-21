@@ -43,6 +43,7 @@
     // ==================== 条件编辑器（CodeMirror 简易语法高亮） ====================
 
     var editors = {};
+    var plainMode = {};
 
     if (typeof CodeMirror !== 'undefined') {
         CodeMirror.defineMode('abusefilter', function () {
@@ -62,7 +63,7 @@
                     if (stream.match(/^\d+(\.\d+)?/)) {
                         return 'number';
                     }
-                    if (stream.match(/^(==|!=|<=|>=|\*\*|[+\-*/%<>=!&|^(),])/)) {
+                    if (stream.match(/^(:=|==|!=|<=|>=|\*\*|[+\-*/%<>=!&|^(),;])/)) {
                         return 'operator';
                     }
                     var ch = stream.next();
@@ -97,10 +98,184 @@
 
     function syncEditor(id) {
         var editor = editors[id];
-        if (editor) {
+        if (editor && !plainMode[id]) {
             editor.save();
         }
     }
+
+    // ==================== 条件编辑器工具条：插入 / 切换 / 语法检查 ====================
+
+    var insertSelect = document.getElementById('abuse-filter-insert');
+    var toggleEditorButton = document.getElementById('abuse-filter-toggle-editor');
+    var checkButton = document.getElementById('abuse-filter-check');
+    var checkMessage = document.getElementById('abuse-filter-check-message');
+    var patternTextarea = document.getElementById('abuse-filter-pattern');
+    var patternEditor = editors['abuse-filter-pattern'];
+
+    function insertIntoPattern(value) {
+        if (!value || !patternTextarea) {
+            return;
+        }
+        if (patternEditor && !plainMode['abuse-filter-pattern']) {
+            patternEditor.replaceSelection(value);
+            patternEditor.focus();
+            return;
+        }
+        var start = patternTextarea.selectionStart == null ? patternTextarea.value.length : patternTextarea.selectionStart;
+        var end = patternTextarea.selectionEnd == null ? start : patternTextarea.selectionEnd;
+        patternTextarea.value = patternTextarea.value.slice(0, start) + value
+            + patternTextarea.value.slice(end);
+        patternTextarea.selectionStart = patternTextarea.selectionEnd = start + value.length;
+        patternTextarea.focus();
+    }
+
+    if (insertSelect) {
+        insertSelect.addEventListener('change', function () {
+            insertIntoPattern(insertSelect.value);
+            insertSelect.value = '';
+        });
+    }
+
+    if (toggleEditorButton && patternTextarea) {
+        if (!patternEditor) {
+            toggleEditorButton.hidden = true;
+        } else {
+            toggleEditorButton.addEventListener('click', function () {
+                var wrapper = patternEditor.getWrapperElement();
+                if (!plainMode['abuse-filter-pattern']) {
+                    patternEditor.save();
+                    wrapper.style.display = 'none';
+                    patternTextarea.style.display = '';
+                    patternTextarea.hidden = false;
+                    plainMode['abuse-filter-pattern'] = true;
+                    patternTextarea.focus();
+                } else {
+                    patternEditor.setValue(patternTextarea.value);
+                    wrapper.style.display = '';
+                    patternTextarea.style.display = 'none';
+                    plainMode['abuse-filter-pattern'] = false;
+                    patternEditor.refresh();
+                    patternEditor.focus();
+                }
+            });
+        }
+    }
+
+    if (checkButton && patternTextarea) {
+        checkButton.addEventListener('click', function () {
+            syncEditor('abuse-filter-pattern');
+            var box = checkMessage;
+            if (box) {
+                box.hidden = true;
+                box.textContent = '';
+                box.className = 'abuse-check-message';
+            }
+            var body = new URLSearchParams();
+            body.append('pattern', patternTextarea.value);
+            post('/api/abuse-filters/check', body).then(function (result) {
+                if (!box) {
+                    return;
+                }
+                box.hidden = false;
+                if (result && result.code === 200) {
+                    box.textContent = result.message || MESSAGES.abuseSyntaxOK || '语法检查通过。';
+                    box.className = 'abuse-check-message success';
+                } else {
+                    box.textContent = (result && result.message) || MESSAGES.operationFailed || '操作失败';
+                    box.className = 'abuse-check-message error';
+                }
+            }).catch(function () {
+                if (box) {
+                    box.hidden = false;
+                    box.textContent = MESSAGES.networkError || '网络错误';
+                    box.className = 'abuse-check-message error';
+                }
+            });
+        });
+    }
+
+    // ==================== 警告 / 阻止消息预览 ====================
+
+    var descriptionInput = document.getElementById('abuse-filter-description');
+    var previewForm = document.getElementById('abuse-filter-form');
+
+    function encodePageTitle(title) {
+        return String(title || '').split('/').map(encodeURIComponent).join('/');
+    }
+
+    // 系统消息页统一放在 WikiKernel: 命名空间；裸标题（如 Abusefilter-warning）自动补齐。
+    function messagePageTitle(title) {
+        title = String(title || '').trim();
+        if (!title) {
+            return '';
+        }
+        var prefix = 'WikiKernel:';
+        if (title.slice(0, prefix.length).toLowerCase() === prefix.toLowerCase()) {
+            return prefix + title.slice(prefix.length);
+        }
+        return title.indexOf(':') > 0 ? title : prefix + title;
+    }
+
+    function updateMessagePageLink(button) {
+        var pageName = button.getAttribute('data-page');
+        var pageInput = previewForm ? previewForm.querySelector('[name="' + pageName + '"]') : null;
+        var link = button.parentElement
+            ? button.parentElement.querySelector('.abuse-message-page-link') : null;
+        if (!link || !pageInput) {
+            return;
+        }
+        var title = messagePageTitle(pageInput.value);
+        if (!title) {
+            link.hidden = true;
+            link.setAttribute('href', '#');
+            return;
+        }
+        link.hidden = false;
+        link.setAttribute('href', '/wiki/' + encodePageTitle(title) + '?action=edit');
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.abuse-message-preview'), function (button) {
+        var target = document.getElementById(button.getAttribute('data-target'));
+        var messageInput = previewForm
+            ? previewForm.querySelector('[name="' + button.getAttribute('data-message') + '"]') : null;
+        var pageInput = previewForm
+            ? previewForm.querySelector('[name="' + button.getAttribute('data-page') + '"]') : null;
+        if (!target || !messageInput || !pageInput) {
+            return;
+        }
+        var showText = MESSAGES.abusePreviewShow || '显示预览';
+        var hideText = MESSAGES.abusePreviewHide || '隐藏预览';
+        updateMessagePageLink(button);
+        pageInput.addEventListener('input', function () {
+            updateMessagePageLink(button);
+        });
+        button.addEventListener('click', function () {
+            if (!target.hidden) {
+                target.hidden = true;
+                button.textContent = showText;
+                return;
+            }
+            var body = new URLSearchParams();
+            body.append('message', messageInput.value);
+            body.append('page', pageInput.value);
+            body.append('fallback', descriptionInput ? descriptionInput.value : '');
+            post('/api/abuse-filters/message-preview', body).then(function (result) {
+                if (!result || result.code !== 200) {
+                    target.textContent = (result && result.message)
+                        || MESSAGES.abusePreviewFailed || '无法加载预览。';
+                } else {
+                    target.textContent = (result.data && result.data.text) || result.message
+                        || MESSAGES.abusePreviewEmpty || '（没有可预览的文案）';
+                }
+                target.hidden = false;
+                button.textContent = hideText;
+            }).catch(function () {
+                target.textContent = MESSAGES.networkError || '网络错误';
+                target.hidden = false;
+                button.textContent = hideText;
+            });
+        });
+    });
 
     // ==================== 保存过滤器 ====================
 

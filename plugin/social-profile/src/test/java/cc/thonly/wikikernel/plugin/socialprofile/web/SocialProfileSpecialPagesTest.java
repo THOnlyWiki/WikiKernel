@@ -236,6 +236,23 @@ class SocialProfileSpecialPagesTest {
         assertEquals(1, ((java.util.List<?>) sent.get("giftRows")).size());
     }
 
+    @Test
+    void giftManagerPageExposesCreationAndLoginState() {
+        CurrentUser admin = SocialProfileFakes.currentUser(
+                SocialProfileFakes.viewer(1, "甲", "管理员"));
+        GiftManagerSpecialPage page = new GiftManagerSpecialPage(users, support, profiles, board, friends,
+                giftService, avatars, admin);
+        assertEquals("GiftManager", page.name());
+        assertEquals("special/gift-manager", page.template());
+        assertTrue(page.aliases().contains("礼物管理"));
+
+        Map<String, Object> model = new LinkedHashMap<>();
+        page.populate(request("GiftManager", Map.of(), wikiUser(1, "甲")), model);
+        assertEquals(Boolean.FALSE, model.get("giftManagerLoginRequired"));
+        assertEquals(Boolean.TRUE, model.get("giftManagerAdmin"));
+        assertEquals(GiftService.NAME_LIMIT, model.get("giftNameLimit"));
+    }
+
     // ==================== 积分排行 ====================
 
     @Test

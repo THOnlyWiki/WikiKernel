@@ -30,39 +30,58 @@ public final class AbuseVariables {
     /** 编辑 / 创建页面的变量（{@code action=edit}，与迁移前一致：创建也用 edit + {@code page_is_new}）。 */
     public static Map<String, Object> edit(long pageId, String title, boolean newPage, String oldText,
                                            String newText, String summary, boolean minor) {
-        long namespace = AbuseFilterTitles.namespaceId(title);
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, title, pageId);
         variables.put("action", "edit");
-        variables.put("page_id", pageId);
-        variables.put("page_title", AbuseFilterTitles.titleOnly(title));
-        variables.put("page_namespace", namespace);
         variables.put("page_is_new", newPage || pageId <= 0);
-        variables.put("article_articleid", pageId);
-        variables.put("article_namespace", namespace);
         variables.put("summary", Strings.trimToEmpty(summary));
         variables.put("minor_edit", minor);
         variables.put("old_wikitext", oldText == null ? "" : oldText);
         variables.put("new_wikitext", newText == null ? "" : newText);
-        variables.put("old_size", (long) byteSize(oldText));
-        variables.put("new_size", (long) byteSize(newText));
+        int oldSize = byteSize(oldText);
+        int newSize = byteSize(newText);
+        variables.put("old_size", (long) oldSize);
+        variables.put("new_size", (long) newSize);
+        variables.put("edit_delta", (long) newSize - oldSize);
+        variables.put("edit_diff", "");
         variables.put("added_lines", addedLines(oldText, newText));
         variables.put("removed_lines", removedLines(oldText, newText));
+        variables.put("added_lines_pst", addedLines(oldText, newText));
+        variables.put("all_links", links(newText));
+        variables.put("old_links", links(oldText));
         variables.put("added_links", addedLinks(oldText, newText));
         variables.put("removed_links", removedLinks(oldText, newText));
+        variables.put("new_text", newText == null ? "" : newText);
+        variables.put("new_html", "");
+        variables.put("new_pst", newText == null ? "" : newText);
+        variables.put("edit_diff_pst", "");
+        variables.put("old_content_model", "wikitext");
+        variables.put("new_content_model", "wikitext");
         return variables;
     }
 
     /** 移动页面的变量（{@code action=move}）。 */
     public static Map<String, Object> move(String from, String to) {
-        long namespace = AbuseFilterTitles.namespaceId(from);
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, from, 0L);
+        long fromNamespace = AbuseFilterTitles.namespaceId(from);
+        long toNamespace = AbuseFilterTitles.namespaceId(to);
+        String fromText = AbuseFilterTitles.titleOnly(from);
+        String toText = AbuseFilterTitles.titleOnly(to);
         variables.put("action", "move");
-        variables.put("moved_from", AbuseFilterTitles.titleOnly(from));
-        variables.put("moved_to", AbuseFilterTitles.titleOnly(to));
-        variables.put("page_title", AbuseFilterTitles.titleOnly(from));
-        variables.put("page_namespace", namespace);
-        variables.put("article_articleid", 0L);
-        variables.put("article_namespace", namespace);
+        variables.put("page_is_new", false);
+        variables.put("moved_from", fromText);
+        variables.put("moved_to", toText);
+        variables.put("moved_from_title", fromText);
+        variables.put("moved_to_title", toText);
+        variables.put("moved_from_text", fromText);
+        variables.put("moved_to_text", toText);
+        variables.put("moved_from_prefixedtext", Strings.trimToEmpty(from));
+        variables.put("moved_to_prefixedtext", Strings.trimToEmpty(to));
+        variables.put("moved_from_articleid", 0L);
+        variables.put("moved_to_articleid", 0L);
+        variables.put("moved_from_namespace", fromNamespace);
+        variables.put("moved_to_namespace", toNamespace);
         variables.put("summary", "");
         return variables;
     }
@@ -70,12 +89,11 @@ public final class AbuseVariables {
     /** 注册账号的变量（{@code action=createaccount}）。 */
     public static Map<String, Object> createAccount(String username) {
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, username, 0L);
         variables.put("action", "createaccount");
+        variables.put("page_is_new", true);
         variables.put("accountname", Strings.trimToEmpty(username));
-        variables.put("page_title", Strings.trimToEmpty(username));
-        variables.put("page_namespace", 0L);
-        variables.put("article_articleid", 0L);
-        variables.put("article_namespace", 0L);
+        variables.put("account_name", Strings.trimToEmpty(username));
         variables.put("summary", "");
         return variables;
     }
@@ -86,25 +104,26 @@ public final class AbuseVariables {
      */
     public static Map<String, Object> upload(String fileName, long size, String contentType, String description) {
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, fileName, 0L);
         variables.put("action", "upload");
-        variables.put("page_title", AbuseFilterTitles.titleOnly(fileName));
-        variables.put("page_namespace", 6L);
-        variables.put("article_articleid", 0L);
-        variables.put("article_namespace", 6L);
+        variables.put("page_is_new", true);
         variables.put("summary", Strings.trimToEmpty(description));
         variables.put("file_size", size);
         variables.put("file_mime", Strings.trimToEmpty(contentType));
+        variables.put("file_mediatype", Strings.trimToEmpty(contentType));
+        variables.put("file_sha1", "");
+        variables.put("file_width", 0L);
+        variables.put("file_height", 0L);
+        variables.put("file_bits_per_channel", 8L);
         return variables;
     }
 
     /** 文件删除的变量（{@code action=delete}）。 */
     public static Map<String, Object> deleteFile(String fileName) {
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, fileName, 0L);
         variables.put("action", "delete");
-        variables.put("page_title", AbuseFilterTitles.titleOnly(fileName));
-        variables.put("page_namespace", 6L);
-        variables.put("article_articleid", 0L);
-        variables.put("article_namespace", 6L);
+        variables.put("page_is_new", false);
         variables.put("summary", "");
         return variables;
     }
@@ -112,11 +131,9 @@ public final class AbuseVariables {
     /** 页面保护的变量（{@code action=protect}）。 */
     public static Map<String, Object> protect(String title, boolean protectedFlag) {
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, title, 0L);
         variables.put("action", "protect");
-        variables.put("page_title", AbuseFilterTitles.titleOnly(title));
-        variables.put("page_namespace", AbuseFilterTitles.namespaceId(title));
-        variables.put("article_articleid", 0L);
-        variables.put("article_namespace", AbuseFilterTitles.namespaceId(title));
+        variables.put("page_is_new", false);
         variables.put("summary", String.valueOf(protectedFlag));
         return variables;
     }
@@ -124,13 +141,39 @@ public final class AbuseVariables {
     /** 封禁的变量（{@code action=block}）：{@code page_title} = 被封禁的用户名 / IP。 */
     public static Map<String, Object> block(String target, String reason) {
         Map<String, Object> variables = new LinkedHashMap<>();
+        putTitleVariables(variables, target, 0L);
         variables.put("action", "block");
-        variables.put("page_title", Strings.trimToEmpty(target));
-        variables.put("page_namespace", 0L);
-        variables.put("article_articleid", 0L);
-        variables.put("article_namespace", 0L);
+        variables.put("page_is_new", false);
         variables.put("summary", Strings.trimToEmpty(reason));
         return variables;
+    }
+
+    /** 标题 / 页面 ID / 命名空间，同时补齐 MediaWiki 新旧名称（article_* / page_*）。 */
+    private static void putTitleVariables(Map<String, Object> variables, String title, long pageId) {
+        String prefixed = Strings.trimToEmpty(title);
+        String titleOnly = AbuseFilterTitles.titleOnly(prefixed);
+        long namespace = AbuseFilterTitles.namespaceId(prefixed);
+        variables.put("page_id", pageId);
+        variables.put("article_articleid", pageId);
+        variables.put("page_title", titleOnly);
+        variables.put("article_text", titleOnly);
+        variables.put("page_namespace", namespace);
+        variables.put("article_namespace", namespace);
+        variables.put("page_prefixedtitle", prefixed);
+        variables.put("article_prefixedtext", prefixed);
+        variables.put("page_age", 0L);
+        variables.put("page_restrictions_edit", List.of());
+        variables.put("page_restrictions_move", List.of());
+        variables.put("page_restrictions_create", List.of());
+        variables.put("page_restrictions_upload", List.of());
+        variables.put("article_restrictions_edit", "");
+        variables.put("article_restrictions_move", "");
+        variables.put("article_restrictions_create", "");
+        variables.put("article_restrictions_upload", "");
+        variables.put("page_recent_contributors", List.of());
+        variables.put("article_recent_contributors", List.of());
+        variables.put("page_first_contributor", "");
+        variables.put("article_first_contributor", "");
     }
 
     // ==================== 工具（与迁移前 core 的实现一致） ====================

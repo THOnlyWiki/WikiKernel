@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.common.extension.LogType;
 import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.PageDisplayHook;
 import cc.thonly.wikikernel.common.extension.ParserTag;
+import cc.thonly.wikikernel.common.extension.SiteSettingsSection;
 import cc.thonly.wikikernel.common.plugin.PluginContext;
 import cc.thonly.wikikernel.common.plugin.PluginDescriptor;
 import cc.thonly.wikikernel.common.plugin.WikiPlugin;
@@ -19,6 +20,7 @@ import cc.thonly.wikikernel.plugin.comments.hook.CommentMessages;
 import cc.thonly.wikikernel.plugin.comments.hook.CommentSectionHook;
 import cc.thonly.wikikernel.plugin.comments.hook.CommentTag;
 import cc.thonly.wikikernel.plugin.comments.hook.CommentsHeadProvider;
+import cc.thonly.wikikernel.plugin.comments.hook.CommentsSettingsSection;
 import cc.thonly.wikikernel.plugin.comments.service.CommentSection;
 import cc.thonly.wikikernel.plugin.comments.service.CommentStore;
 import cc.thonly.wikikernel.plugin.comments.service.CommentStoreJdbc;
@@ -42,6 +44,9 @@ public class CommentsPlugin implements WikiPlugin {
 
     /** 功能开关键（与 core 的站点设置 / LocalSettings 一致）。 */
     public static final String ENABLED_KEY = "features.comments";
+
+    /** 自动显示键：没有标签的页面是否也显示评论区（默认开启）。 */
+    public static final String AUTO_DISPLAY_KEY = "comments.auto-display";
 
     @Autowired
     private CommentStore commentStore;
@@ -94,12 +99,13 @@ public class CommentsPlugin implements WikiPlugin {
         context.register(ParserTag.class, new CommentTag());
         context.register(PageDisplayHook.class, new CommentSectionHook(section));
         context.register(HtmlHeadProvider.class, new CommentsHeadProvider(section));
+        context.register(SiteSettingsSection.class, new CommentsSettingsSection(section));
         // 日志类型（发表 / 删除评论）：core 的 特殊:日志 与最近更改按注册中心识别，
         // 展示名走 core 已有的消息键 log.typeName.comment / log.typeName.commentdelete
         context.register(LogType.class, new CommentLogType("comment"));
         context.register(LogType.class, new CommentLogType("commentdelete"));
         context.logger().log(System.Logger.Level.INFO, section.enabled()
-                ? "已启用评论：<comment /> / <comments /> 页面底部显示评论区（/plugins/comments/）"
+                ? "已启用评论：默认自动显示评论区；<comment /> 手动开启，<comment disabled /> 关闭本站页面（/plugins/comments/）"
                 : "评论已关闭（features.comments=false）：标签仍会剥离，但不显示评论区");
     }
 

@@ -19,11 +19,22 @@ import java.util.Optional;
  */
 public interface FileService {
 
+    /** 默认授权协议（上传表单的默认选项）。 */
+    String DEFAULT_LICENSE = "共用领域协议";
+
     /**
      * 上传 / 覆盖：同名活跃文件 → 归档当前版本并新建版本；
      * 文件已被软删除时拒绝（需要先恢复，或换一个文件名）。
+     * <p>保留旧调用方签名，使用默认授权协议。</p>
      */
-    WikiFile store(WikiUser uploader, String name, String description, byte[] content);
+    default WikiFile store(WikiUser uploader, String name, String description, byte[] content) {
+        return store(uploader, name, description, DEFAULT_LICENSE, content);
+    }
+
+    /**
+     * 上传 / 覆盖：可同时保存用户选择的授权协议。
+     */
+    WikiFile store(WikiUser uploader, String name, String description, String license, byte[] content);
 
     /** 按 ID 查文件（含已删除，供删除 / 恢复用）。 */
     Optional<WikiFile> findById(long id);
@@ -83,6 +94,16 @@ public interface FileService {
     /** 是否是可播放的视频。 */
     default boolean isVideo(String fileName) {
         return "video".equals(mediaKind(fileName));
+    }
+
+    /** 是否把原图完全托管给外部存储（OSS all 模式）。 */
+    default boolean remoteOriginalsRequired() {
+        return false;
+    }
+
+    /** 外部原图存储当前是否可用；不可用时原始文件接口返回 404。 */
+    default boolean remoteOriginalsAvailable() {
+        return true;
     }
 
     String urlOf(WikiFile file);

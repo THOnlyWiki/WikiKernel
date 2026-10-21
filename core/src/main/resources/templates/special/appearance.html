@@ -9,7 +9,7 @@
     </p>
     <p class="wiki-warning" th:if="${loginRequired}">
         <span th:text="#{appearance.loginRequired}">登录后才能保存皮肤偏好。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:外观'})}" th:text="#{source.login}">登录</a>
+        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{source.login}">登录</a>
     </p>
     <p class="wiki-hint" th:if="${loginRequired}" th:text="#{appearance.loginHint}">
         未登录时使用站点默认皮肤。
@@ -42,3 +42,4 @@
 </section>
 </body>
 </html>
+

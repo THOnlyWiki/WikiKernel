@@ -1,5 +1,8 @@
 package cc.thonly.wikikernel.controller;
 
+import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
+import cc.thonly.wikikernel.auth.external.ExternalAuthProviderRegistry;
+import cc.thonly.wikikernel.auth.external.ExternalAuthSettings;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.util.AjaxCode;
 import cc.thonly.wikikernel.common.util.AjaxResult;
@@ -8,6 +11,7 @@ import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
+import cc.thonly.wikikernel.service.impl.SiteSettingsServiceImpl;
 import cc.thonly.wikikernel.typescript.TypeScriptAssetService;
 import cc.thonly.wikikernel.user.UserSession;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,25 +45,32 @@ public class SiteSettingsApiController {
     /** TypeScript 编译产物服务（读取生效的源码大小上限，用于校验设置值）。 */
     private final TypeScriptAssetService typescriptAssetService;
     private final MessageSource messageSource;
+    private final ExternalAuthProviderRegistry externalAuthProviders;
 
     public SiteSettingsApiController(SiteSettingsService siteSettingsService,
                                      FeatureService featureService,
                                      PluginFeatureSections featureSections,
                                      PermissionService permissionService,
                                      TypeScriptAssetService typescriptAssetService,
-                                     MessageSource messageSource) {
+                                     MessageSource messageSource,
+                                     ExternalAuthProviderRegistry externalAuthProviders) {
         this.siteSettingsService = siteSettingsService;
         this.featureService = featureService;
         this.featureSections = featureSections;
         this.permissionService = permissionService;
         this.typescriptAssetService = typescriptAssetService;
         this.messageSource = messageSource;
+        this.externalAuthProviders = externalAuthProviders;
     }
 
     /** 保存站点设置：站点名称（siteName）+ 复选框（allowOtherUserPageEdit / userInteraction / comments / multiUpload / widgets / register / abuseFilter）+ 注册问答（registerQuestion / registerAnswers 文本）。 */
     @PostMapping
     public AjaxResult<Void> save(@RequestParam(value = "siteName", required = false) String siteName,
+                                 @RequestParam(value = "favicon", required = false) String favicon,
+                                 @RequestParam(value = "robots", required = false) String robots,
+                                 @RequestParam(value = "noReferrer", required = false) String noReferrer,
                                  @RequestParam(value = "allowOtherUserPageEdit", required = false) String allow,
+                                 @RequestParam(value = "allowAnonymousRecentChanges", required = false) String allowAnonymousRecentChanges,
                                  @RequestParam(value = "register", required = false) String register,
                                  @RequestParam(value = "cachePageEnabled", required = false) String cachePageEnabled,
                                  @RequestParam(value = "cachePageBackend", required = false) String cachePageBackend,
@@ -68,8 +79,12 @@ public class SiteSettingsApiController {
                                  @RequestParam(value = "cachePagePreload", required = false) String cachePagePreload,
                                  @RequestParam(value = "cachePageParallelism", required = false) String cachePageParallelism,
                                  @RequestParam(value = "typescript", required = false) String typescript,
+                                 @RequestParam(value = "codexExample", required = false) String codexExample,
                                  @RequestParam(value = "typescriptCompileOnSave", required = false) String typescriptCompileOnSave,
                                  @RequestParam(value = "typescriptMaxSourceKilobytes", required = false) String typescriptMaxSourceKilobytes,
+                                 @RequestParam(value = "externalBaseUrl", required = false) String externalBaseUrl,
+                                 @RequestParam(value = "externalAutoRegister", required = false) String externalAutoRegister,
+                                 @RequestParam(value = "external-auth-section", required = false) String externalAuthSection,
                                  @RequestParam MultiValueMap<String, String> allParams,
                                  HttpServletRequest request) {
         WikiUser user = UserSession.current(request);
@@ -83,8 +98,21 @@ public class SiteSettingsApiController {
             // 只有提交了该字段才改：老客户端 / 只改开关的调用不会动站点名称；空 = 回到默认名
             siteSettingsService.set(SiteNameService.KEY, SiteNameService.normalize(siteName));
         }
+        if (favicon != null) {
+            siteSettingsService.set(SiteSettingsService.FAVICON_KEY,
+                    SiteSettingsServiceImpl.normalizeFavicon(favicon));
+        }
+        if (robots != null) {
+            siteSettingsService.set(SiteSettingsService.ROBOTS_KEY,
+                    SiteSettingsServiceImpl.normalizeRobots(robots));
+        }
+        siteSettingsService.set(SiteSettingsService.NO_REFERRER_KEY,
+                Boolean.toString("1".equals(noReferrer) || "true".equalsIgnoreCase(noReferrer)
+                        || "on".equalsIgnoreCase(noReferrer) || "yes".equalsIgnoreCase(noReferrer)));
         siteSettingsService.set(SiteSettingsService.ALLOW_OTHER_USER_PAGE_EDIT,
                 Boolean.toString(checked(allow)));
+        siteSettingsService.set(SiteSettingsService.ALLOW_ANONYMOUS_RECENT_CHANGES_KEY,
+                Boolean.toString(checked(allowAnonymousRecentChanges)));
         featureService.setRegister(checked(register));
         // 页面正文缓存（core 的 PageCacheService 每次现读这些键，改完立即生效）
         if (cachePageEnabled != null) {
@@ -106,6 +134,7 @@ public class SiteSettingsApiController {
             siteSettingsService.set("cache.page.preload-parallelism", Strings.trimToEmpty(cachePageParallelism));
         }
         featureService.setTypescript(checked(typescript));
+        featureService.setCodexExample(checked(codexExample));
         featureService.setTypescriptCompileOnSave(checked(typescriptCompileOnSave));
         if (typescriptMaxSourceKilobytes != null) {
             // 源码大小上限：空 = 用配置文件里的默认值；数字原样；-1 / 0 = 不限制；其它非法值报错
@@ -121,6 +150,36 @@ public class SiteSettingsApiController {
                 siteSettingsService.set(TypeScriptAssetService.MAX_SOURCE_KB_KEY,
                         String.valueOf(TypeScriptAssetService.normalizeMaxSourceKilobytes(
                                 raw, typescriptAssetService.maxSourceKilobytes())));
+            }
+        }
+        // 第三方登录：开关、Client ID / App ID、Client Secret / App Key 与回调地址基准。
+        // secret 留空表示保留旧值（管理界面不回显 secret）。
+        if (externalBaseUrl != null) {
+            String normalized = ExternalAuthSettings.normalizeBaseUrl(externalBaseUrl);
+            if (!externalBaseUrl.isBlank() && normalized.isEmpty()) {
+                return AjaxResult.error(AjaxCode.BAD_REQUEST,
+                        message("settings.externalBaseUrlInvalid"));
+            }
+            siteSettingsService.set(ExternalAuthSettings.BASE_URL_KEY, normalized);
+        }
+        if (externalAuthSection != null) {
+            siteSettingsService.set(ExternalAuthSettings.AUTO_REGISTER_KEY,
+                    Boolean.toString(checked(externalAutoRegister)));
+        }
+        for (String providerId : allParams.getOrDefault("external-provider", List.of())) {
+            ExternalAuthProvider provider = externalAuthProviders.find(providerId).orElse(null);
+            if (provider == null) {
+                continue;
+            }
+            siteSettingsService.set(provider.enabledSettingKey(),
+                    Boolean.toString(checked(allParams.getFirst(provider.enabledSettingKey()))));
+            if (allParams.containsKey(provider.clientIdSettingKey())) {
+                siteSettingsService.set(provider.clientIdSettingKey(),
+                        Strings.trimToEmpty(allParams.getFirst(provider.clientIdSettingKey())));
+            }
+            String secret = allParams.getFirst(provider.clientSecretSettingKey());
+            if (secret != null && !secret.isBlank()) {
+                siteSettingsService.set(provider.clientSecretSettingKey(), secret.trim());
             }
         }
         // 滥用过滤器：core 只写开关；系统账号「滥用过滤器」由插件 abuse-filter 在加载 / 首次评估时创建

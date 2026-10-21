@@ -1,7 +1,9 @@
 package cc.thonly.wikikernel.special;
 
+import cc.thonly.wikikernel.auth.external.ExternalAuthService;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
+import cc.thonly.wikikernel.service.FeatureService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -17,9 +19,15 @@ import java.util.Map;
 public class LoginSpecialPage implements SpecialPage {
 
     private final MessageSource messageSource;
+    private final ExternalAuthService externalAuthService;
+    private final FeatureService featureService;
 
-    public LoginSpecialPage(MessageSource messageSource) {
+    public LoginSpecialPage(MessageSource messageSource,
+                            ExternalAuthService externalAuthService,
+                            FeatureService featureService) {
         this.messageSource = messageSource;
+        this.externalAuthService = externalAuthService;
+        this.featureService = featureService;
     }
 
     @Override
@@ -46,6 +54,9 @@ public class LoginSpecialPage implements SpecialPage {
     public void populate(SpecialPageRequest request, Map<String, Object> model) {
         // 登录成功后跳回 ?returnto=...（只允许站内路径，防开放重定向）
         model.put("returnto", safeReturnTo(request.parameters().get("returnto")));
+        model.put("registerAvailable", featureService.registerEnabled());
+        model.put("externalProviders", externalAuthService.availableProviders());
+        model.put("externalError", request.parameters().get("external_error"));
     }
 
     static String safeReturnTo(String value) {

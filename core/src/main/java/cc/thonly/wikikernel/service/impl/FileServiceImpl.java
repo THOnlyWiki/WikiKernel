@@ -3,12 +3,16 @@ package cc.thonly.wikikernel.service.impl;
 import cc.thonly.wikikernel.common.data.WikiFile;
 import cc.thonly.wikikernel.common.data.WikiFileVersion;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.extension.FileChangeEvent;
+import cc.thonly.wikikernel.common.extension.FileChangeListener;
+import cc.thonly.wikikernel.common.extension.FileUrlResolver;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.FileStorageProperties;
 import cc.thonly.wikikernel.db.mapper.WikiFileMapper;
 import cc.thonly.wikikernel.db.mapper.WikiFileVersionMapper;
 import cc.thonly.wikikernel.log.LogTypeConfig;
+import cc.thonly.wikikernel.plugin.PluginManager;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.ThumbnailService;
@@ -20,6 +24,7 @@ import cc.thonly.wikikernel.common.web.WikiUrls;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -65,6 +70,10 @@ public class FileServiceImpl implements FileService {
     private final MessageSource messageSource;
     private final SiteConfig siteConfig;
     private final ThumbnailService thumbnailService;
+
+    /** 文件 URL 解析 / 变更同步扩展（OSS 插件）；独立测试 / 未安装插件时为空。 */
+    @Autowired(required = false)
+    private PluginManager pluginManager;
 
     public FileServiceImpl(WikiFileMapper wikiFileMapper,
                            WikiFileVersionMapper wikiFileVersionMapper,
@@ -125,6 +134,17 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public WikiFile store(WikiUser uploader, String name, String description, byte[] content) {
+        return store(uploader, name, description, FileService.DEFAULT_LICENSE, content);
+    }
+
+    @Override
+    public WikiFile store(WikiUser uploader, String name, String description,
+                          String license, byte[] content) {
+        String licenseValue = license == null || license.isBlank()
+                ? FileService.DEFAULT_LICENSE : license.trim();
+        if (licenseValue.length() > 80) {
+            licenseValue = licenseValue.substring(0, 80);
+        }
         String fileName = normalizeName(name);
         // 文件名也遵循标题规则（非法字符 / 过长等直接拒绝；仿 MediaWiki 的文件名校验）
         WikiTitles.validate(fileName).ifPresent(error -> {
@@ -174,6 +194,7 @@ public class FileServiceImpl implements FileService {
             file.setHeight(imageHeight);
             file.setUploaderId(uploaderId);
             file.setDescription(comment);
+            file.setLicense(licenseValue);
             file.setCreatedAt(now);
             file.setVersion(1);
             file.setDeleted(false);
@@ -192,6 +213,7 @@ public class FileServiceImpl implements FileService {
                     .set(WikiFile::getHeight, imageHeight)
                     .set(WikiFile::getUploaderId, uploaderId)
                     .set(WikiFile::getDescription, comment)
+                    .set(WikiFile::getLicense, licenseValue)
                     .set(WikiFile::getCreatedAt, now)
                     .set(WikiFile::getVersion, next));
             applyVersion(existing, storedName, contentType, size, imageWidth, imageHeight,
@@ -200,6 +222,8 @@ public class FileServiceImpl implements FileService {
         }
 
         thumbnailService.generate(file);
+        notifyFileChanged(new FileChangeEvent(FileChangeEvent.Type.UPLOAD, file.getId(), file.getName(),
+                storedName, file.getContentType(), file.getSize(), currentVersion(file), path, true));
         logService.record(LogTypeConfig.UPLOAD, uploaderId, fileName, null, file.getDescription());
         return file;
     }
@@ -364,6 +388,8 @@ public class FileServiceImpl implements FileService {
                 userId, comment, now, next);
 
         thumbnailService.generate(file);
+        notifyFileChanged(new FileChangeEvent(FileChangeEvent.Type.UPLOAD, file.getId(), file.getName(),
+                storedName, file.getContentType(), file.getSize(), next, path, true));
         logService.record(LogTypeConfig.UPLOAD, userId, file.getName(), null, comment);
         return file;
     }
@@ -376,9 +402,10 @@ public class FileServiceImpl implements FileService {
         }
         Long userId = user == null ? null : user.getId();
         if (hard) {
+            List<WikiFileVersion> versions = versions(file);
             Set<String> storedNames = new LinkedHashSet<>();
             storedNames.add(file.getStoredName());
-            for (WikiFileVersion version : versions(file)) {
+            for (WikiFileVersion version : versions) {
                 storedNames.add(version.getStoredName());
             }
             wikiFileVersionMapper.delete(Wrappers.<WikiFileVersion>lambdaQuery()
@@ -392,6 +419,14 @@ public class FileServiceImpl implements FileService {
                     throw new IllegalStateException("files.deleteFailed", exception);
                 }
             }
+            notifyFileChanged(new FileChangeEvent(FileChangeEvent.Type.DELETE, file.getId(), file.getName(),
+                    file.getStoredName(), file.getContentType(), file.getSize(),
+                    currentVersion(file), null, true));
+            for (WikiFileVersion version : versions) {
+                notifyFileChanged(new FileChangeEvent(FileChangeEvent.Type.DELETE, file.getId(), file.getName(),
+                        version.getStoredName(), version.getContentType(), version.getSize(),
+                        version.getVersion() == null ? 1 : version.getVersion(), null, false));
+            }
             logService.record(LogTypeConfig.FILEDELETE, userId, file.getName(), null,
                     message("files.hardDeleteComment"));
             return true;
@@ -402,6 +437,9 @@ public class FileServiceImpl implements FileService {
                     .set(WikiFile::getDeleted, true)
                     .set(WikiFile::getDeletedBy, userId)
                     .set(WikiFile::getDeletedAt, LocalDateTime.now()));
+            notifyFileChanged(new FileChangeEvent(FileChangeEvent.Type.SOFT_DELETE, file.getId(), file.getName(),
+                    file.getStoredName(), file.getContentType(), file.getSize(),
+                    currentVersion(file), null, true));
         }
         logService.record(LogTypeConfig.FILEDELETE, userId, file.getName(), null, null);
         return true;
@@ -421,6 +459,9 @@ public class FileServiceImpl implements FileService {
                 .set(WikiFile::getDeleted, false)
                 .set(WikiFile::getDeletedBy, null)
                 .set(WikiFile::getDeletedAt, null));
+        notifyFileChanged(new FileChangeEvent(FileChangeEvent.Type.RESTORE, file.getId(), file.getName(),
+                file.getStoredName(), file.getContentType(), file.getSize(),
+                currentVersion(file), null, true));
         logService.record(LogTypeConfig.FILERESTORE, user == null ? null : user.getId(),
                 file.getName(), null, null);
         return true;
@@ -472,12 +513,44 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public boolean remoteOriginalsRequired() {
+        FileUrlResolver resolver = resolver(false);
+        return resolver != null && resolver.handlesOriginals();
+    }
+
+    @Override
+    public boolean remoteOriginalsAvailable() {
+        FileUrlResolver resolver = resolver(false);
+        return resolver == null || resolver.available();
+    }
+
+    @Override
     public String urlOf(WikiFile file) {
+        if (file != null) {
+            FileUrlResolver resolver = resolver(false);
+            if (resolver != null && resolver.handlesOriginals()) {
+                if (!resolver.available()) {
+                    // OSS all 模式：原图不在本地兜底，明确给一个不存在的路径让访问 404
+                    return "/files/__oss_unavailable__";
+                }
+                String remote = resolver.originalUrl(file);
+                if (remote != null && !remote.isBlank()) {
+                    return remote;
+                }
+            }
+        }
         return "/files/" + file.getStoredName();
     }
 
     @Override
     public String urlOf(WikiFileVersion version) {
+        FileUrlResolver resolver = resolver(false);
+        if (resolver != null && resolver.handlesOriginals() && resolver.available()) {
+            String remote = resolver.originalUrl(version.getStoredName());
+            if (remote != null && !remote.isBlank()) {
+                return remote;
+            }
+        }
         return "/files/" + version.getStoredName();
     }
 
@@ -501,10 +574,23 @@ public class FileServiceImpl implements FileService {
         } else {
             return urlOf(file);
         }
-        if (!thumbnailService.exists(file.getStoredName(), variant)) {
-            return urlOf(file);
+        FileUrlResolver resolver = resolver(true);
+        if (resolver != null && resolver.handlesThumbnails() && resolver.available()) {
+            String remote = resolver.thumbnailUrl(file, variant);
+            if (remote != null && !remote.isBlank()) {
+                return remote;
+            }
         }
-        return thumbnailService.url(file.getStoredName(), variant);
+        if (!thumbnailService.exists(file.getStoredName(), variant)) {
+            // OSS 不可用 / 未接管时，本地按需补齐缩略图
+            if (!thumbnailService.exists(file.getStoredName(), variant)) {
+                thumbnailService.generate(file);
+            }
+        }
+        if (thumbnailService.exists(file.getStoredName(), variant)) {
+            return thumbnailService.url(file.getStoredName(), variant);
+        }
+        return urlOf(file);
     }
 
     @Override
@@ -518,6 +604,34 @@ public class FileServiceImpl implements FileService {
     }
 
     // ==================== 内部实现 ====================
+
+    /** 找第一个接管原图 / 缩略图 URL 的插件；多个 OSS 插件时按加载顺序。 */
+    private FileUrlResolver resolver(boolean thumbnails) {
+        if (pluginManager == null) {
+            return null;
+        }
+        for (FileUrlResolver resolver : pluginManager.extensions(FileUrlResolver.class)) {
+            if (thumbnails ? resolver.handlesThumbnails() : resolver.handlesOriginals()) {
+                return resolver;
+            }
+        }
+        return null;
+    }
+
+    /** 通知文件变更监听器；插件失败只记日志，不影响上传 / 删除本身。 */
+    private void notifyFileChanged(FileChangeEvent event) {
+        if (pluginManager == null || event == null) {
+            return;
+        }
+        for (FileChangeListener listener : pluginManager.extensions(FileChangeListener.class)) {
+            try {
+                listener.onFileChanged(event);
+            } catch (RuntimeException exception) {
+                org.slf4j.LoggerFactory.getLogger(FileServiceImpl.class)
+                        .warn("文件变更监听器 {} 失败：{}", listener.getClass().getName(), event, exception);
+            }
+        }
+    }
 
     /** 当前版本号（历史数据可能为空，按 1 处理）。 */
     private static int currentVersion(WikiFile file) {

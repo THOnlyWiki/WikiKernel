@@ -208,7 +208,8 @@ class TypeScriptCompileTest {
         featureService.setTypescriptCompileOnSave(true);
         try {
             WikiUser user = insertUser("TS 保存用户" + System.nanoTime());
-            permissionService.replaceFor(user.getId(), List.of(PermissionService.GROUP_ADMIN));
+            // .ts 是可能被加载为脚本的界面页面：默认只有界面管理员能保存。
+            permissionService.replaceFor(user.getId(), List.of(PermissionService.GROUP_INTERFACE_ADMIN));
             MockHttpSession session = sessionOf(user);
 
             // 语法错误：保存后页面顶部直接显示诊断，且保存本身没被阻止（版本照常产生）

@@ -18,6 +18,7 @@ if not defined FOUND echo [WikiKernel] 端口 %PORT% 上没有正在运行的 Wi
 
 rem 清理 run.bat 启动时复制的启动副本（run\.launch\wikikernel-<端口>.jar）
 if exist "%~dp0run\.launch\wikikernel-%PORT%.jar" del /q "%~dp0run\.launch\wikikernel-%PORT%.jar" >nul 2>nul
+if exist "%~dp0run\.launch\wikikernel-mixin-agent-%PORT%.jar" del /q "%~dp0run\.launch\wikikernel-mixin-agent-%PORT%.jar" >nul 2>nul
 
 if /i "%~2"=="nopause" exit /b 0
 pause

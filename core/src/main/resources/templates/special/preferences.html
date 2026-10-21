@@ -6,12 +6,12 @@
 <section>
     <p class="wiki-warning" th:if="${loginRequired}">
         <span th:text="#{preferences.loginRequired}">请先登录后再修改参数设置。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:参数设置'})}" th:text="#{source.login}">登录</a>
+        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{source.login}">登录</a>
     </p>
 
     <th:block th:if="${user != null}">
         <div class="pref-search">
-            <input type="search" id="pref-search" th:placeholder="#{preferences.searchPlaceholder}"
+            <input type="search" id="pref-search-input" th:placeholder="#{preferences.searchPlaceholder}"
                    th:attr="aria-label=#{preferences.searchPlaceholder}"/>
         </div>
 
@@ -28,6 +28,8 @@
                     th:text="#{preferences.tab.watchlist}">监视列表</button>
             <button type="button" class="pref-tab" data-target="search"
                     th:text="#{preferences.tab.search}">搜索</button>
+            <button type="button" class="pref-tab" data-target="external"
+                    th:text="#{preferences.tab.external}">第三方授权</button>
             <button type="button" class="pref-tab" data-target="misc"
                     th:text="#{preferences.tab.misc}">其他</button>
             <!-- 插件分区（PreferenceSection，如 Gadgets）：每个插件贡献一个标签页 -->
@@ -314,6 +316,41 @@
                 </div>
             </section>
 
+            <section id="pref-external" class="pref-section" data-tab="external" hidden>
+                <h2 th:text="#{preferences.externalAccounts}">第三方授权</h2>
+                <p class="wiki-hint" th:text="#{preferences.externalAccountsHint}">
+                    绑定第三方账号后可以直接使用第三方登录。解绑前请确认自己仍能使用密码或其他方式登录。
+                </p>
+                <p class="wiki-warning" th:if="${externalError}" th:text="${externalError}">第三方授权操作失败。</p>
+                <p class="form-message success" th:if="${externalSuccess}" th:text="${externalSuccess}">操作成功。</p>
+                <p class="wiki-hint" th:if="${externalAccounts == null or externalAccounts.empty}">
+                    <span th:text="#{preferences.externalNone}">站点当前没有启用可用的第三方登录方式。</span>
+                </p>
+                <div class="pref-external-account" th:each="account : ${externalAccounts}">
+                    <div class="pref-external-main">
+                        <strong th:text="${account.label}">GitHub</strong>
+                        <span class="pref-external-status" th:if="${account.linked}">
+                            <span th:text="#{preferences.externalLinked(${account.identityName})}">已绑定</span>
+                            <span th:if="${account.linkedAt != null}"
+                                  th:text="| · ${@wikiTime.format(account.linkedAt)}|">时间</span>
+                        </span>
+                        <span class="pref-external-status" th:unless="${account.linked}"
+                              th:text="#{preferences.externalUnlinked}">未绑定</span>
+                    </div>
+                    <div class="pref-external-actions">
+                        <a th:if="${!account.linked and account.linkUrl != ''}"
+                           class="wiki-button" th:href="${account.linkUrl}"
+                           th:text="#{preferences.externalBind}">绑定</a>
+                        <a th:if="${account.linked}" class="wiki-button wiki-button-danger"
+                           th:href="${account.unlinkUrl}" data-external-unlink
+                           th:attr="data-provider=${account.label}"
+                           th:text="#{preferences.externalUnbind}">解绑</a>
+                        <span class="wiki-hint" th:if="${!account.linked and account.linkUrl == ''}"
+                              th:text="#{preferences.externalUnavailable}">当前不可用</span>
+                    </div>
+                </div>
+            </section>
+
             <section id="pref-misc" class="pref-section" data-tab="misc" hidden>
                 <h2 th:text="#{preferences.tab.misc}">其他</h2>
                 <!-- 插件分区（PreferenceSection，如 Gadgets）各自是一个标签页：
@@ -342,3 +379,5 @@
 </section>
 </body>
 </html>
+
+

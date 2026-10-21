@@ -5,10 +5,11 @@ import cc.thonly.wikikernel.plugin.PluginFeatureSections;
  * **core 自己的**功能开关（存站点设置 {@code wiki_setting}，可在 {@code 特殊:权限配置 → 站点设置}
  * 或 {@code /init} 修改，也可以在 {@code LocalSettings.yaml} 的 {@code wikikernel.features} 里给默认值）。
  * <p>
- * 目前只剩 core 拥有的两个功能：
+ * 目前只剩 core 拥有的三个功能：
  * <ul>
  *     <li>{@code features.register}：注册（创建账号）；</li>
- *     <li>{@code features.typescript} / {@code features.typescript-compile-on-save}：TypeScript 服务端编译。</li>
+ *     <li>{@code features.typescript} / {@code features.typescript-compile-on-save}：TypeScript 服务端编译；</li>
+ *     <li>{@code features.codex-example}：是否列出「特殊:CodexExample」。</li>
  * </ul>
  * <b>插件自己的功能开关不在这个接口里</b>：插件在 {@code META-INF/wiki-plugin.properties} 里声明
  * <pre>
@@ -30,6 +31,9 @@ public interface FeatureService {
     /** 站点设置键：保存 TypeScript 页面时立即编译（默认关闭；只在 TypeScript 编译开启时生效）。 */
     String TYPESCRIPT_COMPILE_ON_SAVE_KEY = "features.typescript-compile-on-save";
 
+    /** 站点设置键：是否列出并允许访问 特殊:CodexExample（默认开启）。 */
+    String CODEX_EXAMPLE_KEY = "features.codex-example";
+
     /** 是否启用注册（创建账号；关闭后仅管理员 / 行政员可进 {@code 特殊:注册}）。 */
     boolean registerEnabled();
 
@@ -39,6 +43,9 @@ public interface FeatureService {
     /** 是否在保存 TypeScript 页面时立即编译。 */
     boolean typescriptCompileOnSave();
 
+    /** 是否启用 / 列出 特殊:CodexExample。 */
+    boolean codexExampleEnabled();
+
     /** 是否启用注册。 */
     void setRegister(boolean enabled);
 
@@ -47,4 +54,7 @@ public interface FeatureService {
 
     /** 是否在保存 TypeScript 页面时立即编译。 */
     void setTypescriptCompileOnSave(boolean enabled);
+
+    /** 是否启用 / 列出 特殊:CodexExample。 */
+    void setCodexExample(boolean enabled);
 }

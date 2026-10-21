@@ -90,7 +90,7 @@ public class SpecialWikiPageServiceImpl implements SpecialWikiPageService {
     }
 
     private void register(Map<String, SpecialPage> registry, SpecialPage page) {
-        if (page == null) {
+        if (page == null || !page.enabled()) {
             return;
         }
         registry.putIfAbsent(normalizeKey(page.name()), page);

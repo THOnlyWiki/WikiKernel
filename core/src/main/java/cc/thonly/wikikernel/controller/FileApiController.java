@@ -77,6 +77,7 @@ public class FileApiController {
     public AjaxResult<Map<String, Object>> upload(@RequestParam("file") MultipartFile upload,
                                                   @RequestParam(value = "name", required = false) String name,
                                                   @RequestParam(value = "description", required = false) String description,
+                                                  @RequestParam(value = "license", required = false) String license,
                                                   HttpServletRequest request) {
         WikiUser user = UserSession.current(request);
         if (user == null) {
@@ -112,6 +113,7 @@ public class FileApiController {
                 .data("size", upload.getSize())
                 .data("contentType", upload.getContentType())
                 .data("description", description)
+                .data("license", license)
                 .payload(bytes)
                 .build());
         if (uploadDecision.blocked()) {
@@ -123,7 +125,7 @@ public class FileApiController {
             return AjaxResult.success(uploadDecision.message(), handled);
         }
         try {
-            WikiFile file = fileService.store(user, fileName, description, bytes);
+            WikiFile file = fileService.store(user, fileName, description, license, bytes);
             ensureDescriptionPage(user, file, description);
             Map<String, Object> data = fileData(file);
             addWarnings(data, uploadDecision);
@@ -238,6 +240,7 @@ public class FileApiController {
         data.put("url", fileService.urlOf(file));
         data.put("thumbUrl", fileService.thumbnailUrl(file, 320));
         data.put("pageUrl", fileService.pageUrlOf(file));
+        data.put("license", file.getLicense());
         return data;
     }
 

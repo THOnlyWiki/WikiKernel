@@ -9,9 +9,11 @@ import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.BlockWriter;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.service.UserWriter;
+import cc.thonly.wikikernel.common.service.WikiPageStore;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.abusefilter.AbuseFilterSupport;
 import cc.thonly.wikikernel.plugin.abusefilter.model.AbuseContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -60,6 +62,10 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
     private final BlockWriter blockWriter;
     private final AccessCheck accessCheck;
     private final AbuseFilterSupport support;
+
+    /** 警告 / 阻止信息页读取（可选：单元测试没有 Spring 时为空，直接使用说明文案）。 */
+    @Autowired(required = false)
+    private WikiPageStore pageStore;
 
     /** 已编译条件的 LRU 缓存（内容 → 条件；过滤器保存后清空）。 */
     private final Map<String, AbuseCondition> conditionCache = Collections.synchronizedMap(
@@ -166,6 +172,14 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
         filter.setEnabled(form.enabled());
         filter.setDeleted(form.deleted());
         filter.setHidden(form.hidden());
+        filter.setNotes(trim(form.notes()));
+        filter.setWarnMessage(trim(form.warnMessage()));
+        filter.setWarnPage(AbuseFilterSupport.messagePageTitle(form.warnPage()));
+        filter.setDisallowMessage(trim(form.disallowMessage()));
+        filter.setDisallowPage(AbuseFilterSupport.messagePageTitle(form.disallowPage()));
+        filter.setBlockTalk(form.blockTalk());
+        filter.setBlockAnonDays(Math.max(0, form.blockAnonDays()));
+        filter.setBlockUserDays(Math.max(0, form.blockUserDays()));
         filter.setLastEditorId(actorId);
         filter.setLastEditAt(now);
         long filterId = store.save(filter);
@@ -182,6 +196,14 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
         revision.setEnabled(filter.getEnabled());
         revision.setDeleted(filter.getDeleted());
         revision.setHidden(filter.getHidden());
+        revision.setNotes(filter.getNotes());
+        revision.setWarnMessage(filter.getWarnMessage());
+        revision.setWarnPage(filter.getWarnPage());
+        revision.setDisallowMessage(filter.getDisallowMessage());
+        revision.setDisallowPage(filter.getDisallowPage());
+        revision.setBlockTalk(filter.getBlockTalk());
+        revision.setBlockAnonDays(filter.getBlockAnonDays());
+        revision.setBlockUserDays(filter.getBlockUserDays());
         revision.setUserId(actorId);
         revision.setComment(trim(form.comment()));
         revision.setCreateAt(now);
@@ -206,7 +228,12 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
                 Boolean.TRUE.equals(revision.getDeleted()), Boolean.TRUE.equals(revision.getHidden()),
                 revision.getThrottleCount() == null ? 0 : revision.getThrottleCount(),
                 revision.getThrottlePeriod() == null ? 0 : revision.getThrottlePeriod(),
-                revision.getThrottleGroup(), "恢复历史版本 #" + revisionId), actorId);
+                revision.getThrottleGroup(), "恢复历史版本 #" + revisionId,
+                revision.getNotes(), revision.getWarnMessage(), revision.getWarnPage(),
+                revision.getDisallowMessage(), revision.getDisallowPage(),
+                Boolean.TRUE.equals(revision.getBlockTalk()),
+                revision.getBlockAnonDays() == null ? 3 : revision.getBlockAnonDays(),
+                revision.getBlockUserDays() == null ? 3 : revision.getBlockUserDays()), actorId);
         return true;
     }
 
@@ -254,11 +281,13 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
             if (applyOthers) {
                 if (actions.contains("disallow")) {
                     disallowed = true;
-                    messages.add(filter.getDescription());
+                    messages.add(actionMessage(filter, filter.getDisallowMessage(),
+                            filter.getDisallowPage(), filter.getDescription()));
                     applied.add("disallow");
                 }
                 if (actions.contains("warn") || actions.contains("degrade")) {
-                    warnings.add(filter.getDescription());
+                    warnings.add(actionMessage(filter, filter.getWarnMessage(),
+                            filter.getWarnPage(), filter.getDescription()));
                     applied.add(actions.contains("warn") ? "warn" : "degrade");
                 }
                 if (actions.contains("tag")) {
@@ -341,12 +370,46 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
     // ==================== 操作 ====================
 
     private void blockFor(WikiAbuseFilter filter, Viewer viewer, String ip) {
-        String target = viewer == null || !viewer.loggedIn() ? Strings.trimToEmpty(ip) : viewer.name();
+        boolean loggedIn = viewer != null && viewer.loggedIn();
+        String target = !loggedIn ? Strings.trimToEmpty(ip) : viewer.name();
         if (target.isEmpty()) {
             return;
         }
-        blockWriter.block(SYSTEM_ACCOUNT, target, LocalDateTime.now().plusDays(BLOCK_DAYS),
+        int days = loggedIn
+                ? (filter.getBlockUserDays() == null ? BLOCK_DAYS : filter.getBlockUserDays())
+                : (filter.getBlockAnonDays() == null ? BLOCK_DAYS : filter.getBlockAnonDays());
+        LocalDateTime expiresAt = days <= 0 ? null : LocalDateTime.now().plusDays(days);
+        blockWriter.block(SYSTEM_ACCOUNT, target, expiresAt,
                 message("abusefilter.blockReason", filter.getDescription()));
+    }
+
+    /** 警告 / 阻止文案：自定义文案 → 信息页正文 → 过滤器说明。 */
+    private String actionMessage(WikiAbuseFilter filter, String message, String page, String fallback) {
+        String text = Strings.trimToEmpty(message);
+        if (!text.isEmpty()) {
+            // 支持两种写法：系统消息键（如 abusefilter-warning）或直接写警告文案
+            String resolved = support.messageOrNull(text);
+            return applyMessageParams(resolved == null ? text : resolved, fallback);
+        }
+        String pageTitle = AbuseFilterSupport.messagePageTitle(page);
+        if (!pageTitle.isEmpty() && pageStore != null) {
+            try {
+                String content = pageStore.byTitle(pageTitle)
+                        .flatMap(snapshot -> pageStore.content(snapshot.id()))
+                        .map(String::trim)
+                        .filter(value -> !value.isEmpty())
+                        .orElse(fallback);
+                return applyMessageParams(content, fallback);
+            } catch (RuntimeException ignored) {
+                // 页面读取失败时使用说明，不影响拦截
+            }
+        }
+        return applyMessageParams(fallback, fallback);
+    }
+
+    /** MediaWiki 消息参数：$1 = 过滤器说明；其它占位符留给消息本身。 */
+    private static String applyMessageParams(String text, String description) {
+        return text == null ? "" : text.replace("$1", Strings.trimToEmpty(description));
     }
 
     private void blockAutopromote(Viewer viewer) {
@@ -434,16 +497,39 @@ public class AbuseFilterServiceImpl implements AbuseFilterService {
         return new AbuseContext()
                 .put("user_name", loggedIn ? viewer.name() : Strings.trimToEmpty(ip))
                 .put("user_id", loggedIn ? userId : null)
-                .put("user_groups", List.copyOf(groups))
+                .put("user_groups", groupAliases(groups))
+                .put("user_rights", groupAliases(groups))
+                .put("user_type", loggedIn ? "named" : "ip")
                 .put("user_editcount", editCount)
                 .put("user_age", age)
                 .put("user_emailconfirm", emailConfirmed)
                 .put("user_blocked", blocked)
                 .put("user_autoconfirmed", groups.contains(AbuseFilterSupport.GROUP_AUTOCONFIRMED))
                 .put("ip", Strings.trimToEmpty(ip))
+                .put("user_unnamed_ip", Strings.trimToEmpty(ip))
                 .put("minor_edit", false)
                 .put("timestamp", LocalDateTime.now().toString())
-                .put("wiki_name", siteName());
+                .put("wiki_name", siteName())
+                .put("wiki_language", "zh")
+                .put("tor_exit_node", false);
+    }
+
+    /** 站点中文组名 → MediaWiki 内部组名别名（过滤器里的 sysop / autoconfirmed 可直接使用）。 */
+    private static List<String> groupAliases(Set<String> groups) {
+        LinkedHashSet<String> result = new LinkedHashSet<>(groups);
+        for (String group : groups) {
+            switch (group) {
+                case "管理员" -> result.add("sysop");
+                case "行政员" -> result.add("bureaucrat");
+                case "自动确定用户" -> result.add("autoconfirmed");
+                case "机器人" -> result.add("bot");
+                case "用户" -> result.add("user");
+                case "界面管理员" -> result.add("interface-admin");
+                default -> {
+                }
+            }
+        }
+        return List.copyOf(result);
     }
 
     /** 站点显示名（仿 MediaWiki 的 {@code $wgSitename}；core 的站点设置键 {@code site.name}）。 */

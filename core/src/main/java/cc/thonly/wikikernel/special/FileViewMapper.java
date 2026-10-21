@@ -62,6 +62,8 @@ public class FileViewMapper {
         row.put("contentType", file.getContentType());
         row.put("sizeText", formatSize(file.getSize()));
         row.put("description", file.getDescription());
+        row.put("license", file.getLicense() == null || file.getLicense().isBlank()
+                ? FileService.DEFAULT_LICENSE : file.getLicense());
         row.put("version", file.getVersion() == null ? 1 : file.getVersion());
         row.put("deleted", Boolean.TRUE.equals(file.getDeleted()));
         row.put("uploaderName", file.getUploaderId() == null ? null : userNames.get(file.getUploaderId()));

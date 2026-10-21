@@ -13,6 +13,7 @@ import cc.thonly.wikikernel.common.service.SearchStore;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.service.WikiDiff;
 import cc.thonly.wikikernel.common.service.WikiPageStore;
+import cc.thonly.wikikernel.common.service.WikiCapabilityCatalog;
 import cc.thonly.wikikernel.common.service.WikiText;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentSupport;
@@ -22,6 +23,7 @@ import cc.thonly.wikikernel.plugin.aiagent.model.AiMessage;
 import cc.thonly.wikikernel.plugin.aiagent.model.AiProposal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 import tools.jackson.databind.JsonNode;
@@ -84,6 +86,10 @@ public class AiAgentService {
     private final EditSubmitter editSubmitter;
     private final MarkdownRenderer markdownRenderer;
     private final ObjectMapper objectMapper;
+
+    /** core 汇总的扩展语法目录；插件未加载时为空（不影响其它功能 / 单元测试）。 */
+    @Autowired(required = false)
+    private WikiCapabilityCatalog capabilityCatalog;
 
     private final Map<String, AiAgentSession> sessions = new ConcurrentHashMap<>();
 
@@ -798,7 +804,7 @@ public class AiAgentService {
         String siteName = support.siteName();
         Set<String> groups = viewer == null || viewer.groups() == null ? Set.of() : viewer.groups();
         String groupText = groups.isEmpty() ? "（无附加组）" : String.join("、", groups);
-        return """
+        String base = """
                 你是「%s」的 AI 代理（%s / %s），帮助用户阅读与编辑这个 MediaWiki 风格的维基。
                 今天是 %s。当前用户：%s（用户组：%s）。
 
@@ -837,6 +843,11 @@ public class AiAgentService {
                 <nowiki><math></nowiki> 等）；模板在「模板:」命名空间，Lua 模块在「模块:」；页面可被保护。
                 """.formatted(siteName, provider.id(), provider.model(), LocalDate.now(),
                 viewer == null ? "（未知）" : viewer.name(), groupText);
+        if (capabilityCatalog == null) {
+            return base;
+        }
+        String capabilities = capabilityCatalog.promptSection();
+        return capabilities == null || capabilities.isBlank() ? base : base + "\n\n" + capabilities;
     }
 
     /** 发送前裁剪：保留 system + 最近 N 条。 */

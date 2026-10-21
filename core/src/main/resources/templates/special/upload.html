@@ -36,6 +36,16 @@
             <label for="file-description" th:text="#{files.description}">文件说明</label>
             <textarea id="file-description" name="description" rows="3"></textarea>
         </div>
+        <div class="form-field">
+            <label for="file-license" th:text="#{files.license}">授权协议</label>
+            <select id="file-license" name="license">
+                <option th:each="license : ${licenseOptions}" th:value="${license}"
+                        th:text="${license}" th:selected="${license == defaultLicense}"></option>
+            </select>
+            <div class="wiki-hint" th:text="#{files.licenseHint}">
+                默认使用共用领域协议；请确认你有权按所选协议发布该文件。
+            </div>
+        </div>
         <div class="form-actions">
             <button type="submit" class="wiki-button" th:text="#{files.submit}">上传</button>
             <a th:href="@{/wiki/特殊:文件列表}" th:text="#{files.list}">文件列表</a>

@@ -16,6 +16,18 @@
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.pref-tab'));
     var sections = Array.prototype.slice.call(document.querySelectorAll('.pref-section'));
 
+    // 第三方授权：解绑前确认（真正的 CSRF 校验在服务端 session token 里）
+    Array.prototype.forEach.call(document.querySelectorAll('[data-external-unlink]'), function (link) {
+        link.addEventListener('click', function (event) {
+            var provider = link.getAttribute('data-provider') || '第三方账号';
+            var template = MESSAGES.prefExternalUnlinkConfirm
+                    || '确定要解绑 {0} 吗？解绑后将不能再用它登录。';
+            if (!window.confirm(template.replace('{0}', provider))) {
+                event.preventDefault();
+            }
+        });
+    });
+
     // core 表单里的分区（插件分区在表单外、同一内容区里，各自带保存按钮）
     var coreTabs = sections
         .filter(function (section) {
@@ -52,7 +64,7 @@
         showTab(hash);
     }
 
-    var search = document.getElementById('pref-search');
+    var search = document.getElementById('pref-search-input');
     if (search) {
         search.addEventListener('input', function () {
             var keyword = search.value.trim().toLowerCase();

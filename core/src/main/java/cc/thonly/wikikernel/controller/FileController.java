@@ -53,6 +53,9 @@ public class FileController {
     @GetMapping("/files/{storedName}")
     public ResponseEntity<byte[]> serve(@PathVariable("storedName") String storedName,
                                         HttpServletRequest request) throws IOException {
+        if (fileService.remoteOriginalsRequired() && !fileService.remoteOriginalsAvailable()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, message("files.notFound"));
+        }
         FileService.StoredFile stored = fileService.resolveStored(storedName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         message("files.notFound")));

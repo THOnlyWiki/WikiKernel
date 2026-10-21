@@ -39,6 +39,15 @@ class WikitextRendererTest {
     }
 
     @Test
+    void preservesHtmlEntitiesAsText() {
+        String html = renderer.render("甲&nbsp;&nbsp;乙 &amp; 丙 &#160;", "测试");
+        assertTrue(html.contains("甲&nbsp;&nbsp;乙"), html);
+        assertTrue(html.contains("&amp; 丙"), html);
+        assertTrue(html.contains("&#160;"), html);
+        assertFalse(html.contains("&amp;nbsp;"), html);
+    }
+
+    @Test
     void rendersCommonParserFunctions() {
         String html = renderer.render(
                 "{{#expr:2+3*4}}|{{#time:Y|20200102030405}}|"
@@ -128,6 +137,28 @@ class WikitextRendererTest {
         String html = renderer.render("{{模板:文档}}", "测试");
         assertTrue(html.contains("（包含）"), html);
         assertFalse(html.contains("（说明）"), html);
+    }
+
+    @Test
+    void transclusionStripsUnpairedNoincludeTag() {
+        // 兼容 Template:Documentation/docname 这类导入内容：末尾有一个未闭合的 <noinclude>
+        WikitextRenderer local = new WikitextRenderer(new WikitextProperties(), name -> Optional.ofNullable(
+                Map.of("模板:Docname", "模板:Documentation/doc<noinclude>\n说明\n</noinclude><noinclude>")
+                        .get(name)));
+        String html = local.render("{{Docname}}", "测试");
+        assertFalse(html.contains("<noinclude>"), html);
+        assertFalse(html.contains("&lt;noinclude&gt;"), html);
+        assertTrue(html.contains("模板:Documentation/doc"), html);
+    }
+
+    @Test
+    void fullUrlLinkWithSpaceLabelDoesNotDoublePagePrefix() {
+        String html = renderer.render(
+                "[[{{fullurl:模板:Documentation/doc|action=edit}} 创建]]", "测试");
+        assertFalse(html.contains("/wiki//wiki/"), html);
+        assertFalse(html.contains("action=edit_创建"), html);
+        assertTrue(html.contains(">创建</a>"), html);
+        assertTrue(html.contains("action=edit"), html);
     }
 
     @Test
@@ -526,5 +557,19 @@ class WikitextRendererTest {
             count++;
         }
         return count;
+    }
+
+    @Test
+    void nestedParameterDefaultInTemplate() {
+        java.util.Map<String, String> map = Map.of(
+                "模板:Docname", "模板:Documentation/doc",
+                "模板:Documentation/doc", "<pre>{{Documentation}}</pre>",
+                "模板:Doc", "A={{ {{{1|{{Docname}}}}} }}; B=[[{{{1|{{Docname}}}}}]]; C=[[{{{1|{{Docname}}}}}|标签]]; D={{Docname}}");
+        WikitextRenderer local = new WikitextRenderer(new WikitextProperties(), name -> Optional.ofNullable(map.get(name)));
+        String html = local.render("{{Doc}}", "测试");
+        assertFalse(html.contains("{{{1|"), html);
+        assertFalse(html.contains("模板循环"), html);
+        assertTrue(html.contains("模板:Documentation/doc"), html);
+        assertTrue(html.contains("<pre>{{Documentation}}</pre>"), html);
     }
 }

@@ -1,22 +1,25 @@
 # comments（MediaWiki Comments 扩展移植）
 
-正文里写 `<comment />`（也支持 `<comments />`）的页面，底部显示评论区：发表、回复（支持 wikitext）、
-软删除；作者本人或「评论管理员」/ 管理员 / 行政员可以删除。
+默认**自动显示**在正文下方（Flow 风格嵌套回复）：发表、回复（支持 wikitext）、软删除；
+作者本人或「评论管理员」/ 管理员 / 行政员可以删除。
+页面可用 `<comment />` / `<comments />` 手动开启，或用 `<comment disabled />` 显式关闭自动评论区。
 
 | 部分 | 说明 |
 | --- | --- |
-| 标签 | `CommentTag`（`expandBody()=false`）：把标签从正文剥离，只写页面属性 `comments=1` |
-| 评论区 | `CommentSectionHook`（`PageDisplayHook.afterContent`，`order=200`）：页面属性有 `comments=1` 且功能开启时渲染列表 + 发表表单 |
+| 标签 | `CommentTag`（`expandBody()=false`）：把标签从正文剥离，写页面属性 `comments=1`；`disabled` 写 `comments-disabled=1` |
+| 评论区 | `CommentSectionHook`（`PageDisplayHook.afterContent`，`order=200`）：默认自动显示；`comments-disabled` 优先于自动 / 手动 |
 | API | `CommentsApiController`：`POST /api/comments`（发表 / 回复）、`POST /api/comments/delete`（软删除） |
-| 资源 | `/plugins/comments/comments.js`（发表 / 回复 / 删除后只局部刷新评论区，保留草稿）、`comments.css` |
+| 资源 | `/plugins/comments/comments.js`（发表 / 回复 / 删除后只局部刷新评论区，保留草稿；就地回复 composer）、`comments.css` |
 | 日志 | 用 `common.extension.LogType` 注册 `comment` / `commentdelete` 两个类型（`特殊:日志` 可过滤） |
 
 > 数据层属于插件自己：实体 `plugin/comments/.../data/WikiComment.java`，表 `wiki_comment`
 > 由 core 按 `CommentsPlugin.schemaEntities()` 的 Auto-DDL 自动建表 / 补列，插件用
 > `common.service.PluginDatabase`（JDBC 桥）读写（`service/CommentStoreJdbc`）。
 
-- **开关**：`features.comments`（默认开启；`/init`、`特殊:权限配置 → 站点设置`、`LocalSettings.yaml` 都可改）。
-  关闭时标签仍剥离，但不显示评论区；接口返回 403 `feature.commentsDisabled`。
+- **开关**：`features.comments`（默认开启）；**自动显示**：`comments.auto-display`（默认开启）。
+  两者都在 `特殊:权限配置 → 站点设置 → 评论` 和 `LocalSettings.yaml` 里可改。
+  关闭总开关时标签仍剥离，但不显示评论区；接口返回 403 `feature.commentsDisabled`。
+- **页面级控制**：`<comment />` 手动开启；`<comment disabled />` 关闭自动显示（优先级最高）。
 - **权限**：发表需要登录 + 未被封禁 + 对该页面有查看权限（`common.service.AccessCheck`）；
   删除限作者本人、「评论管理员」、管理员、行政员。
 - **数据**：表 `wiki_comment` 与实体 `WikiComment` **属于插件自己**（实体在插件内，core 按
@@ -39,7 +42,7 @@
 
 - MediaWiki 的 Comments 扩展用 `<comments>` 解析器钩子 + 自己的表；这里兼容 `<comment />` 与 `<comments />`
   两种写法，并沿用 WikiKernel 原有的「标签剥离 + 页面属性」实现方式；
-- 没有投票 / 排序 / 分页 / 通知（Echo），回复用缩进展示（最多 5 层）而不是真正的树形控件；
+- 没有投票 / 排序 / 分页 / 通知（Echo），但回复会渲染成真正的嵌套树，并支持就地回复；
 - 删除是软删除（保留占位「此评论已删除」），不写独立的删除理由，与迁移前一致。
 
 > **功能开关**：`features.comments`（默认值见插件描述文件）。开关由本插件在自己的

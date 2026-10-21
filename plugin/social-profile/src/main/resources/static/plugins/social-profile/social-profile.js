@@ -129,7 +129,7 @@
         // 按钮类操作（好友 / 仇敌 / 删除等）走各自的按钮处理器，不受表单提交影响
         form.addEventListener('submit', function (event) {
             event.preventDefault();
-            submitForm(form, false);
+            submitForm(form, form.hasAttribute('data-reload'));
         });
     });
 

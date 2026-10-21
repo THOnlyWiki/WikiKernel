@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="gift-manager">
+    <p class="sp-page-desc" th:text="#{socialProfile.giftManager.desc}">
+        创建属于本站的自定义礼物。所有登录用户都可以创建，创建者可以停用自己创建的礼物。
+    </p>
+
+    <p class="wiki-warning" th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}">
+        站点已关闭「用户交互」。
+    </p>
+    <p class="wiki-form-error" th:if="${!featureDisabled and giftManagerLoginRequired}">
+        <span th:text="#{socialProfile.giftManager.loginRequired}">登录后可以创建礼物。</span>
+        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+    </p>
+
+    <th:block th:unless="${featureDisabled}">
+        <form class="wiki-form gift-manager-create" method="post"
+              action="/api/social-profile/gift/create" data-reload="true"
+              th:if="${!giftManagerLoginRequired}">
+            <h2 th:text="#{socialProfile.giftManager.createTitle}">创建新礼物</h2>
+            <div class="form-field">
+                <label for="gift-manager-name" th:text="#{socialProfile.giftManager.name}">礼物名称</label>
+                <input id="gift-manager-name" type="text" name="name" required="required"
+                       th:maxlength="${giftNameLimit}" autocomplete="off"/>
+            </div>
+            <div class="form-field form-field-inline">
+                <label for="gift-manager-icon" th:text="#{socialProfile.giftManager.icon}">图标</label>
+                <input id="gift-manager-icon" type="text" name="icon" value="🎁"
+                       th:maxlength="${giftIconLimit}" autocomplete="off"/>
+                <span class="wiki-hint" th:text="#{socialProfile.giftManager.iconHint}">可填一个 emoji。</span>
+            </div>
+            <div class="form-field">
+                <label for="gift-manager-description" th:text="#{socialProfile.giftManager.description}">说明</label>
+                <input id="gift-manager-description" type="text" name="description"
+                       th:maxlength="${giftDescriptionLimit}" autocomplete="off"/>
+            </div>
+            <div class="form-message" role="alert" hidden="hidden"></div>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button wiki-button-primary"
+                        th:text="#{socialProfile.giftManager.create}">创建礼物</button>
+                <a th:href="${giftsUrl}" th:text="#{socialProfile.giftManager.viewGifts}">查看礼物</a>
+            </div>
+        </form>
+
+        <h2 th:text="#{socialProfile.giftManager.customTitle}">自定义礼物</h2>
+        <p class="wiki-hint" th:if="${#lists.isEmpty(giftManagerRows)}"
+           th:text="#{socialProfile.giftManager.empty}">还没有自定义礼物。</p>
+        <table class="wikitable gift-manager-table" th:unless="${#lists.isEmpty(giftManagerRows)}">
+            <thead>
+            <tr>
+                <th th:text="#{socialProfile.giftManager.colIcon}">图标</th>
+                <th th:text="#{socialProfile.giftManager.colName}">名称</th>
+                <th th:text="#{socialProfile.giftManager.colDescription}">说明</th>
+                <th th:text="#{socialProfile.giftManager.colStatus}">状态</th>
+                <th th:text="#{socialProfile.giftManager.colActions}">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${giftManagerRows}">
+                <td class="gift-manager-icon" th:text="${row['icon']}">🎁</td>
+                <td th:text="${row['name']}">礼物名称</td>
+                <td th:text="${row['description']}">说明</td>
+                <td>
+                    <span th:if="${row['enabled']}" th:text="#{socialProfile.giftManager.enabledState}">已启用</span>
+                    <span th:unless="${row['enabled']}" th:text="#{socialProfile.giftManager.disabledState}">已停用</span>
+                </td>
+                <td>
+                    <form class="gift-manager-toggle" method="post"
+                          action="/api/social-profile/gift/toggle" data-reload="true"
+                          th:if="${row['canManage'] and row['enabled']}">
+                        <input type="hidden" name="id" th:value="${row['id']}"/>
+                        <input type="hidden" name="enabled" value="0"/>
+                        <button type="submit" class="wiki-button wiki-button-quiet"
+                                th:text="#{socialProfile.giftManager.disable}">停用</button>
+                    </form>
+                    <form class="gift-manager-toggle" method="post"
+                          action="/api/social-profile/gift/toggle" data-reload="true"
+                          th:if="${row['canManage'] and !row['enabled']}">
+                        <input type="hidden" name="id" th:value="${row['id']}"/>
+                        <input type="hidden" name="enabled" value="1"/>
+                        <button type="submit" class="wiki-button wiki-button-quiet"
+                                th:text="#{socialProfile.giftManager.enable}">启用</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </th:block>
+</section>
+</body>
+</html>

@@ -1,0 +1,120 @@
+/* 浏览器指纹登录：登录页附加块 + 参数设置 / 特殊页管理面板。 */
+body .fingerprint-login-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.55em;
+    max-width: 30em;
+    margin: 1.25em 0 0;
+    padding-top: 1.1em;
+    border-top: 1px solid var(--border-color-subtle, #c8ccd1);
+}
+
+body .fingerprint-login-block .fingerprint-login-button {
+    align-self: flex-start;
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: var(--border-radius-base, 2px);
+    background-color: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+body .fingerprint-login-block .fingerprint-login-button:hover {
+    border-color: var(--border-color-interactive, #72777d);
+    background-color: var(--background-color-interactive-subtle, #f8f9fa);
+}
+
+body .fingerprint-login-block .fingerprint-login-button:active {
+    background-color: var(--background-color-interactive, #eaecf0);
+}
+
+body .fingerprint-login-block .fingerprint-login-button:focus-visible {
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: -1px;
+}
+
+body .fingerprint-login-block .fingerprint-login-remember {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45em;
+    margin: 0;
+    color: var(--color-subtle, #54595d);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+body .fingerprint-login-block .fingerprint-login-remember input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-content: center;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    margin: 0.05em 0 0;
+    border: 1px solid var(--border-color-interactive, #72777d);
+    border-radius: 2px;
+    background: var(--background-color-base, #fff);
+    cursor: pointer;
+}
+
+body .fingerprint-login-block .fingerprint-login-remember input[type="checkbox"]:checked {
+    border-color: var(--background-color-progressive, #36c);
+    background: var(--background-color-progressive, #36c);
+}
+
+body .fingerprint-login-block .fingerprint-login-remember input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+body .fingerprint-login-block .fingerprint-login-remember input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--color-progressive, #36c);
+    outline-offset: 1px;
+}
+
+body .fingerprint-login-block .fingerprint-login-message {
+    width: 100%;
+    margin: 0;
+}
+
+/* 参数设置 → 指纹登录 / 特殊:指纹登录 的管理面板 */
+body .fingerprint-login-panel {
+    margin-top: 0.5em;
+}
+
+body .fingerprint-login-panel h3 {
+    margin: 1.1em 0 0.45em;
+    color: var(--color-base, #202122);
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+body .fingerprint-login-panel .fingerprint-list {
+    margin-top: 0.6em;
+}
+
+body .fingerprint-login-panel .fingerprint-label {
+    max-width: 30em;
+}
+
+body .fingerprint-login-panel .fingerprint-row-agent {
+    max-width: 22em;
+    overflow-wrap: anywhere;
+}

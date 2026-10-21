@@ -22,4 +22,8 @@ public class ThumbnailProperties {
 
     /** ImageMagick 可执行文件路径；空 = 自动查找 {@code magick}。 */
     private String executable = "";
+
+    /** thumb.php 按需生成队列上限（默认 2；队列满时阻塞调用线程，延迟响应而不是拒绝）。 */
+    private int queueLimit = 2;
 }
+

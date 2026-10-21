@@ -5,7 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="#{setup.title} + ' - WikiKernel'">WikiKernel 安装</title>
+    <meta th:if="${@siteConfigImpl.getBoolean('site.no-referrer', false)}"
+          name="referrer" content="no-referrer">
     <link rel="stylesheet" th:href="@{/css/base.css}">
+    <link rel="stylesheet" th:href="@{/vendor/codex/2.7.0/codex.style.css}">
+    <link rel="stylesheet" th:href="@{/css/codex-bridge.css}">
     <script th:inline="javascript">
         window.SETUP_MESSAGES = {
             saved: /*[[#{setup.saved}]]*/ '',
@@ -13,6 +17,12 @@
             networkError: /*[[#{setup.networkError}]]*/ '',
             finishing: /*[[#{setup.finishing}]]*/ '',
             finished: /*[[#{setup.finished}]]*/ '',
+            savingAll: /*[[#{setup.savingAll}]]*/ '',
+            allSaved: /*[[#{setup.allSaved}]]*/ '',
+            noChanges: /*[[#{setup.noChanges}]]*/ '',
+            dirtyStatus: /*[[#{setup.dirtyStatus}]]*/ '',
+            unsavedWarning: /*[[#{setup.unsavedWarning}]]*/ '',
+            saveFirst: /*[[#{setup.saveFirst}]]*/ '',
         };
         window.SETUP_CORE_COMPLETED = /*[[${coreCompleted or postSetup}]]*/ false;
     </script>
@@ -298,6 +308,21 @@
             </div>
         </form>
     </section>
+
+    <div class="setup-save-bar" id="setup-save-bar">
+        <div>
+            <strong th:text="#{setup.saveAllTitle}">保存全部更改</strong>
+            <p class="wiki-hint" th:text="#{setup.saveAllHint}">
+                会自动检测所有标签页（核心 + 插件）里未保存的修改，并一起保存。
+            </p>
+        </div>
+        <div class="setup-save-actions">
+            <span id="setup-dirty-status" class="setup-dirty-status"
+                  th:text="#{setup.noChanges}">没有未保存的修改</span>
+            <button type="button" id="setup-save-all" class="wiki-button"
+                    th:text="#{setup.saveAll}" disabled="disabled">保存全部更改</button>
+        </div>
+    </div>
 
     <div class="setup-actions">
         <button type="button" id="setup-finish" class="wiki-button" disabled

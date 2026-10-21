@@ -88,7 +88,16 @@ public class GiftsSpecialPage extends SocialProfileSpecialPage implements Specia
                 : gifts.received(target.id(), gifts.listLimit());
         model.put("giftRows", toRows(rows, self, sentBox));
         Map<String, Long> byType = gifts.receivedByType(target.id());
-        model.put("giftTypeRows", byType);
+        List<Map<String, Object>> typeRows = new ArrayList<>();
+        for (Map.Entry<String, Long> entry : byType.entrySet()) {
+            Map<String, Object> type = new LinkedHashMap<>();
+            type.put("id", entry.getKey());
+            type.put("name", gifts.giftName(entry.getKey()));
+            type.put("icon", gifts.giftIcon(entry.getKey()));
+            type.put("count", entry.getValue());
+            typeRows.add(type);
+        }
+        model.put("giftTypeRows", typeRows);
         model.put("giftTotal", gifts.receivedCount(target.id()));
     }
 
@@ -114,6 +123,7 @@ public class GiftsSpecialPage extends SocialProfileSpecialPage implements Specia
             view.put("id", row.getId());
             view.put("giftId", row.getGiftId());
             view.put("giftName", gifts.giftName(row.getGiftId()));
+            view.put("giftIcon", gifts.giftIcon(row.getGiftId()));
             view.put("other", other.isEmpty() ? "#" + otherId : other);
             view.put("otherUrl", SocialProfileSupport.pagePath("用户:" + other));
             view.put("message", row.getMessage());

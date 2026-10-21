@@ -1,5 +1,8 @@
 package cc.thonly.wikikernel.special;
 
+import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
+import cc.thonly.wikikernel.auth.external.ExternalAuthProviderRegistry;
+import cc.thonly.wikikernel.auth.external.ExternalAuthSettings;
 import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.data.WikiAccessRule;
 import cc.thonly.wikikernel.common.data.WikiPage;
@@ -25,6 +28,10 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -62,6 +69,8 @@ public class AccessControlSpecialPage implements SpecialPage {
     private final TypeScriptAssetService typeScriptAssetService;
     /** TypeScript 编译器（展示版本）。 */
     private final TypeScriptCompiler typeScriptCompiler;
+    /** 第三方登录 provider 注册表（管理界面自动列出）。 */
+    private final ExternalAuthProviderRegistry externalAuthProviders;
 
     public AccessControlSpecialPage(AccessControlService accessControlService,
                                     PermissionService permissionService,
@@ -74,7 +83,8 @@ public class AccessControlSpecialPage implements SpecialPage {
                                     PermissionGroupLabels groupLabels,
                                     SiteNameService siteNameService,
                                     TypeScriptAssetService typeScriptAssetService,
-                                    TypeScriptCompiler typeScriptCompiler) {
+                                    TypeScriptCompiler typeScriptCompiler,
+                                    ExternalAuthProviderRegistry externalAuthProviders) {
         this.accessControlService = accessControlService;
         this.permissionService = permissionService;
         this.siteSettingsService = siteSettingsService;
@@ -87,6 +97,7 @@ public class AccessControlSpecialPage implements SpecialPage {
         this.siteNameService = siteNameService;
         this.typeScriptAssetService = typeScriptAssetService;
         this.typeScriptCompiler = typeScriptCompiler;
+        this.externalAuthProviders = externalAuthProviders;
     }
 
     @Override
@@ -114,8 +125,14 @@ public class AccessControlSpecialPage implements SpecialPage {
         WikiUser user = request.user();
         model.put("canManage", user != null && permissionService.canManage(user.getId()));
         model.put("siteNameValue", siteNameService.name());
+        model.put("faviconValue", siteSettingsService.get(SiteSettingsService.FAVICON_KEY, ""));
+        model.put("robotsValue", siteSettingsService.get(SiteSettingsService.ROBOTS_KEY, ""));
+        model.put("noReferrerEnabled",
+                siteSettingsService.getBoolean(SiteSettingsService.NO_REFERRER_KEY, false));
         model.put("allowOtherUserPageEdit",
                 siteSettingsService.getBoolean(SiteSettingsService.ALLOW_OTHER_USER_PAGE_EDIT, false));
+        model.put("allowAnonymousRecentChanges", siteSettingsService.getBoolean(
+                SiteSettingsService.ALLOW_ANONYMOUS_RECENT_CHANGES_KEY, true));
         model.put("registerEnabled", featureService.registerEnabled());
         // 插件自己注册的设置分区（common.extension.SiteSettingsSection）：core 只渲染「键 → 值」，
         // 不认识这些设置属于哪个功能；值从站点设置现读（插件声明了默认值）
@@ -146,6 +163,33 @@ public class AccessControlSpecialPage implements SpecialPage {
             pluginSettings.add(map);
         }
         model.put("pluginSettings", pluginSettings);
+        // 第三方登录：每个 provider 的开关、Client ID / Secret 与回调地址都由 provider 自己声明，
+        // 管理界面只负责渲染；新增 provider 不需要改模板。
+        HttpServletRequest httpRequest = currentRequest();
+        List<Map<String, Object>> externalProviders = new ArrayList<>();
+        for (ExternalAuthProvider provider : externalAuthProviders.all()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", provider.id());
+            row.put("label", provider.displayName());
+            row.put("enabledKey", provider.enabledSettingKey());
+            row.put("clientIdKey", provider.clientIdSettingKey());
+            row.put("clientSecretKey", provider.clientSecretSettingKey());
+            row.put("clientIdLabel", provider.clientIdLabel());
+            row.put("clientSecretLabel", provider.clientSecretLabel());
+            row.put("enabled", provider.enabled());
+            row.put("configured", provider.configured());
+            row.put("clientIdValue", siteSettingsService.get(provider.clientIdSettingKey(), ""));
+            row.put("secretConfigured",
+                    !siteSettingsService.get(provider.clientSecretSettingKey(), "").isBlank());
+            row.put("callbackUrl", ExternalAuthSettings.callbackUrl(
+                    provider, siteSettingsService, httpRequest));
+            externalProviders.add(row);
+        }
+        model.put("externalProviders", externalProviders);
+        model.put("externalBaseUrl",
+                siteSettingsService.get(ExternalAuthSettings.BASE_URL_KEY, ""));
+        model.put("externalAutoRegister",
+                siteSettingsService.getBoolean(ExternalAuthSettings.AUTO_REGISTER_KEY, true));
         // 页面正文缓存（Redis 可选；每个键都现读，改完立即生效）
         model.put("cachePageEnabled", siteSettingsService.getBoolean("cache.page.enabled", false));
         model.put("cachePageBackend", siteSettingsService.get("cache.page.backend", "auto"));
@@ -155,6 +199,7 @@ public class AccessControlSpecialPage implements SpecialPage {
         model.put("cachePageParallelism", siteSettingsService.get("cache.page.preload-parallelism", ""));
         model.put("typescriptFeatureEnabled", featureService.typescriptEnabled());
         model.put("typescriptCompileOnSaveEnabled", featureService.typescriptCompileOnSave());
+        model.put("codexExampleEnabled", featureService.codexExampleEnabled());
         model.put("typescriptCompilerAvailable", typeScriptAssetService.enabled());
         model.put("typescriptCompilerVersion", typeScriptCompiler.version());
         // 源码大小上限（KB；-1 或 0 = 不限制）：站点设置里可随时改，立即生效
@@ -207,6 +252,12 @@ public class AccessControlSpecialPage implements SpecialPage {
         model.put("pageOptions", options.stream()
                 .map(title -> Map.of("title", title, "url", WikiUrls.pagePath(title)))
                 .toList());
+    }
+
+    /** 当前请求（特殊页总是有请求上下文；测试或后台调用时返回 null）。 */
+    private static HttpServletRequest currentRequest() {
+        return RequestContextHolder.getRequestAttributes()
+                instanceof ServletRequestAttributes attributes ? attributes.getRequest() : null;
     }
 
     /** 一行规则的展示形态：scope（everyone/nobody/custom）+ 勾选状态 + 展示文案。 */

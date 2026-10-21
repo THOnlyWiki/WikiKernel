@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="offline-export-page">
+    <p class="offline-export-intro" th:text="${offlineExportIntro}">
+        导出当前站点的只读离线版本。
+    </p>
+
+    <div th:if="${!canExport}" class="form-message form-message-warning">
+        <span th:text="${offlineExportPermission}">需要行政员权限才能导出完整站点。</span>
+    </div>
+
+    <div th:if="${canExport}" class="offline-export-panel">
+        <p>
+            <span th:text="${offlineExportPages}">可导出页面</span>：
+            <strong th:text="${pageCount}">0</strong>
+        </p>
+        <p class="wiki-hint" th:text="${offlineExportHint}">
+            图片会转为 WebP，并按原图宽高的一半保存；导出是只读快照。
+        </p>
+        <div class="form-actions">
+            <button type="button" id="offline-export-start" class="wiki-button"
+                    th:text="${offlineExportStart}">开始导出</button>
+        </div>
+        <div id="offline-export-progress" class="offline-export-progress" hidden>
+            <div class="offline-export-progress-bar">
+                <div id="offline-export-progress-value" class="offline-export-progress-value"></div>
+            </div>
+            <p id="offline-export-status" class="wiki-hint"></p>
+        </div>
+        <div id="offline-export-result" hidden>
+            <p id="offline-export-done" class="form-message"></p>
+            <a id="offline-export-download" class="wiki-button" href="#">下载 ZIP</a>
+        </div>
+    </div>
+    <script th:inline="javascript">
+        window.OFFLINE_EXPORT_START_URL = /*[[@{/api/offline-export}]]*/ '/api/offline-export';
+        window.OFFLINE_EXPORT_MESSAGES = {
+            running: /*[[#{offlineExport.running}]]*/ '正在生成离线站点…',
+            failed: /*[[#{offlineExport.failed}]]*/ '导出失败',
+            done: /*[[#{offlineExport.done}]]*/ '导出完成',
+            download: /*[[#{offlineExport.download}]]*/ '下载 ZIP'
+        };
+    </script>
+    <script defer th:src="@{/js/offline-export.js}"></script>
+</section>
+</body>
+</html>

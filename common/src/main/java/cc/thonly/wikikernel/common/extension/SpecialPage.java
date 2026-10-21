@@ -24,6 +24,14 @@ public interface SpecialPage extends Extension {
      */
     String REDIRECT_MODEL_ATTRIBUTE = "specialRedirect";
 
+    /**
+     * 当前是否启用（可选）。注册表会跳过返回 false 的页面：
+     * 这样 {特殊:特殊页面} 列表、访问规则候选和直接访问会一起消失。
+     */
+    default boolean enabled() {
+        return true;
+    }
+
     /** 主名称（不带前缀），如 "全部页面"。也是 URL 里使用的名字。 */
     String name();
 

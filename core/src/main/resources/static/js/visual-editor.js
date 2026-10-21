@@ -4,6 +4,7 @@
  *    （服务端先分词再渲染，并剥掉目录 / 分类栏等「后生成」内容）
  *  - 独占段落的模板直接渲染成「预览块」，点击打开模板对话框：
  *    参数表单（服务端从模板源代码发现全部 {{{参数}}}）、源代码编辑、实时预览；
+ *    独占段落的画廊渲染成带图片预览的「画廊块」，点击打开画廊对话框（图片 / 属性 / 源代码 / 预览）；
  *    行内模板 / 引用 / 文件 / 复杂表格等显示为源码块，点击弹窗编辑源码
  *  - 「应用更改」调用 /api/pages/visual/serialize 安全地序列化回 Wikitext；
  *    遇到不支持的结构会整体拒绝（绝不写回半成品），仍可用源代码编辑
@@ -171,8 +172,9 @@
     // ==================== 源码块 / 模板对话框 ====================
 
     var dialog = null;
-    var dialogState = { id: -1, template: false, source: '', name: '', label: '', exists: false,
-        params: [], previewHtml: '', tab: 'params' };
+    var dialogState = { id: -1, template: false, gallery: false, source: '', name: '', label: '',
+        exists: false, params: [], galleryItems: [], galleryAttributes: [], previewHtml: '',
+        tab: 'params' };
 
     function buildDialog() {
         var box = document.createElement('div');
@@ -184,12 +186,24 @@
             + '<button type="button" class="ve-dialog-close" title="' + msg('veDialogClose') + '">×</button></div>'
             + '<div class="ve-dialog-tabs" hidden>'
             + '<button type="button" data-ve-tab="params"></button>'
+            + '<button type="button" data-ve-tab="gallery"></button>'
+            + '<button type="button" data-ve-tab="galleryOptions"></button>'
             + '<button type="button" data-ve-tab="source"></button></div>'
             + '<div class="ve-dialog-body">'
             + '<div class="ve-dialog-pane ve-pane-params" hidden>'
             + '<table class="ve-param-table"><tbody></tbody></table>'
             + '<button type="button" class="ve-param-add wiki-button"></button>'
             + '<p class="wiki-hint ve-param-hint"></p>'
+            + '</div>'
+            + '<div class="ve-dialog-pane ve-pane-gallery" hidden>'
+            + '<table class="ve-gallery-table"><tbody></tbody></table>'
+            + '<button type="button" class="ve-gallery-add wiki-button"></button>'
+            + '<p class="wiki-hint ve-gallery-hint"></p>'
+            + '</div>'
+            + '<div class="ve-dialog-pane ve-pane-gallery-options" hidden>'
+            + '<table class="ve-gallery-option-table"><tbody></tbody></table>'
+            + '<button type="button" class="ve-gallery-option-add wiki-button"></button>'
+            + '<p class="wiki-hint ve-gallery-option-hint"></p>'
             + '</div>'
             + '<div class="ve-dialog-pane ve-pane-source" hidden>'
             + '<textarea class="ve-source-input" rows="10" spellcheck="false"></textarea>'
@@ -223,6 +237,24 @@
                 input && input.focus();
             }
         });
+        box.querySelector('.ve-gallery-add').addEventListener('click', function () {
+            dialogState.galleryItems.push({ file: '', caption: '' });
+            renderGalleryItems();
+            var rows = box.querySelectorAll('.ve-gallery-row');
+            var last = rows[rows.length - 1];
+            if (last) {
+                last.querySelector('.ve-gallery-file').focus();
+            }
+        });
+        box.querySelector('.ve-gallery-option-add').addEventListener('click', function () {
+            dialogState.galleryAttributes.push({ name: '', value: '' });
+            renderGalleryAttributes();
+            var rows = box.querySelectorAll('.ve-gallery-option-row');
+            var last = rows[rows.length - 1];
+            if (last) {
+                last.querySelector('.ve-gallery-option-name').focus();
+            }
+        });
         Array.prototype.forEach.call(box.querySelectorAll('[data-ve-tab]'), function (button) {
             button.addEventListener('click', function () {
                 setTab(button.getAttribute('data-ve-tab'));
@@ -253,10 +285,13 @@
         }
         dialogState.id = id;
         dialogState.template = chip.classList.contains('ve-template');
+        dialogState.gallery = chip.classList.contains('ve-gallery');
         dialogState.source = tokens[id];
         dialogState.previewHtml = '';
         if (dialogState.template) {
             openTemplateDialog();
+        } else if (dialogState.gallery) {
+            openGalleryDialog();
         } else {
             openSourceDialog();
         }
@@ -276,8 +311,12 @@
     function openSourceDialog() {
         var box = dialog;
         dialogState.tab = 'source';
+        dialogState.template = false;
+        dialogState.gallery = false;
         box.querySelector('.ve-dialog-tabs').hidden = true;
-        box.querySelector('.ve-pane-params').hidden = true;
+        Array.prototype.forEach.call(box.querySelectorAll('.ve-dialog-pane'), function (pane) {
+            pane.hidden = true;
+        });
         box.querySelector('.ve-pane-source').hidden = false;
         box.querySelector('.ve-dialog-preview').hidden = true;
         box.querySelector('.ve-dialog-refresh').hidden = true;
@@ -292,7 +331,12 @@
 
     function openTemplateDialog() {
         var box = dialog;
+        dialogState.template = true;
+        dialogState.gallery = false;
         box.querySelector('.ve-dialog-tabs').hidden = false;
+        box.querySelector('[data-ve-tab="params"]').hidden = false;
+        box.querySelector('[data-ve-tab="gallery"]').hidden = true;
+        box.querySelector('[data-ve-tab="galleryOptions"]').hidden = true;
         box.querySelector('[data-ve-tab="params"]').textContent = msg('veDialogParams');
         box.querySelector('[data-ve-tab="source"]').textContent = msg('veDialogSource');
         box.querySelector('.ve-dialog-refresh').hidden = false;
@@ -310,6 +354,34 @@
         requestTemplate({ source: dialogState.source });
     }
 
+    function openGalleryDialog() {
+        var box = dialog;
+        dialogState.template = false;
+        dialogState.gallery = true;
+        box.querySelector('.ve-dialog-tabs').hidden = false;
+        box.querySelector('[data-ve-tab="params"]').hidden = true;
+        box.querySelector('[data-ve-tab="gallery"]').hidden = false;
+        box.querySelector('[data-ve-tab="galleryOptions"]').hidden = false;
+        box.querySelector('[data-ve-tab="gallery"]').textContent = msg('veDialogGalleryImages');
+        box.querySelector('[data-ve-tab="galleryOptions"]').textContent = msg('veDialogGalleryOptions');
+        box.querySelector('[data-ve-tab="source"]').textContent = msg('veDialogSource');
+        box.querySelector('.ve-dialog-refresh').hidden = false;
+        box.querySelector('.ve-dialog-refresh').textContent = msg('veDialogPreview');
+        box.querySelector('.ve-dialog-apply').hidden = false;
+        box.querySelector('.ve-dialog-apply').textContent = msg('veDialogApply');
+        box.querySelector('.ve-dialog-cancel').textContent = msg('veDialogCancel');
+        box.querySelector('.ve-gallery-add').textContent = msg('veDialogGalleryAddImage');
+        box.querySelector('.ve-gallery-option-add').textContent = msg('veDialogGalleryAddOption');
+        box.querySelector('.ve-gallery-hint').textContent = msg('veDialogGalleryHint');
+        box.querySelector('.ve-gallery-option-hint').textContent = msg('veDialogGalleryOptionHint');
+        box.querySelector('.ve-dialog-preview-title').textContent = msg('veDialogPreviewTitle');
+        box.querySelector('.ve-dialog-preview').hidden = false;
+        setTab('gallery');
+        dialogMessage(msg('veLoading'), true);
+        showDialog(msg('veGalleryTitle'));
+        requestGallery({ source: dialogState.source });
+    }
+
     function setTab(tab) {
         var box = dialog;
         dialogState.tab = tab;
@@ -317,6 +389,8 @@
             button.classList.toggle('selected', button.getAttribute('data-ve-tab') === tab);
         });
         box.querySelector('.ve-pane-params').hidden = tab !== 'params';
+        box.querySelector('.ve-pane-gallery').hidden = tab !== 'gallery';
+        box.querySelector('.ve-pane-gallery-options').hidden = tab !== 'galleryOptions';
         var sourcePane = box.querySelector('.ve-pane-source');
         sourcePane.hidden = tab !== 'source';
         if (tab === 'source') {
@@ -427,6 +501,187 @@
         });
     }
 
+    /** 服务端画廊接口：解析 source，或按图片列表 / 属性重建。 */
+    function requestGallery(params) {
+        var body = { title: title };
+        if (params.source !== undefined) {
+            body.source = params.source;
+        }
+        if (params.items !== undefined) {
+            body.items = params.items;
+        }
+        if (params.attributes !== undefined) {
+            body.attributes = params.attributes;
+        }
+        return post('/api/pages/visual/gallery', body).then(function (result) {
+            if (!result || result.code !== 200) {
+                dialogMessage((result && result.message) || msg('veDialogPreviewFailed'), false);
+                return false;
+            }
+            applyGalleryData(result.data || {});
+            return true;
+        }).catch(function () {
+            dialogMessage(msg('veDialogPreviewFailed'), false);
+            return false;
+        });
+    }
+
+    function applyGalleryData(data) {
+        dialogState.source = data.source || dialogState.source;
+        dialogState.label = data.label || msg('veGalleryTitle');
+        dialogState.galleryItems = data.items || [];
+        dialogState.galleryAttributes = data.attributes || [];
+        dialogState.previewHtml = data.previewHtml || '';
+        dialog.querySelector('.ve-source-input').value = dialogState.source;
+        renderGalleryItems();
+        renderGalleryAttributes();
+        dialog.querySelector('.ve-preview-body').innerHTML = dialogState.previewHtml;
+        var missing = dialog.querySelector('.ve-dialog-missing');
+        if (missing) {
+            missing.hidden = true;
+            missing.textContent = '';
+        }
+        dialog.querySelector('.ve-dialog-title').textContent = dialogState.label;
+        dialogMessage('');
+    }
+
+    function renderGalleryItems() {
+        var tbody = dialog.querySelector('.ve-gallery-table tbody');
+        tbody.innerHTML = '';
+        var head = document.createElement('tr');
+        head.className = 've-gallery-head';
+        ['veDialogGalleryFile', 'veDialogGalleryCaption', ''].forEach(function (key) {
+            var cell = document.createElement('th');
+            cell.textContent = key ? msg(key) : '';
+            head.appendChild(cell);
+        });
+        tbody.appendChild(head);
+        if (!dialogState.galleryItems.length) {
+            var empty = document.createElement('tr');
+            empty.className = 've-gallery-empty';
+            var cell = document.createElement('td');
+            cell.colSpan = 3;
+            cell.textContent = msg('veGalleryEmpty');
+            empty.appendChild(cell);
+            tbody.appendChild(empty);
+        }
+        Array.prototype.forEach.call(dialogState.galleryItems, function (item, index) {
+            var row = document.createElement('tr');
+            row.className = 've-gallery-row';
+            var fileCell = document.createElement('td');
+            var fileInput = document.createElement('input');
+            fileInput.type = 'text';
+            fileInput.className = 've-gallery-file';
+            fileInput.value = item.file || '';
+            fileInput.placeholder = msg('veDialogGalleryFile');
+            fileCell.appendChild(fileInput);
+            row.appendChild(fileCell);
+
+            var captionCell = document.createElement('td');
+            var captionInput = document.createElement('input');
+            captionInput.type = 'text';
+            captionInput.className = 've-gallery-caption';
+            captionInput.value = item.caption || '';
+            captionInput.placeholder = msg('veDialogGalleryCaption');
+            captionCell.appendChild(captionInput);
+            row.appendChild(captionCell);
+
+            var actionCell = document.createElement('td');
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 've-gallery-remove';
+            remove.title = msg('veDialogGalleryRemove');
+            remove.textContent = '×';
+            remove.addEventListener('click', function () {
+                dialogState.galleryItems.splice(index, 1);
+                renderGalleryItems();
+            });
+            actionCell.appendChild(remove);
+            row.appendChild(actionCell);
+            tbody.appendChild(row);
+        });
+    }
+
+    function renderGalleryAttributes() {
+        var tbody = dialog.querySelector('.ve-gallery-option-table tbody');
+        tbody.innerHTML = '';
+        var head = document.createElement('tr');
+        head.className = 've-gallery-option-head';
+        ['veDialogGalleryOptions', 'veDialogParamValue', ''].forEach(function (key) {
+            var cell = document.createElement('th');
+            cell.textContent = key ? msg(key) : '';
+            head.appendChild(cell);
+        });
+        tbody.appendChild(head);
+        Array.prototype.forEach.call(dialogState.galleryAttributes, function (attribute, index) {
+            var row = document.createElement('tr');
+            row.className = 've-gallery-option-row';
+            var nameCell = document.createElement('td');
+            var nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 've-gallery-option-name';
+            nameInput.value = attribute.name || '';
+            nameInput.placeholder = msg('veDialogGalleryOptions');
+            nameCell.appendChild(nameInput);
+            row.appendChild(nameCell);
+
+            var valueCell = document.createElement('td');
+            var valueInput = document.createElement('input');
+            valueInput.type = 'text';
+            valueInput.className = 've-gallery-option-value';
+            valueInput.value = attribute.value || '';
+            valueInput.placeholder = msg('veDialogParamUnset');
+            valueCell.appendChild(valueInput);
+            row.appendChild(valueCell);
+
+            var actionCell = document.createElement('td');
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 've-gallery-option-remove';
+            remove.title = msg('veDialogGalleryRemove');
+            remove.textContent = '×';
+            remove.addEventListener('click', function () {
+                dialogState.galleryAttributes.splice(index, 1);
+                renderGalleryAttributes();
+            });
+            actionCell.appendChild(remove);
+            row.appendChild(actionCell);
+            tbody.appendChild(row);
+        });
+    }
+
+    function collectGalleryItems() {
+        var rows = dialog.querySelectorAll('.ve-gallery-row');
+        var items = [];
+        Array.prototype.forEach.call(rows, function (row) {
+            var file = row.querySelector('.ve-gallery-file').value.trim();
+            if (!file) {
+                return;
+            }
+            items.push({
+                file: file,
+                caption: row.querySelector('.ve-gallery-caption').value.trim()
+            });
+        });
+        return items;
+    }
+
+    function collectGalleryAttributes() {
+        var rows = dialog.querySelectorAll('.ve-gallery-option-row');
+        var attributes = [];
+        Array.prototype.forEach.call(rows, function (row) {
+            var name = row.querySelector('.ve-gallery-option-name').value.trim();
+            if (!name) {
+                return;
+            }
+            attributes.push({
+                name: name,
+                value: row.querySelector('.ve-gallery-option-value').value.trim()
+            });
+        });
+        return attributes;
+    }
+
     /** 参数表单 → 参数数组（无名但有值的行 = 下一个位置参数）。 */
     function collectParams() {
         var rows = dialog.querySelectorAll('.ve-param-row');
@@ -462,10 +717,19 @@
         });
     }
 
-    /** 预览 / 刷新：参数页 → 按表单重建源码；源代码页 → 解析源码。 */
+    /** 预览 / 刷新：参数页 → 按表单重建源码；画廊页 → 按图片 / 属性重建；源代码页 → 解析源码。 */
     function refreshCurrentTab() {
+        if (dialogState.gallery) {
+            if (dialogState.tab === 'source') {
+                return requestGallery({ source: dialog.querySelector('.ve-source-input').value });
+            }
+            return requestGallery({
+                items: JSON.stringify(collectGalleryItems()),
+                attributes: JSON.stringify(collectGalleryAttributes())
+            });
+        }
         if (!dialogState.template) {
-            return;
+            return Promise.resolve(true);
         }
         if (dialogState.tab === 'source') {
             return requestTemplate({ source: dialog.querySelector('.ve-source-input').value });
@@ -474,14 +738,14 @@
     }
 
     function applyDialog() {
-        var proceed = dialogState.template
+        var proceed = dialogState.template || dialogState.gallery
             ? refreshCurrentTab()
             : Promise.resolve(true);
         proceed.then(function (ok) {
             if (ok === false) {
                 return;
             }
-            if (!dialogState.template) {
+            if (!dialogState.template && !dialogState.gallery) {
                 dialogState.source = dialog.querySelector('.ve-source-input').value;
             }
             tokens[dialogState.id] = dialogState.source;
@@ -497,7 +761,16 @@
             return;
         }
         chip.setAttribute('title', dialogState.source);
-        if (dialogState.template) {
+        if (dialogState.gallery) {
+            var galleryRender = chip.querySelector('.ve-gallery-render');
+            if (galleryRender) {
+                galleryRender.innerHTML = dialogState.previewHtml;
+                var galleryBadge = chip.querySelector('.ve-gallery-badge');
+                galleryBadge && (galleryBadge.textContent = dialogState.label);
+            } else {
+                chip.textContent = dialogState.label;
+            }
+        } else if (dialogState.template) {
             var render = chip.querySelector('.ve-template-render');
             if (render) {
                 render.innerHTML = dialogState.previewHtml;
@@ -542,12 +815,48 @@
                 document.execCommand('insertOrderedList', false, null);
             } else if (command === 'hr') {
                 document.execCommand('insertHorizontalRule', false, null);
+            } else if (command === 'gallery') {
+                insertGallery();
             } else if (command === 'link') {
                 insertLink();
             }
             dirty = true;
         });
     });
+
+    /** 插入一个空画廊块，并立即打开画廊对话框添加图片。 */
+    function insertGallery() {
+        var source = '<gallery>\n</gallery>';
+        var id = tokens.length;
+        tokens.push(source);
+        var block = document.createElement('div');
+        block.className = 've-token ve-gallery ve-gallery-block';
+        block.setAttribute('data-token', String(id));
+        block.setAttribute('contenteditable', 'false');
+        block.setAttribute('title', source);
+        var badge = document.createElement('div');
+        badge.className = 've-gallery-badge';
+        badge.textContent = msg('veGalleryEmpty');
+        var render = document.createElement('div');
+        render.className = 've-gallery-render';
+        block.appendChild(badge);
+        block.appendChild(render);
+
+        var selection = window.getSelection();
+        var anchor = selection && selection.anchorNode;
+        var element = anchor && (anchor.nodeType === 1 ? anchor : anchor.parentElement);
+        var currentBlock = element && element.closest
+            ? element.closest('p,div,h2,h3,h4,h5,h6,ul,ol,table') : null;
+        if (currentBlock === surface) {
+            currentBlock = null;
+        }
+        if (currentBlock && surface.contains(currentBlock)) {
+            currentBlock.parentNode.insertBefore(block, currentBlock.nextSibling);
+        } else {
+            surface.appendChild(block);
+        }
+        openTokenDialog(block);
+    }
 
     function insertLink() {
         var target = window.prompt(msg('toolbarLinkSample'), '');

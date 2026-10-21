@@ -8,12 +8,16 @@ import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserBoard;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserGift;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserRelation;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserStats;
+import cc.thonly.wikikernel.plugin.socialprofile.data.WikiGift;
 import cc.thonly.wikikernel.plugin.socialprofile.model.ProfileFields;
 import cc.thonly.wikikernel.plugin.socialprofile.model.SocialProfileKeys;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -359,6 +363,67 @@ class SocialProfileServicesTest {
                 GiftService.GiftException.class, () -> gifts.send(1, 99, "star", "")).getMessage());
         assertEquals(GiftService.GiftException.LOGIN_REQUIRED, assertThrows(
                 GiftService.GiftException.class, () -> gifts.send(0, 2, "star", "")).getMessage());
+    }
+
+    @Test
+    void customGiftCatalogCreateDisableAndSend() throws Exception {
+        SocialProfileSupport support = support(true, Map.of());
+        GiftService gifts = giftService(support);
+        Map<Long, WikiGift> rows = new LinkedHashMap<>();
+        GiftCatalogStore catalog = new GiftCatalogStore() {
+            private long nextId = 1;
+
+            @Override
+            public WikiGift insert(WikiGift gift) {
+                gift.setId(nextId++);
+                rows.put(gift.getId(), gift);
+                return gift;
+            }
+
+            @Override
+            public Optional<WikiGift> find(long id) {
+                return Optional.ofNullable(rows.get(id));
+            }
+
+            @Override
+            public Optional<WikiGift> findByKey(String giftKey) {
+                return rows.values().stream().filter(row -> row.getGiftKey().equals(giftKey)).findFirst();
+            }
+
+            @Override
+            public List<WikiGift> all() {
+                return List.copyOf(rows.values());
+            }
+
+            @Override
+            public void setEnabled(long id, boolean enabled) {
+                Optional.ofNullable(rows.get(id)).ifPresent(row -> row.setEnabled(enabled));
+            }
+
+            @Override
+            public void delete(long id) {
+                rows.remove(id);
+            }
+        };
+        Field field = GiftService.class.getDeclaredField("catalogStore");
+        field.setAccessible(true);
+        field.set(gifts, catalog);
+
+        WikiGift created = gifts.createGift(1, "  自定义礼物  ", "说明", "🎁");
+        assertEquals("自定义礼物", created.getName());
+        assertTrue(gifts.isKnown(created.getGiftKey()));
+        assertTrue(gifts.catalog().stream().anyMatch(row -> created.getGiftKey().equals(row.get("id"))));
+        assertEquals("自定义礼物", gifts.giftName(created.getGiftKey()));
+
+        gifts.send(1, 2, created.getGiftKey(), "hello");
+        assertEquals(1L, gifts.receivedByType(2).get(created.getGiftKey()));
+
+        gifts.setGiftEnabled(1, false, created.getId(), false);
+        assertFalse(gifts.isKnown(created.getGiftKey()), "停用后不能继续赠送");
+        assertEquals("自定义礼物", gifts.giftName(created.getGiftKey()), "历史礼物仍显示名称");
+        assertEquals(GiftService.GiftException.MANAGER_FORBIDDEN, assertThrows(
+                GiftService.GiftException.class,
+                () -> gifts.setGiftEnabled(2, false, created.getId(), true)).getMessage());
     }
 
     @Test

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="codex-example">
+    <p class="cdx-message cdx-message--progressive" th:text="#{codexExample.intro}">
+        这是 Wikimedia Codex 的组件与图标总览，用于检查本站的 Codex 样式和皮肤适配。
+    </p>
+
+    <h2 th:text="#{codexExample.buttons}">按钮</h2>
+    <p class="codex-demo-row">
+        <button type="button" class="cdx-button cdx-button--action-progressive cdx-button--weight-primary">
+            <span class="cdx-icon cdx-icon--small" th:utext="${iconAdd}"></span>
+            <span th:text="#{codexExample.primary}">主要按钮</span>
+        </button>
+        <button type="button" class="cdx-button" th:text="#{codexExample.normal}">普通按钮</button>
+        <button type="button" class="cdx-button cdx-button--weight-quiet" th:text="#{codexExample.quiet}">安静按钮</button>
+        <button type="button" class="cdx-button cdx-button--action-destructive" th:text="#{codexExample.danger}">危险按钮</button>
+        <button type="button" class="cdx-button" disabled="disabled" th:text="#{codexExample.disabled}">禁用按钮</button>
+    </p>
+
+    <h2 th:text="#{codexExample.forms}">表单</h2>
+    <div class="codex-demo-grid">
+        <div class="cdx-field">
+            <label class="cdx-label" for="codex-demo-text"><span class="cdx-label__label__text">TextInput</span></label>
+            <div class="cdx-field__control"><input class="cdx-text-input__input" id="codex-demo-text" type="text" placeholder="搜索…"/></div>
+        </div>
+        <div class="cdx-field">
+            <label class="cdx-label" for="codex-demo-select"><span class="cdx-label__label__text">Select</span></label>
+            <div class="cdx-field__control">
+                <select class="cdx-select" id="codex-demo-select">
+                    <option>Option A</option>
+                    <option>Option B</option>
+                </select>
+            </div>
+        </div>
+        <div class="cdx-field">
+            <label class="cdx-label" for="codex-demo-textarea"><span class="cdx-label__label__text">TextArea</span></label>
+            <div class="cdx-field__control cdx-text-area">
+                <textarea class="cdx-text-area__textarea" id="codex-demo-textarea" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="cdx-field">
+            <span class="cdx-label"><span class="cdx-label__label__text">Checkbox / Radio / Toggle</span></span>
+            <label class="cdx-checkbox">
+                <span class="cdx-checkbox__wrapper">
+                    <input class="cdx-checkbox__input" type="checkbox" checked="checked"/>
+                    <span class="cdx-checkbox__icon"></span>
+                    <span class="cdx-checkbox__label">Checkbox</span>
+                </span>
+            </label>
+            <label class="cdx-radio">
+                <span class="cdx-radio__wrapper">
+                    <input class="cdx-radio__input" type="radio" name="codex-radio" checked="checked"/>
+                    <span class="cdx-radio__icon"></span>
+                    <span class="cdx-radio__label">Radio A</span>
+                </span>
+            </label>
+            <label class="cdx-radio">
+                <span class="cdx-radio__wrapper">
+                    <input class="cdx-radio__input" type="radio" name="codex-radio"/>
+                    <span class="cdx-radio__icon"></span>
+                    <span class="cdx-radio__label">Radio B</span>
+                </span>
+            </label>
+            <label class="cdx-toggle-switch">
+                <input class="cdx-toggle-switch__input" type="checkbox" checked="checked"/>
+                <span class="cdx-toggle-switch__switch"><span class="cdx-toggle-switch__switch__grip"></span></span>
+                <span class="cdx-toggle-switch__label">Toggle</span>
+            </label>
+        </div>
+    </div>
+
+    <h2 th:text="#{codexExample.messages}">消息与卡片</h2>
+    <div class="cdx-message cdx-message--success"><span class="cdx-message__icon" th:utext="${iconCheck}"></span><div class="cdx-message__content">Success message</div></div>
+    <div class="cdx-message cdx-message--warning"><span class="cdx-message__icon" th:utext="${iconAlert}"></span><div class="cdx-message__content">Warning message</div></div>
+    <div class="cdx-message cdx-message--error"><span class="cdx-message__icon" th:utext="${iconError}"></span><div class="cdx-message__content">Error message</div></div>
+    <div class="cdx-card">
+        <span class="cdx-card__icon" th:utext="${iconArticle}"></span>
+        <div class="cdx-card__text">
+            <span class="cdx-card__text__title">Card title</span>
+            <span class="cdx-card__text__description">Card description text.</span>
+        </div>
+    </div>
+
+    <h2 th:text="#{codexExample.tabs}">标签页</h2>
+    <div class="cdx-tabs">
+        <div class="cdx-tabs__header">
+            <div class="cdx-tabs__list" role="tablist">
+                <button type="button" class="cdx-tabs__list__item" role="tab" aria-selected="true">Tab one</button>
+                <button type="button" class="cdx-tabs__list__item" role="tab" aria-selected="false">Tab two</button>
+            </div>
+        </div>
+        <div class="cdx-tabs__content" role="tabpanel">Tab content</div>
+    </div>
+
+    <h2 th:text="#{codexExample.table}">表格</h2>
+    <div class="cdx-table">
+        <table class="cdx-table__table">
+            <thead><tr><th>Name</th><th>Value</th></tr></thead>
+            <tbody><tr><td>Codex</td><td>2.7.0</td></tr><tr><td>Icons</td><td th:text="${codexIconCount}">332</td></tr></tbody>
+        </table>
+    </div>
+
+    <h2 th:text="#{codexExample.icons}">图标</h2>
+    <p class="wiki-hint" th:text="#{codexExample.iconsHint}">完整的内置 Codex 图标集合（@wikimedia/codex-icons 2.7.0）。</p>
+    <div class="codex-icon-gallery">
+        <div class="codex-icon-item" th:each="icon : ${codexIcons}">
+            <span th:utext="${icon['html']}"></span>
+            <code th:text="${icon['name']}">add</code>
+        </div>
+    </div>
+</section>
+</body>
+</html>

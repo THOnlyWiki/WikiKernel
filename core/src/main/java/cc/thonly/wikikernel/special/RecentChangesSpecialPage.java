@@ -15,6 +15,7 @@ import cc.thonly.wikikernel.log.LogTypeConfig;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.PermissionService;
+import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.time.WikiTime;
 import cc.thonly.wikikernel.common.web.WikiUrls;
@@ -87,6 +88,7 @@ public class RecentChangesSpecialPage implements SpecialPage {
     private final LogFormatter logFormatter;
     private final PermissionService permissionService;
     private final AccessControlService accessControlService;
+    private final SiteSettingsService siteSettingsService;
     private final MessageSource messageSource;
 
     public RecentChangesSpecialPage(WikiRevisionMapper wikiRevisionMapper,
@@ -96,6 +98,7 @@ public class RecentChangesSpecialPage implements SpecialPage {
                                     LogFormatter logFormatter,
                                     PermissionService permissionService,
                                     AccessControlService accessControlService,
+                                    SiteSettingsService siteSettingsService,
                                     MessageSource messageSource) {
         this.wikiRevisionMapper = wikiRevisionMapper;
         this.wikiPageMapper = wikiPageMapper;
@@ -104,6 +107,7 @@ public class RecentChangesSpecialPage implements SpecialPage {
         this.logFormatter = logFormatter;
         this.permissionService = permissionService;
         this.accessControlService = accessControlService;
+        this.siteSettingsService = siteSettingsService;
         this.messageSource = messageSource;
     }
 
@@ -131,6 +135,11 @@ public class RecentChangesSpecialPage implements SpecialPage {
     public void populate(SpecialPageRequest request, Map<String, Object> model) {
         Map<String, String> parameters = request.parameters();
         WikiUser viewer = request.user();
+        if (viewer == null && !siteSettingsService.getBoolean(
+                SiteSettingsService.ALLOW_ANONYMOUS_RECENT_CHANGES_KEY, true)) {
+            model.put("loginRequired", true);
+            return;
+        }
         int defaultLimit = viewer != null && viewer.getRcLimit() != null && viewer.getRcLimit() > 0
                 ? viewer.getRcLimit() : DEFAULT_LIMIT;
         int defaultDays = viewer != null && viewer.getRcDays() != null && viewer.getRcDays() > 0

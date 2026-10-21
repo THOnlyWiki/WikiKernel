@@ -59,6 +59,14 @@ public class VersionSpecialPage implements SpecialPage {
     private static final String VEGA_VERSION = "5.33.1";
     private static final String VEGA_LITE_VERSION = "5.23.0";
     private static final String VEGA_EMBED_VERSION = "6.29.0";
+    /** 本地内置的 Wikimedia Codex 样式 / 图标版本。 */
+    private static final String CODEX_VERSION = "2.7.0";
+    /** 本地内置的 jQuery / Axios / KaTeX / Vue / Ruffle 版本。 */
+    private static final String JQUERY_VERSION = "3.7.1";
+    private static final String AXIOS_VERSION = "1.20.0";
+    private static final String KATEX_VERSION = "0.19.0";
+    private static final String VUE_VERSION = "3.5.13";
+    private static final String RUFFLE_VERSION = "0.7.1";
 
     private final PluginManager pluginManager;
     private final SkinRegistry skinRegistry;
@@ -118,13 +126,35 @@ public class VersionSpecialPage implements SpecialPage {
                 })
                 .toList());
         model.put("clientLibraries", List.of(
+                row4("jQuery", JQUERY_VERSION,
+                        message("version.library.jquery.desc"),
+                        message("version.library.jquery.source")),
+                row4("Axios", AXIOS_VERSION,
+                        message("version.library.axios.desc"),
+                        message("version.library.axios.source")),
                 row4("CodeMirror", CODEMIRROR_VERSION,
                         message("version.library.codemirror.desc"),
                         message("version.library.codemirror.source")),
                 row4("Vega", VEGA_VERSION + " / vega-lite " + VEGA_LITE_VERSION
                                 + " / vega-embed " + VEGA_EMBED_VERSION,
                         message("version.library.vega.desc"),
-                        message("version.library.vega.source"))));
+                        message("version.library.vega.source")),
+                row4("KaTeX", KATEX_VERSION,
+                        message("version.library.katex.desc"),
+                        message("version.library.katex.source")),
+                row4("Vue", VUE_VERSION,
+                        message("version.library.vue.desc"),
+                        message("version.library.vue.source")),
+                row4("Ruffle", RUFFLE_VERSION,
+                        message("version.library.ruffle.desc"),
+                        message("version.library.ruffle.source")),
+                // Wikimedia Codex（CSS + icons；本站组件外观的基准）
+                row4("Codex", CODEX_VERSION,
+                        message("version.library.codex.desc"),
+                        message("version.library.codex.source")),
+                row4("Codex Icons", CODEX_VERSION,
+                        message("version.library.codexIcons.desc"),
+                        message("version.library.codexIcons.source"))));
         model.put("plugins", plugins());
         model.put("parserTags", parserTags());
         model.put("extensionPoints", EXTENSION_POINTS.stream()

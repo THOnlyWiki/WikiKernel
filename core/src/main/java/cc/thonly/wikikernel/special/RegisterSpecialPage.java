@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.special;
 
+import cc.thonly.wikikernel.auth.external.ExternalAuthService;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
@@ -41,15 +42,18 @@ public class RegisterSpecialPage implements SpecialPage {
     private final PermissionService permissionService;
     /** 插件注册页字段（RegistrationFormField）。 */
     private final RegistrationHookService registrationHookService;
+    private final ExternalAuthService externalAuthService;
 
     public RegisterSpecialPage(MessageSource messageSource,
                                FeatureService featureService,
                                PermissionService permissionService,
-                               RegistrationHookService registrationHookService) {
+                               RegistrationHookService registrationHookService,
+                               ExternalAuthService externalAuthService) {
         this.messageSource = messageSource;
         this.featureService = featureService;
         this.permissionService = permissionService;
         this.registrationHookService = registrationHookService;
+        this.externalAuthService = externalAuthService;
     }
 
     @Override
@@ -85,6 +89,7 @@ public class RegisterSpecialPage implements SpecialPage {
         // 管理员 / 行政员代为创建：提交后不切换登录、留在本页
         model.put("adminCreate", manager);
         model.put("registerDisabled", !enabled);
+        model.put("externalProviders", externalAuthService.availableProviders());
         // 插件注册页字段（RegistrationFormField）：如注册问答的题目 + 隐藏下标 + 答案输入框
         List<String> fields = this.registrationHookService.formFields(
                 RequestRegistrationContext.form(currentRequest(), request.parameters()));

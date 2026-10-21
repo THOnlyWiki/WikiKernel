@@ -10,6 +10,7 @@
 | --- | --- |
 | `common` | 通用代码：插件 SPI、扩展点、**共享模型（`common.data` 实体类）**、工具类。不依赖 Spring / core / 插件 |
 | `core` | 核心代码：Web 服务 + 插件加载器 + 插件 Spring 子容器。**编译期不依赖任何插件** |
+| `mixin-agent` | 启动期 Mixin Java Agent：在 Spring Boot 类加载前安装 SpongePowered Mixin + MixinExtras，自动发现插件 `*.mixins.json` |
 | `plugin/*` | 可选插件，放在 `plugin/` 目录下即可，**每个插件都能独立编译**，互不依赖 |
 
 构建约定：所有 Java 模块（`common` / `core` / `plugin/*`）由根构建脚本统一启用 Lombok
@@ -27,7 +28,7 @@
 - **版本与差异**：每次保存落一个修订版本，历史 / 行级版本对比 / 回退，页面保护与移动，`#REDIRECT` 重定向。
 - **Wikitext 渲染**：模板与参数（`{{{参数}}}`）、解析器函数（`#if` / `#switch` / `#invoke`…）、魔术字、行为开关、模板反查与分类索引，渲染结果可缓存。
 - **特殊页面**：注册中心式实现，名字可本地化（`特殊:` 与 `Special:` 都认）——搜索、全部页面、最近更改、统计、日志、版本、参数设置、权限配置…（见 [功能详述](docs/FEATURES.md)）。
-- **用户与权限**：注册 / 登录 / 记住我 / 忘记密码（`特殊:重置密码`）、用户组与权限（管理员、行政员、机器人、核查员…）、封禁用户与 IP、请求速率限制。
+- **用户与权限**：注册 / 登录 / 记住我 / 忘记密码（`特殊:重置密码`）、GitHub / QQ 第三方登录与自动注册（provider 为 `external-auth-github` / `external-auth-qq` 插件；参数设置「第三方授权」可绑定 / 解绑）、用户组与权限（管理员、行政员、机器人、核查员…）、封禁用户与 IP、请求速率限制。
 - **MediaWiki 兼容 API**：`/api.php` 的 `action=query` / `edit` / `parse` / `upload` 等模块与错误格式，以及 `mw` / `mw.loader` / `mw.Api` 的 JS 兼容层——见 [接口与兼容 API](docs/API.md)。
 - **内容扩展**：模板文档（TemplateData）、微件（Widgets）、Gadgets 用户脚本、Lua 模块（Scribunto 子集）、数学公式、时间轴、图形、跨 Wiki 链接表——见 [Wikitext 与内容标记](docs/WIKITEXT.md)。
 - **文件与多媒体**：上传 / 图片预览 / 说明页 / 版本，音视频播放器与图片放大查看（插件 `media-viewer`），批量上传（插件 `multi-upload`）。
@@ -77,7 +78,9 @@
 | [`plain-skin`](plugin/plain-skin/README.md) | [Manual:Skins](https://www.mediawiki.org/wiki/Manual:Skins)（皮肤机制，无独立扩展页） | 额外皮肤 `plain`：居中卡片、无侧栏，布局与样式都在插件 jar 内 |
 | [`ai-agent`](plugin/ai-agent/README.md) | **WikiKernel 自研**（无对应扩展；参见 [AI 类扩展分类](https://www.mediawiki.org/wiki/Category:Artificial_intelligence_extensions)） | 多厂商 AI 对话 + 只读工具 + 待确认提案：`特殊:AI代理` + `/api/ai-agent/*` |
 | [`fingerprint-login`](plugin/fingerprint-login/README.md) | **WikiKernel 自研**（无对应扩展） | 浏览器指纹登录，经 `common.service.LoginSession` 建立与密码登录一致的会话 |
-| [`dep-demo`](plugin/dep-demo/README.md) | **演示插件**（不是 MediaWiki 扩展移植，不随发行） | 演示 `plugin.requiresCore` / `plugin.clientRequires` / `CoreAopHook` 三项平台能力 |
+| [external-auth-github](plugin/external-auth-github/README.md) | **WikiKernel 自研**（OAuth provider 插件） | GitHub OAuth 第三方登录 / 注册；参数设置「第三方授权」绑定 / 解绑 |
+| [external-auth-qq](plugin/external-auth-qq/README.md) | **WikiKernel 自研**（OAuth provider 插件） | QQ 互联 OAuth 第三方登录 / 注册；参数设置「第三方授权」绑定 / 解绑 |
+| [`dep-demo`](plugin/dep-demo/README.md) | **演示插件**（不是 MediaWiki 扩展移植，不随发行） | 演示 `plugin.requiresCore` / `plugin.clientRequires` / `CoreAopHook` 三项平台能力；插件 Mixin 见 [docs/MIXIN.md](docs/MIXIN.md) |
 
 `.\gradlew.bat installPlugins` 会把上表里除 `dep-demo` 以外的插件 jar 收集到根目录 `plugins/` 供 core 加载。
 
@@ -107,11 +110,11 @@
 # 1. 构建插件并把 jar 收集到根目录 plugins/
 .\gradlew.bat installPlugins
 
-# 2. 启动 core
-.\gradlew.bat :core:bootRun          # 方式一：Gradle（控制台就是当前终端）
-.\run.bat                            # 方式二（推荐）：打包并打开一个可见的 cmd 窗口显示日志
+# 2. 构建 core（会同时构建 Mixin Agent）并启动
 .\gradlew.bat :core:bootJar
-java -jar core\build\libs\core-0.0.1-SNAPSHOT.jar   # 方式三：直接运行
+.\run.bat                            # 推荐：打开一个可见的 cmd 窗口显示日志
+.\gradlew.bat :core:bootRun          # 开发：Gradle（控制台就是当前终端）
+java -jar core\build\libs\core-0.0.1-SNAPSHOT.jar   # 直接运行：不会加载 Mixin Agent
 ```
 
 - **`run.bat [端口]`**（默认 18080）：打开一个标题为 `WikiKernel - 端口 18080` 的 cmd 窗口，
@@ -119,6 +122,9 @@ java -jar core\build\libs\core-0.0.1-SNAPSHOT.jar   # 方式三：直接运行
   启动时会先把 `core\build\libs` 下的 jar **复制到 `run\.launch\wikikernel-<端口>.jar` 再运行副本**——
   这样之后随时 `gradlew bootJar` 重建都不会影响正在运行的实例；
 - **`stop.bat [端口] [nopause]`**：结束监听该端口的进程（`stop.bat 18080 nopause` 供脚本调用不暂停）。
+- **需要插件 Mixin 时必须用 `run.bat`**：`gradlew bootJar` 会同时构建 `mixin-agent`，`run.bat`
+  会带 `-javaagent` 并用 `PropertiesLauncher` 启动；直接 `java -jar` 不会加载 Agent，插件 Mixin 不生效。
+  细节见 [docs/MIXIN.md](docs/MIXIN.md)。
 
 > **为什么不直接 `java -jar core\build\libs\...`？**
 > 运行中的 JVM 是按需从 jar 里读 class 的（例如 logback 的 `ThrowableProxy` 只在「记录一条异常日志」时
@@ -235,7 +241,9 @@ README 只保留「是什么 + 核心特性 + 插件一览 + 启动指南」，�
 | [docs/CONFIG.md](docs/CONFIG.md) | `application.yaml` 与 `LocalSettings.yaml`、Auto-DDL、MyBatis-Plus 数据访问、Redis 页面正文缓存、站点名称、访问控制、界面本地化（i18n） |
 | [docs/WIKITEXT.md](docs/WIKITEXT.md) | Wikitext 渲染与模板系统、微件（Widgets）、Gadgets、Lua 模块、数学公式、时间轴、图形、分类与模板反查、`#REDIRECT` |
 | [docs/FEATURES.md](docs/FEATURES.md) | 功能详述：特殊页面、用户与登录、用户组与权限、参数设置、AI 代理、文件与多媒体、邮件、封禁、评论 / 私信 / 头像、操作日志、页面保护与移动、禁用标题名单、滥用过滤器、错误页、扩展功能等 |
+| [docs/THIRD-PARTY-LOGIN.md](docs/THIRD-PARTY-LOGIN.md) | GitHub / QQ 第三方登录与自动注册、回调地址、参数设置里的「第三方授权」绑定 / 解绑、provider 插件扩展 |
 | [docs/SKIN.md](docs/SKIN.md) | 皮肤机制与内置皮肤、页面自定义 CSS / JS 与代码页面（含 TypeScript）、`mw.wikiImport` 用户脚本、与 MediaWiki / OOUI 的样式对齐、插件皮肤、`WikiKernel:Sidebar` |
+| [docs/MIXIN.md](docs/MIXIN.md) | 插件 Mixin + MixinExtras：启动期 Java Agent、`plugin.mixins` / `*.mixins.json`、任意应用类字节码改写、热加载与安全限制 |
 
 每个插件的细节（移植范围、配置键、与 MediaWiki 原版的差异）在各插件的 `plugin/<id>/README.md`，入口见上面的
 [内置插件一览表](#内置插件一览表)。界面文案与配置键的约定见 [docs/CONFIG.md](docs/CONFIG.md) 与

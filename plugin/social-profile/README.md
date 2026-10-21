@@ -11,6 +11,8 @@
 | 头像文件服务 | `GET /avatars/<文件名>` | 只读 `{run-path}/avatars/`（`AvatarStore.resolve` 带文件名白名单与路径穿越防护），按扩展名给 Content-Type，缓存 1 天 |
 | 上传头像页 | `特殊:上传头像` / `Special:UploadAvatar` | 插件 `SpecialPage` + 插件模板 `templates/special/upload-avatar.html`；匿名提示登录，功能关闭显示「站点已关闭」提示 |
 | 私信页 | `特殊:私信` / `Special:Messages` | `?box=inbox\|sent\|conversations`、`?with=用户名`、`?write=1&to=用户名`、`?id=123`（自动标已读） |
+| 礼物管理 | `特殊:GiftManager` / `Special:GiftManager` | 登录用户可创建自定义礼物；创建者 / 管理员可停用或重新启用；内置礼物不可改 |
+| 礼物页 | `特殊:礼物` / `特殊:送礼物` | 内置 + 自定义礼物目录，送礼物 / 收礼 / 删除；自定义礼物存 `wiki_gift` |
 | 私信 API | `POST /api/messages/send`、`POST /api/messages/delete` | 发送需要登录、收件人存在、不能发给自己；删除只删自己一侧（两侧都删则物理删除） |
 | 资料卡 | `UserProfileHook` | 头像（上传过就是 `/avatars/…`）+ 用户名下方「贡献 \| 私信 \| 上传头像」（上传头像仅本人可见） |
 | 前端资源 | `/plugins/social-profile/…` | `avatar.js`、`messages.js`、`social-profile-base.css`（原在 core 的 `/js/` 与 `base.css`），由 `HtmlHeadProvider`（`siteWide`）注入 |
@@ -45,9 +47,8 @@
 
 ## 与 MediaWiki 原版的差异
 
-- **没有 SocialProfile 的社交功能**：只有用户页资料卡的头像与快捷链接，
-  没有留言板（UserBoard）、好友（Friends）、礼物（Gifts）、用户等级 / 积分（UserLevels / UserStats）、
-  用户页 DIY 版式（UserPage 皮肤）等；资料卡也不是独立页面，而是用户页顶部的一块（core 的
+- **SocialProfile 功能不完整**：已有头像、私信、留言板、好友、礼物（`Special:SendGift` / `Special:Gifts` / `Special:GiftManager`）、积分等级；
+  没有用户页 DIY 版式（UserPage 皮肤）、礼物商城 / 付费礼物等；资料卡也不是独立页面，而是用户页顶部的一块（core 的
   `fragments/user-profile.html` 渲染，插件只填头像与链接）；
 - **私信不是邮件**：是站内 `wiki_message` 表里的私信，不发送任何电子邮件，也没有
   MediaWiki 的 `EmailUser` / `Echo`（通知）集成——没有通知徽章、没有「新消息」提示（Echo）、

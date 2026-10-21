@@ -13,6 +13,8 @@
             <a th:href="@{/wiki/特殊:重置密码}" th:text="#{auth.forgotPassword}">忘记密码？</a>
         </p>
 
+        <p class="wiki-warning" th:if="${externalError}" th:text="${externalError}">第三方登录失败。</p>
+
         <form id="wiki-login-form" class="wiki-form" th:action="@{/api/user/login}" method="post">
             <input type="hidden" name="returnto" th:value="${returnto}"/>
 
@@ -36,9 +38,20 @@
             <div class="form-message" role="alert" hidden></div>
 
             <div class="form-actions">
-                <button type="submit" class="wiki-button" th:text="#{auth.loginButton}">登录</button>
+                <button type="submit" class="wiki-button wiki-button-primary" th:text="#{auth.loginButton}">登录</button>
             </div>
         </form>
+
+        <div class="auth-external" th:if="${externalProviders != null and !externalProviders.empty}">
+            <div class="auth-divider"><span th:text="#{auth.external.or}">或使用第三方账号</span></div>
+            <div class="auth-external-buttons">
+                <a th:each="provider : ${externalProviders}"
+                   class="wiki-button auth-external-button"
+                   th:classappend="${' auth-external-' + provider.id}"
+                   th:href="@{/auth/{id}/start(id=${provider.id},returnto=${returnto})}"
+                   th:text="#{auth.external.provider(${provider.label})}">使用 GitHub 登录</a>
+            </div>
+        </div>
     </div>
 </section>
 </body>

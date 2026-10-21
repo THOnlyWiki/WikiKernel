@@ -32,6 +32,34 @@
             <div class="wiki-hint" th:text="#{settings.siteNameHint}">
                 显示在浏览器标题栏（「页面名 - 站点名称」）、页眉图标提示、页脚、搜索框占位符、邮件主题与 API 的 sitename 等；留空 = 默认 WikiKernel。
             </div>
+            <div class="form-field form-field-inline">
+                <label for="settings-favicon" th:text="#{settings.favicon}">站点图标（favicon）</label>
+                <input type="text" id="settings-favicon" name="favicon" maxlength="1024"
+                       th:value="${faviconValue}" placeholder="/img/wiki-logo.svg"/>
+            </div>
+            <div class="wiki-hint" th:text="#{settings.faviconHint}">
+                填写站内路径（如 /files/图标.png）或 http(s) 图片 URL；留空 = 内置 wiki-logo.svg。
+                浏览器默认请求的 /favicon.ico 也会使用同一配置。
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" name="noReferrer" value="1"
+                           th:checked="${noReferrerEnabled}"/>
+                    <span th:text="#{settings.noReferrer}">输出 no-referrer Referrer 策略</span>
+                </label>
+            </div>
+            <div class="wiki-hint" th:text="#{settings.noReferrerHint}">
+                开启后所有页面输出 &lt;meta name="referrer" content="no-referrer"&gt;，链接跳转时不发送 Referrer。
+            </div>
+            <div class="form-field">
+                <label for="settings-robots" th:text="#{settings.robots}">robots.txt 内容</label>
+                <textarea id="settings-robots" name="robots" rows="8"
+                          th:text="${robotsValue}"
+                          th:placeholder="#{settings.robotsPlaceholder}"></textarea>
+            </div>
+            <div class="wiki-hint" th:text="#{settings.robotsHint}">
+                留空 = 使用内置规则（允许所有爬虫）。也可以在这里配置 Sitemap、Disallow 等；保存后立即生效。
+            </div>
         </fieldset>
         <fieldset class="setup-group">
             <legend th:text="#{setup.group.base}">基础功能</legend>
@@ -45,6 +73,16 @@
                 <div class="wiki-hint" th:text="#{settings.allowOtherUserPageEditHint}">
                     用户本人与管理员始终可以编辑；关闭时其他人点「编辑」只能查看源代码。
                 </div>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" name="allowAnonymousRecentChanges" value="1"
+                               th:checked="${allowAnonymousRecentChanges}"/>
+                        <span th:text="#{settings.allowAnonymousRecentChanges}">允许未登录查看最近更改</span>
+                    </label>
+                </div>
+                <div class="wiki-hint" th:text="#{settings.allowAnonymousRecentChangesHint}">
+                    关闭后未登录用户访问「特殊:最近更改」只会看到登录提示；已登录用户不受影响。
+                </div>
                 <div class="setup-feature">
                     <div class="form-field form-field-inline">
                         <label>
@@ -57,6 +95,74 @@
                         关闭后：只有管理员 / 行政员还能打开「特殊:注册」创建账号，其他人访问会提示注册已关闭。
                     </div>
                 </div>
+        </fieldset>
+
+        <fieldset class="setup-group">
+            <legend th:text="#{settings.externalAuth}">第三方登录</legend>
+            <input type="hidden" name="external-auth-section" value="1"/>
+            <div class="wiki-hint" th:text="#{settings.externalAuthHint}">
+                在这里启用站点支持的第三方登录；回调地址需要与对应开放平台填写的一致。
+            </div>
+            <div class="form-field">
+                <label for="settings-external-base-url" th:text="#{settings.externalBaseUrl}">站点根地址（可选）</label>
+                <input type="text" id="settings-external-base-url" name="externalBaseUrl"
+                       th:value="${externalBaseUrl}" placeholder="https://wiki.example.com"/>
+                <div class="wiki-hint" th:text="#{settings.externalBaseUrlHint}">
+                    留空 = 按当前请求自动推导；反向代理 / 自定义域名时填写对外地址，例如 https://wiki.example.com。
+                </div>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" name="externalAutoRegister" value="1"
+                           th:checked="${externalAutoRegister}"/>
+                    <span th:text="#{settings.externalAutoRegister}">首次第三方登录时自动创建本地账号</span>
+                </label>
+            </div>
+            <div class="wiki-hint" th:text="#{settings.externalAutoRegisterHint}">
+                仅当站点设置里的「启用注册」也开启时生效；仍会经过封禁、禁用标题名单和注册钩子检查。
+            </div>
+            <div class="setup-feature" th:each="provider : ${externalProviders}">
+                <input type="hidden" name="external-provider" th:value="${provider.id}"/>
+                <div class="setup-options-title" th:text="${provider.label}">GitHub</div>
+                <div class="form-field form-field-inline">
+                    <label>
+                        <input type="checkbox" th:name="${provider.enabledKey}" value="1"
+                               th:checked="${provider.enabled}"/>
+                        <span th:text="#{settings.externalProviderEnabled(${provider.label})}">启用 GitHub 登录</span>
+                    </label>
+                </div>
+                <div class="form-field">
+                    <label th:for="${'settings-external-client-' + provider.id}"
+                           th:text="${provider.clientIdLabel}">Client ID / App ID</label>
+                    <input type="text" th:id="${'settings-external-client-' + provider.id}"
+                           th:name="${provider.clientIdKey}" th:value="${provider.clientIdValue}"
+                           autocomplete="off"/>
+                </div>
+                <div class="form-field">
+                    <label th:for="${'settings-external-secret-' + provider.id}"
+                           th:text="${provider.clientSecretLabel}">Client Secret / App Key</label>
+                    <input type="password" th:id="${'settings-external-secret-' + provider.id}"
+                           th:name="${provider.clientSecretKey}" value=""
+                           autocomplete="new-password"
+                           th:placeholder="${provider.secretConfigured
+                                   ? #messages.msg('settings.externalSecretConfigured') : ''}"/>
+                    <div class="wiki-hint" th:if="${provider.secretConfigured}"
+                         th:text="#{settings.externalSecretConfiguredHint}">
+                        密钥已经保存；留空表示不修改，填写新值会覆盖。
+                    </div>
+                </div>
+                <div class="wiki-hint">
+                    <span th:text="#{settings.externalCallback}">回调地址：</span>
+                    <code th:text="${provider.callbackUrl}">https://example.com/auth/github/callback</code>
+                </div>
+                <div class="wiki-hint" th:text="#{settings.externalCallbackHint(${provider.label})}">
+                    请把上面的地址填写到 GitHub 的 OAuth App 回调地址中。
+                </div>
+                <div class="wiki-warning" th:if="${provider.enabled and !provider.configured}"
+                     th:text="#{settings.externalNotConfigured}">
+                    已启用但 Client ID / Secret 不完整，登录按钮不会显示。
+                </div>
+            </div>
         </fieldset>
 
         <fieldset class="setup-group">
@@ -104,6 +210,16 @@
                     </div>
                 </div>
                 <div class="setup-feature">
+                    <div class="form-field form-field-inline">
+                        <label>
+                            <input type="checkbox" name="codexExample" value="1"
+                                   th:checked="${codexExampleEnabled}"/>
+                            <span th:text="#{settings.codexExample}">Codex 示例页</span>
+                        </label>
+                    </div>
+                    <div class="wiki-hint" th:text="#{settings.codexExampleHint}">
+                        开启后列出「特殊:CodexExample」，展示完整的 Wikimedia Codex 组件和图标；关闭后该页面从特殊页面列表和直接访问中消失。
+                    </div>
                 </div>
         </fieldset>
 
@@ -195,6 +311,10 @@
         <p class="wiki-hint" th:unless="${canManage}">
             <span th:text="#{settings.allowOtherUserPageEdit}">允许编辑其他用户的用户页</span>
             <strong th:text="${allowOtherUserPageEdit} ? #{settings.on} : #{settings.off}">关闭</strong>
+        </p>
+        <p class="wiki-hint" th:unless="${canManage}">
+            <span th:text="#{settings.allowAnonymousRecentChanges}">允许未登录查看最近更改</span>
+            <strong th:text="${allowAnonymousRecentChanges} ? #{settings.on} : #{settings.off}">开启</strong>
         </p>
         <p class="wiki-hint" th:unless="${canManage}">
             <span th:text="#{settings.register}">启用注册（创建账号）</span>

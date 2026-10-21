@@ -35,6 +35,11 @@ public class FeatureServiceImpl implements FeatureService {
     }
 
     @Override
+    public boolean codexExampleEnabled() {
+        return siteSettingsService.getBoolean(CODEX_EXAMPLE_KEY, true);
+    }
+
+    @Override
     public void setRegister(boolean enabled) {
         siteSettingsService.set(REGISTER_KEY, Boolean.toString(enabled));
     }
@@ -47,5 +52,10 @@ public class FeatureServiceImpl implements FeatureService {
     @Override
     public void setTypescriptCompileOnSave(boolean enabled) {
         siteSettingsService.set(TYPESCRIPT_COMPILE_ON_SAVE_KEY, Boolean.toString(enabled));
+    }
+
+    @Override
+    public void setCodexExample(boolean enabled) {
+        siteSettingsService.set(CODEX_EXAMPLE_KEY, Boolean.toString(enabled));
     }
 }

@@ -86,7 +86,20 @@ public interface AbuseFilterService {
     record FilterForm(String description, String pattern, String actions, String tags,
                       boolean enabled, boolean deleted, boolean hidden,
                       int throttleCount, int throttlePeriod, String throttleGroup,
-                      String comment) {
+                      String comment, String notes,
+                      String warnMessage, String warnPage,
+                      String disallowMessage, String disallowPage,
+                      boolean blockTalk, int blockAnonDays, int blockUserDays) {
+
+        /** 兼容旧调用：没有新增字段时使用默认值（3 天封禁、无自定义文案）。 */
+        public FilterForm(String description, String pattern, String actions, String tags,
+                          boolean enabled, boolean deleted, boolean hidden,
+                          int throttleCount, int throttlePeriod, String throttleGroup,
+                          String comment) {
+            this(description, pattern, actions, tags, enabled, deleted, hidden,
+                    throttleCount, throttlePeriod, throttleGroup, comment,
+                    "", "", "", "", "", false, 3, 3);
+        }
     }
 
     /**

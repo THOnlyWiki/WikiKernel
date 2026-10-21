@@ -155,6 +155,97 @@ public class VisualEditorApiController {
         }
     }
 
+    /** 画廊对话框：解析 / 重建 {@code <gallery>}，返回图片行、属性和预览。 */
+    @PostMapping("/gallery")
+    public AjaxResult<Map<String, Object>> gallery(@RequestParam("title") String title,
+                                                   @RequestParam(value = "source", required = false)
+                                                   String source,
+                                                   @RequestParam(value = "items", required = false)
+                                                   String itemsJson,
+                                                   @RequestParam(value = "attributes", required = false)
+                                                   String attributesJson,
+                                                   HttpServletRequest request) {
+        Denied denied = permissionError(title, request);
+        if (denied != null) {
+            return AjaxResult.error(denied.code(), denied.message());
+        }
+        try {
+            VisualEditorService.GalleryInfo info;
+            boolean build = !Strings.trimToEmpty(itemsJson).isEmpty()
+                    || !Strings.trimToEmpty(attributesJson).isEmpty();
+            if (build) {
+                info = visualEditorService.buildGallery(title, parseGalleryAttributes(attributesJson),
+                        parseGalleryItems(itemsJson));
+            } else {
+                info = visualEditorService.openGallery(title, source);
+            }
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("source", info.source());
+            data.put("label", info.label());
+            data.put("previewHtml", info.previewHtml());
+            List<Map<String, Object>> items = new java.util.ArrayList<>();
+            for (VisualEditorService.GalleryItem item : info.items()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("file", item.file());
+                row.put("caption", item.caption());
+                items.add(row);
+            }
+            data.put("items", items);
+            List<Map<String, Object>> attributes = new java.util.ArrayList<>();
+            for (VisualEditorService.GalleryAttribute attribute : info.attributes()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("name", attribute.name());
+                row.put("value", attribute.value());
+                attributes.add(row);
+            }
+            data.put("attributes", attributes);
+            return AjaxResult.success(data);
+        } catch (IllegalArgumentException exception) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST, message("visualEditor.galleryInvalid"));
+        }
+    }
+
+    /** 画廊图片行 JSON（{@code [{file,caption}]}）。 */
+    private List<VisualEditorService.GalleryItem> parseGalleryItems(String json) {
+        if (Strings.trimToEmpty(json).isEmpty()) {
+            return List.of();
+        }
+        List<?> raw;
+        try {
+            raw = objectMapper.readValue(json, List.class);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("gallery items", exception);
+        }
+        List<VisualEditorService.GalleryItem> items = new java.util.ArrayList<>();
+        for (Object value : raw) {
+            if (value instanceof Map<?, ?> row) {
+                items.add(new VisualEditorService.GalleryItem(text(row.get("file")), text(row.get("caption"))));
+            }
+        }
+        return items;
+    }
+
+    /** 画廊属性 JSON（{@code [{name,value}]}）。 */
+    private List<VisualEditorService.GalleryAttribute> parseGalleryAttributes(String json) {
+        if (Strings.trimToEmpty(json).isEmpty()) {
+            return List.of();
+        }
+        List<?> raw;
+        try {
+            raw = objectMapper.readValue(json, List.class);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("gallery attributes", exception);
+        }
+        List<VisualEditorService.GalleryAttribute> attributes = new java.util.ArrayList<>();
+        for (Object value : raw) {
+            if (value instanceof Map<?, ?> row) {
+                attributes.add(new VisualEditorService.GalleryAttribute(
+                        text(row.get("name")), text(row.get("value"))));
+            }
+        }
+        return attributes;
+    }
+
     /** 参数 JSON（{@code [{name,value,positional,present}]}）→ 服务层参数列表。 */
     private List<VisualEditorService.TemplateParam> parseParams(String paramsJson) {
         List<VisualEditorService.TemplateParam> params = new java.util.ArrayList<>();

@@ -36,10 +36,10 @@ public final class SpecialPageCategories {
     /** 其他特殊页面（未分类的默认归入这里）。 */
     public static final String OTHER = "other";
 
-    /** 分组展示顺序（未知分组排在 OTHER 之前）。 */
+    /** 分组展示顺序（与 thonly.cc / MediaWiki 的 Special:SpecialPages 一致）。 */
     public static final List<String> ORDER = List.of(
-            PAGES, LOGIN, USERS, CHANGES, MEDIA, WIKI, PAGETOOLS,
-            REDIRECTS, HIGHUSE, MAINTENANCE, SURVEYS, OTHER);
+            MAINTENANCE, PAGES, LOGIN, USERS, CHANGES, MEDIA, WIKI,
+            REDIRECTS, HIGHUSE, PAGETOOLS, SURVEYS, OTHER);
 
     private SpecialPageCategories() {
     }

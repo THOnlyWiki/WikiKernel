@@ -208,6 +208,21 @@ public class PluginManager {
                 continue;
             }
 
+            // Mixin 配置必须在 JVM 加载目标类之前注册，不能等到插件 Spring 容器启动。
+            if (!discovered.mixins().isEmpty()) {
+                if (!MixinSupport.isActive()) {
+                    log.warn("插件 {} 声明了 Mixin（{}），但当前启动器没有加载 Mixin agent；"
+                                    + "Mixin 不会生效，插件本身仍会继续启动。请通过 run.bat 启动。",
+                            id, discovered.mixins());
+                } else if (!MixinSupport.isStartupPlugin(id)) {
+                    log.warn("插件 {} 是运行期新发现的 Mixin 插件（{}）；Mixin 只能在启动期注册，"
+                                    + "本次跳过，重启应用后生效。", id, discovered.mixins());
+                    unavailable.put(id, "Mixin 插件只能在启动时加载（请重启应用）");
+                    closeQuietly(discovered.classLoader());
+                    continue;
+                }
+            }
+
             if (load(discovered)) {
                 started.add(id);
             } else {
@@ -248,6 +263,14 @@ public class PluginManager {
             }
             String reason = removalReason(sourceDirectory().resolve(source), source);
             if (reason != null) {
+                if (MixinSupport.isMixinPlugin(loaded.descriptor().id())) {
+                    // Mixin 类已经注入到 core / 其它插件类中，替换 classloader 无法撤销；
+                    // 保留旧版本并明确提示重启，避免出现“半新半旧”的类。
+                    log.warn("Mixin 插件 {} 的源 jar 已变化（{}）；Mixin 无法热替换，"
+                                    + "继续运行启动时版本，请重启应用后生效。",
+                            loaded.descriptor().id(), reason);
+                    continue;
+                }
                 String hash = stagedHashes.get(source);
                 unload(loaded);
                 unloaded.add(loaded.descriptor().id());
@@ -633,11 +656,12 @@ public class PluginManager {
                         !"false".equalsIgnoreCase(
                                 descriptor.getProperty(PluginConstants.FEATURE_DEFAULT, "true").trim()));
 
+                List<String> mixins = discoverMixinConfigs(jarFile, descriptor);
                 String mainClass = descriptor.getProperty(PluginConstants.MAIN_CLASS, "").trim();
                 if (!mainClass.isEmpty()) {
                     return List.of(new DiscoveredPlugin(pluginDescriptor,
                             loadEntryClass(mainClass, classLoader), null,
-                            sourceName, classLoader));
+                            sourceName, classLoader, mixins));
                 }
 
                 // 描述文件没有入口类时，回退到标准 ServiceLoader 发现方式
@@ -647,7 +671,7 @@ public class PluginManager {
                 }
                 return List.of(new DiscoveredPlugin(pluginDescriptor,
                         cast(entryClassOf(existing)), existing,
-                        sourceName, classLoader));
+                        sourceName, classLoader, mixins));
             }
 
             // 没有描述文件时，同样回退到 ServiceLoader
@@ -658,8 +682,34 @@ public class PluginManager {
             }
             return List.of(new DiscoveredPlugin(existing.get().descriptor(),
                     cast(entryClassOf(existing)), existing,
-                    sourceName, classLoader));
+                    sourceName, classLoader, discoverMixinConfigs(jarFile, null)));
         }
+    }
+
+    /**
+     * 读取插件的 Mixin 配置：优先 {@code plugin.mixins}，没有声明时自动发现
+     * {@code *.mixins.json} / {@code mixins*.json}。与 mixin-agent 的扫描规则保持一致，
+     * 用于阻止运行期新增的 Mixin 插件（Mixin 只能在启动期注册）。
+     */
+    private static List<String> discoverMixinConfigs(JarFile jarFile, Properties descriptor) {
+        List<String> declared = parseIds(descriptor == null
+                ? null
+                : descriptor.getProperty(PluginConstants.MIXINS));
+        if (!declared.isEmpty()) {
+            return declared;
+        }
+        List<String> found = new ArrayList<>();
+        jarFile.stream()
+                .map(java.util.jar.JarEntry::getName)
+                .filter(name -> !name.endsWith("/") && name.endsWith(".json"))
+                .filter(name -> {
+                    String fileName = name.substring(name.lastIndexOf('/') + 1);
+                    return fileName.endsWith(".mixins.json")
+                            || (fileName.startsWith("mixins") && fileName.endsWith(".json"));
+                })
+                .forEach(found::add);
+        found.sort(String::compareTo);
+        return found.isEmpty() ? List.of() : List.copyOf(found);
     }
 
     /** 解析逗号分隔的插件 id 列表（描述文件里的 {@code plugin.requires} / {@code plugin.clientRequires}）。 */
@@ -681,7 +731,7 @@ public class PluginManager {
         List<DiscoveredPlugin> result = new ArrayList<>();
         for (WikiPlugin plugin : ServiceLoader.load(WikiPlugin.class, getClass().getClassLoader())) {
             result.add(new DiscoveredPlugin(plugin.descriptor(), cast(plugin.getClass()),
-                    () -> plugin, "classpath", null));
+                    () -> plugin, "classpath", null, List.of()));
         }
         return result;
     }
@@ -786,11 +836,16 @@ public class PluginManager {
         }
     }
 
-    /** 发现阶段的候选插件：描述信息 + 入口类（+ classpath 插件的既有实例）。 */
+    /**
+     * 发现阶段的候选插件：描述信息 + 入口类（+ classpath 插件的既有实例）。
+     *
+     * @param mixins {@code plugin.mixins} 声明的 Mixin 配置；空 = 普通插件
+     */
     private record DiscoveredPlugin(PluginDescriptor descriptor,
                                     Class<? extends WikiPlugin> entryClass,
                                     Supplier<WikiPlugin> existing,
                                     String source,
-                                    PluginClassLoader classLoader) {
+                                    PluginClassLoader classLoader,
+                                    List<String> mixins) {
     }
 }

@@ -60,6 +60,31 @@ public class WikiAbuseFilterRevision {
     @DbColumn
     private Boolean hidden = false;
 
+    /** 过滤器注释（只保存当前过滤器的备注）。 */
+    @DbColumn(type = DbType.LONGTEXT)
+    private String notes = "";
+
+    @DbColumn(length = 255)
+    private String warnMessage = "";
+
+    @DbColumn(length = 255)
+    private String warnPage = "";
+
+    @DbColumn(length = 255)
+    private String disallowMessage = "";
+
+    @DbColumn(length = 255)
+    private String disallowPage = "";
+
+    @DbColumn
+    private Boolean blockTalk = false;
+
+    @DbColumn
+    private Integer blockAnonDays = 3;
+
+    @DbColumn
+    private Integer blockUserDays = 3;
+
     /** 修改者（null = 系统）。 */
     @DbColumn
     private Long userId;

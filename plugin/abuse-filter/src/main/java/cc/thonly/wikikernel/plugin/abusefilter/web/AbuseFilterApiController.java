@@ -2,12 +2,14 @@ package cc.thonly.wikikernel.plugin.abusefilter.web;
 
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.service.WikiPageStore;
 import cc.thonly.wikikernel.common.util.AjaxCode;
 import cc.thonly.wikikernel.common.util.AjaxResult;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.abusefilter.AbuseFilterSupport;
 import cc.thonly.wikikernel.plugin.abusefilter.service.AbuseCondition;
 import cc.thonly.wikikernel.plugin.abusefilter.service.AbuseFilterService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,6 +34,10 @@ public class AbuseFilterApiController {
     private final AbuseFilterService service;
     private final AbuseFilterSupport support;
     private final CurrentUser currentUser;
+
+    /** 预览信息页正文用；插件独立测试 / 无页面桥时为空。 */
+    @Autowired(required = false)
+    private WikiPageStore pageStore;
 
     public AbuseFilterApiController(AbuseFilterService service, AbuseFilterSupport support,
                                     CurrentUser currentUser) {
@@ -59,7 +65,13 @@ public class AbuseFilterApiController {
                     parseInt(params.get("throttleCount")),
                     parseInt(params.get("throttlePeriod")),
                     params.get("throttleGroup"),
-                    params.get("comment")), actorId());
+                    params.get("comment"),
+                    params.get("notes"),
+                    params.get("warnMessage"), params.get("warnPage"),
+                    params.get("disallowMessage"), params.get("disallowPage"),
+                    "1".equals(params.get("blockTalk")),
+                    parseDefaultInt(params.get("blockAnonDays"), 3),
+                    parseDefaultInt(params.get("blockUserDays"), 3)), actorId());
             return AjaxResult.success(support.message("abusefilter.saved"), saved);
         } catch (AbuseCondition.SyntaxException exception) {
             return AjaxResult.error(AjaxCode.BAD_REQUEST,
@@ -67,6 +79,71 @@ public class AbuseFilterApiController {
         } catch (IllegalArgumentException exception) {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, exception.getMessage());
         }
+    }
+
+    /** 语法检查（保存前预览）：只编译，不写数据库。 */
+    @PostMapping("/abuse-filters/check")
+    public AjaxResult<Map<String, Object>> check(
+            @RequestParam(value = "pattern", required = false) String pattern) {
+        AjaxResult<Map<String, Object>> denied = requireManager();
+        if (denied != null) {
+            return denied;
+        }
+        try {
+            AbuseCondition.compile(pattern);
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("ok", true);
+            return AjaxResult.success(support.message("abusefilter.syntaxOK"), data);
+        } catch (AbuseCondition.SyntaxException exception) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST,
+                    support.message("abusefilter.patternError", null, syntaxDetail(exception)));
+        }
+    }
+
+    /** 预览警告 / 阻止文案：消息键或字面文案 → 指定页面最新正文 → 过滤器说明。 */
+    @PostMapping("/abuse-filters/message-preview")
+    public AjaxResult<Map<String, Object>> messagePreview(
+            @RequestParam(value = "message", required = false) String message,
+            @RequestParam(value = "page", required = false) String page,
+            @RequestParam(value = "fallback", required = false) String fallback) {
+        AjaxResult<Map<String, Object>> denied = requireManager();
+        if (denied != null) {
+            return denied;
+        }
+        String text = Strings.trimToEmpty(message);
+        String source = "message";
+        String pageTitle = AbuseFilterSupport.messagePageTitle(page);
+        if (!text.isEmpty()) {
+            String resolved = support.messageOrNull(text);
+            if (resolved != null) {
+                text = resolved;
+                source = "message-key";
+            }
+        } else {
+            if (!pageTitle.isEmpty() && pageStore != null) {
+                try {
+                    text = pageStore.byTitle(pageTitle)
+                            .flatMap(snapshot -> pageStore.content(snapshot.id()))
+                            .map(String::trim)
+                            .orElse("");
+                    source = "page";
+                } catch (RuntimeException exception) {
+                    text = "";
+                }
+            }
+        }
+        if (text.isEmpty()) {
+            text = Strings.trimToEmpty(fallback);
+            source = "fallback";
+        }
+        // 与运行时一致：$1 = 过滤器说明
+        text = text.replace("$1", Strings.trimToEmpty(fallback));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("text", text);
+        data.put("source", source);
+        data.put("page", pageTitle);
+        return AjaxResult.success(text.isEmpty()
+                ? support.message("abusefilter.previewEmpty") : text, data);
     }
 
     /** 恢复到历史版本。 */
@@ -175,6 +252,14 @@ public class AbuseFilterApiController {
             return Integer.parseInt(Strings.trimToEmpty(value));
         } catch (NumberFormatException exception) {
             return 0;
+        }
+    }
+
+    private static int parseDefaultInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(Strings.trimToEmpty(value));
+        } catch (NumberFormatException exception) {
+            return fallback;
         }
     }
 }

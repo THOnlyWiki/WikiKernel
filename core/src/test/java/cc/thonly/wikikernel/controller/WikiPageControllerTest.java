@@ -75,6 +75,17 @@ class WikiPageControllerTest {
     }
 
     @Test
+    void rendersSubpageBreadcrumb() throws Exception {
+        insertPage("A/b/c", "子页面正文", false);
+
+        mockMvc.perform(get("/wiki/A/b/c"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"contentSub\"")))
+                .andExpect(content().string(containsString("href=\"/wiki/A/b\"")))
+                .andExpect(content().string(containsString("href=\"/wiki/A\"")));
+    }
+
+    @Test
     void hiddenPageReturns404AndMissingPageIs404WithCreateLink() throws Exception {
         insertPage("隐藏页", true);
 
@@ -758,12 +769,12 @@ class WikiPageControllerTest {
                 .andExpect(content().string(containsString("全部页面")))
                 .andExpect(content().string(containsString("特殊页面")))
                 .andExpect(content().string(containsString("创建页面")))
-                // 分组排版 + 搜索框（仿 MediaWiki Special:SpecialPages）
-                .andExpect(content().string(containsString("搜索特殊页面")))
+                // MediaWiki 标准分组排版（与 thonly.cc 的 Timeless 一致）
                 .andExpect(content().string(containsString("用户与权限")))
                 .andExpect(content().string(containsString("页面工具")))
-                .andExpect(content().string(containsString("其他特殊页面")))
-                .andExpect(content().string(containsString("specialpages-group")))
+                .andExpect(content().string(containsString("其它特殊页面")))
+                .andExpect(content().string(containsString("mw-specialpagesgroup")))
+                .andExpect(content().string(containsString("mw-specialpages-list")))
                 // 不再显示“（别名：…）”
                 .andExpect(content().string(not(containsString("别名"))));
     }
@@ -808,10 +819,24 @@ class WikiPageControllerTest {
     @Test
     void searchesPagesFromDatabase() throws Exception {
         insertPage("苹果派", "苹果派的做法：苹果、面粉、黄油。", false);
+        insertPage("水果列表", "这里列出苹果、梨和香蕉。", false);
 
         mockMvc.perform(get("/wiki/{title}", "特殊:搜索").param("q", "苹果"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("苹果派")));
+                .andExpect(content().string(containsString("内容页面")))
+                .andExpect(content().string(containsString("多媒体")))
+                .andExpect(content().string(containsString("全部")))
+                .andExpect(content().string(containsString("高级")))
+                .andExpect(content().string(containsString("页面标题匹配")))
+                .andExpect(content().string(containsString("页面内容匹配")))
+                .andExpect(content().string(containsString("苹果派")))
+                .andExpect(content().string(containsString("水果列表")));
+
+        // MediaWiki 兼容参数名 search=... 与 profile=default 也能用
+        mockMvc.perform(get("/wiki/{title}", "特殊:搜索")
+                        .param("search", "苹果").param("profile", "default"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("页面标题匹配")));
 
         mockMvc.perform(get("/api/search").param("q", "苹果"))
                 .andExpect(status().isOk())

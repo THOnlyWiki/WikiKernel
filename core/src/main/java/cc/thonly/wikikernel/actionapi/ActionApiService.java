@@ -1936,19 +1936,23 @@ public class ActionApiService {
         return List.of(search, titles, descriptions, urls);
     }
 
-    private Map<String, Object> help() {
-        Map<String, Object> help = new LinkedHashMap<>();
+    /** 当前支持的 action 名（core + 插件）；供 ApiSandbox 与 help 共用。 */
+    public List<String> actionNames() {
         List<String> actions = new ArrayList<>(List.of("query", "parse", "edit", "move", "delete", "protect",
                 "block", "unblock", "upload", "compare", "rollback",
                 "login", "logout", "opensearch", "tokens", "help"));
-        // 插件提供的 action（common 的 ActionApiModule）
         for (ActionApiModule module : pluginManager.extensions(ActionApiModule.class)) {
             if (!actions.contains(module.action())) {
                 actions.add(module.action());
             }
         }
-        help.put("actions", List.copyOf(actions));
-        help.put("formats", List.of("json", "jsonfm"));
+        return List.copyOf(actions);
+    }
+
+    private Map<String, Object> help() {
+        Map<String, Object> help = new LinkedHashMap<>();
+        help.put("actions", actionNames());
+        help.put("formats", List.of("json", "jsonfm", "xml"));
         help.put("note", "MediaWiki Action API subset of WikiKernel.");
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("help", help);

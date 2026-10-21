@@ -55,10 +55,26 @@ public class SiteSettingsServiceImpl implements SiteSettingsService, Application
             log.info("已导入站点名称：{} = {}", SiteNameService.KEY,
                     SiteNameService.normalize(siteProperties.getName()));
         }
+        if (siteProperties.getFavicon() != null) {
+            set(SiteSettingsService.FAVICON_KEY, normalizeFavicon(siteProperties.getFavicon()));
+            log.info("已导入站点图标：{} = {}", SiteSettingsService.FAVICON_KEY,
+                    normalizeFavicon(siteProperties.getFavicon()));
+        }
+        if (siteProperties.getNoReferrer() != null) {
+            set(SiteSettingsService.NO_REFERRER_KEY, siteProperties.getNoReferrer().toString());
+            log.info("已导入 Referrer 策略：{} = {}", SiteSettingsService.NO_REFERRER_KEY,
+                    siteProperties.getNoReferrer());
+        }
         if (properties.getAllowOtherUserPageEdit() != null) {
             set(ALLOW_OTHER_USER_PAGE_EDIT, properties.getAllowOtherUserPageEdit().toString());
             log.info("已导入站点设置：{} = {}", ALLOW_OTHER_USER_PAGE_EDIT,
                     properties.getAllowOtherUserPageEdit());
+        }
+        if (properties.getAllowAnonymousRecentChanges() != null) {
+            set(ALLOW_ANONYMOUS_RECENT_CHANGES_KEY,
+                    properties.getAllowAnonymousRecentChanges().toString());
+            log.info("已导入站点设置：{} = {}", ALLOW_ANONYMOUS_RECENT_CHANGES_KEY,
+                    properties.getAllowAnonymousRecentChanges());
         }
         if (featureProperties.getRegister() != null) {
             set(FeatureService.REGISTER_KEY, featureProperties.getRegister().toString());
@@ -73,6 +89,11 @@ public class SiteSettingsServiceImpl implements SiteSettingsService, Application
                     featureProperties.getTypescriptCompileOnSave().toString());
             log.info("已导入功能开关：{} = {}", FeatureService.TYPESCRIPT_COMPILE_ON_SAVE_KEY,
                     featureProperties.getTypescriptCompileOnSave());
+        }
+        if (featureProperties.getCodexExample() != null) {
+            set(FeatureService.CODEX_EXAMPLE_KEY, featureProperties.getCodexExample().toString());
+            log.info("已导入功能开关：{} = {}", FeatureService.CODEX_EXAMPLE_KEY,
+                    featureProperties.getCodexExample());
         }
     }
 
@@ -113,6 +134,34 @@ public class SiteSettingsServiceImpl implements SiteSettingsService, Application
         synchronized (this) {
             cache = null;
         }
+    }
+
+    /** 站点图标只接受空串、站内绝对路径或 http(s) URL，避免 javascript: 等进入 link href。 */
+    public static String normalizeFavicon(String raw) {
+        String value = raw == null ? "" : raw.trim();
+        if (value.isEmpty()) {
+            return "";
+        }
+        String lower = value.toLowerCase(Locale.ROOT);
+        if (value.startsWith("/") || lower.startsWith("http://") || lower.startsWith("https://")) {
+            return value;
+        }
+        return "";
+    }
+
+    /**
+     * robots.txt 文本归一化：统一换行、去掉首尾空白；留空表示使用内置默认规则。
+     * 限制在 64KB 以内，避免管理员误粘贴超大文本影响每个爬虫请求。
+     */
+    public static String normalizeRobots(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String value = raw.replace("\r\n", "\n").replace('\r', '\n').strip();
+        if (value.length() > 64 * 1024) {
+            value = value.substring(0, 64 * 1024);
+        }
+        return value;
     }
 
     private Map<String, String> loaded() {

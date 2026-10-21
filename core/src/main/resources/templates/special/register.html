@@ -10,7 +10,7 @@
         </p>
         <p class="auth-subtitle">
             <span th:text="#{auth.haveAccount}">已有账号？</span>
-            <a th:href="@{/wiki/特殊:登录}" th:text="#{auth.login}">登录</a>
+            <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{auth.login}">登录</a>
         </p>
 
         <form id="wiki-register-form" class="wiki-form" th:action="@{/api/user/register}" method="post"
@@ -48,9 +48,20 @@
             <div class="form-message" role="alert" hidden></div>
 
             <div class="form-actions">
-                <button type="submit" class="wiki-button" th:text="#{auth.registerButton}">注册</button>
+                <button type="submit" class="wiki-button wiki-button-primary" th:text="#{auth.registerButton}">注册</button>
             </div>
         </form>
+
+        <div class="auth-external" th:if="${externalProviders != null and !externalProviders.empty}">
+            <div class="auth-divider"><span th:text="#{auth.external.or}">或使用第三方账号</span></div>
+            <div class="auth-external-buttons">
+                <a th:each="provider : ${externalProviders}"
+                   class="wiki-button auth-external-button"
+                   th:classappend="${' auth-external-' + provider.id}"
+                   th:href="@{/auth/{id}/start(id=${provider.id},returnto=${returnto})}"
+                   th:text="#{auth.external.provider(${provider.label})}">使用 GitHub 登录</a>
+            </div>
+        </div>
     </div>
 </section>
 </body>

@@ -20,4 +20,10 @@ public class SiteProperties {
 
     /** 站点名称（{@code wikikernel.site.name}）。 */
     private String name;
+
+    /** 站点图标 URL（{@code wikikernel.site.favicon}）；留空 = 使用内置 wiki-logo.svg。 */
+    private String favicon;
+
+    /** 是否输出 no-referrer meta（{@code wikikernel.site.no-referrer}；默认 false）。 */
+    private Boolean noReferrer;
 }

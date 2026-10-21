@@ -54,6 +54,10 @@ public class WikiFile {
     @DbColumn
     private Long uploaderId;
 
+    /** 上传时选择的授权协议（显示用；默认「共用领域协议」）。 */
+    @DbColumn(length = 80, defaultValue = "共用领域协议")
+    private String license = "共用领域协议";
+
     /** 文件说明（可空）。 */
     @DbColumn(length = 500)
     private String description;

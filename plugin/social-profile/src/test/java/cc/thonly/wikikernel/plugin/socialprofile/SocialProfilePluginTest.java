@@ -25,6 +25,7 @@ import cc.thonly.wikikernel.plugin.socialprofile.web.AwardsSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.EditProfileSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.FriendsSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.GiftsSpecialPage;
+import cc.thonly.wikikernel.plugin.socialprofile.web.GiftManagerSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.MessagesSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.RandomUsersSpecialPage;
 import cc.thonly.wikikernel.plugin.socialprofile.web.SendGiftSpecialPage;
@@ -56,6 +57,8 @@ class SocialProfilePluginTest {
             "socialProfile.foes.added", "socialProfile.error.foeNotFoe",
             "socialProfile.gifts.title", "socialProfile.gifts.sent", "socialProfile.error.giftUnknown",
             "socialProfile.gift.star", "socialProfile.gift.kitten",
+            "socialProfile.giftManager.title", "socialProfile.giftManager.created",
+            "socialProfile.error.giftCatalogUnavailable", "socialProfile.error.giftManagerForbidden",
             "socialProfile.topUsers.title", "socialProfile.level.1", "socialProfile.level.5",
             "socialProfile.level.other", "socialProfile.points.summary",
             "socialProfile.awards.title", "socialProfile.awards.granted", "socialProfile.error.awardForbidden",
@@ -92,9 +95,9 @@ class SocialProfilePluginTest {
 
         plugin.onStart(context);
 
-        // 10 个特殊页：2 个原有（头像 / 私信）+ 8 个 SocialProfile
+        // 11 个特殊页：2 个原有（头像 / 私信）+ 9 个 SocialProfile
         List<SpecialPage> pages = context.lookup(SpecialPage.class);
-        assertEquals(10, pages.size());
+        assertEquals(11, pages.size());
         assertTrue(pages.stream().anyMatch(UploadAvatarSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(MessagesSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(EditProfileSpecialPage.class::isInstance));
@@ -102,6 +105,7 @@ class SocialProfilePluginTest {
         assertTrue(pages.stream().anyMatch(FriendsSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(SendGiftSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(GiftsSpecialPage.class::isInstance));
+        assertTrue(pages.stream().anyMatch(GiftManagerSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(TopUsersSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(AwardsSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(RandomUsersSpecialPage.class::isInstance));

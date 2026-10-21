@@ -9,6 +9,21 @@ public interface SiteSettingsService {
     /** 是否允许编辑其他用户的用户页（管理员始终可以）。 */
     String ALLOW_OTHER_USER_PAGE_EDIT = "permissions.allow-other-user-page-edit";
 
+    /** 是否允许未登录用户查看「特殊:最近更改」（默认允许）。 */
+    String ALLOW_ANONYMOUS_RECENT_CHANGES_KEY = "permissions.allow-anonymous-recent-changes";
+
+    /** 站点图标 URL（favicon.ico / &lt;link rel="icon"&gt;）；空 = 内置 wiki-logo.svg。 */
+    String FAVICON_KEY = "site.favicon";
+
+    /** 是否输出 {@code <meta name="referrer" content="no-referrer">}（默认关闭）。 */
+    String NO_REFERRER_KEY = "site.no-referrer";
+
+    /** {@code /robots.txt} 的动态内容；空 = 使用内置默认规则。 */
+    String ROBOTS_KEY = "site.robots";
+
+    /** {@code /robots.txt} 的内置默认内容（站点设置留空时使用）。 */
+    String DEFAULT_ROBOTS = "User-agent: *\nAllow: /\n";
+
     /** 读取字符串设置；不存在时返回默认值。 */
     String get(String key, String defaultValue);
 

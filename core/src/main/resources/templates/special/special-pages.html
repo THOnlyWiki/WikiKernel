@@ -1,31 +1,22 @@
 <!DOCTYPE html>
-<!-- 特殊页模板：特殊:特殊页面 / Special:SpecialPages（搜索 + 目录 + 分组，仿 MediaWiki） -->
+<!-- 特殊页模板：特殊:特殊页面 / Special:SpecialPages（MediaWiki 标准分组列表） -->
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
 <section>
-    <p th:text="#{specialPages.intro}">当前已注册的特殊页面：</p>
-
-    <input type="search" id="specialpages-search" class="specialpages-search"
-           th:placeholder="#{specialPages.search}"/>
-
-    <div class="specialpages-toc" th:if="${groups.size() > 1}">
-        <div class="specialpages-toc-title" th:text="#{specialPages.toc}">目录</div>
-        <ol>
-            <li th:each="group : ${groups}">
-                <a th:href="|#specialpages-${group.id}|" th:text="${group.label}">分组</a>
-            </li>
-        </ol>
-    </div>
-
-    <div class="specialpages-group" th:each="group : ${groups}" th:id="|specialpages-${group.id}|">
-        <h2 th:text="${group.label}">分组</h2>
-        <ul class="specialpages-items">
-            <li th:each="item : ${group.items}">
-                <a th:href="@{/wiki/{title}(title=${item.urlName})}" th:text="${item.name}">名称</a>
-            </li>
-        </ul>
-    </div>
+    <th:block th:each="group : ${groups}">
+        <h2 class="mw-specialpagesgroup" th:id="|mw-specialpagesgroup-${group.id}|">
+            <span class="mw-headline" th:text="${group.label}">分组</span>
+        </h2>
+        <div class="mw-specialpages-list">
+            <ul>
+                <li class="mdui-ripple" th:each="item : ${group.items}">
+                    <a th:href="@{/wiki/{title}(title=${item.urlName})}"
+                       th:title="${item.name}" th:text="${item.name}">名称</a>
+                </li>
+            </ul>
+        </div>
+    </th:block>
 </section>
 </body>
 </html>

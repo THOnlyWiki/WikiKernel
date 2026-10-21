@@ -68,6 +68,38 @@ public class WikiAbuseFilter {
     @DbColumn
     private Boolean hidden = false;
 
+    /** 过滤器注释（仅管理员编辑页可见，不进入命中提示）。 */
+    @DbColumn(type = DbType.LONGTEXT)
+    private String notes = "";
+
+    /** warn / degrade 操作用的自定义警告文案；留空 = 使用说明。 */
+    @DbColumn(length = 255)
+    private String warnMessage = "";
+
+    /** warn / degrade 的备用信息页标题（文案为空时读取页面正文）。 */
+    @DbColumn(length = 255)
+    private String warnPage = "";
+
+    /** disallow 操作用的自定义阻止文案；留空 = 使用说明。 */
+    @DbColumn(length = 255)
+    private String disallowMessage = "";
+
+    /** disallow 的备用信息页标题（文案为空时读取页面正文）。 */
+    @DbColumn(length = 255)
+    private String disallowPage = "";
+
+    /** 封禁时是否同时禁止编辑讨论页（当前 core 封禁桥不接收该参数，仅保存配置）。 */
+    @DbColumn
+    private Boolean blockTalk = false;
+
+    /** 匿名用户封禁天数；0 = 不限期。 */
+    @DbColumn
+    private Integer blockAnonDays = 3;
+
+    /** 注册用户封禁天数；0 = 不限期。 */
+    @DbColumn
+    private Integer blockUserDays = 3;
+
     /** 命中次数（累计）。 */
     @DbColumn
     private Integer hits = 0;

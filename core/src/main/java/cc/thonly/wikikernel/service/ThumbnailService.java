@@ -31,6 +31,26 @@ public interface ThumbnailService {
     /** 缩略图是否已存在。 */
     boolean exists(String storedName, String variant);
 
+    /**
+     * 按请求宽度按需生成 WebP（thumb.php 用）：
+     * 宽度不会超过原图（不放大），结果缓存在 {@code thumbnail/<storedName>/w<width>.webp}。
+     * 队列上限来自 {@code wikikernel.thumbnail.queue-limit}，满了会阻塞当前请求线程。
+     *
+     * @return 生成文件或原图路径；无法处理时为空
+     */
+    Optional<Path> ensureWidth(WikiFile file, int requestedWidth);
+
+    /**
+     * 对任意本地图片按宽度生成 WebP（离线导出等场景用；不放大，保持比例）。
+     * 结果缓存在 {@code thumbnail/offline/}，不会影响上传文件的 half/quarter 变体。
+     *
+     * @param source         本地图片文件
+     * @param cacheKey       稳定的缓存键（通常用原始 URL / 文件名）
+     * @param requestedWidth 目标宽度；<=0 表示使用原图宽度
+     * @return 生成的 WebP 文件；ImageMagick 不可用或源图无法识别时为空
+     */
+    Optional<Path> ensureWidth(Path source, String cacheKey, int requestedWidth);
+
     /** 缩略图访问 URL（不检查是否存在）。 */
     String url(String storedName, String variant);
 
