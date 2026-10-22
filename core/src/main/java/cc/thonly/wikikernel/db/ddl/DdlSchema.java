@@ -238,13 +238,20 @@ public final class DdlSchema {
             }
         }
         if (table.primaryKey() != null && !primaryKeyInline) {
-            definitions.add("PRIMARY KEY (" + table.primaryKey() + ")");
+            definitions.add("PRIMARY KEY (" + columnName(dialect, table.primaryKey()) + ")");
         }
-        return "CREATE TABLE " + table.name() + " (" + String.join(", ", definitions) + ")";
+        String sql = "CREATE TABLE " + table.name() + " (" + String.join(", ", definitions) + ")";
+        // MySQL / MariaDB 的默认字符集可能是 latin1 / utf8mb3。插件里有 emoji 默认值
+        // （WikiGift.icon = 🎁）和中文默认值，必须显式使用 utf8mb4，否则会报
+        // Invalid default value for 'icon'。
+        if (dialect == Dialect.MYSQL) {
+            sql += " DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        }
+        return sql;
     }
 
     private static String columnDefinition(Dialect dialect, Column column) {
-        StringBuilder definition = new StringBuilder(column.name())
+        StringBuilder definition = new StringBuilder(columnName(dialect, column.name()))
                 .append(' ').append(sqlType(dialect, column));
         if (column.identity()) {
             definition.append(dialect.identityClause());
@@ -252,12 +259,56 @@ public final class DdlSchema {
             definition.append(" NOT NULL");
         }
         if (!column.defaultValue().isBlank()) {
-            definition.append(" DEFAULT ").append(column.defaultValue());
+            definition.append(" DEFAULT ").append(defaultSql(column));
         }
         if (column.unique()) {
             definition.append(" UNIQUE");
         }
         return definition.toString();
+    }
+
+    /**
+     * 列名引用：MySQL / MariaDB 统一用反引号，避免 {@code read}、{@code year} 等保留字冲突；
+     * SQLite / H2 保持不加引号，避免 H2 把带引号的小写列名当成大小写敏感标识符。
+     */
+    private static String columnName(Dialect dialect, String name) {
+        if (dialect == Dialect.MYSQL) {
+            return "`" + name.replace("`", "``") + "`";
+        }
+        return name;
+    }
+
+    /**
+     * DEFAULT 字面量：字符串 / 枚举列必须加引号。
+     * <p>
+     * 例如 {@code WikiFile.license} 的默认值是「共用领域协议」；SQLite 能容忍裸字符串，
+     * 但 MySQL / MariaDB 会把它当成标识符，在 {@code CREATE TABLE ... DEFAULT 共用领域协议}
+     * 处直接报 1064。数值 / 布尔默认值（{@code 0}、{@code TRUE}）保持不引号；
+     * 已经写成 {@code '🎁'} 的默认值保持原样。
+     */
+    private static String defaultSql(Column column) {
+        String value = column.defaultValue().trim();
+        if (value.isEmpty()) {
+            return value;
+        }
+        if (!isStringColumn(column) || isQuotedLiteral(value)) {
+            return value;
+        }
+        return "'" + value.replace("'", "''") + "'";
+    }
+
+    private static boolean isStringColumn(Column column) {
+        Class<?> type = column.javaType();
+        if (type == String.class || (type != null && type.isEnum())) {
+            return true;
+        }
+        return column.dbType() == DbType.VARCHAR
+                || column.dbType() == DbType.TEXT
+                || column.dbType() == DbType.LONGTEXT;
+    }
+
+    private static boolean isQuotedLiteral(String value) {
+        return value.length() >= 2 && value.startsWith("'") && value.endsWith("'");
     }
 
     /**
@@ -274,10 +325,11 @@ public final class DdlSchema {
                 continue;
             }
             StringBuilder sql = new StringBuilder("ALTER TABLE ").append(actualTableName)
-                    .append(" ADD COLUMN ").append(column.name()).append(' ').append(sqlType(dialect, column));
+                    .append(" ADD COLUMN ").append(columnName(dialect, column.name()))
+                    .append(' ').append(sqlType(dialect, column));
             String note = null;
             if (!column.defaultValue().isBlank()) {
-                sql.append(" DEFAULT ").append(column.defaultValue());
+                sql.append(" DEFAULT ").append(defaultSql(column));
                 if (column.notNull()) {
                     sql.append(" NOT NULL");
                 }
@@ -298,11 +350,19 @@ public final class DdlSchema {
 
     // ==================== JDBC 元数据 ====================
 
-    /** 数据库里已有的表：小写表名 → 实际表名。 */
+    /**
+     * 数据库里已有的表：小写表名 → 实际表名。
+     * <p>
+     * 必须限定当前 catalog / schema：MySQL 的 {@code getTables(null, null, "%", ...)}
+     * 会返回同一实例中**其它数据库**的同名表，导致 Auto-DDL 误以为表已存在而跳过建表。
+     */
     public static Map<String, String> existingTables(DatabaseMetaData metaData) throws SQLException {
         Map<String, String> tables = new LinkedHashMap<>();
+        String catalog = currentCatalog(metaData);
+        String schema = currentSchema(metaData);
         // H2 2.x 的表类型是 BASE TABLE，MySQL/SQLite 是 TABLE
-        try (ResultSet resultSet = metaData.getTables(null, null, "%", new String[]{"TABLE", "BASE TABLE"})) {
+        try (ResultSet resultSet = metaData.getTables(catalog, schema, "%",
+                new String[]{"TABLE", "BASE TABLE"})) {
             while (resultSet.next()) {
                 String name = resultSet.getString("TABLE_NAME");
                 tables.put(name.toLowerCase(Locale.ROOT), name);
@@ -311,14 +371,31 @@ public final class DdlSchema {
         return tables;
     }
 
-    /** 已有表的列名（小写）。 */
+    /** 已有表的列名（小写）。同样限定当前 catalog / schema。 */
     public static Set<String> existingColumns(DatabaseMetaData metaData, String tableName) throws SQLException {
         Set<String> columns = new HashSet<>();
-        try (ResultSet resultSet = metaData.getColumns(null, null, tableName, "%")) {
+        try (ResultSet resultSet = metaData.getColumns(currentCatalog(metaData),
+                currentSchema(metaData), tableName, "%")) {
             while (resultSet.next()) {
                 columns.add(resultSet.getString("COLUMN_NAME").toLowerCase(Locale.ROOT));
             }
         }
         return columns;
+    }
+
+    private static String currentCatalog(DatabaseMetaData metaData) {
+        try {
+            return metaData.getConnection().getCatalog();
+        } catch (SQLException | RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static String currentSchema(DatabaseMetaData metaData) {
+        try {
+            return metaData.getConnection().getSchema();
+        } catch (SQLException | RuntimeException ignored) {
+            return null;
+        }
     }
 }

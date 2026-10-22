@@ -19,6 +19,8 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * 旧数据迁移：把「一行 = 一个页面，正文在 wiki_page.content」的旧结构，
@@ -146,11 +148,11 @@ public class LegacyWikiPageMigration implements ApplicationRunner {
         }
     }
 
-    /** 用「空查询」探测列是否存在（跨 SQLite / MySQL / H2 都可用）。 */
+    /** 用 JDBC 元数据探测列，避免故意查询不存在的列让 MariaDB 驱动记一条 1054 错误。 */
     private boolean hasColumn(Connection connection, String table, String column) {
-        try (Statement statement = connection.createStatement()) {
-            statement.executeQuery("SELECT " + column + " FROM " + table + " WHERE 1 = 0").close();
-            return true;
+        try {
+            Set<String> columns = DdlSchema.existingColumns(connection.getMetaData(), table);
+            return columns.contains(column.toLowerCase(Locale.ROOT));
         } catch (SQLException e) {
             return false;
         }

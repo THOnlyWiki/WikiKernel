@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -29,7 +30,7 @@ public class EchoNotificationStoreJdbc {
     public long insert(WikiNotification notification) {
         long id = database.insert("INSERT INTO wiki_notification"
                         + "(recipient_user_id, type, actor_user_id, page_title, revision_id, comment,"
-                        + " `read`, read_at, create_at, need_render, context_text)"
+                        + " " + readColumn() + ", read_at, create_at, need_render, context_text)"
                         + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 notification.getRecipientUserId(), notification.getType(), notification.getActorUserId(),
                 notification.getPageTitle(), notification.getRevisionId(), notification.getComment(),
@@ -47,7 +48,7 @@ public class EchoNotificationStoreJdbc {
     /** 未读通知数（可按类型集合过滤；null / 空 = 全部）。 */
     public long unreadCount(long recipientUserId, java.util.Collection<String> types) {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total FROM wiki_notification"
-                + " WHERE recipient_user_id = ? AND `read` = ?");
+                + " WHERE recipient_user_id = ? AND " + readColumn() + " = ?");
         List<Object> args = new ArrayList<>();
         args.add(recipientUserId);
         args.add(false);
@@ -131,8 +132,8 @@ public class EchoNotificationStoreJdbc {
 
     /** 标记一条为已读（仅收件人本人可标）。 */
     public boolean markRead(long id, long recipientUserId) {
-        int updated = database.update("UPDATE wiki_notification SET `read` = ?, read_at = ?"
-                        + " WHERE id = ? AND recipient_user_id = ? AND `read` = ?",
+        int updated = database.update("UPDATE wiki_notification SET " + readColumn() + " = ?, read_at = ?"
+                        + " WHERE id = ? AND recipient_user_id = ? AND " + readColumn() + " = ?",
                 true, LocalDateTime.now(), id, recipientUserId, false);
         return updated > 0;
     }
@@ -144,8 +145,8 @@ public class EchoNotificationStoreJdbc {
 
     /** 标记某收件人某组类型为已读（types 为空 = 全部）。 */
     public void markAllRead(long recipientUserId, java.util.Collection<String> types) {
-        StringBuilder sql = new StringBuilder("UPDATE wiki_notification SET `read` = ?, read_at = ?"
-                + " WHERE recipient_user_id = ? AND `read` = ?");
+        StringBuilder sql = new StringBuilder("UPDATE wiki_notification SET " + readColumn() + " = ?, read_at = ?"
+                + " WHERE recipient_user_id = ? AND " + readColumn() + " = ?");
         List<Object> args = new ArrayList<>();
         args.add(true);
         args.add(LocalDateTime.now());
@@ -153,6 +154,18 @@ public class EchoNotificationStoreJdbc {
         args.add(false);
         appendTypes(sql, args, types);
         database.update(sql.toString(), args.toArray());
+    }
+
+    /**
+     * {@code read} 是 MySQL / MariaDB 保留字，用反引号；H2 的未加引号列会折叠成大写
+     * {@code READ}，这里也必须用未加引号标识符，不能写小写双引号。SQLite 两种写法均可。
+     */
+    private String readColumn() {
+        String product = database.databaseProductName().toLowerCase(Locale.ROOT);
+        if (product.contains("mysql") || product.contains("mariadb")) {
+            return "`read`";
+        }
+        return "read";
     }
 
     // ==================== 行 → 实体 ====================

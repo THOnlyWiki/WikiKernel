@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -29,7 +30,8 @@ public class MessageStoreJdbc implements MessageStore {
     @Override
     public WikiMessage insert(WikiMessage message) {
         long id = database.insert("INSERT INTO wiki_message"
-                        + "(from_user_id, to_user_id, content, read, read_at, from_deleted, to_deleted, create_at)"
+                        + "(from_user_id, to_user_id, content, " + readColumn()
+                        + ", read_at, from_deleted, to_deleted, create_at)"
                         + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 message.getFromUserId(), message.getToUserId(), text(message.getContent()),
                 flag(message.getRead()), message.getReadAt(), flag(message.getFromDeleted()),
@@ -52,7 +54,7 @@ public class MessageStoreJdbc implements MessageStore {
         add(assignments, args, "from_user_id", message.getFromUserId());
         add(assignments, args, "to_user_id", message.getToUserId());
         add(assignments, args, "content", message.getContent());
-        add(assignments, args, "read", message.getRead());
+        add(assignments, args, readColumn(), message.getRead());
         add(assignments, args, "read_at", message.getReadAt());
         add(assignments, args, "from_deleted", message.getFromDeleted());
         add(assignments, args, "to_deleted", message.getToDeleted());
@@ -103,7 +105,7 @@ public class MessageStoreJdbc implements MessageStore {
     @Override
     public long unreadCount(long userId) {
         return database.queryOne("SELECT COUNT(*) AS total FROM wiki_message"
-                        + " WHERE to_user_id = ? AND to_deleted = ? AND read = ?",
+                        + " WHERE to_user_id = ? AND to_deleted = ? AND " + readColumn() + " = ?",
                 userId, false, false)
                 .map(row -> row.longValue("total", 0L))
                 .orElse(0L);
@@ -134,6 +136,15 @@ public class MessageStoreJdbc implements MessageStore {
     }
 
     // ==================== 小工具 ====================
+
+    /** {@code read} 是 MySQL / MariaDB 保留字；H2 未引号列名为大写 READ，不能加小写双引号。 */
+    private String readColumn() {
+        String product = database.databaseProductName().toLowerCase(Locale.ROOT);
+        if (product.contains("mysql") || product.contains("mariadb")) {
+            return "`read`";
+        }
+        return "read";
+    }
 
     /** {@code LIMIT n}（{@code limit <= 0} 时不限制；n 是内部 int，不来自用户输入）。 */
     private static String limitClause(int limit) {

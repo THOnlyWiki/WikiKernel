@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.service.impl;
 
 import cc.thonly.wikikernel.common.service.DbRow;
 import cc.thonly.wikikernel.common.service.PluginDatabase;
+import cc.thonly.wikikernel.db.ddl.DdlSchema;
 import org.springframework.jdbc.core.ColumnMapRowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -10,8 +11,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +37,24 @@ public class PluginDatabaseImpl implements PluginDatabase {
     public PluginDatabaseImpl(DataSource dataSource, PlatformTransactionManager transactionManager) {
         this.jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
         this.transactions = new TransactionTemplate(transactionManager);
+    }
+
+    @Override
+    public String databaseProductName() {
+        try (Connection connection = jdbc.getDataSource().getConnection()) {
+            return connection.getMetaData().getDatabaseProductName();
+        } catch (SQLException exception) {
+            return "unknown";
+        }
+    }
+
+    @Override
+    public List<String> tableNames() {
+        try (Connection connection = jdbc.getDataSource().getConnection()) {
+            return new ArrayList<>(DdlSchema.existingTables(connection.getMetaData()).keySet());
+        } catch (SQLException exception) {
+            throw new IllegalStateException("读取数据库表名失败", exception);
+        }
     }
 
     @Override

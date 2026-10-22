@@ -32,6 +32,21 @@ import java.util.function.Supplier;
 public interface PluginDatabase {
 
     /**
+     * 当前 JDBC 数据库产品名（如 {@code SQLite} / {@code MySQL} / {@code MariaDB} / {@code H2}）。
+     * <p>
+     * 插件只有在确实需要方言差异时才使用它；普通 SQL 应尽量保持可移植。
+     */
+    String databaseProductName();
+
+    /**
+     * 当前 schema 下的用户表名（小写，不含数据库系统表）。
+     * <p>
+     * 用于插件自己的「按年份分表」之类的表发现，避免直接查询 {@code sqlite_master}、
+     * {@code information_schema} 等某一数据库特有的系统表。
+     */
+    List<String> tableNames();
+
+    /**
      * 执行 INSERT / UPDATE / DELETE。
      *
      * @param sql  SQL（{@code ?} 占位符）
