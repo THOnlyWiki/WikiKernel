@@ -20,7 +20,7 @@ import java.util.Map;
  * <pre>
  * wikikernel:
  *   database:
- *     type: mysql        # sqlite | mysql | h2
+ *     type: mysql        # sqlite | mysql | mariadb | h2
  *     host: 127.0.0.1
  *     port: 3306
  *     name: wikikernel
@@ -63,10 +63,12 @@ public class LocalSettingsEnvironmentPostProcessor implements EnvironmentPostPro
         Map<String, Object> values = new LinkedHashMap<>();
         switch (type) {
             case "sqlite" -> sqlite(environment, values);
-            case "mysql" -> mysql(environment, values);
+            case "mysql" -> mysql(environment, values, false);
+            case "mariadb" -> mysql(environment, values, true);
             case "h2" -> h2(environment, values);
             default -> throw new IllegalStateException(
-                    "不支持的数据库类型 wikikernel.database.type=" + type + "（可选 sqlite / mysql / h2）");
+                    "不支持的数据库类型 wikikernel.database.type=" + type
+                            + "（可选 sqlite / mysql / mariadb / h2）");
         }
         return values;
     }
@@ -91,14 +93,25 @@ public class LocalSettingsEnvironmentPostProcessor implements EnvironmentPostPro
         values.put("spring.datasource.hikari.maximum-pool-size", poolSize(environment, 10));
     }
 
-    private void mysql(ConfigurableEnvironment environment, Map<String, Object> values) {
+    /**
+     * MySQL / MariaDB 共用配置。两者协议兼容，但驱动类名和 JDBC URL 前缀不同：
+     * MariaDB 使用原生 {@code jdbc:mariadb:}（避免 classpath 同时存在两种驱动时选错），
+     * 连接参数按 MariaDB Connector/J 的 {@code sslMode} 写法。
+     */
+    private void mysql(ConfigurableEnvironment environment, Map<String, Object> values, boolean mariadb) {
         String host = environment.getProperty(PREFIX + "host", "localhost").trim();
         String port = environment.getProperty(PREFIX + "port", "3306").trim();
         String name = environment.getProperty(PREFIX + "name", "wikikernel").trim();
-        values.put(DATASOURCE_URL, "jdbc:mysql://" + host + ":" + port + "/" + name
-                + "?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=UTC"
-                + "&useSSL=false&allowPublicKeyRetrieval=true");
-        values.put("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
+        if (mariadb) {
+            values.put(DATASOURCE_URL, "jdbc:mariadb://" + host + ":" + port + "/" + name
+                    + "?sslMode=disable&allowPublicKeyRetrieval=true");
+            values.put("spring.datasource.driver-class-name", "org.mariadb.jdbc.Driver");
+        } else {
+            values.put(DATASOURCE_URL, "jdbc:mysql://" + host + ":" + port + "/" + name
+                    + "?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=UTC"
+                    + "&useSSL=false&allowPublicKeyRetrieval=true");
+            values.put("spring.datasource.driver-class-name", "com.mysql.cj.jdbc.Driver");
+        }
         values.put("spring.datasource.username", environment.getProperty(PREFIX + "user", "root"));
         values.put("spring.datasource.password", environment.getProperty(PREFIX + "password", ""));
         values.put("spring.datasource.hikari.maximum-pool-size", poolSize(environment, 10));

@@ -28,7 +28,7 @@ public class SearchService {
         if (Strings.isBlank(keyword)) {
             return List.of();
         }
-        int max = limit > 0 ? limit : 20;
+        int max = limit > 0 ? Math.min(limit, 100) : 20;
         List<SearchHit> hits = new ArrayList<>();
         for (SearchProvider provider : coreProviders) {
             hits.addAll(provider.search(keyword, max));

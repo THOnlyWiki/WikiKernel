@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+}
+
+description = '路由反向代理：管理员动态配置 /proxy_<slug>/ 前缀，代理到指定网站；默认不透传 Wiki Cookie，支持响应 URL 改写。'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.slf4j:slf4j-api'
+    // 插件 jar 不打包这些依赖；运行时由 core 的父类加载器提供
+    compileOnly 'tools.jackson.core:jackson-databind'
+    compileOnly 'org.jsoup:jsoup:1.17.2'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    testImplementation 'tools.jackson.core:jackson-databind'
+    testImplementation 'org.jsoup:jsoup:1.17.2'
+    testImplementation 'org.thymeleaf:thymeleaf-spring6'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}

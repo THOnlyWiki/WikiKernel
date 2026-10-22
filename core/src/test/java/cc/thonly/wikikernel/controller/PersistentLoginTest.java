@@ -64,7 +64,8 @@ class PersistentLoginTest {
         assertEquals(cookie.getValue().split(":")[0], token.getSelector());
         assertTrue(cookie.getValue().indexOf(':') > 0);
         assertTrue(!token.getValidatorHash().contains(cookie.getValue().split(":")[1]));
-        assertNull(token.getExpiresAt(), "默认永不过期");
+        assertNotNull(token.getExpiresAt(), "默认应设置有限有效期（30 天）");
+        assertTrue(token.getExpiresAt().isAfter(java.time.LocalDateTime.now()), "令牌尚未过期");
 
         // 只带 Token、没有 Session（等价于服务重启后第一次访问）→ 自动登录
         mockMvc.perform(get("/wiki/{title}", "特殊:版本").cookie(cookie))

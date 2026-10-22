@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
 @RequestMapping("/api/setup")
 public class SetupApiController {
 
-    private static final Set<String> DATABASE_TYPES = Set.of("sqlite", "h2", "mysql");
+    private static final Set<String> DATABASE_TYPES = Set.of("sqlite", "h2", "mysql", "mariadb");
     /** 页面正文缓存后端（与 {@code cache.page.backend} 同一个枚举集合）。 */
     private static final Set<String> CACHE_BACKENDS = Set.of("auto", "redis", "memory", "none");
     private static final String CACHE_BACKEND_DEFAULT = "auto";
@@ -142,10 +142,10 @@ public class SetupApiController {
         }
         String dbFile = Strings.trimToEmpty(params.get("databaseFile"));
         String dbPort = Strings.trimToEmpty(params.get("port"));
-        if (withDatabase && !"mysql".equals(dbType) && dbFile.isEmpty()) {
+        if (withDatabase && !isNetworkDatabase(dbType) && dbFile.isEmpty()) {
             return error("setup.dbFileRequired");
         }
-        if (withDatabase && "mysql".equals(dbType) && !validPort(dbPort)) {
+        if (withDatabase && isNetworkDatabase(dbType) && !validPort(dbPort)) {
             return error("setup.invalidPort");
         }
         String adminUsername = Strings.trimToEmpty(params.get("adminUsername"));
@@ -326,6 +326,11 @@ public class SetupApiController {
 
     private AjaxResult<Void> error(String key) {
         return AjaxResult.error(AjaxCode.BAD_REQUEST, message(key));
+    }
+
+    /** MySQL / MariaDB 都使用 host/port/name/user/password 这组字段，而不是本地文件。 */
+    private static boolean isNetworkDatabase(String type) {
+        return "mysql".equals(type) || "mariadb".equals(type);
     }
 
     private static boolean validPort(String value) {

@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageCategories;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
+import cc.thonly.wikikernel.web.SafeReturnTo;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -74,16 +75,6 @@ public class ChangePasswordSpecialPage implements SpecialPage {
      * 以 {@code /} 开头且不是 {@code //host} 的路径，或者没带协议前缀的纯标题。
      */
     static String safeReturnto(String value) {
-        String candidate = value == null ? "" : value.trim();
-        if (candidate.isEmpty() || candidate.length() > 512) {
-            return DEFAULT_RETURNTO;
-        }
-        if (candidate.startsWith("/") && !candidate.startsWith("//")) {
-            return candidate;
-        }
-        if (candidate.contains("://") || candidate.startsWith("//")) {
-            return DEFAULT_RETURNTO;
-        }
-        return "/wiki/" + candidate;
+        return SafeReturnTo.titleOrPath(value, "/wiki/" + DEFAULT_RETURNTO);
     }
 }

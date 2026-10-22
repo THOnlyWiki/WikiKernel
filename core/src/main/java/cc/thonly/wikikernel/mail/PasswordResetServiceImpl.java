@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiEmailToken;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.MailProperties;
+import cc.thonly.wikikernel.service.LoginTokenService;
 import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.UserService;
 import org.springframework.context.MessageSource;
@@ -28,6 +29,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final MailService mailService;
     private final EmailTokenService emailTokenService;
     private final UserService userService;
+    private final LoginTokenService loginTokenService;
     private final MailProperties mailProperties;
     private final MessageSource messageSource;
     private final SiteNameService siteNameService;
@@ -35,12 +37,14 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     public PasswordResetServiceImpl(MailService mailService,
                                     EmailTokenService emailTokenService,
                                     UserService userService,
+                                    LoginTokenService loginTokenService,
                                     MailProperties mailProperties,
                                     MessageSource messageSource,
                                     SiteNameService siteNameService) {
         this.mailService = mailService;
         this.emailTokenService = emailTokenService;
         this.userService = userService;
+        this.loginTokenService = loginTokenService;
         this.mailProperties = mailProperties;
         this.messageSource = messageSource;
         this.siteNameService = siteNameService;
@@ -111,6 +115,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         if (!userService.updatePassword(user.getId(), newPassword)) {
             return Result.INVALID;
         }
+        loginTokenService.revokeAll(user.getId());
         emailTokenService.consume(token);
         return Result.OK;
     }

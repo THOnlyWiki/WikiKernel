@@ -72,14 +72,20 @@ public class LoginTokenServiceImpl implements LoginTokenService {
         if (token == null) {
             return Optional.empty();
         }
-        if (token.getExpiresAt() != null && token.getExpiresAt().isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now();
+        // 旧版本默认“永不过期”（expiresAt=null）；启用有限有效期后，给旧令牌补上期限，
+        // 避免历史令牌永远有效。
+        if (token.getExpiresAt() == null && properties.getTokenExpireDays() > 0) {
+            token.setExpiresAt(now.plusDays(properties.getTokenExpireDays()));
+        }
+        if (token.getExpiresAt() != null && token.getExpiresAt().isBefore(now)) {
             tokenMapper.deleteById(token.getId());
             return Optional.empty();
         }
         if (!constantTimeEquals(sha256(validator), token.getValidatorHash())) {
             return Optional.empty();
         }
-        token.setLastUsedAt(LocalDateTime.now());
+        token.setLastUsedAt(now);
         tokenMapper.updateById(token);
         return Optional.ofNullable(userMapper.selectById(token.getUserId()));
     }
@@ -95,6 +101,14 @@ public class LoginTokenServiceImpl implements LoginTokenService {
                 .last("LIMIT 1"));
         if (token != null) {
             tokenMapper.deleteById(token.getId());
+        }
+    }
+
+    @Override
+    public void revokeAll(long userId) {
+        if (userId > 0) {
+            tokenMapper.delete(Wrappers.<WikiLoginToken>lambdaQuery()
+                    .eq(WikiLoginToken::getUserId, userId));
         }
     }
 

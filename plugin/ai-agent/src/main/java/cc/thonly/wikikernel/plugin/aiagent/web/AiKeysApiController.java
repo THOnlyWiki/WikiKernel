@@ -9,6 +9,7 @@ import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentSupport;
 import cc.thonly.wikikernel.plugin.aiagent.model.AiVendorCatalog;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiProviderRegistry;
+import cc.thonly.wikikernel.plugin.aiagent.service.AiUrlPolicy;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -77,6 +78,10 @@ public class AiKeysApiController {
         String baseValue = baseUrl == null ? null : baseUrl.trim();
         String modelValue = model == null ? null : model.trim();
         String proxyValue = proxy == null ? null : proxy.trim();
+        if (!siteScope && baseValue != null && !baseValue.isBlank()
+                && !AiUrlPolicy.isPublicHttpUrl(baseValue)) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST, message("aiAgent.keys.baseUrlPrivate"));
+        }
 
         if (siteScope) {
             aiConfig.saveSite(vendorId, key, baseValue, modelValue, proxyValue, clearKey);

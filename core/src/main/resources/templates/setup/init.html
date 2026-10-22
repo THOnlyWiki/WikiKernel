@@ -73,29 +73,30 @@
                     <option value="sqlite" th:text="#{setup.db.sqlite}">SQLite</option>
                     <option value="h2" th:text="#{setup.db.h2}">H2</option>
                     <option value="mysql" th:text="#{setup.db.mysql}">MySQL</option>
+                    <option value="mariadb" th:text="#{setup.db.mariadb}">MariaDB</option>
                 </select>
             </div>
             <div class="form-field" data-db="sqlite h2">
                 <label for="setup-db-file" th:text="#{setup.db.file}">数据文件路径：</label>
                 <input type="text" id="setup-db-file" name="databaseFile" value="./data/wiki.db">
             </div>
-            <div class="form-field" data-db="mysql">
+            <div class="form-field" data-db="mysql mariadb">
                 <label for="setup-db-host" th:text="#{setup.db.host}">主机：</label>
                 <input type="text" id="setup-db-host" name="host" value="127.0.0.1">
             </div>
-            <div class="form-field" data-db="mysql">
+            <div class="form-field" data-db="mysql mariadb">
                 <label for="setup-db-port" th:text="#{setup.db.port}">端口：</label>
                 <input type="number" id="setup-db-port" name="port" value="3306" min="1" max="65535">
             </div>
-            <div class="form-field" data-db="mysql">
+            <div class="form-field" data-db="mysql mariadb">
                 <label for="setup-db-name" th:text="#{setup.db.name}">数据库名：</label>
                 <input type="text" id="setup-db-name" name="name" value="wikikernel">
             </div>
-            <div class="form-field" data-db="mysql">
+            <div class="form-field" data-db="mysql mariadb">
                 <label for="setup-db-user" th:text="#{setup.db.user}">用户名：</label>
                 <input type="text" id="setup-db-user" name="user" value="root">
             </div>
-            <div class="form-field" data-db="mysql">
+            <div class="form-field" data-db="mysql mariadb">
                 <label for="setup-db-password" th:text="#{setup.db.password}">密码：</label>
                 <input type="password" id="setup-db-password" name="password">
             </div>

@@ -28,7 +28,7 @@ import java.util.Set;
 /**
  * 插件自有表的 Auto-DDL：插件在 {@code WikiPlugin.schemaEntities()} 里声明自己的
  * {@code @TableName} 实体，core 在插件启动（{@code onStart} 之前）按与 core 相同的规则
- * 建表 / 补列（{@link DdlSchema}，支持 SQLite / MySQL / H2，只增不减）。
+ * 建表 / 补列（{@link DdlSchema}，支持 SQLite / MySQL / MariaDB / H2，只增不减）。
  * <p>
  * 这样<b>插件的数据表与实体都属于插件自己</b>（不再往 {@code common.data} 里塞插件专属实体），
  * 数据访问用 {@link PluginDatabase}（JDBC 桥），

@@ -188,7 +188,209 @@
         cm.showHint({ hint: hint, completeSingle: false });
     };
 
+    var SEARCH_MATCH_LIMIT = 500;
+
+    /**
+     * 编辑器内查找：CodeMirror 默认没有 Ctrl+F；这里提供一个轻量的源代码查找条。
+     * 支持 Ctrl+F / Cmd+F 打开、Enter 下一个、Shift+Enter 上一个、Esc 关闭。
+     * 不依赖额外的 CodeMirror addon，预览区同样可用。
+     */
+    function installSearch(cm) {
+        var wrapper = cm.getWrapperElement();
+        var existing = wrapper.querySelector('.wiki-code-search');
+        if (existing) {
+            existing.hidden = false;
+            var existingInput = existing.querySelector('input');
+            existingInput.focus();
+            existingInput.select();
+            return;
+        }
+
+        var bar = document.createElement('div');
+        bar.className = 'wiki-code-search';
+        bar.hidden = false;
+
+        var input = document.createElement('input');
+        input.type = 'search';
+        input.placeholder = '查找源代码…';
+        input.setAttribute('aria-label', '查找源代码');
+
+        var count = document.createElement('span');
+        count.className = 'wiki-code-search-count';
+        count.setAttribute('aria-live', 'polite');
+
+        var prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'wiki-code-search-button';
+        prev.title = '上一个（Shift+Enter）';
+        prev.textContent = '↑';
+
+        var next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'wiki-code-search-button';
+        next.title = '下一个（Enter）';
+        next.textContent = '↓';
+
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'wiki-code-search-button';
+        close.title = '关闭（Esc）';
+        close.textContent = '×';
+
+        bar.appendChild(input);
+        bar.appendChild(count);
+        bar.appendChild(prev);
+        bar.appendChild(next);
+        bar.appendChild(close);
+        wrapper.appendChild(bar);
+
+        var marks = [];
+        var matches = [];
+        var current = -1;
+
+        function clearMarks() {
+            marks.forEach(function (mark) {
+                mark.clear();
+            });
+            marks = [];
+            matches = [];
+            current = -1;
+        }
+
+        function updateCount(limited) {
+            count.textContent = matches.length
+                ? ((current >= 0 ? current + 1 : 0) + '/' + matches.length + (limited ? '+' : ''))
+                : '0';
+        }
+
+        function select(index, keepInputFocus) {
+            if (!matches.length) {
+                current = -1;
+                updateCount(false);
+                return;
+            }
+            current = (index % matches.length + matches.length) % matches.length;
+            var match = matches[current];
+            var from = cm.posFromIndex(match.start);
+            var to = cm.posFromIndex(match.end);
+            cm.setSelection(from, to);
+            cm.scrollIntoView({ from: from, to: to }, 80);
+            updateCount(match.limited);
+            if (keepInputFocus) {
+                input.focus();
+            }
+        }
+
+        function refresh(keepCurrent) {
+            var query = input.value;
+            clearMarks();
+            if (!query) {
+                updateCount(false);
+                return;
+            }
+            var value = cm.getValue();
+            var haystack = value.toLowerCase();
+            var needle = query.toLowerCase();
+            var start = 0;
+            var limited = false;
+            while (start <= haystack.length - needle.length) {
+                var found = haystack.indexOf(needle, start);
+                if (found < 0) {
+                    break;
+                }
+                if (matches.length >= SEARCH_MATCH_LIMIT) {
+                    limited = true;
+                    break;
+                }
+                var end = found + needle.length;
+                matches.push({ start: found, end: end, limited: limited });
+                marks.push(cm.markText(cm.posFromIndex(found), cm.posFromIndex(end), {
+                    className: 'wiki-search-match'
+                }));
+                start = end;
+            }
+            if (!matches.length) {
+                current = -1;
+                updateCount(limited);
+                return;
+            }
+            if (keepCurrent && current >= 0) {
+                select(Math.min(current, matches.length - 1), true);
+            } else {
+                select(0, true);
+            }
+            if (limited) {
+                count.textContent = matches.length + '+ 条匹配';
+            }
+        }
+
+        function step(delta) {
+            if (!matches.length) {
+                return;
+            }
+            select(current + delta, true);
+        }
+
+        function closeSearch() {
+            clearMarks();
+            bar.hidden = true;
+            cm.focus();
+        }
+
+        input.addEventListener('input', function () {
+            refresh(false);
+        });
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeSearch();
+                return;
+            }
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                step(event.shiftKey ? -1 : 1);
+            }
+        });
+        prev.addEventListener('click', function () {
+            step(-1);
+            input.focus();
+        });
+        next.addEventListener('click', function () {
+            step(1);
+            input.focus();
+        });
+        close.addEventListener('click', closeSearch);
+        bar.addEventListener('mousedown', function (event) {
+            event.stopPropagation();
+        });
+        cm.on('change', function () {
+            if (!bar.hidden) {
+                refresh(true);
+            }
+        });
+
+        input.value = cm.getSelection() || '';
+        refresh(false);
+        input.focus();
+        input.select();
+    }
+
+    CodeMirror.commands.wikiCodeFind = function (cm) {
+        installSearch(cm);
+        return true;
+    };
+
     function commonOptions(mode, readOnly) {
+        var extraKeys = {
+            'Ctrl-F': 'wikiCodeFind',
+            'Cmd-F': 'wikiCodeFind'
+        };
+        if (!readOnly) {
+            extraKeys['Ctrl-Space'] = 'wikiAutocomplete';
+            extraKeys.Tab = function (cm) {
+                cm.replaceSelection('  ', 'end');
+            };
+        }
         return {
             mode: mode,
             lineNumbers: true,
@@ -198,12 +400,7 @@
             readOnly: readOnly,
             matchBrackets: true,
             autoCloseBrackets: !readOnly,
-            extraKeys: readOnly ? {} : {
-                'Ctrl-Space': 'wikiAutocomplete',
-                'Tab': function (cm) {
-                    cm.replaceSelection('  ', 'end');
-                }
-            }
+            extraKeys: extraKeys
         };
     }
 

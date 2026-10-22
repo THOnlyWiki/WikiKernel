@@ -131,12 +131,6 @@ public class AiProviderRegistry {
         AiConfig.Entry yaml = aiConfig.yaml(vendor.id());
 
         String apiKey = firstNonBlank(userEntry.apiKey(), siteEntry.apiKey(), yaml.apiKey());
-        String baseUrl = firstNonBlank(userEntry.baseUrl(), siteEntry.baseUrl(), yaml.baseUrl(), vendor.baseUrl());
-        String model = firstNonBlank(userEntry.model(), siteEntry.model(), yaml.model(), vendor.model());
-        String proxy = firstNonBlank(userEntry.proxy(), siteEntry.proxy(), yaml.proxy(), settings().proxy());
-        // 显示名：yaml 里写死的名字优先（自定义厂商），否则解析插件文案（缺键回退成厂商 id）
-        String label = yaml.label().isBlank() ? vendorLabel(vendor) : yaml.label();
-
         String source;
         if (AiVendorCatalog.MOCK_ID.equals(vendor.id())) {
             source = "mock";
@@ -147,6 +141,23 @@ public class AiProviderRegistry {
         } else {
             source = "yaml";
         }
+
+        // 安全边界：用户级 baseUrl 只在用户自己的密钥生效时使用，避免把站点密钥
+        // 发到用户指定的地址；用户级地址还必须是公网 http(s)（防 SSRF）。
+        String userBaseUrl = userEntry.baseUrl();
+        if (!"user".equals(source)) {
+            userBaseUrl = "";
+        } else if (!userBaseUrl.isBlank() && !AiUrlPolicy.isPublicHttpUrl(userBaseUrl)) {
+            log.warn("忽略用户级 AI 地址（仅允许公网 http/https）: provider={} userId={}",
+                    vendor.id(), userId);
+            userBaseUrl = "";
+        }
+        String baseUrl = firstNonBlank(userBaseUrl, siteEntry.baseUrl(), yaml.baseUrl(), vendor.baseUrl());
+        String model = firstNonBlank(userEntry.model(), siteEntry.model(), yaml.model(), vendor.model());
+        String userProxy = "user".equals(source) ? userEntry.proxy() : "";
+        String proxy = firstNonBlank(userProxy, siteEntry.proxy(), yaml.proxy(), settings().proxy());
+        // 显示名：yaml 里写死的名字优先（自定义厂商），否则解析插件文案（缺键回退成厂商 id）
+        String label = yaml.label().isBlank() ? vendorLabel(vendor) : yaml.label();
 
         boolean available;
         if (AiVendorCatalog.MOCK_ID.equals(vendor.id())) {

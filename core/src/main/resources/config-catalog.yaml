@@ -27,7 +27,7 @@ groups:
   - prefix: wikikernel.database
     comment: |-
       数据库（切换只改这里）。
-      type=sqlite 时用 file 指定数据文件；type=mysql / h2 时用 host / port / name / user / password。
+      type=sqlite 时用 file 指定数据文件；type=mysql / mariadb 时用 host / port / name / user / password；type=h2 用 file。
       这些键由 LocalSettingsEnvironmentPostProcessor 翻译成 Spring 标准的 spring.datasource.*，
       所以它们不出现在 spring-configuration-metadata.json 里（本目录是它们的唯一声明处）。
       password 支持 ${环境变量:默认值} 语法（如 "${MYSQL_PASSWORD:root}"），建议走环境变量。
@@ -35,8 +35,8 @@ groups:
       - key: wikikernel.database.type
         type: string
         default: sqlite
-        enum: [sqlite, mysql, h2]
-        description: 数据库引擎；sqlite（默认，零安装）/ mysql / h2。
+        enum: [sqlite, mysql, mariadb, h2]
+        description: 数据库引擎；sqlite（默认，零安装）/ mysql / mariadb / h2。
       - key: wikikernel.database.file
         type: string
         default: ./data/wiki.db
@@ -48,19 +48,19 @@ groups:
       - key: wikikernel.database.host
         type: string
         default: 127.0.0.1
-        description: type=mysql 时的数据库主机。
+        description: type=mysql / mariadb 时的数据库主机。
       - key: wikikernel.database.port
         type: integer
         default: 3306
-        description: type=mysql 时的数据库端口。
+        description: type=mysql / mariadb 时的数据库端口。
       - key: wikikernel.database.name
         type: string
         default: wikikernel
-        description: type=mysql 时的数据库名。
+        description: type=mysql / mariadb 时的数据库名。
       - key: wikikernel.database.user
         type: string
         default: root
-        description: 数据库用户名（type=mysql 默认 root；type=h2 默认 sa）。
+        description: 数据库用户名（type=mysql / mariadb 默认 root；type=h2 默认 sa）。
       - key: wikikernel.database.password
         type: string
         default: ""
@@ -69,7 +69,7 @@ groups:
       - key: wikikernel.database.pool-size
         type: integer
         default: 10
-        description: 连接池大小（MySQL / H2 生效；SQLite 固定为 1）。
+        description: 连接池大小（MySQL / MariaDB / H2 生效；SQLite 固定为 1）。
 
   # ---------------- 站点信息 ----------------
   - prefix: wikikernel.site
@@ -244,8 +244,8 @@ groups:
     items:
       - key: wikikernel.auth.token-expire-days
         type: integer
-        default: 0
-        description: 令牌有效期（天）；0 = 永不过期（当前默认，浏览器 Cookie 按 10 年设置）。
+        default: 30
+        description: 持久登录令牌有效期（天）；默认 30 天，0 = 永不过期（不推荐）。改密会撤销全部持久令牌。
       - key: wikikernel.auth.token-cookie-name
         type: string
         default: wiki_token
@@ -632,7 +632,7 @@ groups:
         type: string
         default: ""
         secret: true
-        description: SMTP 登录密码 / 授权码（敏感项，不写进生成的文件）。
+        description: SMTP 登录密码 / 授权码（敏感项，不写进生成的文件；生产建议使用环境变量 WIKIKERNEL_EMAIL_PASSWORD）。
       - key: wikikernel.email.auth
         type: boolean
         default: true

@@ -29,7 +29,10 @@
     function returnTarget() {
         var link = document.querySelector('.change-password .auth-subtitle a');
         var href = link ? link.getAttribute('href') : null;
-        if (href && href.indexOf('//') !== 0 && href.indexOf(':') < 0) {
+        if (href && href.indexOf('//') !== 0 && href.indexOf(':') < 0
+                && href.indexOf('\\') < 0
+                && !/[\u0000-\u001f\u007f]/.test(href)
+                && !/%5c|%2f|%0d|%0a|%00|%09/i.test(href)) {
             return href;
         }
         return '/wiki/特殊:参数设置';

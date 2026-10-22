@@ -181,7 +181,7 @@ wikikernel:
 
   # ---------------- 数据库（切换只改这里） ----------------
   database:
-    # sqlite（默认，零安装）| mysql | h2
+    # sqlite（默认，零安装）| mysql | mariadb | h2
     type: sqlite
 
     # type=sqlite 时的数据文件（默认 ./data/wiki.db）
@@ -191,13 +191,13 @@ wikikernel:
     # 启动时根据实体自动建表 / 补字段（类 JPA ddl-auto=update，只增不减）
     auto-ddl: true
 
-    # type=mysql 时使用；支持 ${环境变量:默认值} 语法，密码建议走环境变量
+    # type=mysql / mariadb 时使用；支持 ${环境变量:默认值} 语法，密码建议走环境变量
     host: 127.0.0.1
     port: 3306
     name: wikikernel
     user: root
     password: "${MYSQL_PASSWORD:root}"
-    # 连接池大小（MySQL/H2 生效；SQLite 固定为 1）
+    # 连接池大小（MySQL / MariaDB / H2 生效；SQLite 固定为 1）
     pool-size: 10
 
   # ---------------- 插件（类似 wfLoadExtension） ----------------

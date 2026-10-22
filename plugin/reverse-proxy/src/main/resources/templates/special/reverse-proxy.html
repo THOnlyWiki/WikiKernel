@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<!-- 特殊:反向代理 / Special:ReverseProxy：动态 /proxy_<slug>/ 路由管理页 -->
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section class="reverse-proxy-page">
+    <p class="reverse-proxy-intro" th:text="#{special.reverseProxy.description}">
+        管理员在这里配置 URL 前缀到上游网站的映射。
+    </p>
+
+    <div class="wiki-warning reverse-proxy-warning">
+        <strong th:text="#{reverseProxy.safetyTitle}">安全边界（请先读）</strong>
+        <p th:text="#{reverseProxy.safety}">代理内容会从 Wiki 同源地址提供……</p>
+    </div>
+
+    <p class="wiki-warning" th:if="${reverseProxyFeatureDisabled}"
+       th:text="#{reverseProxy.disabled}">反向代理功能已在站点设置中关闭。</p>
+
+    <p class="wiki-form-error" th:if="${reverseProxyLoginRequired}">
+        <span th:text="#{reverseProxy.loginRequired}">请先登录后再配置反向代理。</span>
+        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:反向代理'})}"
+           th:text="#{source.login}">登录</a>
+    </p>
+
+    <p class="wiki-form-error" th:if="${reverseProxyForbidden}"
+       th:text="#{reverseProxy.forbidden}">只有管理员可以配置反向代理。</p>
+
+    <th:block th:if="${reverseProxyCanManage}">
+        <p class="form-message success" th:if="${reverseProxySaved}"
+           th:text="#{reverseProxy.saved}">路由已保存。</p>
+        <p class="form-message success" th:if="${reverseProxyDeleted}"
+           th:text="#{reverseProxy.deleted}">路由已删除。</p>
+
+        <p class="reverse-proxy-intro" th:text="#{reverseProxy.intro}">
+            路由 URL 固定为 /proxy_&lt;路由名&gt;/。
+        </p>
+
+        <div class="reverse-proxy-table-wrap">
+            <p class="reverse-proxy-empty" th:if="${reverseProxyEmpty}"
+               th:text="#{reverseProxy.empty}">还没有配置任何代理路由。</p>
+            <table class="wikitable reverse-proxy-table" th:unless="${reverseProxyEmpty}">
+                <thead>
+                <tr>
+                    <th th:text="#{reverseProxy.table.route}">路由</th>
+                    <th th:text="#{reverseProxy.table.upstream}">上游</th>
+                    <th th:text="#{reverseProxy.table.access}">访问级别</th>
+                    <th th:text="#{reverseProxy.table.methods}">允许方法</th>
+                    <th th:text="#{reverseProxy.table.status}">状态</th>
+                    <th th:text="#{reverseProxy.table.actions}">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${reverseProxyRoutes}">
+                    <td>
+                        <strong th:text="${row.label}">Google Docs</strong>
+                        <div><code th:text="${row.slug}">google_doc</code></div>
+                        <a th:href="${row.path}" target="_blank" rel="noopener"
+                           th:text="${row.path}">/proxy_google_doc/</a>
+                    </td>
+                    <td class="reverse-proxy-upstream" th:text="${row.upstream}">
+                        https://docs.google.com/
+                    </td>
+                    <td th:text="${row.accessLabel}">管理员</td>
+                    <td><code th:text="${row.methods}">GET,HEAD</code></td>
+                    <td>
+                        <span th:text="${row.statusLabel}"
+                              th:classappend="${row.enabled} ? 'reverse-proxy-status-on' : 'reverse-proxy-status-off'">
+                            已启用
+                        </span>
+                    </td>
+                    <td class="reverse-proxy-actions">
+                        <button type="button" class="wiki-button reverse-proxy-edit"
+                                th:attr="data-slug=${row.slug},
+                                         data-label=${row.label},
+                                         data-upstream=${row.upstream},
+                                         data-access=${row.access},
+                                         data-methods=${row.methods},
+                                         data-timeout=${row.timeoutSeconds},
+                                         data-enabled=${row.enabled},
+                                         data-rewrite-html=${row.rewriteHtml},
+                                         data-sandbox=${row.sandbox},
+                                         data-allow-private=${row.allowPrivateTargets}"
+                                th:text="#{reverseProxy.edit}">编辑</button>
+                        <button type="button" class="wiki-button reverse-proxy-delete"
+                                th:attr="data-slug=${row.slug}"
+                                th:text="#{reverseProxy.delete}">删除</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="reverse-proxy-form-title" th:text="#{reverseProxy.form.title}">新增 / 编辑路由</h2>
+        <form id="reverse-proxy-form" class="wiki-form reverse-proxy-form" method="post"
+              th:action="@{/api/reverse-proxy/save}"
+              th:attr="data-csrf-url=@{/api/reverse-proxy/csrf},
+                       data-save-url=@{/api/reverse-proxy/save},
+                       data-delete-url=@{/api/reverse-proxy/delete}">
+            <input type="hidden" id="reverse-proxy-original-slug" name="originalSlug"/>
+            <input type="hidden" id="reverse-proxy-csrf" name="csrf"/>
+
+            <div class="form-field">
+                <label for="reverse-proxy-slug" th:text="#{reverseProxy.form.slug}">路由名</label>
+                <input type="text" id="reverse-proxy-slug" name="slug" maxlength="40"
+                       pattern="[A-Za-z0-9_-]{1,40}" required
+                       th:placeholder="'google_doc'"/>
+                <p class="form-hint" th:text="#{reverseProxy.form.slugHint}">只允许字母……</p>
+            </div>
+
+            <div class="form-field">
+                <label for="reverse-proxy-upstream" th:text="#{reverseProxy.form.upstream}">上游地址</label>
+                <input type="url" id="reverse-proxy-upstream" name="upstream" required
+                       th:placeholder="'https://docs.google.com/'"/>
+                <p class="form-hint" th:text="#{reverseProxy.form.upstreamHint}">例如 https://docs.google.com/……</p>
+                <p class="form-hint" th:text="#{reverseProxy.form.outboundHint}">如果服务器无法直连上游，可在站点设置配置出站代理。</p>
+            </div>
+
+            <div class="form-field">
+                <label for="reverse-proxy-label" th:text="#{reverseProxy.form.label}">显示名（可选）</label>
+                <input type="text" id="reverse-proxy-label" name="label" maxlength="80"/>
+            </div>
+
+            <div class="form-field">
+                <label for="reverse-proxy-access" th:text="#{reverseProxy.form.access}">访问级别</label>
+                <select id="reverse-proxy-access" name="access">
+                    <option value="admin" selected th:text="#{reverseProxy.access.admin}">管理员</option>
+                    <option value="login" th:text="#{reverseProxy.access.login}">登录用户</option>
+                    <option value="public" th:text="#{reverseProxy.access.public}">公开</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="reverse-proxy-methods" th:text="#{reverseProxy.form.methods}">允许的方法</label>
+                <input type="text" id="reverse-proxy-methods" name="methods" value="GET,HEAD" maxlength="80"/>
+                <p class="form-hint" th:text="#{reverseProxy.form.methodsHint}">逗号分隔……</p>
+            </div>
+
+            <div class="form-field">
+                <label for="reverse-proxy-timeout" th:text="#{reverseProxy.form.timeout}">上游超时（秒）</label>
+                <input type="number" id="reverse-proxy-timeout" name="timeoutSeconds" value="30"
+                       min="1" max="120"/>
+            </div>
+
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="reverse-proxy-enabled" name="enabled" value="true" checked/>
+                    <span th:text="#{reverseProxy.form.enabled}">启用此路由</span>
+                </label>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="reverse-proxy-rewrite-html" name="rewriteHtml" value="true"/>
+                    <span th:text="#{reverseProxy.form.rewriteHtml}">改写 HTML / CSS 中的上游 URL</span>
+                </label>
+                <p class="form-hint" th:text="#{reverseProxy.form.rewriteHtmlHint}">适合静态站点……</p>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="reverse-proxy-sandbox" name="sandbox" value="true" checked/>
+                    <span th:text="#{reverseProxy.form.sandbox}">为 HTML 启用 CSP sandbox</span>
+                </label>
+                <p class="form-hint" th:text="#{reverseProxy.form.sandboxHint}">阻止上游脚本……</p>
+            </div>
+            <div class="form-field form-field-inline">
+                <label>
+                    <input type="checkbox" id="reverse-proxy-allow-private" name="allowPrivateTargets" value="true"/>
+                    <span th:text="#{reverseProxy.form.allowPrivateTargets}">允许代理到本机 / 内网地址</span>
+                </label>
+                <p class="form-hint" th:text="#{reverseProxy.form.allowPrivateTargetsHint}">仅在……</p>
+            </div>
+
+            <p class="form-message reverse-proxy-message" role="alert" hidden></p>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{reverseProxy.form.save}">保存路由</button>
+                <button type="button" id="reverse-proxy-reset" class="wiki-button"
+                        th:text="#{reverseProxy.form.reset}">清空 / 新增</button>
+            </div>
+        </form>
+    </th:block>
+</section>
+</body>
+</html>

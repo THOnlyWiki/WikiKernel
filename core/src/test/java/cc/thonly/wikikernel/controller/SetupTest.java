@@ -111,7 +111,8 @@ class SetupTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("安装")))
                 .andExpect(content().string(containsString("id=\"setup-core-form\"")))
-                .andExpect(content().string(containsString("id=\"setup-finish\"")));
+                .andExpect(content().string(containsString("id=\"setup-finish\"")))
+                .andExpect(content().string(containsString("value=\"mariadb\"")));
         mockMvc.perform(get("/js/setup.js")).andExpect(status().isOk());
         mockMvc.perform(get("/api/version")).andExpect(status().isOk());
 

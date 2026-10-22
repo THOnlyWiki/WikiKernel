@@ -2,7 +2,7 @@ package cc.thonly.wikikernel.auth.external;
 
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
 import cc.thonly.wikikernel.service.SiteSettingsService;
-import cc.thonly.wikikernel.web.RequestHeadContext;
+import cc.thonly.wikikernel.web.SafeReturnTo;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.net.URI;
@@ -26,9 +26,25 @@ public final class ExternalAuthSettings {
                                      HttpServletRequest request) {
         String base = settings.get(BASE_URL_KEY, "");
         if (base == null || base.isBlank()) {
-            base = request == null ? "" : RequestHeadContext.buildBaseUrl(request);
+            // 未配置对外地址时不要相信 Host：Host 可被伪造，可能把 OAuth 回调 code
+            // 引到攻击者域名。使用服务器本地地址；生产环境应设置 auth.external.base-url
+            // （或反向代理的 X-Forwarded-* 由受信代理处理）。
+            base = request == null ? "" : localBaseUrl(request);
         }
         return normalizeBaseUrl(base) + "/auth/" + provider.id() + "/callback";
+    }
+
+    /** 不依赖可伪造 Host 的本地回退地址。 */
+    private static String localBaseUrl(HttpServletRequest request) {
+        String scheme = request.isSecure() ? "https" : "http";
+        String host = request.getLocalName();
+        if (host == null || host.isBlank()) {
+            host = "localhost";
+        }
+        int port = request.getLocalPort();
+        boolean defaultPort = ("http".equals(scheme) && port == 80)
+                || ("https".equals(scheme) && port == 443);
+        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
     }
 
     /** 只接受 http(s) 根地址；去掉末尾斜杠、查询串和片段。非法值返回空串。 */
@@ -65,12 +81,7 @@ public final class ExternalAuthSettings {
 
     /** 只允许站内绝对路径，防止开放重定向。 */
     public static String safeReturnTo(String value, String fallback) {
-        String target = value == null ? "" : value.trim();
-        if (!target.startsWith("/") || target.startsWith("//") || target.contains("\\")
-                || target.contains("\r") || target.contains("\n")) {
-            return fallback;
-        }
-        return target;
+        return SafeReturnTo.path(value, fallback);
     }
 }
 

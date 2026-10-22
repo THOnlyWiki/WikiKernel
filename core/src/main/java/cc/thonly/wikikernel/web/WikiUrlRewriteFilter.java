@@ -75,8 +75,12 @@ public class WikiUrlRewriteFilter extends OncePerRequestFilter {
         if (WikiUrls.bareRoot()) {
             String first = firstSegment(path);
             String decoded = percentDecode(first);
+            String lower = decoded.toLowerCase(Locale.ROOT);
             if (first.isEmpty()
-                    || RESERVED_SEGMENTS.contains(decoded.toLowerCase(Locale.ROOT))
+                    || RESERVED_SEGMENTS.contains(lower)
+                    // 反向代理插件的固定命名空间 /proxy_<路由名>/（见 plugin/reverse-proxy）；
+                    // 裸根部署时不能把它当成 wiki 页面标题改写。
+                    || lower.startsWith("proxy_")
                     // 带命名空间冒号的一定是页面标题（静态文件不会有冒号）：
                     // 例如 Gadget:ReadingProgress.css / 文件:X.png —— 不能按「静态文件」跳过，
                     // 否则 ?action=raw 之类的请求 404（小工具资源、文件原图在裸根下都会失效）。

@@ -124,16 +124,27 @@ public class PasswordResetController {
         return modelAndView;
     }
 
-    /** 站点基础地址：优先用配置的 {@code wikikernel.email.base-url}，否则按当前请求推导。 */
+    /**
+     * 站点基础地址：优先用配置的 {@code wikikernel.email.base-url}。
+     *
+     * <p>未配置时**不能使用请求的 Host 头**：Host 可被攻击者伪造，从而把密码重置邮件里的
+     * token 链接指向外部域名。这里退回到服务器本地地址（localName/localPort），
+     * 部署在反向代理后或使用公网域名时应在配置里显式设置 {@code email.base-url}。</p>
+     */
     private String baseUrl(HttpServletRequest request) {
         if (!Strings.isBlank(mailProperties.getBaseUrl())) {
             String base = mailProperties.getBaseUrl().trim();
             return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
         }
-        int port = request.getServerPort();
-        boolean defaultPort = ("http".equals(request.getScheme()) && port == 80)
-                || ("https".equals(request.getScheme()) && port == 443);
-        return request.getScheme() + "://" + request.getServerName() + (defaultPort ? "" : ":" + port);
+        String scheme = request.isSecure() ? "https" : "http";
+        String host = Strings.trimToEmpty(request.getLocalName());
+        if (host.isEmpty()) {
+            host = "localhost";
+        }
+        int port = request.getLocalPort();
+        boolean defaultPort = ("http".equals(scheme) && port == 80)
+                || ("https".equals(scheme) && port == 443);
+        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
     }
 
     private String message(String key, Object... args) {

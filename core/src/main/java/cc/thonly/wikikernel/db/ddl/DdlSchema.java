@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Auto-DDL 的共享工具：数据库方言（SQLite / MySQL / H2）与列类型映射，
+ * Auto-DDL 的共享工具：数据库方言（SQLite / MySQL / MariaDB / H2）与列类型映射，
  * 以及「表定义 → {@code CREATE TABLE} / {@code ALTER TABLE ADD COLUMN}」的语句生成。
  * <p>
  * 两个使用方：

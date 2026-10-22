@@ -5,7 +5,6 @@ import cc.thonly.wikikernel.common.service.LoginSession;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.user.UserSession;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -37,12 +36,6 @@ public class LoginSessionImpl implements LoginSession {
     /** 会话属性名（与 core 的 {@code UserSession.ATTRIBUTE} 相同）。 */
     public static final String SESSION_ATTRIBUTE = "wikiUser";
 
-    /** 勾选「记住我的登录状态」时的会话有效期：30 天（与 core 的 {@code UserSession} 相同）。 */
-    private static final int REMEMBER_SECONDS = 30 * 24 * 60 * 60;
-
-    /** 未勾选时的会话有效期：30 分钟（与 Tomcat 默认一致）。 */
-    private static final int DEFAULT_SECONDS = 30 * 60;
-
     private final WikiUserMapper userMapper;
 
     public LoginSessionImpl(WikiUserMapper userMapper) {
@@ -59,21 +52,15 @@ public class LoginSessionImpl implements LoginSession {
         if (user == null) {
             throw new IllegalArgumentException("user not found: " + userId);
         }
-        // 与 ApiController#login 成功分支完全相同的会话状态（属性 + 有效期）
-        HttpSession session = request.getSession(true);
-        session.setAttribute(SESSION_ATTRIBUTE, user.toTransferCopy());
-        session.setMaxInactiveInterval(remember ? REMEMBER_SECONDS : DEFAULT_SECONDS);
+        // 复用 core 的登录入口：属性 / 有效期 / Session ID 轮换等行为完全一致。
+        UserSession.login(request, user.toTransferCopy(), remember);
     }
 
     @Override
     public void logout() {
         HttpServletRequest request = currentRequest();
-        if (request == null) {
-            return;
-        }
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
+        if (request != null) {
+            UserSession.logout(request);
         }
     }
 

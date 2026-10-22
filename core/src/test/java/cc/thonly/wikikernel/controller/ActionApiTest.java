@@ -1,6 +1,8 @@
 package cc.thonly.wikikernel.controller;
 
+import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.FileService;
 import cc.thonly.wikikernel.service.PermissionService;
@@ -22,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -50,6 +53,9 @@ class ActionApiTest {
 
     @Autowired
     private WikiUserMapper wikiUserMapper;
+
+    @Autowired
+    private WikiPageMapper wikiPageMapper;
 
     @Autowired
     private PermissionService permissionService;
@@ -149,6 +155,34 @@ class ActionApiTest {
                 .andExpect(jsonPath("$.parse.wikitext").value("解析正文'''加粗'''"))
                 .andExpect(jsonPath("$.parse.text", containsString("<b>加粗</b>")))
                 .andExpect(jsonPath("$.parse.title").value(title));
+    }
+
+    @Test
+    void hiddenPageContentIsNotExposedByReadActions() throws Exception {
+        String title = "API隐藏页" + System.nanoTime();
+        wikiPageService.editPage(null, title, "hidden-secret-content");
+        WikiPage page = wikiPageService.getByTitle(title).orElseThrow();
+        page.setHided(true);
+        wikiPageMapper.updateById(page);
+
+        mockMvc.perform(get("/api.php").param("action", "query")
+                        .param("prop", "revisions").param("rvprop", "content")
+                        .param("titles", title).param("formatversion", "2"))
+                .andExpect(jsonPath("$.query.pages[0].missing").value(true));
+        mockMvc.perform(get("/api.php").param("action", "parse")
+                        .param("page", title).param("prop", "wikitext")
+                        .param("formatversion", "2"))
+                .andExpect(jsonPath("$.parse.wikitext").value(""));
+        mockMvc.perform(get("/api.php").param("action", "query")
+                        .param("pageids", String.valueOf(page.getId()))
+                        .param("prop", "revisions").param("rvprop", "content")
+                        .param("formatversion", "2"))
+                .andExpect(content().string(not(containsString("hidden-secret-content"))));
+
+        // The old demo endpoint must not exist anymore.
+        mockMvc.perform(get("/api/pages")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/render").param("slug", "<script>alert(1)</script>"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -2624,6 +2624,78 @@ body .wiki-auth .auth-external-button:focus-visible {
     line-height: 1.6;
 }
 
+/* CodeMirror 编辑器内 Ctrl+F / Cmd+F 查找条 */
+.wiki-code-view .CodeMirror,
+.CodeMirror.wiki-code-editor {
+    position: relative;
+}
+
+.wiki-code-search {
+    position: absolute;
+    top: 0.35em;
+    right: 0.55em;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.2em 0.3em;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: 3px;
+    background: var(--background-color-base, #fff);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 0.8rem;
+}
+
+.wiki-code-search[hidden] {
+    display: none;
+}
+
+.wiki-code-search input {
+    width: 13em;
+    min-width: 6em;
+    padding: 0.15em 0.4em;
+    border: 1px solid var(--border-color-base, #a2a9b1);
+    border-radius: 2px;
+    background: var(--background-color-base, #fff);
+    color: var(--color-base, #202122);
+    font: inherit;
+    outline: none;
+}
+
+.wiki-code-search input:focus {
+    border-color: var(--color-progressive, #36c);
+    box-shadow: 0 0 0 1px var(--color-progressive, #36c);
+}
+
+.wiki-code-search-count {
+    min-width: 3.5em;
+    color: var(--color-subtle, #54595d);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.wiki-code-search-button {
+    min-width: 1.7em;
+    padding: 0.1em 0.3em;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--color-base, #202122);
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.wiki-code-search-button:hover,
+.wiki-code-search-button:focus-visible {
+    border-color: var(--border-color-base, #a2a9b1);
+    background: var(--background-color-neutral-subtle, #eaecf0);
+}
+
+.wiki-search-match {
+    background: var(--background-color-warning-subtle, #fff3a8);
+    color: var(--color-base, #202122);
+}
+
 .CodeMirror-hints {
     z-index: 100;
 }

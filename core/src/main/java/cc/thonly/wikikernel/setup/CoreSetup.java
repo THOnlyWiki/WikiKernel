@@ -4,13 +4,13 @@ package cc.thonly.wikikernel.setup;
  * 安装向导「核心」tab 收集到的设置（内存中，完成后写入 LocalSettings.yaml 并重启生效）。
  *
  * @param siteName      站点名称（{@code wikikernel.site.name}；null = 保持原样，空 = 默认 WikiKernel）
- * @param databaseType  sqlite / h2 / mysql
+ * @param databaseType  sqlite / h2 / mysql / mariadb
  * @param databaseFile  sqlite / h2 的数据文件
- * @param dbHost        mysql 主机
- * @param dbPort        mysql 端口
- * @param dbName        mysql 数据库名
- * @param dbUser        mysql 用户
- * @param dbPassword    mysql 密码
+ * @param dbHost        mysql / mariadb 主机
+ * @param dbPort        mysql / mariadb 端口
+ * @param dbName        mysql / mariadb 数据库名
+ * @param dbUser        mysql / mariadb 用户
+ * @param dbPassword    mysql / mariadb 密码
  * @param adminUsername 初始账号用户名（同时获得「管理员 + 行政员」）
  * @param adminPassword 初始账号密码（写完 YAML 存 MediaWiki 格式的哈希，见 password-hash）
  * @param adminEmail    初始账号邮箱（可空）

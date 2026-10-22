@@ -29,7 +29,9 @@ public class SearchController {
     public List<SearchHit> search(@RequestParam("q") String keyword,
                                   @RequestParam(name = "limit", defaultValue = "10") int limit,
                                   HttpServletRequest request) {
-        List<SearchHit> hits = searchService.search(keyword, limit);
+        // 限制结果数：避免 limit=2147483647 触发超大 LIKE 扫描 / 分配。
+        int size = limit <= 0 ? 10 : Math.min(limit, 50);
+        List<SearchHit> hits = searchService.search(keyword, size);
         return accessControlService.filterReadable(hits, SearchHit::title, UserSession.current(request));
     }
 }

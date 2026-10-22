@@ -22,7 +22,10 @@
     function returnTo(form) {
         var input = form.querySelector('input[name="returnto"]');
         var value = input ? input.value : '';
-        if (value.charAt(0) === '/' && value.charAt(1) !== '/') {
+        if (value.charAt(0) === '/' && value.charAt(1) !== '/'
+                && value.indexOf('\\') < 0
+                && !/[\u0000-\u001f\u007f]/.test(value)
+                && !/%5c|%2f|%0d|%0a|%00|%09/i.test(value)) {
             return value;
         }
         return '/';

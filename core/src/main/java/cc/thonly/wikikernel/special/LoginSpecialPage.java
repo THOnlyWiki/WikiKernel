@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.auth.external.ExternalAuthService;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.service.FeatureService;
+import cc.thonly.wikikernel.web.SafeReturnTo;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -60,9 +61,6 @@ public class LoginSpecialPage implements SpecialPage {
     }
 
     static String safeReturnTo(String value) {
-        if (value == null || !value.startsWith("/") || value.startsWith("//")) {
-            return "/";
-        }
-        return value;
+        return SafeReturnTo.path(value, "/");
     }
 }

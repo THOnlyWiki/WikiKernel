@@ -24,7 +24,17 @@ public final class UserSession {
     private UserSession() {
     }
 
+    /** 登录 / 注册 / 外部登录成功时建立会话；已有 Session 会先轮换 ID，防止 Session 固定攻击。 */
     public static void login(HttpServletRequest request, WikiUser user, boolean remember) {
+        // 登录 / 注册 / 外部登录成功时轮换 Session ID，防止预登录 Session 固定攻击。
+        HttpSession existing = request.getSession(false);
+        if (existing != null) {
+            try {
+                request.changeSessionId();
+            } catch (IllegalStateException | UnsupportedOperationException ignored) {
+                // 某些测试容器 / 极旧 Servlet 容器不支持；保留原 ID，但不阻断登录。
+            }
+        }
         HttpSession session = request.getSession(true);
         session.setAttribute(ATTRIBUTE, user);
         session.setMaxInactiveInterval(remember ? REMEMBER_SECONDS : DEFAULT_SECONDS);

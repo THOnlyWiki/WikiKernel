@@ -2205,6 +2205,10 @@ public class WikitextRenderer {
                 }
             } else if (target.matches("(?i)^(https?|ftp)://.*")) {
                 href = HtmlSanitizer.escapeAttribute(target);
+            } else if (target.startsWith("#")) {
+                // [[#章节]] / [[#北京]]：本页锚点，不能再拼页面前缀，
+                // 否则裸根部署会生成 "/#北京"（跳到首页而不是当前页）。
+                href = HtmlSanitizer.escapeAttribute(target.replace(' ', '_'));
             } else if (target.startsWith("/")) {
                 // {{fullurl:…}} / {{localurl:…}} 已包含页面路径，不能再拼一次 /wiki/
                 href = HtmlSanitizer.escapeAttribute(target);

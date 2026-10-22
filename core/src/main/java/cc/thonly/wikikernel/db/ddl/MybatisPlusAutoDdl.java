@@ -39,7 +39,7 @@ import java.util.Set;
  *     <li>表已存在 → 对比 JDBC 元数据，给缺失的字段执行 {@code ALTER TABLE ... ADD COLUMN}。</li>
  * </ul>
  * 只增不减：不会删列、不会改类型、不会动索引（与 JPA 的 update 策略一样保守）。
- * 支持项目内置的 SQLite / MySQL / H2 三种库；语句生成与方言差异在 {@link DdlSchema}。
+ * 支持项目内置的 SQLite / MySQL / MariaDB / H2；语句生成与方言差异在 {@link DdlSchema}。
  * <p>
  * 字段类型可直接用 Java 类型推断，也可以加 {@link DbColumn} 精确控制：
  * {@code @DbColumn(type = DbType.TEXT)}、{@code @DbColumn(length = 512, nullable = false, unique = true)}。

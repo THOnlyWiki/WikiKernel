@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="layout(title, content)">
+    <h1 class="test-layout-title" th:text="${title}">标题</h1>
+    <div class="test-layout-body" th:replace="${content}">
+        <p>页面正文</p>
+    </div>
+</div>
+</body>
+</html>

@@ -52,7 +52,7 @@ Copy-Item LocalSettings.example.yaml LocalSettings.yaml
 ```yaml
 wikikernel:
   database:
-    type: mysql              # sqlite（默认）| mysql | h2
+    type: mysql              # sqlite（默认）| mysql | mariadb | h2
     host: 127.0.0.1
     port: 3306
     name: wikikernel
@@ -96,6 +96,7 @@ wikikernel:
 | --- | --- | --- |
 | SQLite（默认） | `sqlite` | `file`（默认 `./data/wiki.db`）；连接池固定 1 连接 + 外键 PRAGMA |
 | MySQL | `mysql` | `host` / `port` / `name` / `user` / `password` / `pool-size` |
+| MariaDB | `mariadb` | 同 MySQL；使用原生 `org.mariadb.jdbc.Driver` 和 `jdbc:mariadb:` URL |
 | H2 | `h2` | `file`（默认 `./data/wiki`） |
 
 切换数据库只改 `type`，例如：

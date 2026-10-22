@@ -348,7 +348,7 @@ public class SetupService {
                 Map<String, Object> database = new LinkedHashMap<>();
                 String type = Strings.trimToEmpty(setup.databaseType()).toLowerCase(java.util.Locale.ROOT);
                 database.put("type", type);
-                if ("mysql".equals(type)) {
+                if ("mysql".equals(type) || "mariadb".equals(type)) {
                     database.put("host", Strings.trimToEmpty(setup.dbHost()));
                     database.put("port", parseIntOr(setup.dbPort(), 3306));
                     database.put("name", Strings.trimToEmpty(setup.dbName()));

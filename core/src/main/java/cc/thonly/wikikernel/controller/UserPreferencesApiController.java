@@ -9,6 +9,7 @@ import cc.thonly.wikikernel.i18n.CountryNames;
 import cc.thonly.wikikernel.mail.EmailTokenService;
 import cc.thonly.wikikernel.mail.EmailTypeConfig;
 import cc.thonly.wikikernel.service.FeatureService;
+import cc.thonly.wikikernel.service.LoginTokenService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.RateLimiterService;
 import cc.thonly.wikikernel.service.UserPreferences;
@@ -49,6 +50,7 @@ public class UserPreferencesApiController {
     private final SkinRegistry skinRegistry;
     private final PermissionService permissionService;
     private final EmailTokenService emailTokenService;
+    private final LoginTokenService loginTokenService;
     private final MessageSource messageSource;
     private final FeatureService featureService;
 
@@ -56,12 +58,14 @@ public class UserPreferencesApiController {
                                         SkinRegistry skinRegistry,
                                         PermissionService permissionService,
                                          EmailTokenService emailTokenService,
+                                         LoginTokenService loginTokenService,
                                          MessageSource messageSource,
                                           FeatureService featureService) {
         this.userService = userService;
         this.skinRegistry = skinRegistry;
         this.permissionService = permissionService;
         this.emailTokenService = emailTokenService;
+        this.loginTokenService = loginTokenService;
         this.messageSource = messageSource;
         this.featureService = featureService;
     }
@@ -204,6 +208,15 @@ public class UserPreferencesApiController {
         rateLimiterService.success(RateLimiterService.LOGIN, limitKey);
         if (!userService.updatePassword(current.getId(), newValue)) {
             return AjaxResult.error(AjaxCode.NOT_FOUND, message("permissions.userNotFound"));
+        }
+        // 改密后撤销该用户的全部持久登录令牌，并轮换当前会话 ID。
+        loginTokenService.revokeAll(current.getId());
+        if (request.getSession(false) != null) {
+            try {
+                request.changeSessionId();
+            } catch (IllegalStateException | UnsupportedOperationException ignored) {
+                // 容器不支持时保留当前会话；持久令牌已撤销。
+            }
         }
         return AjaxResult.success(message("preferences.password.changed"), null);
     }

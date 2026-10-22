@@ -16,7 +16,7 @@ import java.util.Optional;
 @Component
 public class LoginTokenCookie {
 
-    /** 「永不过期」时 Cookie 的 Max-Age（10 年，浏览器实际等同于长期有效）。 */
+    /** 明确配置「永不过期」时 Cookie 的 Max-Age（10 年，浏览器实际等同于长期有效）。 */
     private static final long TEN_YEARS_SECONDS = 10L * 365 * 24 * 60 * 60;
 
     private final AuthProperties properties;

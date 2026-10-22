@@ -39,7 +39,8 @@ final class AiHttp {
         this.timeout = Duration.ofSeconds(Math.max(5, timeoutSeconds));
         HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
-                .followRedirects(HttpClient.Redirect.NORMAL);
+                // 不自动跟随上游重定向：否则公网端点可把服务器引向内网 / metadata 地址。
+                .followRedirects(HttpClient.Redirect.NEVER);
         configureProxy(builder, proxy);
         this.client = builder.build();
     }

@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
  * 浏览器 Cookie 里保存 {@code selector:validator}，数据库只存 selector 与 validator 的 SHA-256。
  * <p>
  * 服务重启只丢内存 Session，令牌在数据库里，因此重新打开页面会自动恢复登录。
- * {@link #expiresAt} 为空表示永不过期（当前默认；可用 {@code wikikernel.auth.token-expire-days} 配置有效期）。
+ * {@link #expiresAt} 为空表示旧版永不过期令牌；默认有效期为 30 天
+ * （可用 {@code wikikernel.auth.token-expire-days} 配置）。
  */
 @Data
 @TableName("wiki_login_token")

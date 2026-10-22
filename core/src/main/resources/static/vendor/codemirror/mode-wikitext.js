@@ -36,7 +36,11 @@
             token: function (stream, state) {
                 // ---------- 注释（可跨行） ----------
                 if (state.comment) {
-                    if (stream.match('-->')) {
+                    // 闭合标记可能在当前行中间；不能直接 skipToEnd，否则同一行后面的
+                    // “-->”会被跳过，注释状态一直持续到文末。
+                    var commentEnd = stream.string.indexOf('-->', stream.pos);
+                    if (commentEnd >= 0) {
+                        stream.pos = commentEnd + 3;
                         state.comment = false;
                     } else {
                         stream.skipToEnd();
@@ -44,7 +48,10 @@
                     return 'comment';
                 }
                 if (stream.match('<!--')) {
-                    if (!stream.match('-->')) {
+                    var sameLineEnd = stream.string.indexOf('-->', stream.pos);
+                    if (sameLineEnd >= 0) {
+                        stream.pos = sameLineEnd + 3;
+                    } else {
                         state.comment = true;
                     }
                     return 'comment';
@@ -53,7 +60,10 @@
                 // ---------- 原样块（<nowiki> / <pre> / <syntaxhighlight> …） ----------
                 if (state.raw) {
                     var close = new RegExp('</' + state.raw + '\\s*>', 'i');
-                    if (stream.match(close)) {
+                    var rawRest = stream.string.slice(stream.pos);
+                    var rawClose = close.exec(rawRest);
+                    if (rawClose) {
+                        stream.pos += rawClose.index + rawClose[0].length;
                         state.raw = null;
                     } else {
                         stream.skipToEnd();
@@ -64,8 +74,11 @@
                 if (open) {
                     var name = open[1];
                     var end = new RegExp('</' + name + '\\s*>', 'i');
-                    // 同行闭合就不进入原样状态
-                    if (!stream.match(end)) {
+                    // 同行闭合就不进入原样状态；闭合标签可能出现在行中间。
+                    var sameLineRaw = end.exec(stream.string.slice(stream.pos));
+                    if (sameLineRaw) {
+                        stream.pos += sameLineRaw.index + sameLineRaw[0].length;
+                    } else {
                         state.raw = name;
                     }
                     return 'tag';

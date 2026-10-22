@@ -269,7 +269,7 @@ public class ActionApiService {
                     result.add(new ApiPageRef(0, title.trim(), true, null));
                     continue;
                 }
-                WikiPage page = wikiPageService.getByTitle(normalized).orElse(null);
+                WikiPage page = wikiPageService.getVisibleByTitle(normalized).orElse(null);
                 if (page == null) {
                     result.add(new ApiPageRef(0, normalized, true, null));
                     continue;
@@ -394,7 +394,8 @@ public class ActionApiService {
                 continue;
             }
             WikiPage page = wikiPageMapper.selectById(id);
-            if (page == null || Boolean.TRUE.equals(page.getDeleted())) {
+            if (page == null || Boolean.TRUE.equals(page.getDeleted())
+                    || Boolean.TRUE.equals(page.getHided())) {
                 continue;
             }
             if (!seen.add(page.getTitle())) {
@@ -408,11 +409,12 @@ public class ActionApiService {
                 continue;
             }
             WikiRevision revision = wikiRevisionMapper.selectById(revId);
-            if (revision == null) {
+            if (revision == null || Boolean.TRUE.equals(revision.getDeleted())) {
                 continue;
             }
             WikiPage page = wikiPageMapper.selectById(revision.getPageId());
-            if (page == null || Boolean.TRUE.equals(page.getDeleted())) {
+            if (page == null || Boolean.TRUE.equals(page.getDeleted())
+                    || Boolean.TRUE.equals(page.getHided())) {
                 continue;
             }
             if (!seen.add(page.getTitle())) {
@@ -453,7 +455,7 @@ public class ActionApiService {
     }
 
     private PageRef pageRefOf(String title, WikiUser user) {
-        WikiPage page = wikiPageService.getByTitle(title).orElse(null);
+        WikiPage page = wikiPageService.getVisibleByTitle(title).orElse(null);
         if (page == null || !accessControlService.canRead(title, user)) {
             return new PageRef(null, title, ActionApiNamespaces.idOf(title), true);
         }
@@ -773,7 +775,7 @@ public class ActionApiService {
             if (items.size() >= limit) {
                 break;
             }
-            WikiPage page = wikiPageService.getByTitle(hit.title()).orElse(null);
+            WikiPage page = wikiPageService.getVisibleByTitle(hit.title()).orElse(null);
             String content = page == null ? "" : wikiPageService.getLatestContent(page.getId()).orElse("");
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("ns", ActionApiNamespaces.idOf(hit.title()));
@@ -812,7 +814,8 @@ public class ActionApiService {
         Map<Long, WikiPage> pageCache = new LinkedHashMap<>();
         for (WikiRevision revision : revisions) {
             WikiPage page = pageCache.computeIfAbsent(revision.getPageId(), wikiPageMapper::selectById);
-            if (page == null || Boolean.TRUE.equals(page.getDeleted())) {
+            if (page == null || Boolean.TRUE.equals(page.getDeleted())
+                    || Boolean.TRUE.equals(page.getHided())) {
                 continue;
             }
             if (!namespaces.isEmpty() && !namespaces.contains(ActionApiNamespaces.idOf(page.getTitle()))) {
@@ -827,7 +830,11 @@ public class ActionApiService {
             rows.add(row);
         }
         for (WikiLog log : logService.recent(null, null, false, Math.min(2000, limit * 10))) {
-            if (!namespaces.isEmpty() && !namespaces.contains(ActionApiNamespaces.idOf(log.getTarget()))) {
+            String logTarget = Strings.trimToEmpty(log.getTarget());
+            if (!logTarget.isEmpty() && wikiPageService.getVisibleByTitle(logTarget).isEmpty()) {
+                continue;
+            }
+            if (!namespaces.isEmpty() && !namespaces.contains(ActionApiNamespaces.idOf(logTarget))) {
                 continue;
             }
             Map<String, Object> row = new LinkedHashMap<>();
@@ -836,7 +843,7 @@ public class ActionApiService {
             row.put("kind", "log");
             row.put("log", log);
             row.put("page", log.getTarget() == null ? null : pageCache.computeIfAbsent(-1L * log.getId(),
-                    id -> wikiPageService.getByTitle(log.getTarget()).orElse(null)));
+                    id -> wikiPageService.getVisibleByTitle(log.getTarget()).orElse(null)));
             rows.add(row);
         }
         rows.sort((a, b) -> {
@@ -999,7 +1006,8 @@ public class ActionApiService {
                 continue;
             }
             WikiPage page = wikiPageMapper.selectById(revision.getPageId());
-            if (page == null || Boolean.TRUE.equals(page.getDeleted())) {
+            if (page == null || Boolean.TRUE.equals(page.getDeleted())
+                    || Boolean.TRUE.equals(page.getHided())) {
                 continue;
             }
             if (!accessControlService.canRead(page.getTitle(), viewer)) {
@@ -1112,14 +1120,15 @@ public class ActionApiService {
                 continue;
             }
             String target = Strings.trimToEmpty(log.getTarget());
-            if (!target.isEmpty() && !accessControlService.canRead(target, user)) {
+            if (!target.isEmpty() && (wikiPageService.getVisibleByTitle(target).isEmpty()
+                    || !accessControlService.canRead(target, user))) {
                 continue;
             }
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("logid", log.getId());
             item.put("ns", ActionApiNamespaces.idOf(target));
             item.put("title", target);
-            WikiPage page = target.isEmpty() ? null : wikiPageService.getByTitle(target).orElse(null);
+            WikiPage page = target.isEmpty() ? null : wikiPageService.getVisibleByTitle(target).orElse(null);
             if (page != null) {
                 item.put("pageid", page.getId());
             }
@@ -1190,7 +1199,7 @@ public class ActionApiService {
         if (title.isEmpty()) {
             title = "\u63a5\u53e3\u89e3\u6790";
         }
-        WikiPage page = title.isEmpty() ? null : wikiPageService.getByTitle(title).orElse(null);
+        WikiPage page = title.isEmpty() ? null : wikiPageService.getVisibleByTitle(title).orElse(null);
         if (page != null && !accessControlService.canRead(title, user)) {
             throw new ApiError("permissiondenied", "You do not have permission to read this page.");
         }
@@ -1747,7 +1756,7 @@ public class ActionApiService {
         if (!accessControlService.canRead(title, user)) {
             throw new ApiError("permissiondenied", "You do not have permission to read this page.");
         }
-        WikiPage page = wikiPageService.getByTitle(title)
+        WikiPage page = wikiPageService.getVisibleByTitle(title)
                 .orElseThrow(() -> new ApiError("missingtitle", "The page you specified doesn't exist."));
         return wikiPageService.getLatestRevision(page.getId())
                 .orElseThrow(() -> new ApiError("missingtitle", "The page you specified doesn't exist."));

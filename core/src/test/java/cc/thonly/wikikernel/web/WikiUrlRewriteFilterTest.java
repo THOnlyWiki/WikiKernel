@@ -47,6 +47,9 @@ class WikiUrlRewriteFilterTest {
         assertNull(WikiUrlRewriteFilter.rewrite("/plugins/echo/echo.js"));
         assertNull(WikiUrlRewriteFilter.rewrite("/avatars/1.png"));
         assertNull(WikiUrlRewriteFilter.rewrite("/files/abc123"));
+        // 反向代理插件的固定命名空间 /proxy_<路由名>/
+        assertNull(WikiUrlRewriteFilter.rewrite("/proxy_google_doc/"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/proxy_google_doc/document/d/abc"));
         // 带静态扩展名的请求（裸根时不渲染成「页面不存在」）——但**带命名空间冒号的页面标题**要转发
         assertNull(WikiUrlRewriteFilter.rewrite("/不存在.png"));
         assertEquals("/wiki/Gadget:ReadingProgress.css",
