@@ -109,7 +109,7 @@ class LuaExtensionTest {
                 """);
         String html = render("Lua兼容工具页", "{{#invoke:Lua兼容工具|main}}");
         org.junit.jupiter.api.Assertions.assertTrue(
-                html.contains("甲/乙/丙|模块:Lua兼容工具|true|2|zh|&amp;#91;&amp;#91;x&amp;#93;&amp;#93;"), html);
+                html.contains("甲/乙/丙|模块:Lua兼容工具|true|2|zh|&#91;&#91;x&#93;&#93;"), html);
     }
 
     @Test

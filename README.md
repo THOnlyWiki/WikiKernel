@@ -16,12 +16,30 @@ WikiKernel 是：
 
 ```powershell
 .\gradlew.bat build                     # 全量构建
-.\gradlew.bat installPlugins            # 收集插件 jar 到 plugins/
-.\gradlew.bat :core:bootJar             # 构建 core
+.\gradlew.bat dist                      # 生成 build/dist（启动器 + 插件 + 脚本）
+.\gradlew.bat installPlugins            # 只用源码目录时收集插件 jar 到 plugins/
+.\gradlew.bat :core:bootJar             # 只用源码目录时构建 core
 .\run.bat                               # 启动，默认端口 18080
 ```
 
-`run.bat` 会在一个 cmd 窗口里启动并实时打印日志。第一次启动时 `LocalSettings.yaml`
+`dist` 会把所有发行产物放在 `build/dist/`：
+
+```text
+build/dist/
+  wikikernel-server.jar
+  plugins/*.jar
+  run.bat
+  stop.bat
+  LocalSettings.example.yaml
+```
+
+`wikikernel-server.jar` 是自包含 Mixin Agent 的启动器，可以直接：
+
+```powershell
+java -jar build\dist\wikikernel-server.jar
+```
+
+`run.bat` 会在一个 cmd 窗口里启动并实时打印日志（发行包里的 `run.bat` 会自动使用同目录的启动器）。第一次启动时 `LocalSettings.yaml`
 还不存在，应用进入安装模式，打开 <http://localhost:18080/init> 按向导完成初始化
 （站点名称、数据库、初始账号，可选 SMTP 与功能开关）。安装细节、配置项、日志开关、
 插件热重载见 [配置与部署](docs/CONFIG.md)；在 IDE 里运行、依赖 Maven 缓存等开发细节

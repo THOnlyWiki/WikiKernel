@@ -10,16 +10,20 @@ Maven Central 构建 `net.fabricmc:sponge-mixin`，Mixin 版本 0.8.7），同�
 
 ## 启动链路
 
+发行包使用一个**自包含启动 jar**：Mixin Agent 被嵌入 boot jar 根目录，通过 JDK 的
+`Launcher-Agent-Class` 在 `main` 之前自动加载；Agent 再把 Mixin 插件写入 `loader.path`，
+最后由 `PropertiesLauncher` 启动 Spring。
+
 ```
-run.bat
-  └─ java -javaagent:run/.launch/wikikernel-mixin-agent.jar
+java -jar build/dist/wikikernel-server.jar
+  └─ Launcher-Agent-Class: WikiKernelMixinAgent.agentmain
        └─ mixin-agent premain
             ├─ 扫描 plugins/，暂存所有插件 jar
             ├─ 读取带 plugin.mixins 的配置
             ├─ 初始化 Mixin、注册配置
             ├─ 安装首次类加载 transformer
-            └─ 把带 Mixin 的插件写入 -Dloader.path
-  └─ -cp core.jar org.springframework.boot.loader.launch.PropertiesLauncher
+            └─ 把带 Mixin 的插件写入 loader.path
+  └─ PropertiesLauncher（jar manifest 的 Main-Class）
        └─ WikiKernelLauncher（Spring Boot Start-Class）
             └─ Spring / core / PluginManager
 ```
@@ -29,8 +33,9 @@ run.bat
 - 普通插件仍然走原来的隔离 `PluginClassLoader`，并保留动态装卸；
 - 非 Mixin 插件 jar 只被暂存一份，用于 Mixin 在目标插件尚未加载时读取目标类字节码。
 
-> 直接用 `java -jar core.jar` 启动不会加载 Java Agent，插件 Mixin 不会生效。
-> 请使用 `run.bat`，或在命令行显式加上 `-javaagent` 并使用 `PropertiesLauncher`。
+> 推荐用 `gradlew dist` 生成 `build/dist/wikikernel-server.jar`，然后直接
+> `java -jar build/dist/wikikernel-server.jar`；`build/dist/run.bat` 只是带日志窗口和
+> 启动副本保护的便捷脚本。
 >
 > Agent 默认扫描工作目录下的 `plugins/`，暂存到 `run/.mixin-plugins/`。如果修改了
 > `wikikernel.plugins.dir`，请同时设置 `-Dwikikernel.mixin.pluginDir=<目录>`；
@@ -158,7 +163,8 @@ public final class WikiTitlesExtrasMixin {
 
 - 启动日志出现 `[WikiKernel/Mixin] 未发现插件 Mixin 配置`：插件没有声明、配置文件名不匹配，或插件不在
   `plugins/` 目录；检查 `plugin.mixins` / `*.mixins.json`。
-- 出现 `Mixin agent 未启用`：使用了 `java -jar` 或没有 `-javaagent`；改用 `run.bat`。
+- 出现 `Mixin agent 未启用`：运行的是旧版 core jar（manifest 没有 `Launcher-Agent-Class`），
+  或手动启动时跳过了内嵌 Agent；请用 `gradlew dist` 重新生成并运行 `build/dist/wikikernel-server.jar`。
 - 出现 `Mixin agent 已加载；未发现插件 Mixin 配置`：Agent 正常，但本次没有插件 Mixin。
 - 出现 `Mixin 插件 ... 只能在启动时加载`：运行期新增的 Mixin 插件必须在重启后才会注册，启动器已跳过它。
 - 需要详细日志：在启动参数里加 `-Dwikikernel.mixin.debug=true`，可看到每个类的转换结果和 Mixin

@@ -119,3 +119,28 @@ tasks.register('installPlugins', Copy) {
     exclude '*-demo-*.jar'
     into rootProject.layout.projectDirectory.dir('plugins')
 }
+
+// ==================== 发行包 ====================
+// gradlew dist 之后，启动器和插件都在 build/dist/ 下：
+//   build/dist/wikikernel-server.jar   （自包含 Mixin Agent 的单 jar 启动器）
+//   build/dist/plugins/*.jar
+//   build/dist/run.bat / stop.bat
+//   build/dist/LocalSettings.example.yaml
+// 运行：在 build/dist 下双击 run.bat，或直接 java -jar wikikernel-server.jar。
+tasks.register('dist', Sync) {
+    group = 'distribution'
+    description = '生成 build/dist：wikikernel-server.jar + 插件 + 启动/停止脚本'
+    dependsOn ':core:bootJar', 'installPlugins'
+    into layout.buildDirectory.dir('dist')
+
+    from(project(':core').tasks.named('bootJar').flatMap { task -> task.archiveFile }) {
+        rename { 'wikikernel-server.jar' }
+    }
+    from(rootProject.file('run.bat'))
+    from(rootProject.file('stop.bat'))
+    from(rootProject.file('LocalSettings.example.yaml'))
+    from(pluginProjects.collect { it.tasks.named('jar').flatMap { task -> task.archiveFile } }) {
+        exclude '*-demo-*.jar'
+        into 'plugins'
+    }
+}

@@ -138,7 +138,7 @@ class PreferencesTest {
                 .andExpect(status().isOk())
                 .andReturn();
         String html = result.getResponse().getContentAsString();
-        int count = html.split("class=\"search-snippet\"", -1).length - 1;
+        int count = html.split("class=\"mw-search-result\"", -1).length - 1;
         assertEquals(5, count, "搜索结果条数应受参数设置限制");
     }
 

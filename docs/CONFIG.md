@@ -25,6 +25,10 @@ wikikernel:
 命令行覆盖示例：
 
 ```powershell
+# 推荐：发行包（Mixin Agent 已嵌入启动 jar）
+java -jar build\dist\wikikernel-server.jar --wikikernel.plugins.dir=D:\wiki-plugins
+
+# 只使用源码构建产物也可以
 java -jar core\build\libs\core-0.0.1-SNAPSHOT.jar --wikikernel.plugins.dir=D:\wiki-plugins
 ```
 

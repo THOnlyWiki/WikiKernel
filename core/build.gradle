@@ -7,7 +7,8 @@ plugins {
 description = '核心代码：Web 服务 + 插件加载器（编译期禁止依赖任何 plugin，插件运行时装配）'
 
 // Mixin 必须由 Java Agent 在 Spring Boot 创建应用类加载器之前安装；
-// 自定义启动器负责检查状态，真正的 agent 产物在 :mixin-agent:agentJar。
+// 真正的 agent 产物在 :mixin-agent:agentJar，bootJar 会把它嵌入启动 jar 并通过
+// Launcher-Agent-Class 自动加载（见下方 bootJar 配置）。
 springBoot {
     mainClass = 'cc.thonly.wikikernel.WikiKernelLauncher'
 }
@@ -69,8 +70,29 @@ dependencies {
 }
 
 tasks.named('bootJar') {
-    // 正式启动包需要同版本的 mixin-agent；run.bat 会把它复制到 run/.launch。
+    // 正式启动包需要同版本的 mixin-agent。
+    // 这里把 agent 嵌入 boot jar（放在 jar 根目录），再用 JDK 的 Launcher-Agent-Class
+    // 让 `java -jar` 在 main 之前自动安装 Agent；这样不必再单独分发 mixin-agent jar，
+    // 也不再强制使用 run.bat。Main-Class 必须是 PropertiesLauncher，才能让 Agent 写入的
+    // loader.path 生效（Mixin 插件需要加入应用类加载器）。
     dependsOn project(':mixin-agent').tasks.named('agentJar')
+    manifest {
+        attributes(
+                'Main-Class': 'org.springframework.boot.loader.launch.PropertiesLauncher',
+                'Launcher-Agent-Class': 'cc.thonly.wikikernel.mixin.agent.WikiKernelMixinAgent',
+                'Agent-Class': 'cc.thonly.wikikernel.mixin.agent.WikiKernelMixinAgent',
+                'Premain-Class': 'cc.thonly.wikikernel.mixin.agent.WikiKernelMixinAgent',
+                'Can-Redefine-Classes': 'true',
+                'Can-Retransform-Classes': 'true'
+        )
+    }
+    from {
+        zipTree(project(':mixin-agent').tasks.named('agentJar').get().archiveFile.get().asFile)
+    }
+    exclude 'META-INF/MANIFEST.MF'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
 }
 
 tasks.named('bootRun') {

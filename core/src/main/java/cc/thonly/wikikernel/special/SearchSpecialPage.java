@@ -87,13 +87,21 @@ public class SearchSpecialPage implements SpecialPage {
         List<SearchHit> pageHits = q.isEmpty() || profile.equals(PROFILE_IMAGES)
                 ? List.of()
                 : filterNamespaces(searchService.search(q, fetchLimit), selectedNamespaces);
+        // 特殊:搜索也必须走访问控制：/api/search 已经过滤，但搜索页此前漏掉了这一步，
+        // 会把「仅管理员可读」页面的标题 / 摘要泄露给匿名用户。
+        pageHits = accessControlService.filterReadable(pageHits, SearchHit::title, request.user());
         pageHits = pageHits.stream().limit(limit).toList();
 
         List<SearchHit> titleHits = pageHits.stream()
                 .filter(hit -> containsIgnoreCase(hit.title(), q))
                 .limit(limit)
                 .toList();
+        // 标题命中的页面不再重复出现在「内容匹配」里（否则同一个页面会出现两次）。
+        Set<String> titleHitNames = titleHits.stream()
+                .map(SearchHit::title)
+                .collect(java.util.stream.Collectors.toSet());
         List<SearchHit> contentHits = pageHits.stream()
+                .filter(hit -> !titleHitNames.contains(hit.title()))
                 .filter(hit -> containsIgnoreCase(hit.snippet(), q))
                 .limit(limit)
                 .toList();
