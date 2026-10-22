@@ -25,13 +25,24 @@ class RegistrationQuizSettingsSectionTest {
     void sectionDeclaresExactlyTheSettingsKeys() {
         RegistrationQuizSettingsSection section = new RegistrationQuizSettingsSection(new StaticMessageSource());
         List<String> keys = section.fields().stream().map(SettingField::key).toList();
-        assertEquals(List.of(RegistrationQuizSettings.ENABLED_KEY,
-                RegistrationQuizSettings.QUESTIONS_KEY, RegistrationQuizSettings.ANSWERS_KEY), keys);
+        assertEquals(List.of(RegistrationQuizSettings.ENABLED_KEY, RegistrationQuizSettings.QUIZ_KEY), keys);
         assertEquals("registration-quiz", section.id());
     }
 
     @Test
-    void setupStepWritesTheSameYamlPathsAndRejectsMismatchedArrays() {
+    void sectionPrefillsTheOldQuestionsAndAnswersAsCombinedLines() {
+        RegistrationQuizSettingsSection section = new RegistrationQuizSettingsSection(
+                new StaticMessageSource(),
+                RegistrationQuizFakes.config(false, "问题一\n问题二", "答案一\n答案二", ""));
+        SettingField quiz = section.fields().stream()
+                .filter(field -> RegistrationQuizSettings.QUIZ_KEY.equals(field.key()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("问题一 | 答案一\n问题二 | 答案二", quiz.defaultValue());
+    }
+
+    @Test
+    void setupStepWritesTheCombinedQuizAndRejectsInvalidLines() {
         Map<String, Object> globals = new LinkedHashMap<>();
         SetupContext context = new SetupContext() {
             @Override
@@ -45,22 +56,19 @@ class RegistrationQuizSettingsSectionTest {
         };
         RegistrationQuizSetupStep step = new RegistrationQuizSetupStep(new StaticMessageSource());
         List<String> keys = step.fields().stream().map(SetupField::key).toList();
-        assertEquals(List.of("enabled", "questions", "answers"), keys);
+        assertEquals(List.of("enabled", "quiz"), keys);
 
         SetupResult ok = step.apply(Map.of(
                 "enabled", "true",
-                "questions", "1+1=?\n2+2=?",
-                "answers", "2\n4"), context);
+                "quiz", "1+1=? | 2 | 二\n2+2=? | 4"), context);
         assertTrue(ok.success());
         assertEquals(Boolean.TRUE, globals.get("wikikernel.features.registration-quiz"));
-        assertEquals(List.of("1+1=?", "2+2=?"), globals.get("wikikernel.registration.questions"));
-        assertEquals(List.of("2", "4"), globals.get("wikikernel.registration.answers"));
+        assertEquals("1+1=? | 2 | 二\n2+2=? | 4", globals.get("wikikernel.registration.quiz"));
+        assertEquals(List.of(), globals.get("wikikernel.registration.questions"));
+        assertEquals(List.of(), globals.get("wikikernel.registration.answers"));
         assertEquals("", globals.get("wikikernel.registration.question"));
 
-        SetupResult mismatched = step.apply(Map.of(
-                "enabled", "true",
-                "questions", "只有一题",
-                "answers", "一\n二"), context);
-        assertFalse(mismatched.success(), "题目与答案数量不等时向导给出错误提示");
+        SetupResult invalid = step.apply(Map.of("enabled", "true", "quiz", "只有一题"), context);
+        assertFalse(invalid.success(), "没有 | 分隔符的行应给出错误提示");
     }
 }

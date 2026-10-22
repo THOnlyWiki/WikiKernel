@@ -25,7 +25,8 @@ import org.springframework.context.MessageSource;
  *     <li>{@link RegistrationQuizMessages}（{@code MessageBundle}）：注册问答文案（键名不变）。</li>
  * </ul>
  * 抽题 / 校验逻辑**整体从 core 迁来**（{@link RegistrationQuizSettings}）；设置也归插件自己
- * （站点设置分区 + 安装向导步骤，键沿用迁移前的 {@code registration.questions} / {@code registration.answers}），
+ * （站点设置分区 + 安装向导步骤，推荐 {@code registration.quiz}，旧的
+ * {@code registration.questions} / {@code registration.answers} 继续兼容），
  * 插件经 {@link SiteConfig} 读同一批键。注册页的提交逻辑继续用 core 的 {@code /js/auth.js}
  * （它用 {@code FormData} 全量提交表单，不依赖具体字段，所以插件不需要自带脚本）。
  */
@@ -34,10 +35,13 @@ public class RegistrationQuizPlugin implements WikiPlugin {
     /** 功能开关键（与 core 的站点设置 / LocalSettings 一致）。 */
     public static final String ENABLED_KEY = RegistrationQuizSettings.ENABLED_KEY;
 
-    /** 问题数组键（core 的站点设置与 {@code /init} 行编辑器写的就是它）。 */
+    /** 推荐的新格式键：一行一题，题目和多个答案用 {@code |} 分隔。 */
+    public static final String QUIZ_KEY = RegistrationQuizSettings.QUIZ_KEY;
+
+    /** 问题数组键（旧配置兼容）。 */
     public static final String QUESTIONS_KEY = RegistrationQuizSettings.QUESTIONS_KEY;
 
-    /** 答案数组键。 */
+    /** 答案数组键（旧配置兼容）。 */
     public static final String ANSWERS_KEY = RegistrationQuizSettings.ANSWERS_KEY;
 
     /** 旧格式单问题键（兼容旧配置）。 */
@@ -57,9 +61,9 @@ public class RegistrationQuizPlugin implements WikiPlugin {
 
     @Override
     public PluginDescriptor descriptor() {
-        return new PluginDescriptor("registration-quiz", "Registration Quiz", "1.0.0",
-                "Registration quiz: two equal-length arrays (registration.questions / registration.answers) "
-                        + "pick a random question and verify the answer by index");
+        return new PluginDescriptor("registration-quiz", "Registration Quiz", "1.1.0",
+                "Registration quiz: one line per question (question | answer1 | answer2), "
+                        + "pick a random question and accept any of its answers");
     }
 
     @Override
@@ -70,7 +74,7 @@ public class RegistrationQuizPlugin implements WikiPlugin {
         context.register(RegistrationFormField.class, new RegistrationQuizFormField(settings, support));
         context.register(RegistrationGuard.class, new RegistrationQuizGuard(settings, support));
         // 设置分区（站点设置页）与安装向导步骤：注册问答的设置属于插件自己，core 只负责渲染 / 保存
-        context.register(SiteSettingsSection.class, new RegistrationQuizSettingsSection(messageSource));
+        context.register(SiteSettingsSection.class, new RegistrationQuizSettingsSection(messageSource, siteConfig));
         context.register(SetupStep.class, new RegistrationQuizSetupStep(messageSource));
         importYamlSettings();
         context.logger().log(System.Logger.Level.INFO, settings.enabled()
@@ -87,6 +91,10 @@ public class RegistrationQuizPlugin implements WikiPlugin {
         if (yamlSettings.getFeatures().getRegistrationQuiz() != null) {
             siteConfig.set(RegistrationQuizSettings.ENABLED_KEY,
                     yamlSettings.getFeatures().getRegistrationQuiz().toString());
+        }
+        String quiz = yamlSettings.getRegistration().getQuiz();
+        if (quiz != null && !quiz.isBlank()) {
+            siteConfig.set(RegistrationQuizSettings.QUIZ_KEY, quiz.trim());
         }
         if (!yamlSettings.getRegistration().getQuestions().isEmpty()) {
             siteConfig.set(RegistrationQuizSettings.QUESTIONS_KEY,

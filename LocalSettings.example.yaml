@@ -166,15 +166,20 @@ wikikernel:
   #   import-max-bytes: 10485760
 
   # ---------------- 注册问答验证（可选验证码） ----------------
-  # 两个**等长数组**：questions（问题）与 answers（答案）按下标一一对应；
-  # 注册页每次随机抽一题，答对该题答案才能注册（答案不区分大小写、忽略首尾空白）。
-  # 总开关是 features.registration-quiz（也可在 /init 或 特殊:权限配置 → 站点设置 里改）；
-  # 上面的 questions / answers 同样可在网页里动态增删（行编辑器）。
+  # 推荐格式：一行一题，题目和该题的多个答案用 | 分隔；同一题答对任意一个答案即可。
+  # 注册页每次随机抽一题；答案不区分大小写、忽略首尾空白。
+  # 总开关是 features.registration-quiz（也可在 /init 或 特殊:权限配置 → 站点设置 里改）。
+  # registration:
+  #   quiz: |
+  #     1 + 1 = ? | 2 | 二
+  #     本 wiki 叫什么名字？ | WikiKernel | wikikernel
+  #
+  # 兼容旧格式（两个等长数组）：
   # registration:
   #   questions: [ "1 + 1 = ?", "本 wiki 叫什么名字？" ]
   #   answers:   [ "2",          "WikiKernel" ]
   #
-  # 兼容旧格式（单个问题 + 同一题的多个可接受答案，| 分隔）：
+  # 兼容更早的格式（单个问题 + 同一题的多个可接受答案，| 分隔）：
   # registration:
   #   question: "1 + 1 = ?"
   #   answers: "2|二"

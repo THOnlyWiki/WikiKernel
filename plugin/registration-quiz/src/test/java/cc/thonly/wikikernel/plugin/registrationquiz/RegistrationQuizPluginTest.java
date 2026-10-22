@@ -26,6 +26,7 @@ class RegistrationQuizPluginTest {
         assertEquals("registration-quiz", plugin.descriptor().id());
         assertEquals("Registration Quiz", plugin.descriptor().name());
         assertEquals("features.registration-quiz", RegistrationQuizPlugin.ENABLED_KEY);
+        assertEquals("registration.quiz", RegistrationQuizPlugin.QUIZ_KEY);
         assertEquals("registration.questions", RegistrationQuizPlugin.QUESTIONS_KEY);
         assertEquals("registration.answers", RegistrationQuizPlugin.ANSWERS_KEY);
         assertEquals("registration.question", RegistrationQuizPlugin.LEGACY_QUESTION_KEY);

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 /**
  * 动态 {@code /robots.txt}：站点设置 {@code site.robots} 优先；留空使用内置默认规则。
+ * 同时接受常见的拼写错误 {@code /robot.txt} / {@code /Robot.txt}，避免被当成 wiki 页面
+ * 而返回“页面不存在”。规范地址仍然是 {@code /robots.txt}。
  * <p>
  * 插件（例如 ai-crawler-block）可以通过 {@link CrawlerPolicy#robotsTxt()} 追加 AI 爬虫规则；
  * core 只负责合并文本，不认识具体厂商。响应不缓存，后台改完立即生效。
@@ -30,7 +32,7 @@ public class RobotsController {
         this.pluginManager = pluginManager;
     }
 
-    @GetMapping("/robots.txt")
+    @GetMapping({"/robots.txt", "/robot.txt", "/Robot.txt", "/Robots.txt"})
     public ResponseEntity<String> robots() {
         String configured = SiteSettingsServiceImpl.normalizeRobots(
                 siteSettingsService.get(SiteSettingsService.ROBOTS_KEY, ""));

@@ -105,45 +105,52 @@ MediaWiki 风格的注册/登录页 + JSON API（无需额外前端依赖）：
 > 答案输入框，`RegistrationGuard` 在 `POST /api/user/register` 按下标校验），`auth.registerAnswerHint` /
 > `auth.registerAnswerWrong` 文案也随插件走（键名不变）。
 > **设置也归插件自己**：插件注册一个「站点设置分区」（`common.extension.SiteSettingsSection`，core 只按
-> 声明的键渲染 / 保存）与一个安装向导步骤（`SetupStep`），键名沿用迁移前的
-> `registration.questions` / `registration.answers` / `registration.question` / `features.registration-quiz`，
-> 所以配置位置与语义不变；详见 [`plugin/registration-quiz/README.md`](../plugin/registration-quiz/README.md)。
+> 声明的键渲染 / 保存）与一个安装向导步骤（`SetupStep`）；新配置写在 `registration.quiz`，
+> 旧的 `registration.questions` / `registration.answers` / `registration.question` 继续兼容。
+> 详见 [`plugin/registration-quiz/README.md`](../plugin/registration-quiz/README.md)。
 
-两个**等长数组**：问题数组 `a`（`registration.questions`）与答案数组 `b`（`registration.answers`），
-`a[i]` 与 `b[i]` 按下标一一对应。注册页每次从题库里**随机抽一道**展示（并带回题目下标），
-必须答对**那道题**的答案才能注册。
+推荐格式是**一行一道题**，题目和该题的所有可接受答案放在同一行，用 `|` 分隔：
 
-- **配置位置**（三处等价，运行时可改、立即生效，不需要重启）：
-  - 「特殊:权限配置 → 站点设置 → 插件设置 → 注册问答」：开关 + 两个多行文本框（问题 / 答案各一行一条，
-    数量必须相等）；分区由插件自己注册，core 只渲染；
+```text
+1 + 1 = ? | 2 | 二
+本 wiki 叫什么名字？ | WikiKernel | wikikernel
+```
+
+同一道题可以有多个答案；注册页每次从题库里**随机抽一道**展示（并带回题目下标），
+答对该题任意一个答案即可注册。
+
+- **配置位置**（运行时可改、立即生效，不需要重启）：
+  - 「特殊:权限配置 → 站点设置 → 插件设置 → 注册问答」：开关 + **一个**问答 textarea；
   - `/init` 安装向导里本插件的 tab（`SetupStep`，写进 `LocalSettings.yaml`）；
-  - `LocalSettings.yaml` 的 `wikikernel.registration.questions / answers`（YAML 列表）+
-    总开关 `wikikernel.features.registration-quiz`：
+  - `LocalSettings.yaml` 的 `wikikernel.registration.quiz`（多行字符串）+ 总开关
+    `wikikernel.features.registration-quiz`：
     ```yaml
     wikikernel:
       features:
         registration-quiz: true
       registration:
-        questions: [ "1 + 1 = ?", "本 wiki 叫什么名字？" ]
-        answers:   [ "2",          "WikiKernel" ]
+        quiz: |
+          1 + 1 = ? | 2 | 二
+          本 wiki 叫什么名字？ | WikiKernel | wikikernel
     ```
 - **总开关** `features.registration-quiz`（默认关闭）：关闭时即便配了题也不门禁（注册页不显示问题）；
-  开关打开但两个数组为空时同样不启用；
-- **数量必须相等**：保存时校验（不等长 → 400「注册问答的问题与答案数量必须相等（当前 3 / 2）」），
-  数量不等的旧数据按较短的长度配对；
+  开关打开但题库为空时同样不启用；
+- **格式校验**：向导里每行至少要有「问题 | 答案」，否则给出「注册问答格式不正确」；网页里的
+  textarea 保存后由插件按同样规则解析（不完整的行会被忽略）；
 - **校验规则**：答案不区分大小写、忽略首尾空白；**不带题目下标 / 下标越界 = 答错**（注册页总会带下标），
   答错返回 400「注册问答答案不正确，请重试。」；
-- **兼容旧配置**：老的 `registration.question`（单问题）+ `answers`（同一题的多个可接受答案，`|` 分隔）
-  仍然可用 —— `questions` 为空时会按旧格式解析：同一问题展开成多行、每行一个可接受答案
-  （随机抽题不会因此偏向，语义与旧版完全一致）；
+- **兼容旧配置**：
+  - 旧的两个等长数组 `registration.questions` / `registration.answers` 仍然可用，按较短长度配对；
+  - 更早的 `registration.question`（单问题）+ `answers`（同一题的多个可接受答案，`|` 分隔）仍然可用；
+  - 打开旧配置的设置页时，插件会把旧格式转换成新格式显示，保存后写入 `registration.quiz`；
 - 管理员 / 行政员代为创建账号时同样需要回答；
-- **键常量**（插件 `RegistrationQuizSettings`，与迁移前 core 的 `RegistrationQuizKeys` 同名）：
-  `registration.questions` / `registration.answers` / `registration.question`（旧格式）/
-  `features.registration-quiz`（总开关）；
-- 回归测试：插件侧 `plugin/registration-quiz/src/test`（随机抽题与下标对应、按下标校验、大小写与空白宽容、
-  数量不等按较短配对、旧配置兼容、开关 / 空题库、表单字段渲染、设置分区与向导步骤的字段 / YAML 路径），
-  core 侧 `PluginSettingsSectionTest` 验证平台机制（分区渲染 / 按声明键保存 / 权限）；
-  扩展点平台本身由 `PluginEditHookTest` 覆盖（钩子顺序 / 容错 / 四种结论 / web-api 来源）。
+- **键常量**（插件 `RegistrationQuizSettings`）：
+  `registration.quiz`（推荐）/ `registration.questions` / `registration.answers` /
+  `registration.question`（旧格式）/ `features.registration-quiz`（总开关）；
+- 回归测试：插件侧 `plugin/registration-quiz/src/test`（随机抽题与下标对应、按下标校验、多个答案、
+  大小写与空白宽容、数量不等按较短配对、旧配置兼容与编辑器回填、开关 / 空题库、表单字段渲染、
+  设置分区与向导步骤的字段 / YAML 路径），core 侧 `PluginSettingsSectionTest` 验证平台机制
+  （分区渲染 / 按声明键保存 / 权限）；扩展点平台本身由 `PluginEditHookTest` 覆盖。
 
 ### 请求速率限制（防字典爆破）
 

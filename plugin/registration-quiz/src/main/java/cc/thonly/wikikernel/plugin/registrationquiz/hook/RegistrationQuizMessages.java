@@ -13,8 +13,7 @@ import cc.thonly.wikikernel.common.plugin.support.ResourceMessageBundle;
  * core 里 {@code auth.registerAnswerHint} / {@code auth.registerAnswerWrong} 已删除：
  * 前者用在插件渲染的表单字段里，后者是注册前钩子 {@code BLOCK} 时返回给用户的说明。
  * 设置表单自身的文案（{@code settings.registerQuiz*} / {@code setup.registrationQuiz*} /
- * {@code registrationQuiz.*} 行编辑器 / {@code auth.registerQuizMismatch} 数量校验）属于 core 的界面文案，
- * 仍留在 core 的消息文件里。
+ * {@code auth.registerQuizInvalid} 格式校验）也由插件自己的资源文件提供。
  */
 public class RegistrationQuizMessages extends ResourceMessageBundle {
 }

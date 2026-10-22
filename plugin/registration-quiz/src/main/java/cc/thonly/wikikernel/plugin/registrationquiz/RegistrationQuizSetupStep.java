@@ -12,9 +12,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 注册问答的安装向导步骤（{@code /init} 里本插件的 tab）：题目 / 答案按行填写，
- * {@link #apply} 写 {@code wikikernel.registration.*} 与 {@code wikikernel.features.registration-quiz}（YAML），
- * 重启后由插件导入站点设置——与迁移前 core 向导写的是同一批键。
+ * 注册问答的安装向导步骤（{@code /init} 里本插件的 tab）：一行一题，题目和该题的多个答案
+ * 用 {@code |} 分隔；{@link #apply} 写 {@code wikikernel.registration.quiz} 与
+ * {@code wikikernel.features.registration-quiz}（YAML），重启后由插件导入站点设置。
  */
 public class RegistrationQuizSetupStep implements SetupStep {
 
@@ -48,22 +48,22 @@ public class RegistrationQuizSetupStep implements SetupStep {
     public List<SetupField> fields() {
         return List.of(
                 SetupField.checkbox("enabled", text("setup.registrationQuiz"), false),
-                SetupField.textArea("questions", text("settings.registerQuizQuestions"), ""),
-                SetupField.textArea("answers", text("settings.registerQuizAnswers"), ""));
+                SetupField.textArea("quiz", text("settings.registerQuizItems"), ""));
     }
 
     @Override
     public SetupResult apply(Map<String, String> values, SetupContext context) {
-        List<String> questions = RegistrationQuizSettings.splitLines(values.get("questions"));
-        List<String> answers = RegistrationQuizSettings.splitLines(values.get("answers"));
+        String quiz = values.get("quiz") == null ? "" : values.get("quiz").trim();
+        List<String> lines = RegistrationQuizSettings.splitLines(quiz);
+        List<RegistrationQuizSettings.QuizRow> rows = RegistrationQuizSettings.parseRows(quiz);
         context.putGlobal("wikikernel.features.registration-quiz", truthy(values.get("enabled")));
-        context.putGlobal("wikikernel.registration.questions", questions);
-        context.putGlobal("wikikernel.registration.answers", answers);
+        context.putGlobal("wikikernel.registration.quiz", quiz);
+        // 清掉旧格式，避免新向导保存后旧题目继续生效。
+        context.putGlobal("wikikernel.registration.questions", List.of());
+        context.putGlobal("wikikernel.registration.answers", List.of());
         context.putGlobal("wikikernel.registration.question", "");
-        if (!questions.isEmpty() && questions.size() != answers.size()) {
-            return SetupResult.error(text("auth.registerQuizMismatch")
-                    .replace("{0}", String.valueOf(questions.size()))
-                    .replace("{1}", String.valueOf(answers.size())));
+        if (!lines.isEmpty() && rows.size() != lines.size()) {
+            return SetupResult.error(text("auth.registerQuizInvalid"));
         }
         return SetupResult.ok(text("setup.registerQuizSaved"));
     }

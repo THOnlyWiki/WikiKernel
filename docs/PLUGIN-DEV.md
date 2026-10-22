@@ -287,7 +287,7 @@ core 侧接线：
 | `gadgets` | [Gadgets](https://www.mediawiki.org/wiki/Extension:Gadgets)（**原 core 内置，已拆出**） | `WikiKernel:Gadgets-definition` 定义、按用户加载 Gadget JS/CSS、`特殊:Gadgets`、参数设置分区 |
 | `page-banner` | [WikidataPageBanner](https://www.mediawiki.org/wiki/Extension:WikidataPageBanner)（**原 core 内置，已拆出**） | `{{PAGEBANNER:文件\|caption=说明}}` / `<exclude-banner-page />`：标题上方横幅（白名单 / 逐页配置 / 轮换） |
 | `confirm-edit` | [ConfirmEdit](https://www.mediawiki.org/wiki/Extension:ConfirmEdit)（**原 core 内置，已拆出**） | 编辑 / 创建页面的算术验证码：编辑页表单字段（`EditFormField`）+ 保存前校验（`EditGuard`） |
-| `registration-quiz` | [注册问答验证](https://www.mediawiki.org/wiki/Extension:QuestyCaptcha)（仿 QuestyCaptcha）（**原 core 内置，已拆出**） | 两个等长数组随机抽题：注册页表单字段（`RegistrationFormField`）+ 注册前校验（`RegistrationGuard`） |
+| `registration-quiz` | [注册问答验证](https://www.mediawiki.org/wiki/Extension:QuestyCaptcha)（仿 QuestyCaptcha）（**原 core 内置，已拆出**） | 一行一题、多个可接受答案随机抽题：注册页表单字段（`RegistrationFormField`）+ 注册前校验（`RegistrationGuard`） |
 | `comments` | [Comments](https://www.mediawiki.org/wiki/Extension:Comments)（**原 core 内置，已拆出**） | `<comment />` / `<comments />` 页面评论区：发表 / 回复（wikitext）/ 软删除 + `/api/comments`，头像与权限走 common 桥 |
 | `multi-upload` | [MsUpload](https://www.mediawiki.org/wiki/Extension:MsUpload)（**原 core 内置，已拆出**） | 多文件批量上传：上传页多选列表（可改名 / 逐个上传 / 插入画廊）+ 编辑器上传对话框批量插入 |
 | `social-profile` | 用户交互 / [SocialProfile](https://www.mediawiki.org/wiki/Extension:SocialProfile)（**原 core 内置，已拆出**） | 用户页资料卡（头像 + 私信 / 上传头像链接）、头像上传 `POST /api/user/avatar` 与 `/avatars/<文件名>`、`特殊:上传头像`、`特殊:私信`（收件箱 / 发件箱 / 会话 / 写私信）+ `/api/messages/*`、顶栏「私信（N）」 |

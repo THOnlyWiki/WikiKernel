@@ -15,9 +15,16 @@ public final class RegistrationQuizFakes {
     private RegistrationQuizFakes() {
     }
 
-    /** 站点设置替身：只认注册问答的几个键。 */
+    /** 站点设置替身：只认注册问答的几个键（旧格式）。 */
     public static SiteConfig config(boolean enabled, String questions, String answers, String legacyQuestion) {
+        return config(enabled, "", questions, answers, legacyQuestion);
+    }
+
+    /** 站点设置替身：带新格式 quiz 的版本。 */
+    public static SiteConfig config(boolean enabled, String quiz, String questions, String answers,
+                                    String legacyQuestion) {
         Map<String, String> values = new LinkedHashMap<>();
+        values.put(RegistrationQuizSettings.QUIZ_KEY, quiz == null ? "" : quiz);
         values.put(RegistrationQuizSettings.QUESTIONS_KEY, questions == null ? "" : questions);
         values.put(RegistrationQuizSettings.ANSWERS_KEY, answers == null ? "" : answers);
         values.put(RegistrationQuizSettings.LEGACY_QUESTION_KEY, legacyQuestion == null ? "" : legacyQuestion);

@@ -18,7 +18,8 @@ import java.io.IOException;
  * 同时让 Googlebot / Bingbot 等搜索引擎通过。
  * <p>
  * core 不硬编码厂商名单：没有插件时没有策略，所有请求原样放行。
- * {@code /robots.txt} 本身始终放行，让爬虫能读到规则。
+ * {@code /robots.txt}（以及常见拼写 {@code /robot.txt} / {@code /Robot.txt}）本身始终放行，
+ * 让爬虫能读到规则。
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
@@ -34,7 +35,9 @@ public class CrawlerPolicyFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         String path = request.getRequestURI();
-        if (path != null && ("/robots.txt".equals(path) || "/favicon.ico".equals(path))) {
+        if (path != null && ("/robots.txt".equals(path) || "/robot.txt".equals(path)
+                || "/Robot.txt".equals(path) || "/Robots.txt".equals(path)
+                || "/favicon.ico".equals(path))) {
             chain.doFilter(request, response);
             return;
         }

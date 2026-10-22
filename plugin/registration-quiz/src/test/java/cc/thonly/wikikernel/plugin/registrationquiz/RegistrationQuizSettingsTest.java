@@ -109,6 +109,29 @@ class RegistrationQuizSettingsTest {
     }
 
     @Test
+    void combinedQuizSupportsMultipleAcceptedAnswersPerQuestion() {
+        RegistrationQuizSettings settings = new RegistrationQuizSettings(
+                config(true, "1 + 1 = ? | 2 | 二\n本 wiki 叫什么？ | WikiKernel", "", "", ""));
+        List<RegistrationQuizSettings.QuizRow> rows = settings.rows();
+        assertEquals(2, rows.size(), rows.toString());
+        assertEquals(List.of("2", "二"), rows.get(0).answers());
+        assertTrue(settings.accepts(0, "2"));
+        assertTrue(settings.accepts(0, " 二 "));
+        assertFalse(settings.accepts(0, "三"));
+        assertTrue(settings.accepts(1, "wikikernel"));
+        assertEquals("1 + 1 = ? | 2 | 二\n本 wiki 叫什么？ | WikiKernel", settings.editorText());
+    }
+
+    @Test
+    void fullWidthSeparatorIsAccepted() {
+        RegistrationQuizSettings settings = new RegistrationQuizSettings(
+                config(true, "问题｜答案一｜答案二", "", "", ""));
+        List<RegistrationQuizSettings.QuizRow> rows = settings.rows();
+        assertEquals(1, rows.size(), rows.toString());
+        assertEquals(List.of("答案一", "答案二"), rows.get(0).answers());
+    }
+
+    @Test
     void splitLinesAndMatchesHelpers() {
         assertEquals(List.of("甲", "乙"), RegistrationQuizSettings.splitLines(" 甲 \n\n 乙\r\n"));
         assertEquals(List.of(), RegistrationQuizSettings.splitLines("   "));

@@ -6,11 +6,12 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * LocalSettings.yaml 的注册问答配置（与迁移前 core 的键**完全一致**）：
+ * LocalSettings.yaml 的注册问答配置：
  * <ul>
  *     <li>{@code wikikernel.features.registration-quiz}：功能开关；</li>
- *     <li>{@code wikikernel.registration.questions} / {@code answers}：题目 / 答案数组（按下标对应）；</li>
- *     <li>{@code wikikernel.registration.question}：旧格式单问题（兼容旧配置）。</li>
+ *     <li>{@code wikikernel.registration.quiz}：推荐格式，一行一题，题目和多个答案用 {@code |} 分隔；</li>
+ *     <li>{@code wikikernel.registration.questions} / {@code answers}：旧的两个数组（按下标对应，兼容）；</li>
+ *     <li>{@code wikikernel.registration.question}：更早的单问题格式（兼容）。</li>
  * </ul>
  * 插件在 {@code onStart} 里把它导入站点设置（写了的值每次启动覆盖一次）。
  */
@@ -54,9 +55,18 @@ public class RegistrationQuizYamlSettings {
     /** {@code wikikernel.registration.*}。 */
     public static class Registration {
 
+        private String quiz;
         private List<String> questions = List.of();
         private List<String> answers = List.of();
         private String question;
+
+        public String getQuiz() {
+            return quiz;
+        }
+
+        public void setQuiz(String quiz) {
+            this.quiz = quiz;
+        }
 
         public List<String> getQuestions() {
             return questions;
