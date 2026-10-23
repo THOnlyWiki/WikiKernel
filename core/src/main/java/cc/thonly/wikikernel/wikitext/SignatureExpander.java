@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 /**
  * MediaWiki 风格签名展开：{@code ~~~} / {@code ~~~~} / {@code ~~~~~}。
  * <p>
- * 签名在**保存时**展开（与 MediaWiki 一致），这样版本内容里保存的是确定的签名；
- * 旧数据 / 导入数据里的字面量仍可在渲染时用最新版本作者兜底展开。
+ * 签名只在**提交 / 保存时**展开（与 MediaWiki 一致），使用本次提交的用户；
+ * 段落编辑只展开新提交的片段，不会按历史版本作者回填别人的签名。
  * <p>
  * 不处理 {@code <nowiki>} / {@code <pre>} / {@code <code>} / {@code <syntaxhighlight>}
  * 等字面量块与 HTML 注释里的波浪号。

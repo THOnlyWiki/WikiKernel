@@ -5,6 +5,8 @@ import cc.thonly.wikikernel.common.externalauth.ExternalAuthHttp;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthUser;
 import cc.thonly.wikikernel.common.service.SiteConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -16,6 +18,8 @@ import java.util.Map;
 public final class GitHubAuthProvider implements ExternalAuthProvider {
 
     public static final String ID = "github";
+
+    private static final Logger log = LoggerFactory.getLogger(GitHubAuthProvider.class);
 
     private static final String AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
     private static final String TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -103,12 +107,22 @@ public final class GitHubAuthProvider implements ExternalAuthProvider {
         ExternalAuthHttp.Response tokenResponse = http.postForm(TOKEN_URL, form,
                 Map.of("Accept", "application/json", "User-Agent", "WikiKernel"));
         if (!tokenResponse.ok()) {
+            log.warn("GitHub token endpoint returned HTTP {} (callback URI: {})",
+                    tokenResponse.status(), redirectUri);
             throw new ExternalAuthException("GitHub token endpoint returned " + tokenResponse.status());
         }
         JsonNode token = objectMapper.readTree(tokenResponse.body());
         String accessToken = token.path("access_token").asText("");
         if (accessToken.isBlank()) {
-            throw new ExternalAuthException("GitHub token exchange failed");
+            String error = token.path("error").asText("").trim();
+            String description = token.path("error_description").asText("").trim();
+            log.warn("GitHub token exchange failed: error={} description={} callback URI={}",
+                    error, description, redirectUri);
+            String detail = error.isBlank() ? "empty response" : error;
+            if (!description.isBlank()) {
+                detail += " (" + description + ")";
+            }
+            throw new ExternalAuthException("GitHub token exchange failed: " + detail);
         }
 
         Map<String, String> headers = Map.of(
