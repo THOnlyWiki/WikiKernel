@@ -29,5 +29,5 @@ MediaWiki 侧没有对应扩展页，皮肤机制见官方手册 [Manual:Skins](
 
 ## 相关文档
 
-- [皮肤与前端界面](../../docs/SKIN.md)（皮肤机制、内置皮肤、插件皮肤）
-- [插件开发与运行](../../docs/PLUGIN-DEV.md)（插件清单、`SetupStep`、插件静态资源端点）
+- [皮肤与前端界面](../../docs/content/development/skins.md)（皮肤机制、内置皮肤、插件皮肤）
+- [插件开发与运行](../../docs/content/development/plugin-development.md)（插件清单、`SetupStep`、插件静态资源端点）

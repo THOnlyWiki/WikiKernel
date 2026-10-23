@@ -42,8 +42,8 @@ java -jar build\dist\wikikernel-server.jar
 `run.bat` 会在一个 cmd 窗口里启动并实时打印日志（发行包里的 `run.bat` 会自动使用同目录的启动器）。第一次启动时 `LocalSettings.yaml`
 还不存在，应用进入安装模式，打开 <http://localhost:18080/init> 按向导完成初始化
 （站点名称、数据库、初始账号，可选 SMTP 与功能开关）。安装细节、配置项、日志开关、
-插件热重载见 [配置与部署](docs/CONFIG.md)；在 IDE 里运行、依赖 Maven 缓存等开发细节
-见 [插件开发](docs/PLUGIN-DEV.md)。
+插件热重载见 [配置与部署](docs/content/administration/configuration-reference.md)；在 IDE 里运行、依赖 Maven 缓存等开发细节
+见 [插件开发](docs/content/development/plugin-development.md)。
 
 ## 扩展插件
 
@@ -65,26 +65,34 @@ java -jar build\dist\wikikernel-server.jar
 
 每个插件的移植范围、配置键和与 MediaWiki 原版的差异写在它自己的
 `plugin/<id>/README.md` 里；完整清单、扩展点和各插件配置见
-[插件开发](docs/PLUGIN-DEV.md)。
+[插件开发](docs/content/development/plugin-development.md)。
 
 ## 文档
 
 | 文档 | 内容 |
 | --- | --- |
-| [配置与部署](docs/CONFIG.md) | `application.yaml` 与 `LocalSettings.yaml`、Auto-DDL、数据访问、Redis 页面缓存、访问控制、i18n |
-| [插件开发](docs/PLUGIN-DEV.md) | 依赖方向、插件里的 Spring、加载原理、扩展点、各插件配置 |
-| [接口与 API](docs/API.md) | `/api.php`、`mw` / `mw.loader` 兼容层、跨 Wiki、导出与导入、页面预览 |
-| [Wikitext](docs/WIKITEXT.md) | 模板与解析器函数、Widgets、Gadgets、Lua、数学公式、时间轴、图形、分类 |
-| [功能详述](docs/FEATURES.md) | 特殊页面、用户与权限、参数设置、AI 代理、文件、邮件、封禁、日志、保护与移动 |
-| [皮肤](docs/SKIN.md) | 皮肤机制、页面级 CSS / JS、TypeScript 代码页面、与 OOUI 的样式对齐 |
-| [第三方登录](docs/THIRD-PARTY-LOGIN.md) | GitHub / QQ OAuth、回调地址、绑定与解绑 |
-| [Mixin](docs/MIXIN.md) | 插件 Mixin 与 MixinExtras、启动期 Agent、热加载限制 |
+| [配置与部署](docs/content/administration/configuration-reference.md) | `application.yaml` 与 `LocalSettings.yaml`、Auto-DDL、数据访问、Redis 页面缓存、访问控制、i18n |
+| [插件开发](docs/content/development/plugin-development.md) | 依赖方向、插件里的 Spring、加载原理、扩展点、各插件配置 |
+| [接口与 API](docs/content/api/reference.md) | `/api.php`、`mw` / `mw.loader` 兼容层、跨 Wiki、导出与导入、页面预览 |
+| [Wikitext](docs/content/guides/wikitext.md) | 模板与解析器函数、Widgets、Gadgets、Lua、数学公式、时间轴、图形、分类 |
+| [功能详述](docs/content/guides/features.md) | 特殊页面、用户与权限、参数设置、AI 代理、文件、邮件、封禁、日志、保护与移动 |
+| [皮肤](docs/content/development/skins.md) | 皮肤机制、页面级 CSS / JS、TypeScript 代码页面、与 OOUI 的样式对齐 |
+| [第三方登录](docs/content/administration/third-party-login.md) | GitHub / QQ OAuth、回调地址、绑定与解绑 |
+| [Mixin](docs/content/development/mixin.md) | 插件 Mixin 与 MixinExtras、启动期 Agent、热加载限制 |
+
+文档站使用 Docusaurus 构建，源码在 `docs/` 子模块；本地预览：
+
+```powershell
+cd docs
+npm install
+npm start
+```
 
 ## 参与
 
 欢迎提交 issue 和 pull request。改完插件或 core 后，提交前至少跑一次
 `.\gradlew.bat build` 和 `.\gradlew.bat checkPluginDependencies`；界面文案的约定见
-[配置与部署](docs/CONFIG.md)，新增插件的步骤见 [插件开发](docs/PLUGIN-DEV.md)。
+[配置与部署](docs/content/administration/configuration-reference.md)，新增插件的步骤见 [插件开发](docs/content/development/plugin-development.md)。
 
 ## 许可证
 

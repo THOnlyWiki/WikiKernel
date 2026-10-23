@@ -29,5 +29,5 @@
 
 ## 相关文档
 
-- [Wikitext 与内容标记](../../docs/WIKITEXT.md)（行为开关、解析器函数）
-- [插件开发与运行](../../docs/PLUGIN-DEV.md)（插件清单、`BehaviorSwitch` 等扩展点）
+- [Wikitext 与内容标记](../../docs/content/guides/wikitext.md)（行为开关、解析器函数）
+- [插件开发与运行](../../docs/content/development/plugin-development.md)（插件清单、`BehaviorSwitch` 等扩展点）

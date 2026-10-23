@@ -4,3 +4,8 @@
 [submodule "plugin/kawaii-timeless"]
 	path = plugin/kawaii-timeless
 	url = https://github.com/THOnlyWiki/kawaii-timeless.git
+
+[submodule "docs"]
+	path = docs
+	url = ../WikiKernel-Docs.git
+	branch = main

@@ -33,5 +33,5 @@
 
 ## 相关文档
 
-- [Wikitext 与内容标记](../../docs/WIKITEXT.md)（解析器函数、模板与变量）
-- [插件开发与运行](../../docs/PLUGIN-DEV.md)（解析器函数扩展点、渲染上下文 `WikiRenderContext`）
+- [Wikitext 与内容标记](../../docs/content/guides/wikitext.md)（解析器函数、模板与变量）
+- [插件开发与运行](../../docs/content/development/plugin-development.md)（解析器函数扩展点、渲染上下文 `WikiRenderContext`）

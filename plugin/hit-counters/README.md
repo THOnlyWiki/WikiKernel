@@ -44,5 +44,5 @@ wikikernel:
 
 ## 相关文档
 
-- [配置与数据](../../docs/CONFIG.md)（`LocalSettings.yaml`、站点设置、页面属性）
-- [插件开发与运行](../../docs/PLUGIN-DEV.md)（`PageViewHook` / `MagicWord` / `SetupStep` 扩展点）
+- [配置与数据](../../docs/content/administration/configuration-reference.md)（`LocalSettings.yaml`、站点设置、页面属性）
+- [插件开发与运行](../../docs/content/development/plugin-development.md)（`PageViewHook` / `MagicWord` / `SetupStep` 扩展点）
