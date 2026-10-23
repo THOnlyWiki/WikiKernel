@@ -235,7 +235,7 @@
             "trust-proxy-headers": {
               "type": "boolean",
               "default": false,
-              "description": "是否信任代理 / CDN 的转发头；false = 直接使用连接来源地址。"
+              "description": "是否信任代理 / Docker / CDN 的转发头；false = 直接使用连接来源地址。"
             }
           }
         },
@@ -527,6 +527,17 @@
               "type": "string",
               "default": "特殊",
               "description": "特殊页前缀（生成链接用）：特殊（默认，/wiki/特殊:搜索）或 Special 等；输入侧两种前缀都识别"
+            }
+          }
+        },
+        "time": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "zone": {
+              "type": "string",
+              "default": "",
+              "description": "服务器时区 ID（IANA，如 Asia/Shanghai）；留空 = JVM / 操作系统默认时区"
             }
           }
         },

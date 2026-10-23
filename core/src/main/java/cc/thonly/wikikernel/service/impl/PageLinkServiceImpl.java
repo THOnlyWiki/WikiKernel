@@ -17,8 +17,10 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PageLinkServiceImpl implements PageLinkService {
@@ -53,21 +55,34 @@ public class PageLinkServiceImpl implements PageLinkService {
             return List.of();
         }
         String needle = "[[" + title;
+        int scanLimit = limit * REVISION_SCAN_LIMIT_FACTOR;
 
-        // 1) 版本正文里粗筛出可能链接到该标题的页面
-        List<Long> pageIds = wikiRevisionMapper.selectList(Wrappers.<WikiRevision>lambdaQuery()
-                        .like(WikiRevision::getContent, needle)
-                        .orderByDesc(WikiRevision::getId)
-                        .last("LIMIT " + (limit * REVISION_SCAN_LIMIT_FACTOR)))
+        // 1) 版本正文里粗筛出可能链接到该标题的页面；相对子页面链接（[[/子页]]）
+        //    不包含完整标题，必须额外把带相对链接的版本纳入候选，再逐页解析核对。
+        Set<Long> pageIds = new LinkedHashSet<>(wikiRevisionMapper.selectList(
+                        Wrappers.<WikiRevision>lambdaQuery()
+                                .like(WikiRevision::getContent, needle)
+                                .orderByDesc(WikiRevision::getId)
+                                .last("LIMIT " + scanLimit))
                 .stream()
                 .map(WikiRevision::getPageId)
-                .distinct()
-                .toList();
+                .toList());
+        if (title.contains("/")) {
+            pageIds.addAll(wikiRevisionMapper.selectList(Wrappers.<WikiRevision>lambdaQuery()
+                            .and(wrapper -> wrapper.like(WikiRevision::getContent, "[[/")
+                                    .or().like(WikiRevision::getContent, "[[../")
+                                    .or().like(WikiRevision::getContent, "[[./"))
+                            .orderByDesc(WikiRevision::getId)
+                            .last("LIMIT " + scanLimit))
+                    .stream()
+                    .map(WikiRevision::getPageId)
+                    .toList());
+        }
         if (pageIds.isEmpty()) {
             return List.of();
         }
 
-        // 2) 只保留“最新可见版本”里真正还有该链接的页面
+        // 2) 只保留“最新可见版本”里真正还有该链接的页面（解析相对链接后精确匹配）
         List<WikiPage> pages = wikiPageMapper.selectList(Wrappers.<WikiPage>lambdaQuery()
                 .in(WikiPage::getId, pageIds)
                 .eq(WikiPage::getDeleted, false)
@@ -76,7 +91,7 @@ public class PageLinkServiceImpl implements PageLinkService {
         List<WikiPage> result = new ArrayList<>();
         for (WikiPage page : pages) {
             String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-            if (content.contains(needle)) {
+            if (WikiLinkScanner.linksTo(content, page.getTitle(), title)) {
                 result.add(page);
                 if (result.size() >= limit) {
                     break;

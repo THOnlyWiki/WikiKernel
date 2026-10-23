@@ -67,7 +67,7 @@ public class UploadAvatarSpecialPage implements SpecialPage {
         UserStore.UserRef ref = users.byId(user.getId()).orElse(null);
         String username = ref == null ? user.getUsername() : ref.username();
         model.put("avatarUserName", username);
-        model.put("avatarUrl", ref == null ? UserStore.DEFAULT_AVATAR_URL : ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL));
+        model.put("avatarUrl", ref == null ? users.defaultAvatarUrl() : ref.avatarUrl(users.defaultAvatarUrl()));
         model.put("avatarUserPageUrl", SocialProfileSupport.pagePath("用户:" + username));
     }
 }

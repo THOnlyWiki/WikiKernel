@@ -69,7 +69,8 @@ public class EditProfileSpecialPage extends SocialProfileSpecialPage implements 
         model.put("profile", fields);
         model.put("preferences", preferences);
         model.put("genders", genderOptions(fields.gender()));
-        model.put("avatarUrl", avatars == null ? UserStore.DEFAULT_AVATAR_URL
+        model.put("avatarUrl", avatars == null
+                ? (users == null ? UserStore.DEFAULT_AVATAR_URL : users.defaultAvatarUrl())
                 : avatars.avatarUrl(userId));
         model.put("userPageUrl", SocialProfileSupport.pagePath("用户:" + currentUserName(request)));
         model.put("boardUrl", SocialProfileSupport.pagePath("特殊:留言板"));

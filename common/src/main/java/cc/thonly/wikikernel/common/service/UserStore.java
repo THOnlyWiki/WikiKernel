@@ -13,8 +13,18 @@ import java.util.Optional;
  */
 public interface UserStore {
 
-    /** 未上传头像时的默认头像（站点内置资源；插件渲染头像请用它，避免各自写字符串）。 */
+    /** 未上传头像时的内置默认头像（站点可在设置里覆盖，插件应优先调用 {@link #defaultAvatarUrl()}）。 */
     String DEFAULT_AVATAR_URL = "/img/avatar-default.svg";
+
+    /**
+     * 当前站点的默认头像 URL。
+     * <p>
+     * core 实现会读取站点设置 {@code site.default-avatar}（Timeless 的「默认头像」也写这个共享键）；
+     * 未配置 / 配置非法时返回 {@link #DEFAULT_AVATAR_URL}。测试替身可不覆盖，直接得到内置地址。
+     */
+    default String defaultAvatarUrl() {
+        return DEFAULT_AVATAR_URL;
+    }
 
     /** 用户公开信息（不含密码 / 邮箱等敏感字段）。 */
     record UserRef(long id, String username, String avatar, boolean emailConfirmed) {

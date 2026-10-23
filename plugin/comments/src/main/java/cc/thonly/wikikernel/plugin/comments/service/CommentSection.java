@@ -301,10 +301,10 @@ public class CommentSection {
         return new CommentNode(row, List.copyOf(replies));
     }
 
-    /** 头像 URL（空文件名 = 默认头像；与迁移前 AvatarStore.url 的行为一致）。 */
-    private static String avatarUrl(String fileName) {
+    /** 头像 URL（空文件名 = 站点默认头像；默认头像由 core 的共享设置解析）。 */
+    private String avatarUrl(String fileName) {
         return fileName == null || fileName.isBlank()
-                ? UserStore.DEFAULT_AVATAR_URL : "/avatars/" + fileName;
+                ? users.defaultAvatarUrl() : "/avatars/" + fileName;
     }
 
     /** 一行评论（渲染用）。 */

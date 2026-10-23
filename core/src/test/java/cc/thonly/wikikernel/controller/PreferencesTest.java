@@ -69,6 +69,7 @@ class PreferencesTest {
         mockMvc.perform(get("/wiki/{title}", "特殊:参数设置").session(sessionOf(user)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"preferences-form\"")))
+                .andExpect(content().string(containsString("class=\"pref-footer\"")))
                 .andExpect(content().string(containsString("用户资料")))
                 .andExpect(content().string(containsString("外观")))
                 .andExpect(content().string(containsString("最近更改")))

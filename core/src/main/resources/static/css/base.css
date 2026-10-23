@@ -3861,8 +3861,9 @@ select:disabled {
     margin-top: 1.2em;
 }
 
-/* 参数设置：面板固定高度 + 内容内部滚动 + 底部保存条（仿线上 OOUI .oo-ui-panelLayout-scrollable
-   + .mw-prefs-buttons）。这样切标签 / 滚动内容时保存条位置恒定，提示信息也始终显示在保存条上方。 */
+/* 参数设置：默认面板固定高度 + 内容内部滚动（仿线上 OOUI .oo-ui-panelLayout-scrollable
+   + .mw-prefs-buttons）。Timeless 皮肤会在自己的 CSS 里改成「整页滚动 + sticky 工具条」，
+   不再让 .pref-panels 成为第二个滚动容器。 */
 .pref-layout .pref-content {
     display: flex;
     flex-direction: column;
@@ -3909,6 +3910,10 @@ select:disabled {
     overflow-y: auto;
 }
 
+.pref-layout .pref-footer {
+    flex: 0 0 auto;
+}
+
 .pref-layout .pref-actions {
     flex: 0 0 auto;
     display: flex;
@@ -3928,6 +3933,14 @@ select:disabled {
     margin: -0.2em 0 0.8em;
     font-size: 0.9em;
     color: var(--wiki-text-muted);
+}
+
+/* 正文里的右浮动图片不参与父容器高度；没有 clearfix 时后面的评论区 / 页脚会钻到图片下面。
+   用伪元素收住浮动（不要用 overflow:auto/hidden，否则会变成滚轮容器）。 */
+.wiki-content::after {
+    content: "";
+    display: block;
+    clear: both;
 }
 
 /* 词条内嵌图片：[[文件:xxx|thumb|说明|200px]] */.wiki-thumb {

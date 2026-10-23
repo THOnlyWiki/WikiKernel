@@ -119,6 +119,22 @@ class WikitextRendererTest {
     }
 
     @Test
+    void resolvesSubpageRelativeLinksAgainstCurrentPage() {
+        String child = renderer.render("[[/条目命名|条目命名规范]]", "帮助:格式");
+        assertTrue(child.contains("href=\"/wiki/帮助:格式/条目命名\""), child);
+        assertTrue(child.contains(">条目命名规范</a>"), child);
+
+        String parent = renderer.render("[[../兄弟|兄弟]]", "帮助:格式/子页");
+        assertTrue(parent.contains("href=\"/wiki/帮助:格式/兄弟\""), parent);
+
+        String current = renderer.render("[[./子页]]", "帮助:格式/总览");
+        assertTrue(current.contains("href=\"/wiki/帮助:格式/总览/子页\""), current);
+
+        String anchored = renderer.render("[[/章节#示例]]", "帮助:格式");
+        assertTrue(anchored.contains("href=\"/wiki/帮助:格式/章节#示例\""), anchored);
+    }
+
+    @Test
     void expandsTemplateWithNamedArgs() {
         String html = renderer.render("{{abc模板|a=1|b=2}}", "测试");
         assertTrue(html.contains("a=1"), html);

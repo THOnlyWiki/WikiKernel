@@ -590,9 +590,15 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
 
     // ==================== 配置（每次现读，改完立即生效） ====================
 
+    /**
+     * 正文渲染格式版本：渲染逻辑变化（如签名展开）时递增，让旧缓存键全部失效，
+     * 不依赖管理员手动清 Redis。旧键会在 TTL 内自然过期。
+     */
+    private static final String CACHE_KEY_VERSION = "v2:";
+
     /** 缓存键：规范化标题（与页面存储 / 查询同一套规则，插件传裸标题也能命中）。 */
     private static String key(String title) {
-        return WikiTitles.normalize(title);
+        return CACHE_KEY_VERSION + WikiTitles.normalize(title);
     }
 
     private boolean enabledFlag() {

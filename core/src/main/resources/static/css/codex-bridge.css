@@ -634,7 +634,9 @@ body.skin-timeless #mw-content .cdx-button {
         margin: 0 0 0.7em;
         overflow-x: auto;
         overflow-y: hidden;
+        max-height: none;
         border-bottom: 1px solid var(--border-color-subtle, #e3e5e8);
+        background: var(--background-color-base, #fff);
     }
 
     body.skin-timeless .pref-layout .pref-tab {
@@ -650,9 +652,14 @@ body.skin-timeless #mw-content .cdx-button {
     }
 
     body.skin-timeless .pref-layout .pref-content {
-        height: calc(100vh - 270px);
-        min-height: 380px;
+        height: auto;
+        min-height: 0;
         padding: 12px;
+    }
+
+    body.skin-timeless .pref-layout .pref-footer {
+        margin: 0 -12px -12px;
+        padding: 10px 12px;
     }
 }
 

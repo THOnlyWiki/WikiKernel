@@ -16,6 +16,7 @@ import cc.thonly.wikikernel.typescript.TypeScriptAssetService;
 import cc.thonly.wikikernel.web.InvalidTitleException;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiTitles;
+import cc.thonly.wikikernel.wikitext.SignatureExpander;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.ApplicationEventPublisher;
@@ -119,7 +120,7 @@ public class WikiPageServiceImpl implements WikiPageService {
             revived.setDeleted(false);
             revived.setUpdateAt(now);
             wikiPageMapper.updateById(revived);
-            WikiRevision revision = appendRevision(revived, user, content, comment, now, bot, minor, tags);
+            WikiRevision revision = appendRevision(revived, user, content, comment, now, bot, minor, tags, true);
             revived.setLatestRevisionId(revision.getId());
             wikiPageMapper.updateById(revived);
             logService.record(LogTypeConfig.CREATE, actorId(user), revived.getTitle(), null, null);
@@ -128,7 +129,7 @@ public class WikiPageServiceImpl implements WikiPageService {
         }
         WikiPage page = new WikiPage(null, normalized, null, false, false, false, now, now);
         wikiPageMapper.insert(page);
-        WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags);
+        WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags, true);
         page.setLatestRevisionId(revision.getId());
         wikiPageMapper.updateById(page);
         logService.record(LogTypeConfig.CREATE, actorId(user), page.getTitle(), null, null);
@@ -159,6 +160,13 @@ public class WikiPageServiceImpl implements WikiPageService {
     @Transactional
     public WikiPage editPage(WikiUser user, String title, String content, String comment,
                              boolean bot, boolean minor, String tags) {
+        return editPage(user, title, content, comment, bot, minor, tags, true);
+    }
+
+    @Override
+    @Transactional
+    public WikiPage editPage(WikiUser user, String title, String content, String comment,
+                             boolean bot, boolean minor, String tags, boolean expandSignatures) {
         String normalized = normalizeTitle(title);
         Optional<WikiPage> existing = getByTitle(normalized);
         if (existing.isEmpty()) {
@@ -166,7 +174,8 @@ public class WikiPageServiceImpl implements WikiPageService {
         }
         WikiPage page = existing.get();
         LocalDateTime now = LocalDateTime.now();
-        WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags);
+        WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags,
+                expandSignatures);
         page.setLatestRevisionId(revision.getId());
         page.setUpdateAt(now);
         wikiPageMapper.updateById(page);
@@ -186,6 +195,15 @@ public class WikiPageServiceImpl implements WikiPageService {
     @Transactional
     public WikiPage editPageIfLatest(WikiUser user, String title, String content, String comment,
                                      boolean bot, boolean minor, String tags, Long expectedRevisionId) {
+        return editPageIfLatest(user, title, content, comment, bot, minor, tags,
+                expectedRevisionId, true);
+    }
+
+    @Override
+    @Transactional
+    public WikiPage editPageIfLatest(WikiUser user, String title, String content, String comment,
+                                     boolean bot, boolean minor, String tags, Long expectedRevisionId,
+                                     boolean expandSignatures) {
         String normalized = normalizeTitle(title);
         Optional<WikiPage> existing = getByTitle(normalized);
         if (existing.isEmpty()) {
@@ -197,7 +215,8 @@ public class WikiPageServiceImpl implements WikiPageService {
             return null;
         }
         LocalDateTime now = LocalDateTime.now();
-        WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags);
+        WikiRevision revision = appendRevision(page, user, content, comment, now, bot, minor, tags,
+                expandSignatures);
         int updated = wikiPageMapper.updateLatestIfMatches(page.getId(), expectedRevisionId,
                 revision.getId(), now);
         if (updated != 1) {
@@ -323,7 +342,7 @@ public class WikiPageServiceImpl implements WikiPageService {
         WikiPage redirect = new WikiPage(null, normalized, null, false, false, false, now, now);
         wikiPageMapper.insert(redirect);
         WikiRevision revision = appendRevision(redirect, user,
-                "#REDIRECT [[" + newTitle + "]]", "移动页面时留下重定向", now, false, false, "");
+                "#REDIRECT [[" + newTitle + "]]", "移动页面时留下重定向", now, false, false, "", true);
         redirect.setLatestRevisionId(revision.getId());
         wikiPageMapper.updateById(redirect);
     }
@@ -356,9 +375,13 @@ public class WikiPageServiceImpl implements WikiPageService {
     }
 
     private WikiRevision appendRevision(WikiPage page, WikiUser user, String content, String comment,
-                                        LocalDateTime now, boolean bot, boolean minor, String tags) {        WikiRevision revision = new WikiRevision();
+                                        LocalDateTime now, boolean bot, boolean minor, String tags, boolean expandSignatures) {
+        // MediaWiki 在保存时展开 ~~~~ 签名：版本里保存确定的签名与时间戳，
+        // 避免之后查看时按查看者 / 最新作者变化。
+        String storedContent = expandSignatures ? SignatureExpander.expand(content, user, now) : content;
+        WikiRevision revision = new WikiRevision();
         revision.setPageId(page.getId());
-        revision.setContent(content == null ? "" : content);
+        revision.setContent(storedContent == null ? "" : storedContent);
         revision.setUserId(user == null ? null : user.getId());
         revision.setComment(comment == null ? "" : comment.trim());
         revision.setDeleted(false);

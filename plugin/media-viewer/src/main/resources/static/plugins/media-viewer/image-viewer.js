@@ -223,12 +223,78 @@
                 zoomToFit();
             }
         });
-        // 点击背景关闭
+        // 点击背景关闭（拖拽结束时不要误关）
+        var ignoreBackgroundClick = false;
         elements.stage.addEventListener('click', function (event) {
-            if (event.target === elements.stage) {
+            if (event.target === elements.stage && !ignoreBackgroundClick) {
                 close();
             }
         });
+
+        // 拖拽平移：图片放大后可以抓住图片拖动查看任意位置。
+        // 用 pointer 事件同时覆盖鼠标 / 触屏 / 触控笔；stage 的 touch-action:none
+        // 让触屏手势交给这里，而不是浏览器原生的“拖动图片”。
+        var drag = null;
+        function endDrag(event) {
+            if (!drag || (event.pointerId !== undefined && event.pointerId !== drag.id)) {
+                return;
+            }
+            var moved = drag.moved;
+            try {
+                elements.stage.releasePointerCapture(drag.id);
+            } catch (error) {
+                // 指针已经释放
+            }
+            drag = null;
+            elements.stage.classList.remove('dragging');
+            if (moved) {
+                ignoreBackgroundClick = true;
+                window.setTimeout(function () {
+                    ignoreBackgroundClick = false;
+                }, 0);
+            }
+        }
+        elements.stage.addEventListener('pointerdown', function (event) {
+            if (event.button !== undefined && event.button !== 0) {
+                return;
+            }
+            var target = event.target;
+            if (target && target.closest && target.closest('button, a')) {
+                return;
+            }
+            drag = {
+                id: event.pointerId,
+                x: event.clientX,
+                y: event.clientY,
+                left: elements.stage.scrollLeft,
+                top: elements.stage.scrollTop,
+                moved: false
+            };
+            elements.stage.classList.add('dragging');
+            try {
+                elements.stage.setPointerCapture(event.pointerId);
+            } catch (error) {
+                // 某些旧浏览器不支持 pointer capture
+            }
+        });
+        elements.stage.addEventListener('pointermove', function (event) {
+            if (!drag || event.pointerId !== drag.id) {
+                return;
+            }
+            var dx = event.clientX - drag.x;
+            var dy = event.clientY - drag.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                drag.moved = true;
+            }
+            elements.stage.scrollLeft = drag.left - dx;
+            elements.stage.scrollTop = drag.top - dy;
+            if (drag.moved) {
+                event.preventDefault();
+            }
+        });
+        elements.stage.addEventListener('pointerup', endDrag);
+        elements.stage.addEventListener('pointercancel', endDrag);
+
         viewer.addEventListener('wheel', function (event) {
             event.preventDefault();
             zoomBy(event.deltaY < 0 ? 1.15 : 1 / 1.15);
@@ -343,9 +409,15 @@
     // ==================== 缩放 ====================
 
     function computeFitFactor() {
-        var rect = elements.stage.getBoundingClientRect();
-        var maxWidth = Math.max(80, rect.width - 32);
-        var maxHeight = Math.max(80, rect.height - 32);
+        // clientWidth/Height 包含 stage 的内边距；减掉 padding 和一点余量，
+        // 否则「适应窗口」会把图片放进顶栏/底栏或两侧箭头下面。
+        var style = window.getComputedStyle(elements.stage);
+        var horizontalPadding = (parseFloat(style.paddingLeft) || 0)
+            + (parseFloat(style.paddingRight) || 0);
+        var verticalPadding = (parseFloat(style.paddingTop) || 0)
+            + (parseFloat(style.paddingBottom) || 0);
+        var maxWidth = Math.max(80, elements.stage.clientWidth - horizontalPadding - 16);
+        var maxHeight = Math.max(80, elements.stage.clientHeight - verticalPadding - 16);
         if (!state.naturalWidth || !state.naturalHeight) {
             return 1;
         }

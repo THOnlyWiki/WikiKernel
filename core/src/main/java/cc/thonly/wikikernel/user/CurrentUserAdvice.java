@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.user;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.PermissionService;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
  * 把所有 MVC 模板都需要的布局模型放进去：
  * <ul>
  *     <li>{@code currentUser}：当前登录用户（未登录为 null），顶部个人工具区用；</li>
+ *     <li>{@code currentUserAvatarUrl}：当前登录用户上传过的头像（没有上传为 null）；
+ *     {@code defaultAvatarUrl}：站点默认头像（两键供所有皮肤 / 插件顶栏使用，避免各自读插件设置）；</li>
  *     <li>{@code userInteractionEnabled} / {@code commentsEnabled}：功能开关（模板据此隐藏入口）；
  *     未读私信数（{@code unreadMessages}）与顶栏「私信」入口已随用户交互迁到插件
  *     {@code social-profile}（{@code PersonalToolbarHook}）；</li>
@@ -27,15 +30,48 @@ public class CurrentUserAdvice {
 
     private final FeatureService featureService;
     private final PermissionService permissionService;
+    private final UserStore userStore;
 
-    public CurrentUserAdvice(FeatureService featureService, PermissionService permissionService) {
+    public CurrentUserAdvice(FeatureService featureService, PermissionService permissionService,
+                             UserStore userStore) {
         this.featureService = featureService;
         this.permissionService = permissionService;
+        this.userStore = userStore;
     }
 
     @ModelAttribute("currentUser")
     public WikiUser currentUser(HttpServletRequest request) {
         return UserSession.current(request);
+    }
+
+    /**
+     * 顶栏使用的当前用户头像：从数据库重新读取 {@code wiki_user.avatar}，避免上传头像后
+     * 会话里的 {@link WikiUser} 副本仍是旧值。未登录 / 未上传返回 null（模板再用站点默认头像）。
+     */
+    @ModelAttribute("currentUserAvatarUrl")
+    public String currentUserAvatarUrl(HttpServletRequest request) {
+        WikiUser user = UserSession.current(request);
+        if (user == null || user.getId() == null || isNonPageRequest(request)) {
+            return null;
+        }
+        String url = userStore.byId(user.getId())
+                .map(ref -> ref.avatarUrl(""))
+                .orElse("");
+        return url.isBlank() ? null : url;
+    }
+
+    /** API / 插件静态资源 / 头像请求不需要为顶栏查询用户头像。 */
+    private static boolean isNonPageRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri == null || uri.startsWith("/api/") || uri.startsWith("/api.php")
+                || uri.startsWith("/plugins/") || uri.startsWith("/avatars/")
+                || uri.startsWith("/skins/") || uri.startsWith("/css/") || uri.startsWith("/js/");
+    }
+
+    /** 站点默认头像（站点设置 {@code site.default-avatar}；未配置时为内置默认头像）。 */
+    @ModelAttribute("defaultAvatarUrl")
+    public String defaultAvatarUrl() {
+        return userStore.defaultAvatarUrl();
     }
 
     /** 注册入口是否可见：功能开启 = 所有人；关闭 = 仅管理员 / 行政员（他们仍可代为创建账号）。 */

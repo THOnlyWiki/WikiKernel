@@ -15,6 +15,13 @@
 # ============================================================
 
 wikikernel:
+  # ---------------- 服务器时间 ----------------
+  # 服务器时区（IANA ID，如 Asia/Shanghai）；留空 = JVM / 操作系统默认。
+  # 启动时设置 JVM 默认时区，影响评论时间等 LocalDateTime.now() 写入的时间；
+  # 用户参数设置里的个人时区仍然优先用于页面时间显示。
+  time:
+    zone: ""
+
   # ---------------- 侧边栏 ----------------
   sidebar:
     # 控制侧边栏内容的页面标题（不存在时用内置默认侧边栏）
@@ -197,7 +204,7 @@ wikikernel:
     auto-ddl: true
 
     # type=mysql / mariadb 时使用；支持 ${环境变量:默认值} 语法，密码建议走环境变量
-    host: 127.0.0.1
+    host: 172.18.0.3
     port: 3306
     name: wikikernel
     user: root
@@ -282,9 +289,11 @@ wikikernel:
     token-expire-days: 0
 
 
-  # ---------------- 反向代理 / CDN ----------------
-  # 部署在 Cloudflare 等 CDN / 反向代理后面时设为 true：
-  # 日志（及用户核查）会用真实客户端 IP（依次读 CF-Connecting-IP / True-Client-IP / X-Real-IP / X-Forwarded-For）
+  # ---------------- 反向代理 / Docker / CDN ----------------
+  # 部署在 Docker 反向代理、Cloudflare 等 CDN 后面时设为 true：
+  # 日志、用户核查、封禁与限流会用真实客户端 IP
+  # （依次读 CF-Connecting-IP / CF-Connection-IP / True-Client-IP / X-Real-IP / X-Forwarded-For）。
+  # 开启后请让代理覆盖同名头，避免客户端伪造 IP。
   http:
     trust-proxy-headers: false
 

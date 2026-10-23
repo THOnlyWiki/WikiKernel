@@ -195,8 +195,9 @@ MediaWiki 风格的注册/登录页 + JSON API（无需额外前端依赖）：
 可以像词条一样创建、编辑、查看历史；左侧侧边栏自动追加 MediaWiki 风格的 **「工具」工具箱**：
 链入页面、相关更改、用户贡献、日志、上传文件、特殊页面、可打印版、固定链接、查看 / 更改用户组（管理员 / 行政员显示「更改用户组」）、页面信息。
 
-- 用户页顶部是**资料卡**（仿 MediaWiki SocialProfile）：左侧头像（默认 `/img/avatar-default.svg`，
-  上传后显示 `/avatars/…`），右侧是大号用户名与「贡献 | 私信 | 上传头像」快捷链接
+- 用户页顶部是**资料卡**（仿 MediaWiki SocialProfile）：左侧头像（未上传时使用 core 共享的
+  `site.default-avatar`，默认 `/img/avatar-default.svg`；上传后显示 `/avatars/…`），
+  右侧是大号用户名与「贡献 | 私信 | 上传头像」快捷链接
   （私信 = 跳到写私信：看别人时预填收件人，自己的用户页留空；「上传头像」仅本人可见）；
   资料卡底部 clear，正文从资料卡下方开始。
   **头像与这两个链接由插件 `social-profile` 经 `UserProfileHook` 提供**
@@ -264,6 +265,9 @@ wikikernel:
 
 ### 时区（Time zone）
 
+- **服务器时区**：`LocalSettings.yaml` 的 `wikikernel.time.zone`（IANA ID，如 `Asia/Shanghai`）；
+  启动时设置为 JVM 默认时区，影响 `LocalDateTime.now()` 写入的时间（评论等）和匿名 / 未设置用户时区的显示。
+  留空 = JVM / 操作系统默认；非法值记录 warning 后继续使用 JVM 默认。修改后需要重启；
 - **配置入口**：`特殊:参数设置` →「用户资料」→「国际化」→ 时区下拉框（全部 IANA 时区，按 UTC 偏移排序，
   显示形如 `(UTC+08:00) Asia/Shanghai`；第一项「服务器时区（默认）」）+「使用浏览器的时区」快捷按钮；
 - **默认值**：注册时由 `auth.js` 把浏览器时区（`Intl.DateTimeFormat().resolvedOptions().timeZone`）
@@ -273,8 +277,10 @@ wikikernel:
   `特殊:用户权限`（权限日志）、页面历史 / 编辑旧版本提示、`特殊:页面信息`、`特殊:相关更改`、
   文件页与文件历史、`特殊:已删除文件`、`特殊:封禁列表`、封禁到期提示等**全站时间显示**；
   数据库里的 `LocalDateTime` 仍按服务器时区存储，只在显示时换算（同一天分组的归属也按用户时区）。
-  例外：由插件渲染的时间（**评论时间**、**私信时间**）按消息键 `format.dateTime` 在**服务器时区**格式化
-  （插件拿不到 core 的显示时区 ThreadLocal，见 `plugin/comments` / `plugin/social-profile` 的差异说明）；
+  插件渲染的时间（**评论时间**、**私信时间**）使用服务器时区：评论写入的 `LocalDateTime.now()` 和显示都
+  跟随上面的 `wikikernel.time.zone`，不再出现「服务器下午、评论显示早上」的 UTC 偏差；如果数据库里已有
+  按旧时区写入的评论，改配置不会追溯修改旧值，需要的话应单独做一次数据迁移；
+  用户个人时区对这部分插件时间仍不生效（插件拿不到 core 的显示时区 ThreadLocal）；
 - **实现（可维护）**：`time.WikiTime` 是唯一的换算 / 格式化中心——
   模板统一用 `${@wikiTime.format(时间)}`，Java 侧用 `WikiTime.convert(...)` / `WikiTime.format(时间, 格式)`；
   `config.WikiTimeConfig` 拦截器在请求开始时按登录用户设置显示时区、结束时清理（ThreadLocal），
@@ -768,8 +774,9 @@ wikikernel:
   评论区渲染在正文之后、分类栏之前；不写标签的页面**没有**评论区；
 - **发表**：需要登录 + 对该页面有查看权限 + 未被封禁（`POST /api/comments`，`@RestController`）；
   内容按 wikitext 渲染（链接、粗体、模板等照常）；未登录 `401`、无查看权限 `403`、内容为空 `400`；
-- **头像**：每条评论左侧显示作者头像（上传过头像的用户显示 `/avatars/…`，未上传 / 匿名显示默认头像），
-  与用户页资料卡用的是同一张头像；头像**只限制最大尺寸（评论 65×65、资料卡 180×180）**，
+- **头像**：每条评论左侧显示作者头像（上传过头像的用户显示 `/avatars/…`，未上传 / 匿名显示站点默认头像
+  `site.default-avatar`），与用户页资料卡用的是同一张头像；
+  头像**只限制最大尺寸（评论 65×65、资料卡 180×180）**，
   按原图比例自然缩放，非正方形图片不裁剪、不拉伸；
 - **前端**：发表 / 删除都走 Ajax 局部刷新（不整页刷新），发表后输入框立即清空、新评论高亮定位；
   删除评论会保留输入框中未发表的草稿与回复状态；
@@ -798,9 +805,13 @@ wikikernel:
   （或 `LocalSettings.yaml` 的 `wikikernel.features.social-profile`，`/init` 核心 tab 也能设置）；
   **关闭后：用户页资料卡整体隐藏（未创建的用户页直接 404）、`特殊:上传头像` / `特殊:私信` 提示不可用、
   相关接口 403、评论仍可用但评论里不再显示头像**；
-- 用户页（`用户:用户名` / `User:用户名`）顶部显示**资料卡**：左侧头像（默认 `/img/avatar-default.svg`，
-  上传后显示 `/avatars/<文件名>`），右侧大号用户名与「贡献 | 私信」（**本人才会多一个「上传头像」蓝链**，
-  其他用户看不到）；资料卡底部 clear，正文从下方开始；
+- 用户页（`用户:用户名` / `User:用户名`）顶部显示**资料卡**：左侧头像（未上传时使用站点默认头像
+  `site.default-avatar`，默认 `/img/avatar-default.svg`；上传后显示 `/avatars/<文件名>`），
+  右侧大号用户名与「贡献 | 私信」（**本人才会多一个「上传头像」蓝链**，其他用户看不到）；
+  资料卡底部 clear，正文从下方开始；
+- **默认头像**：未上传时使用站点设置 `site.default-avatar`（Timeless 皮肤设置里的「默认头像」
+  写同一个共享键；SocialProfile / 评论只通过 core 的 `UserStore.defaultAvatarUrl()` 读取，
+  不依赖 Timeless 插件），留空回退内置 `/img/avatar-default.svg`；已上传用户始终优先显示自己的头像；
 - **上传头像**在独立特殊页 **`特殊:上传头像`**（`Special:UploadAvatar`，仅登录用户，插件模板）：
   显示当前头像 + 「上传头像」按钮（点击选择图片，选中即上传），上传后本页立即更新；
   被封禁用户上传返回 `403`；
@@ -852,8 +863,9 @@ wikikernel:
   **列宽不随本页内容长短跳变**（此前每页一长一短）；手机端（≤719px）恢复自动列宽，靠外层横向滚动；
 
 - **IP / User-Agent**：每条日志都记录客户端 IP 与 UA（启用该列之前的旧数据为空「—」）；
-  部署在 Cloudflare 等 CDN / 反向代理后面时，把 `wikikernel.http.trust-proxy-headers` 设为 `true`，
-  会依次读取 `CF-Connecting-IP` / `True-Client-IP` / `X-Real-IP` / `X-Forwarded-For` 作为真实客户端 IP；
+  部署在 Docker 反向代理 / Cloudflare 等 CDN 后面时，把 `wikikernel.http.trust-proxy-headers` 设为 `true`，
+  会依次读取 `CF-Connecting-IP` / `CF-Connection-IP` / `True-Client-IP` / `X-Real-IP` /
+  `X-Forwarded-For` 作为真实客户端 IP，并同步用于封禁与限流；
   普通日志页不展示 IP / UA，只有核查员在「特殊:用户核查」里可见；
 - **类型注册中心**：日志类型实现 `LogType` SPI（`id` / `displayName` / `targetKind` / `order`），
   core Bean 或插件 `PluginContext.register(LogType.class, ...)` 都能注册；

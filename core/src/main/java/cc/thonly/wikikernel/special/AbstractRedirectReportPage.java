@@ -76,7 +76,7 @@ abstract class AbstractRedirectReportPage extends AbstractReportPage {
                 break;
             }
             String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-            Optional<String> redirect = WikiRedirect.targetOf(content);
+            Optional<String> redirect = WikiRedirect.targetOf(content, page.getTitle());
             if (redirect.isEmpty()) {
                 continue;
             }
@@ -92,7 +92,7 @@ abstract class AbstractRedirectReportPage extends AbstractReportPage {
                 case DOUBLE -> {
                     if (targetPage.isPresent()) {
                         String targetContent = wikiPageService.getLatestContent(targetPage.get().getId()).orElse("");
-                        Optional<String> second = WikiRedirect.targetOf(targetContent);
+                        Optional<String> second = WikiRedirect.targetOf(targetContent, targetPage.get().getTitle());
                         if (second.isPresent()) {
                             items.add(link(page.getTitle()) + " → " + link(target)
                                     + " → " + link(WikiTitles.normalize(second.get())));

@@ -1,12 +1,15 @@
 package cc.thonly.wikikernel.wikitext;
 
 import cc.thonly.wikikernel.common.util.Strings;
+import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.WikiNamespaces;
+import cc.thonly.wikikernel.web.WikiTitles;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -28,6 +31,9 @@ public final class WikiLinkScanner {
     private static final Pattern CATEGORY_LINK = Pattern.compile(
             "\\[\\[\\s*(分类|Category)\\s*:\\s*([^\\[\\]|#]*?)\\s*(?:\\|\\s*([^\\[\\]|]*?))?\\s*\\]\\]",
             Pattern.CASE_INSENSITIVE);
+
+    /** 普通 wiki 链接目标；只取到第一个 {@code |} / {@code #} 前。 */
+    private static final Pattern PAGE_LINK = Pattern.compile("\\[\\[\\s*([^\\[\\]|#<>]+)");
 
     private WikiLinkScanner() {
     }
@@ -56,6 +62,109 @@ public final class WikiLinkScanner {
     public static String canonicalCategoryTitle(String title) {
         String name = categoryName(title);
         return name == null ? Strings.trimToEmpty(title) : CATEGORY_PREFIX + name;
+    }
+
+    /**
+     * 把子页面相对链接解析成完整页面标题（MediaWiki 语法）：
+     * <ul>
+     *     <li>{@code /子页} → 当前页 + {@code /子页}；</li>
+     *     <li>{@code ./子页} → 当前页 + {@code /子页}；</li>
+     *     <li>{@code ../兄弟} → 当前页的父页面 + {@code /兄弟}；</li>
+     *     <li>{@code ../../上层} 逐级向上。</li>
+     * </ul>
+     * 普通标题、外链、协议相对链接（{@code //}）原样返回。锚点（{@code #…}）原样保留。
+     */
+    public static String resolveRelativeTarget(String target, String pageTitle) {
+        String value = Strings.trimToEmpty(target);
+        String page = Strings.trimToEmpty(pageTitle);
+        if (value.isEmpty() || page.isEmpty() || value.startsWith("//")) {
+            return value;
+        }
+        if (value.startsWith("/")) {
+            return joinSubpage(page, value.substring(1));
+        }
+        if (value.startsWith("./")) {
+            return joinSubpage(page, value.substring(2));
+        }
+        if (value.equals(".")) {
+            return page;
+        }
+        if (value.startsWith("../")) {
+            String base = page;
+            String rest = value;
+            while (rest.startsWith("../")) {
+                int slash = base.lastIndexOf('/');
+                base = slash < 0 ? "" : base.substring(0, slash);
+                rest = rest.substring(3);
+            }
+            return joinSubpage(base, rest);
+        }
+        if (value.equals("..")) {
+            int slash = page.lastIndexOf('/');
+            return slash < 0 ? "" : page.substring(0, slash);
+        }
+        return value;
+    }
+
+    private static String joinSubpage(String base, String suffix) {
+        String rest = suffix == null ? "" : suffix;
+        if (rest.isEmpty()) {
+            return base;
+        }
+        return base.isEmpty() ? rest : base + "/" + rest;
+    }
+
+    /**
+     * 正文里的普通页面链接（解析相对子页面后规范化；分类 / 文件 / 特殊页 / 外链不算）。
+     * 重复目标会保留（报告统计被链接次数时需要）。
+     */
+    public static List<String> pageLinks(String wikitext, String pageTitle) {
+        List<String> targets = new ArrayList<>();
+        if (wikitext == null || wikitext.isEmpty()) {
+            return targets;
+        }
+        Matcher matcher = PAGE_LINK.matcher(wikitext);
+        while (matcher.find()) {
+            String target = normalizedPageTarget(matcher.group(1), pageTitle);
+            if (!target.isEmpty() && !skippedPageTarget(target)) {
+                targets.add(target);
+            }
+        }
+        return targets;
+    }
+
+    /** 正文是否包含指向 {@code target} 的普通页面链接（支持相对子页面链接）。 */
+    public static boolean linksTo(String wikitext, String pageTitle, String target) {
+        String expected = normalizedPageTarget(target, "");
+        if (expected.isEmpty() || wikitext == null || wikitext.isEmpty()) {
+            return false;
+        }
+        Matcher matcher = PAGE_LINK.matcher(wikitext);
+        while (matcher.find()) {
+            String actual = normalizedPageTarget(matcher.group(1), pageTitle);
+            if (expected.equals(actual)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizedPageTarget(String rawTarget, String pageTitle) {
+        String target = resolveRelativeTarget(rawTarget, pageTitle);
+        int hash = target.indexOf('#');
+        if (hash >= 0) {
+            target = target.substring(0, hash);
+        }
+        return WikiTitles.normalize(target);
+    }
+
+    private static boolean skippedPageTarget(String target) {
+        String lower = target.toLowerCase(Locale.ROOT);
+        return isCategoryTitle(target)
+                || FileTitles.isFileTitle(target)
+                || lower.startsWith("特殊:") || lower.startsWith("special:")
+                || lower.startsWith("http://") || lower.startsWith("https://")
+                || lower.startsWith("ftp://");
     }
 
     /** 收集正文里的分类（同分类去重，排序键以后出现的为准）。 */

@@ -45,6 +45,7 @@ import cc.thonly.wikikernel.web.RequestActionContext;
 import cc.thonly.wikikernel.web.RequestEditContext;
 import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.wikitext.LineDiff;
+import cc.thonly.wikikernel.wikitext.SignatureExpander;
 import cc.thonly.wikikernel.wikitext.WikiRedirect;
 import cc.thonly.wikikernel.wikitext.WikiSections;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;
@@ -275,7 +276,7 @@ public class ActionApiService {
                     continue;
                 }
                 String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-                String redirect = WikiRedirect.targetOf(content).orElse(null);
+                String redirect = WikiRedirect.targetOf(content, page.getTitle()).orElse(null);
                 result.add(new ApiPageRef(page.getId(), page.getTitle(), false, redirect));
             }
             return result;
@@ -440,7 +441,8 @@ public class ActionApiService {
         WikiPage current = page;
         for (int hop = 0; hop < 5; hop++) {
             String content = wikiPageService.getLatestContent(current.getId()).orElse("");
-            String target = WikiRedirect.targetOf(content).map(WikiTitles::normalize).orElse(null);
+            String target = WikiRedirect.targetOf(content, current.getTitle())
+                    .map(WikiTitles::normalize).orElse(null);
             if (target == null) {
                 return pageRefOf(current.getTitle(), user);
             }
@@ -520,7 +522,7 @@ public class ActionApiService {
         map.put("lastrevid", page.getLatestRevisionId());
         String content = wikiPageService.getLatestContent(page.getId()).orElse("");
         map.put("length", WikiSha1.bytes(content));
-        boolean redirect = WikiRedirect.targetOf(content).isPresent();
+        boolean redirect = WikiRedirect.targetOf(content, page.getTitle()).isPresent();
         if (redirect) {
             map.put("redirect", v2 ? Boolean.TRUE : "");
         }
@@ -1303,9 +1305,23 @@ public class ActionApiService {
             throw new ApiError("editconflict", "Edit conflict detected; reload the page and try again.");
         }
         String oldText = existing == null ? "" : wikiPageService.getLatestContent(existing.getId()).orElse("");
-        String content = section.isEmpty()
-                ? (hasText ? Strings.trimToEmpty(params.get("text")) : oldText + Strings.trimToEmpty(appendText))
-                : applySection(existing, oldText, section, params);
+        String submittedText = Strings.trimToEmpty(params.get("text"));
+        boolean expandSignatures = true;
+        String content;
+        if (section.isEmpty()) {
+            if (hasText) {
+                content = submittedText;
+            } else {
+                // appendtext 只展开本次追加的部分，不能重签旧正文里别人的历史签名。
+                content = oldText + SignatureExpander.expand(appendText, user, LocalDateTime.now());
+                expandSignatures = false;
+            }
+        } else {
+            // 段落编辑：只展开新提交的段落，再替换进旧正文。
+            content = applySection(existing, oldText, section, params,
+                    SignatureExpander.expand(submittedText, user, LocalDateTime.now()));
+            expandSignatures = false;
+        }
         String summary = Strings.trimToEmpty(params.get("summary"));
         // 保存前钩子（EditGuard，如 ConfirmEdit 的验证码、插件版滥用过滤器）：来源 source=api
         // （迁移前 api.php 不受 ConfirmEdit 影响，所以验证码钩子在 api 来源直接放行）
@@ -1350,13 +1366,13 @@ public class ActionApiService {
         WikiPage saved;
         if (existing != null && oldRevId != null) {
             saved = wikiPageService.editPageIfLatest(user, title, content, summary, bot, minor,
-                    changeTags(apiEditContext), oldRevId);
+                    changeTags(apiEditContext), oldRevId, expandSignatures);
             if (saved == null) {
                 throw new ApiError("editconflict", "Edit conflict detected; reload the page and try again.");
             }
         } else {
             saved = wikiPageService.editPage(user, title, content, summary, bot, minor,
-                    changeTags(apiEditContext));
+                    changeTags(apiEditContext), expandSignatures);
         }
         WikiRevision revision = saved == null || saved.getLatestRevisionId() == null ? null
                 : wikiPageService.getRevision(saved.getLatestRevisionId()).orElse(null);
@@ -1399,13 +1415,14 @@ public class ActionApiService {
     }
 
     /** {@code action=edit} 的 {@code section} 参数（仿 MediaWiki）：0=导语、N=第 N 段、{@code new}=追加新段落。 */
-    private String applySection(WikiPage existing, String oldText, String section, Map<String, String> params) {
+    private String applySection(WikiPage existing, String oldText, String section,
+                                Map<String, String> params, String submittedText) {
         if (existing == null) {
             throw new ApiError("nosuchsection", "There is no section " + section + ".");
         }
         if ("new".equalsIgnoreCase(section)) {
             String heading = Strings.trimToEmpty(params.get("sectiontitle"));
-            String text = Strings.trimToEmpty(params.get("text"));
+            String text = submittedText;
             StringBuilder out = new StringBuilder(oldText);
             if (!out.isEmpty() && out.charAt(out.length() - 1) != '\n') {
                 out.append('\n');
@@ -1425,7 +1442,7 @@ public class ActionApiService {
         if (WikiSections.extract(oldText, index) == null) {
             throw new ApiError("nosuchsection", "There is no section " + index + ".");
         }
-        return WikiSections.replace(oldText, index, Strings.trimToEmpty(params.get("text")));
+        return WikiSections.replace(oldText, index, submittedText);
     }
 
     // ==================== 管理动作：move / delete / protect / block / unblock / upload ====================
@@ -1831,7 +1848,8 @@ public class ActionApiService {
         if (summary.isEmpty()) {
             summary = message("rollback.summary", actorName, base.getId());
         }
-        wikiPageService.editPage(user, page.getTitle(), base.getContent(), summary, false, "");
+        // 回滚是原样恢复旧版本，不能把旧版本里的字面量 ~~~~ 按当前操作者重签。
+        wikiPageService.editPage(user, page.getTitle(), base.getContent(), summary, false, false, "", false);
         Map<String, Object> rollback = new LinkedHashMap<>();
         rollback.put("title", page.getTitle());
         rollback.put("summary", summary);

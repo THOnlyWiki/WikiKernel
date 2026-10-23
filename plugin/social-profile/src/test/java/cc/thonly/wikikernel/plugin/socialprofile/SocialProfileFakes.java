@@ -189,10 +189,22 @@ public final class SocialProfileFakes {
     public static final class FakeUsers implements UserStore {
 
         private final Map<Long, UserRef> users = new LinkedHashMap<>();
+        private String defaultAvatarUrl = UserStore.DEFAULT_AVATAR_URL;
 
         public FakeUsers add(long id, String username, String avatar) {
             users.put(id, new UserRef(id, username, avatar == null ? "" : avatar, false));
             return this;
+        }
+
+        /** 模拟站点设置 {@code site.default-avatar}。 */
+        public FakeUsers defaultAvatar(String url) {
+            this.defaultAvatarUrl = url;
+            return this;
+        }
+
+        @Override
+        public String defaultAvatarUrl() {
+            return defaultAvatarUrl;
         }
 
         @Override

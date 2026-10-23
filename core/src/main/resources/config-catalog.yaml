@@ -254,14 +254,15 @@ groups:
   # ---------------- 反向代理 / CDN ----------------
   - prefix: wikikernel.http
     comment: |-
-      反向代理 / CDN。
-      部署在 Cloudflare 等 CDN / 反向代理后面时设为 true：日志与用户核查会用真实客户端 IP
-      （依次读 CF-Connecting-IP / True-Client-IP / X-Real-IP / X-Forwarded-For）。
+      反向代理 / Docker / CDN。
+      部署在 Docker 反向代理、Cloudflare 等 CDN 后面时设为 true：日志、用户核查、封禁与限流
+      会用真实客户端 IP（依次读 CF-Connecting-IP / CF-Connection-IP / True-Client-IP /
+      X-Real-IP / X-Forwarded-For）。开启后请让代理覆盖同名头，避免客户端伪造。
     items:
       - key: wikikernel.http.trust-proxy-headers
         type: boolean
         default: false
-        description: 是否信任代理 / CDN 的转发头；false = 直接使用连接来源地址。
+        description: 是否信任代理 / Docker / CDN 的转发头；false = 直接使用连接来源地址。
 
   # ---------------- 请求速率限制 ----------------
   - prefix: wikikernel.security.rate-limit
@@ -461,6 +462,19 @@ groups:
         type: string
         default: 特殊
         description: '特殊页前缀（生成链接用）：特殊（默认，/wiki/特殊:搜索）或 Special 等；输入侧两种前缀都识别'
+
+  # ---------------- 服务器时区 ----------------
+  - prefix: wikikernel.time
+    comment: |-
+      服务器时间 / 时区（改完重启生效）。
+      zone 填 IANA 时区 ID（例如 Asia/Shanghai）；留空 = 使用 JVM / 操作系统默认时区。
+      启动时会设置为 JVM 默认时区，影响 LocalDateTime.now() 写入的评论时间，以及没有单独设置
+      用户时区的页面时间显示；用户参数设置里的个人时区仍然优先用于页面显示。
+    items:
+      - key: wikikernel.time.zone
+        type: string
+        default: ""
+        description: '服务器时区 ID（IANA，如 Asia/Shanghai）；留空 = JVM / 操作系统默认时区'
 
   # ---------------- 功能开关 ----------------
   - prefix: wikikernel.features

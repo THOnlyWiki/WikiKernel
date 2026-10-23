@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiNamespaces;
 import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.common.web.WikiUrls;
+import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import cc.thonly.wikikernel.wikitext.WikiRedirect;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -22,7 +23,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * {@code 特殊:链入页面?page=标题} / {@code Special:WhatLinksHere}（仿 MediaWiki）：
@@ -115,12 +115,12 @@ public class WhatLinksHereSpecialPage implements SpecialPage {
         for (WikiPage page : readablePages(
                 pageLinkService.pagesLinkingTo(target, MAX_ITEMS), request)) {
             String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-            if (!linksTo(content, target)) {
+            if (!WikiLinkScanner.linksTo(content, page.getTitle(), target)) {
                 continue; // 精确匹配，排除 [[首页/子页]] 这类前缀误报
             }
             LinkRow row = rowOf(rows, page);
             row.link = true;
-            if (isRedirectTo(content, target)) {
+            if (isRedirectTo(content, page.getTitle(), target)) {
                 row.redirect = true;
             }
         }
@@ -304,17 +304,8 @@ public class WhatLinksHereSpecialPage implements SpecialPage {
         return row.transclusion && !hideTrans;
     }
 
-    /** 正文是否真的链接到该标题（排除前缀相同的子页面等误报）。 */
-    private static boolean linksTo(String content, String target) {
-        if (content == null || content.isEmpty()) {
-            return false;
-        }
-        Pattern pattern = Pattern.compile("\\[\\[\\s*" + Pattern.quote(target) + "\\s*(\\||#|]])");
-        return pattern.matcher(content).find();
-    }
-
-    private static boolean isRedirectTo(String content, String target) {
-        return WikiRedirect.targetOf(content)
+    private static boolean isRedirectTo(String content, String pageTitle, String target) {
+        return WikiRedirect.targetOf(content, pageTitle)
                 .map(WikiTitles::normalize)
                 .filter(target::equals)
                 .isPresent();

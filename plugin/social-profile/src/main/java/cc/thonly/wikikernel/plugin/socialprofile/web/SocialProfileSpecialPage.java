@@ -98,7 +98,7 @@ abstract class SocialProfileSpecialPage {
             model.put("targetUserId", found.id());
             model.put("targetUserUrl", SocialProfileSupport.pagePath("用户:" + found.username()));
             model.put("targetAvatarUrl", avatars == null
-                    ? UserStore.DEFAULT_AVATAR_URL
+                    ? (users == null ? UserStore.DEFAULT_AVATAR_URL : users.defaultAvatarUrl())
                     : avatars.avatarUrl(found.id()));
             model.put("targetIsSelf", user != null && user.getId() != null && user.getId() == found.id());
         } else if (asked || fallbackSelf) {

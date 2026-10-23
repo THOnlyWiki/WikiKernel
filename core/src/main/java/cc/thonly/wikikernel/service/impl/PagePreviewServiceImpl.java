@@ -10,6 +10,7 @@ import cc.thonly.wikikernel.service.PagePreviewService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.common.web.WikiUrls;
+import cc.thonly.wikikernel.wikitext.WikiRedirect;
 import cc.thonly.wikikernel.wikitext.WikiSections;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;
 import org.springframework.stereotype.Service;
@@ -34,10 +35,6 @@ public class PagePreviewServiceImpl implements PagePreviewService {
     /** 文件嵌入（整段，用于从摘要里去掉）：{@code [[文件:…|…]]}。 */
     private static final Pattern FILE_EMBED_FULL = Pattern.compile(
             "\\[\\[(?:文件|File|Image|图像|圖片)\\s*:[^\\[\\]]*\\]\\]", Pattern.CASE_INSENSITIVE);
-
-    /** 重定向：{@code #REDIRECT [[目标]]} / {@code #重定向 [[目标]]}。 */
-    private static final Pattern REDIRECT = Pattern.compile(
-            "^\\s*#(?:REDIRECT|重定向|重新導向|転送)\\s*:?\\s*\\[\\[([^\\[\\]|#]+)", Pattern.CASE_INSENSITIVE);
 
     private final WikiPageService wikiPageService;
     private final AccessControlService accessControlService;
@@ -73,9 +70,9 @@ public class PagePreviewServiceImpl implements PagePreviewService {
         }
         String content = wikiPageService.getLatestContent(page.getId()).orElse("");
         // 重定向：跟随一次（预览目标的内容，标题仍显示原链接的标题）
-        Matcher redirect = REDIRECT.matcher(content);
-        if (redirect.find()) {
-            Optional<Preview> target = preview(WikiTitles.normalize(redirect.group(1)), viewer, depth + 1);
+        Optional<String> redirectTarget = WikiRedirect.targetOf(content, page.getTitle());
+        if (redirectTarget.isPresent()) {
+            Optional<Preview> target = preview(WikiTitles.normalize(redirectTarget.get()), viewer, depth + 1);
             if (target.isPresent()) {
                 Preview preview = target.get();
                 return Optional.of(new Preview(page.getTitle(), WikiUrls.pagePath(page.getTitle()),

@@ -120,7 +120,7 @@ public class AvatarStoreJdbc implements AvatarStore {
     @Override
     public String url(String fileName) {
         String name = Strings.trimToEmpty(fileName);
-        return name.isEmpty() ? UserStore.DEFAULT_AVATAR_URL : "/avatars/" + name;
+        return name.isEmpty() ? users.defaultAvatarUrl() : "/avatars/" + name;
     }
 
     private Path directory() {

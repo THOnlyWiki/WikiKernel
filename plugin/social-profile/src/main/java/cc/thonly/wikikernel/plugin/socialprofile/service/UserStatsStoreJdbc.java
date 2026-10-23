@@ -147,7 +147,7 @@ public class UserStatsStoreJdbc implements UserStatsStore {
             String username = names.get(stats.getUserId());
             String avatar = avatarFiles.get(stats.getUserId());
             String avatarUrl = avatar == null || avatar.isEmpty()
-                    ? UserStore.DEFAULT_AVATAR_URL
+                    ? users.defaultAvatarUrl()
                     : "/avatars/" + avatar;
             long points = stats.getPoints() == null ? 0L : stats.getPoints();
             int level = stats.getLevel() == null ? 1 : stats.getLevel();

@@ -34,6 +34,13 @@ public interface WikiPageService {
                       boolean bot, boolean minor, String tags);
 
     /**
+     * {@code expandSignatures=false} 表示调用方已经把本次提交的片段单独展开过签名
+     * （段落编辑：只展开新段落，不能把页面里别人的历史文本按当前用户重签）。
+     */
+    WikiPage editPage(WikiUser user, String title, String content, String comment,
+                      boolean bot, boolean minor, String tags, boolean expandSignatures);
+
+    /**
      * 带页面最新版本乐观锁的编辑。返回 {@code null} 表示 expectedRevisionId 已过期，且不会留下孤立版本。
      */
     WikiPage editPageIfLatest(WikiUser user, String title, String content, String comment,
@@ -41,6 +48,11 @@ public interface WikiPageService {
 
     WikiPage editPageIfLatest(WikiUser user, String title, String content, String comment,
                               boolean bot, boolean minor, String tags, Long expectedRevisionId);
+
+    /** 乐观锁版本；{@code expandSignatures=false} 语义同 {@link #editPage}。 */
+    WikiPage editPageIfLatest(WikiUser user, String title, String content, String comment,
+                              boolean bot, boolean minor, String tags, Long expectedRevisionId,
+                              boolean expandSignatures);
 
     /** 删除页面（软删除：deleted=true，历史保留），不存在返回空。 */
     WikiPage deletePage(WikiUser user, String title);

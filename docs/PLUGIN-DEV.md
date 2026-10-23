@@ -476,7 +476,8 @@ core 不写 `renameuser` / `usermerge` 日志**；core 侧「插件未加载」�
 - `common.service.CurrentUser`：当前请求用户与用户组（`Viewer`：id / 名字 / 匿名 / 组集合 / 机器人）——
   Gadgets 的 `rights=` 过滤、评论区与私信判断登录状态都用它；
 - `common.service.UserStore`：按 ID / 用户名查用户、批量取用户名与头像、用户组集合（评论作者、私信收件人、
-  审核提交人等用）；`UserRef.avatarUrl(defaultUrl)` 直接给头像地址；
+  审核提交人等用）；`UserRef.avatarUrl(defaultUrl)` 直接给头像地址；`defaultAvatarUrl()` 读取 core 的
+  共享默认头像设置 `site.default-avatar`（Timeless 的「默认头像」写同一个键，插件之间无需互相依赖）；
 - `common.service.WikiText`：用**同一套**渲染器渲染 wikitext 片段（`toHtml` / `toHtmlWithCategories`）——
   评论内容、待审正文预览、AI 提案预览都用它，模板 / 解析器函数 / 白名单全部生效；
 - `common.service.LogWriter`：写操作日志（类型 id 用 `common.extension.LogType` 注册，展示文案由 core 本地化）。

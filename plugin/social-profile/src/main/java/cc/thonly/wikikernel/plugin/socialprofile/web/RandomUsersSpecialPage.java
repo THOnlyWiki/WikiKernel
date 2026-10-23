@@ -91,7 +91,7 @@ public class RandomUsersSpecialPage extends SocialProfileSpecialPage implements 
             row.put("userId", ref.id());
             row.put("username", ref.username());
             row.put("userUrl", SocialProfileSupport.pagePath("用户:" + ref.username()));
-            row.put("avatarUrl", ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL));
+            row.put("avatarUrl", ref.avatarUrl(users.defaultAvatarUrl()));
             row.put("friendCount", friendCounts.getOrDefault(ref.id(), 0L));
             row.put("giftCount", giftCounts.getOrDefault(ref.id(), 0L));
             row.put("boardUrl", SocialProfileSupport.pagePath("特殊:留言板?user="

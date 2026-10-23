@@ -4,6 +4,8 @@
  */
 /* ===== 评论区（<comment />，wiki_comments）：论坛 / 贴吧式紧凑样式 ===== */
 .wiki-comments {
+    /* 正文右浮动图片可能在正文容器之外延伸；评论区必须从图片下方开始。 */
+    clear: both;
     margin-top: 1.2em;
     padding-top: 0;
     border-top: 0;

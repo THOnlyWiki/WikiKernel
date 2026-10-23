@@ -36,6 +36,10 @@ class WikiUrlRewriteFilterTest {
         assertNull(WikiUrlRewriteFilter.rewrite("/email/confirm"));
         assertNull(WikiUrlRewriteFilter.rewrite("/password/reset"));
         assertNull(WikiUrlRewriteFilter.rewrite("/password/reset-request"));
+        // 第三方登录（GitHub / QQ）固定路由 /auth/{provider}/start|callback|unlink，不能被当成页面标题
+        assertNull(WikiUrlRewriteFilter.rewrite("/auth/github/start"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/auth/github/callback"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/auth/github/unlink"));
         assertNull(WikiUrlRewriteFilter.rewrite("/init"));
         assertNull(WikiUrlRewriteFilter.rewrite("/version"));
         assertNull(WikiUrlRewriteFilter.rewrite("/render"));

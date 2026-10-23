@@ -62,6 +62,8 @@ wikikernel:
     name: wikikernel
     user: root
     password: "${MYSQL_PASSWORD:root}"   # 支持 ${环境变量:默认值}
+  time:
+    zone: Asia/Shanghai      # 服务器时区（IANA ID）；留空 = JVM / 操作系统默认；影响评论等 LocalDateTime.now() 时间
   plugins:
     enabled: [ ]             # 类似 wfLoadExtension：为空 = 全部启用
     settings:
@@ -83,7 +85,7 @@ wikikernel:
   run-path: ./run/files                 # 上传文件存放目录（默认 ./run/files）
   max-file-size-mb: 20                  # 单文件大小上限（MB）
   http:
-    trust-proxy-headers: false          # 部署在 Cloudflare 等 CDN / 反向代理后面时 true（日志记录真实客户端 IP）
+    trust-proxy-headers: false          # Docker 反向代理 / Cloudflare 等后面时 true（日志、核查、封禁、限流取真实 IP）
   cors:                                 # CORS 跨域（默认关闭；见「CORS 跨域」一节）
     enabled: false
     # allowed-origins: [ "https://example.com" ]   # 允许的来源（"*" = 任意）
@@ -95,6 +97,10 @@ wikikernel:
     default-skin: vector                # 默认皮肤；内置 vector / fallback，或插件皮肤 id
     disabled: [ ]                       # 禁用的皮肤 id（fallback 不可禁用）
 ```
+
+`wikikernel.time.zone` 在启动时设置 JVM 默认时区，评论等使用 `LocalDateTime.now()` 写入的时间、
+匿名访问及没有设置个人时区的显示都会跟随它；修改后重启生效。已经在旧时区写入的历史评论不会自动改值，
+需要时应对相应数据做一次迁移。
 
 | 数据库 | type | 关键配置 |
 | --- | --- | --- |
@@ -117,6 +123,32 @@ wikikernel:
 把 `wikikernel.database.*` 翻译成标准 `spring.datasource.*`，
 因此 JdbcClient / 事务 / 连接池等仍是 Spring Boot 原生行为。
 `GET /api/version` 会返回当前数据库（如 `"db":"SQLite"`）与 `wiki_page` 行数，方便确认切换是否生效。
+
+### 反向代理 / Docker 真实客户端 IP（`wikikernel.http`）
+
+应用直接看到的 `RemoteAddr` 是反向代理容器的地址（例如 Docker 网桥的 `172.x.x.x`）。要让日志、
+`特殊:用户核查`、IP 封禁和登录限流使用真实客户端 IP，需要同时满足：
+
+1. `LocalSettings.yaml` 开启信任转发头：
+
+   ```yaml
+   wikikernel:
+     http:
+       trust-proxy-headers: true
+   ```
+
+2. 反向代理把客户端地址写入转发头，并**覆盖**客户端自带的同名头。Nginx 示例：
+
+   ```nginx
+   proxy_set_header X-Real-IP $remote_addr;
+   proxy_set_header X-Forwarded-For $remote_addr;   # 覆盖客户端自带的 XFF
+   ```
+
+   应用依次识别 `CF-Connecting-IP`、`CF-Connection-IP`、`True-Client-IP`、`X-Real-IP`、
+   `X-Forwarded-For`；`X-Forwarded-For` 取第一个合法地址。Cloudflare 会提供
+   `CF-Connecting-IP`（部分兼容代理使用 `CF-Connection-IP`）。
+
+> 只有请求确实经过你控制的反向代理时才开启。应用直接暴露在公网时开启会允许客户端伪造 IP。
 
 ### CORS 跨域（`wikikernel.cors`）
 
@@ -335,6 +367,24 @@ Java 类型默认推断：`String` → `VARCHAR(255)`（length > 4000 时 `TEXT`
 - **正文这类不限长的：`@DbColumn(type = DbType.LONGTEXT)`**，Auto-DDL 按方言翻译为
   MySQL `LONGTEXT` / H2 `CLOB` / SQLite `TEXT`；注意 MySQL 的 `TEXT` 只有 64KB，长词条必须用 `LONGTEXT`；
 - `Instant` / `java.util.Date` 在 SQLite JDBC 驱动下不可用（读写会抛异常），请改用 `LocalDateTime` 或 `Long`。
+
+### 从 SQLite 转换工具直接导入 MariaDB
+
+转换工具通常会把 SQLite 的 `TEXT` 日期列原样映射成 MySQL / MariaDB 的 `LONGTEXT`
+（SQLSwitch 默认就是这样；`--infer-dates` 也不会处理带 `T` 和纳秒的 ISO 字符串）。
+直接把这份 DDL 导入 MariaDB 后，时间列不是 `DATETIME`，MariaDB JDBC 在
+`getObject(..., LocalDateTime.class)` 时可能报
+`value '2026-…T…' (BLOB) cannot be decoded as ZoneDateTime`。
+
+WikiKernel 的 MyBatis 层已注册兼容读取器（`LenientLocalDateTimeTypeHandler`），能读取
+`TEXT / LONGTEXT / BLOB` 里的 ISO 时间，并兼容空格分隔、最多 9 位小数和带时区的时间，
+所以这类库可以启动；但仍是文本列，时间比较 / 排序和索引不如原生 `DATETIME(3)`。
+
+正式迁移建议（与多数据库测试环境的结论一致）：**先建空 MariaDB，让 WikiKernel 的 Auto-DDL
+按实体创建 schema，再单独导入数据**；不要直接把 SQLite 的建表语句改成 MariaDB 后整库恢复。
+如果已经导入了旧 DDL，可在确认备份后把时间列规范化为 `DATETIME(3)`；主要时间列是
+`create_at` / `created_at` / `update_at` / `updated_at` / `expires_at` / `deleted_at` /
+`read_at` / `time` 等，转换前先把值里的 `T` 换成空格。
 
 JSON 时间格式：core 已全局配置 `LocalDateTime` 的输出/解析格式为 `yyyy-MM-dd HH:mm:ss`
 （见 `core` 的 `JacksonTimeConfig`，基于 Boot 4 + Jackson 3 的 `JsonMapperBuilderCustomizer`）；

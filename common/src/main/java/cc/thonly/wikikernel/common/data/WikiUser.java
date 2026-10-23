@@ -71,7 +71,7 @@ public class WikiUser {
     @DbColumn(length = 3, defaultValue = "")
     private String country = "";
 
-    /** 签名（可含 wikitext；讨论页签名系统尚未实现，先存储）。 */
+    /** 签名（可含 wikitext；讨论页的 ~~~ / ~~~~ / ~~~~~ 会按此展开）。 */
     @DbColumn(length = 255)
     private String signature = "";
 

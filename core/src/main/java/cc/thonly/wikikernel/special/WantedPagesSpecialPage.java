@@ -6,7 +6,6 @@ import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.WikiPageService;
-import cc.thonly.wikikernel.web.WikiTitles;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
@@ -17,8 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * {@code 特殊:待撰页面} / {@code Special:WantedPages}：被链接但尚未创建的页面（按被链接次数排序）。
@@ -28,9 +25,6 @@ public class WantedPagesSpecialPage extends AbstractReportPage {
 
     /** 单次扫描上限（最多多少页面参与统计）。 */
     private static final int MAX_SCAN = 300;
-
-    /** {@code [[目标]] / [[目标|文字]] / [[目标#锚点]]}。 */
-    private static final Pattern LINK = Pattern.compile("\\[\\[\\s*([^\\[\\]|#<>]+)");
 
     private final WikiPageMapper wikiPageMapper;
     private final WikiPageService wikiPageService;
@@ -76,9 +70,7 @@ public class WantedPagesSpecialPage extends AbstractReportPage {
         Map<String, Integer> wanted = new LinkedHashMap<>();
         for (WikiPage page : accessControlService.filterReadable(pages, WikiPage::getTitle, request.user())) {
             String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-            Matcher matcher = LINK.matcher(content);
-            while (matcher.find()) {
-                String target = WikiTitles.normalize(matcher.group(1));
+            for (String target : ReportScans.pageLinks(content, page.getTitle())) {
                 if (target.isEmpty() || skip(target)) {
                     continue;
                 }

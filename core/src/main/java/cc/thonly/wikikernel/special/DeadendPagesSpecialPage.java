@@ -72,10 +72,10 @@ public class DeadendPagesSpecialPage extends AbstractReportPage {
                 break;
             }
             String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-            if (WikiRedirect.targetOf(content).isPresent()) {
+            if (WikiRedirect.targetOf(content, page.getTitle()).isPresent()) {
                 continue;
             }
-            if (ReportScans.pageLinks(content).isEmpty()) {
+            if (ReportScans.pageLinks(content, page.getTitle()).isEmpty()) {
                 items.add(link(page.getTitle()));
             }
         }

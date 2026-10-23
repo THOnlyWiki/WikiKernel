@@ -20,7 +20,8 @@
 ## 规则（与迁移前 core 完全一致）
 
 - 头像只接受 PNG / JPEG / GIF / WebP，大小上限 2 MB（且不超过 `wikikernel.max-file-size-mb`）；
-  文件名 `u{userId}-{时间戳}.{ext}`，替换时删除旧文件；校验失败抛出的消息键
+  文件名 `u{userId}-{时间戳}.{ext}`，替换时删除旧文件；未上传时使用 core 的共享默认头像
+  `site.default-avatar`（Timeless 的「默认头像」写同一个键，本插件不依赖 Timeless）；校验失败抛出的消息键
   （`avatar.empty` / `avatar.notImage` / `avatar.tooLarge` / `avatar.uploadFailed`）由插件本地化后返回；
 - 私信：收件人不存在 → `messages.userNotFound`；发给自己 → `messages.selfNotAllowed`；
   阅读（`?id=`）与打开会话（`?with=`）自动把对方发来的未读标已读；
@@ -59,7 +60,8 @@
   头像文件不做版本历史（替换即删除旧文件），也没有头像审核 / 删除日志；
 - **未读徽标**：私信未读数只在「特殊:私信」页面上显示（顶栏旧的「私信（N）」入口已随 Echo 移植移除，
   通知统一走 Echo 插件的「提醒 / 一般通知」铃铛）；没有 MediaWiki 的跨设备未读同步；
-- **时间显示**：私信时间按 `format.dateTime` 消息键格式化（服务器时区）；
+- **时间显示**：私信时间按 `format.dateTime` 消息键格式化（服务器时区；服务器时区由
+  `LocalSettings.yaml` 的 `wikikernel.time.zone` 配置，如 `Asia/Shanghai`）；
   core 的显示时区换算（`time.WikiTime` + 用户时区设置）只在 core 内部生效，
   插件拿不到这个 ThreadLocal，所以私信时间不受「参数设置 → 时区」影响（其余页面照常）；
 - **头像上传页**：`特殊:上传头像` 只是本插件的简化上传页（选择图片即上传），

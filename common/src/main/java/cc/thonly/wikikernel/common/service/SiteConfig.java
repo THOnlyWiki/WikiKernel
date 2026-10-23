@@ -9,6 +9,13 @@ package cc.thonly.wikikernel.common.service;
  */
 public interface SiteConfig {
 
+    /**
+     * 站点默认头像 URL 的共享设置键（未上传头像的用户页 / 评论等使用；空 = 内置默认头像）。
+     * 皮肤插件与 SocialProfile / Comments 都通过这个键或 {@link UserStore#defaultAvatarUrl()} 读取，
+     * 不需要互相依赖。
+     */
+    String DEFAULT_AVATAR_KEY = "site.default-avatar";
+
     /** 读取字符串设置（不存在返回 defaultValue）。 */
     String get(String key, String defaultValue);
 

@@ -7,33 +7,42 @@
 
 /* ===== 社交页统一导航条（10 个社交特殊页顶部一致；当前页高亮 li > a[aria-current="page"]） ===== */
 .sp-nav {
+    min-width: 0;
     margin: 0 0 1em;
     border-bottom: 2px solid var(--wiki-border);
 }
 
+/* 导航固定为单行：窄屏或放大页面时横向滚动，而不是让 li 被 flex 压缩后
+   文字互相叠在一起。li 必须 flex: 0 0 auto，否则 flex-shrink 会把它压到
+   比链接文字还窄；ul 的 overflow-x 只有在子项不收缩时才真正出现滚动条。 */
 .sp-nav-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.2em;
     margin: 0;
     padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
     list-style: none;
 }
 
 .sp-nav-list li {
-    min-width: 0;
+    flex: 0 0 auto;
 }
 
 .sp-nav-list a {
     display: block;
-    max-width: 100%;
+    max-width: none;
     padding: 0.45em 0.8em;
     border: 1px solid transparent;
     border-bottom: 0;
     color: var(--wiki-link);
     text-decoration: none;
     white-space: nowrap;
-    overflow-wrap: break-word;
+    overflow-wrap: normal;
 }
 
 .sp-nav-list a:hover {

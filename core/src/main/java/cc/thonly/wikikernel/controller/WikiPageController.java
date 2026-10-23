@@ -71,6 +71,7 @@ import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.wikitext.CssSanitizer;
 import cc.thonly.wikikernel.wikitext.DiffRows;
+import cc.thonly.wikikernel.wikitext.SignatureExpander;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import cc.thonly.wikikernel.wikitext.WikiRedirect;
 import cc.thonly.wikikernel.wikitext.WikiSections;
@@ -553,7 +554,9 @@ public class WikiPageController {
         boolean sectionEdit = existing != null && section != null && codeLanguage(normalized) == null;
         String saveContent = content;
         if (sectionEdit) {
-            saveContent = mergeSection(existing, section, content, baserevid, forceSave);
+            // 段落编辑只展开这次提交的段落：讨论页里其他人保存过的签名不能按当前用户重签。
+            String submittedSection = SignatureExpander.expand(content, user, LocalDateTime.now());
+            saveContent = mergeSection(existing, section, submittedSection, baserevid, forceSave);
             if (saveContent == null) {
                 return conflictNoticeView(normalized, existing, user, content, section, comment);
             }
@@ -581,12 +584,13 @@ public class WikiPageController {
             WikiPage saved;
             if (forceSave) {
                 saved = this.wikiPageService.editPage(user, normalized, saveContent, comment,
-                        botEditFlag, minorEditFlag, changeTags);
+                        botEditFlag, minorEditFlag, changeTags, false);
             } else {
                 WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
                 saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
                         botEditFlag, minorEditFlag, changeTags,
-                        latestRevision == null ? existing.getLatestRevisionId() : latestRevision.getId());
+                        latestRevision == null ? existing.getLatestRevisionId() : latestRevision.getId(),
+                        false);
             }
             if (saved == null) {
                 WikiPage latestPage = this.wikiPageService.getByTitle(normalized).orElse(existing);
@@ -1262,7 +1266,7 @@ public class WikiPageController {
                 return current.equals(title) ? Optional.empty() : Optional.of(current);
             }
             Optional<String> next = WikiRedirect.targetOf(
-                    this.wikiPageService.getLatestContent(page.getId()).orElse(""));
+                    this.wikiPageService.getLatestContent(page.getId()).orElse(""), page.getTitle());
             if (next.isEmpty()) {
                 return current.equals(title) ? Optional.empty() : Optional.of(current);
             }

@@ -82,7 +82,7 @@ public class WikiPageStoreImpl implements WikiPageStore {
 
     private PageSnapshot snapshot(WikiPage page) {
         String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-        boolean redirect = WikiRedirect.targetOf(content).isPresent();
+        boolean redirect = WikiRedirect.targetOf(content, page.getTitle()).isPresent();
         boolean contentPage = !WikiNamespaces.inAnyNamespace(page.getTitle());
         return new PageSnapshot(page.getId(), page.getTitle(), redirect, contentPage,
                 WikiSha1.bytes(content), page.getUpdateAt());

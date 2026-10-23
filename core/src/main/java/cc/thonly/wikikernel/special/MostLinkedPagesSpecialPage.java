@@ -70,7 +70,7 @@ public class MostLinkedPagesSpecialPage extends AbstractRankReportPage {
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (WikiPage page : accessControlService.filterReadable(pages, WikiPage::getTitle, request.user())) {
             String content = wikiPageService.getLatestContent(page.getId()).orElse("");
-            for (String target : ReportScans.pageLinks(content)) {
+            for (String target : ReportScans.pageLinks(content, page.getTitle())) {
                 counts.merge(target, 1, Integer::sum);
             }
         }

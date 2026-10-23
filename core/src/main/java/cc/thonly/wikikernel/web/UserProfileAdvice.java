@@ -85,7 +85,7 @@ public class UserProfileAdvice {
         boolean self = viewer.loggedIn()
                 && (userId > 0 ? viewer.id() == userId : username.equalsIgnoreCase(viewer.name()));
 
-        String defaultAvatar = UserStore.DEFAULT_AVATAR_URL;
+        String defaultAvatar = this.userStore.defaultAvatarUrl();
         UserProfileContext context = new RequestUserProfileContext(userId, username, self, viewer, defaultAvatar);
         String avatar = this.userProfileHooks.avatarUrl(context);
         model.addAttribute("userPageName", username);

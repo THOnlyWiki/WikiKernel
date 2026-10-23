@@ -2099,6 +2099,12 @@ public class WikitextRenderer {
     private static final Pattern HTML_ENTITY = Pattern.compile(
             "&(?:[A-Za-z][A-Za-z0-9]{1,31}|#\\d{1,7}|#[xX][0-9A-Fa-f]{1,6});");
 
+    /** 当前渲染页面的标题（相对子页面链接 {@code [[/子页]]} 的基准）。 */
+    private static String currentPageTitle() {
+        RenderContextState state = CURRENT.get();
+        return state == null ? "" : state.pageTitle();
+    }
+
     private String inline(String text) {
         if (text.isEmpty()) {
             return "";
@@ -2109,7 +2115,7 @@ public class WikitextRenderer {
         escaped = BOTH.matcher(escaped).replaceAll("<b><i>$1</i></b>");
         escaped = BOLD.matcher(escaped).replaceAll("<b>$1</b>");
         escaped = ITALIC.matcher(escaped).replaceAll("<i>$1</i>");
-        escaped = renderWikiLinks(escaped);
+        escaped = renderWikiLinks(escaped, currentPageTitle());
         escaped = renderExternalLinks(escaped);
         return restoreTokens(escaped, "\uE001", tokens);
     }
@@ -2152,7 +2158,7 @@ public class WikitextRenderer {
         return out.toString();
     }
 
-    private String renderWikiLinks(String text) {
+    private String renderWikiLinks(String text, String pageTitle) {
         Matcher matcher = WIKI_LINK.matcher(text);
         StringBuilder out = new StringBuilder();
         while (matcher.find()) {
@@ -2164,14 +2170,18 @@ public class WikitextRenderer {
             // 识别这种 URL 形式，避免把 /wiki/ 再拼一遍、也避免把整段 URL 当显示文字。
             String labelFromUrl = null;
             int urlSpace = target.indexOf(' ');
-            if (urlSpace > 0 && (target.startsWith(WikiUrls.pagePrefix())
-                    || target.startsWith(WikiUrls.DEFAULT_PAGE_PREFIX)
+            if (urlSpace > 0 && (isUrlLikeTarget(target)
                     || target.matches("(?i)^(https?|ftp)://.*"))) {
                 labelFromUrl = target.substring(urlSpace + 1).trim();
                 target = target.substring(0, urlSpace).trim();
             }
             if (rawLabel == null && labelFromUrl != null && !labelFromUrl.isEmpty()) {
                 label = labelFromUrl;
+            }
+            // 相对子页面链接：[[/子页]] / [[../兄弟]]（MediaWiki 语法）
+            if (!isUrlLikeTarget(target)
+                    && (target.startsWith("/") || target.startsWith("./") || target.startsWith("../"))) {
+                target = WikiLinkScanner.resolveRelativeTarget(target, pageTitle);
             }
             if (isFileTarget(target)) {
                 // 文件嵌入：[[文件:名称.png|thumb|说明|200px]]
@@ -2182,11 +2192,11 @@ public class WikitextRenderer {
             InterwikiService.Target interwiki = interwikiTarget(target.startsWith(":") ? target.substring(1).trim() : target);
             if (interwiki != null && !interwiki.local()) {
                 // [[:w:页面]]（前导冒号）= 强制普通链接：语言链接也照常渲染成外链
-                String pageTitle = interwikiPageTitle(target.startsWith(":") ? target.substring(1).trim() : target);
+                String interwikiTitle = interwikiPageTitle(target.startsWith(":") ? target.substring(1).trim() : target);
                 if (rawLabel == null) {
                     label = target.startsWith(":") ? target.substring(1).trim() : target;
                 }
-                String url = interwikiUrl(interwiki, pageTitle);
+                String url = interwikiUrl(interwiki, interwikiTitle);
                 matcher.appendReplacement(out, Matcher.quoteReplacement(
                         "<a class=\"external mw-interwiki\" href=\"" + HtmlSanitizer.escapeAttribute(url)
                                 + "\" target=\"_blank\" rel=\"nofollow\">" + label + "</a>"));
@@ -2222,6 +2232,25 @@ public class WikitextRenderer {
         }
         matcher.appendTail(out);
         return out.toString();
+    }
+
+    /**
+     * 已经是 URL 的目标：外链、协议相对链接、已带页面路径前缀的 {@code fullurl/localurl}。
+     * 裸根部署下，只有带查询串的目标才按 URL 处理，避免把 {@code [[/子页]]} 误判成链接。
+     */
+    private static boolean isUrlLikeTarget(String target) {
+        if (target == null) {
+            return false;
+        }
+        if (target.startsWith("//")
+                || target.matches("(?i)^(https?|ftp)://.*")
+                || target.startsWith(WikiUrls.DEFAULT_PAGE_PREFIX)) {
+            return true;
+        }
+        if (!WikiUrls.bareRoot() && target.startsWith(WikiUrls.pagePrefix())) {
+            return true;
+        }
+        return WikiUrls.bareRoot() && target.startsWith("/") && target.indexOf('?') >= 0;
     }
 
     /** 跨 Wiki 前缀命中（{@code null} = 不是跨 Wiki 前缀 / 未启用）。 */

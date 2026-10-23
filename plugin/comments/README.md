@@ -25,8 +25,12 @@
 - **数据**：表 `wiki_comment` 与实体 `WikiComment` **属于插件自己**（实体在插件内，core 按
   `CommentsPlugin.schemaEntities()` 自动建表 / 补列，插件经 `common.service.PluginDatabase` 裸 SQL 读写，
   见 `service/CommentStoreJdbc`）；作者名与头像走 `UserStore` / `AvatarStore`，内容渲染走 `WikiText`
-  （与页面正文同一套渲染器，模板 / 解析器函数 / 白名单全部生效）。
-- 头像是否显示跟随「用户交互」开关（`features.social-profile`），与迁移前一致。
+  （与页面正文同一套渲染器，模板 / 解析器函数 / 白名单全部生效）；未上传头像 / 匿名评论使用
+  core 的站点头像设置 `site.default-avatar`（Timeless 的「默认头像」也写这个共享键）。
+- 头像是否显示跟随「用户交互」开关（`features.social-profile`），与迁移前一致；
+- **时间显示**：评论的 `createAt` 由服务器 `LocalDateTime.now()` 写入，并按服务器时区显示；
+  在 `LocalSettings.yaml` 配置 `wikikernel.time.zone`（如 `Asia/Shanghai`）后重启，即可让评论区时间
+  与服务器时间一致（修改前已经写入的旧评论不会自动改值）。
 
 ## 与迁移前的差异
 

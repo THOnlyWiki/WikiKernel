@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.socialprofile.service;
 
 import cc.thonly.wikikernel.common.service.UserStore;
+import cc.thonly.wikikernel.common.util.Strings;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
@@ -31,11 +32,17 @@ public final class AvatarSupport {
         return avatars.store(userId, originalFileName, contentType, content);
     }
 
-    /** 某个用户的头像 URL（未上传 / 用户不存在 = 默认头像）。 */
+    /** 某个用户的头像 URL（未上传 / 用户不存在 = 站点默认头像）。 */
     public String avatarUrl(long userId) {
+        String defaultUrl = defaultAvatarUrl();
         return users.byId(userId)
-                .map(ref -> ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL))
-                .orElse(UserStore.DEFAULT_AVATAR_URL);
+                .map(ref -> ref.avatarUrl(defaultUrl))
+                .orElse(defaultUrl);
+    }
+
+    /** 站点默认头像（core 共享设置；没有配置时是内置默认头像）。 */
+    public String defaultAvatarUrl() {
+        return users == null ? UserStore.DEFAULT_AVATAR_URL : users.defaultAvatarUrl();
     }
 
     /** 用户是否存在（头像上传前校验账号，账号被删时返回 404）。 */
@@ -43,9 +50,10 @@ public final class AvatarSupport {
         return users.byId(userId).isPresent();
     }
 
-    /** 头像 URL（空文件名 = 默认头像）。 */
+    /** 头像 URL（空文件名 = 站点默认头像）。 */
     public String url(String fileName) {
-        return avatars.url(fileName);
+        String name = Strings.trimToEmpty(fileName);
+        return name.isEmpty() ? defaultAvatarUrl() : avatars.url(name);
     }
 
     /** 按文件名解析头像文件（带路径穿越防护；不存在返回空）——{@code GET /avatars/<文件名>} 用。 */

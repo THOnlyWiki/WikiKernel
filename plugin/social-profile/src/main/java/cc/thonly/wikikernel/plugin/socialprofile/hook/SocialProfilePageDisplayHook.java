@@ -151,7 +151,7 @@ public final class SocialProfilePageDisplayHook implements UserProfileHook {
                 relationState(viewer, userId, self),
                 incomingFoe(viewer, userId, self),
                 userId <= 0 ? 0 : friends.pendingCount(userId),
-                userId <= 0 ? UserStore.DEFAULT_AVATAR_URL : avatarUrl(userId),
+                userId <= 0 ? defaultAvatarUrl() : avatarUrl(userId),
                 pointsValue,
                 levelName,
                 userId <= 0 ? List.of() : people(friends.friends(userId), userId),
@@ -163,13 +163,13 @@ public final class SocialProfilePageDisplayHook implements UserProfileHook {
     /** 留言墙内嵌显示条数（与 {@code SocialProfileView} 的 {@code BOARD_EMBED_LIMIT} 一致：10）。 */
     private static final int BOARD_ROWS_LIMIT = 10;
 
-    /** 当前用户的资料卡头像 URL（空 / 未注入头像服务时回退默认头像）。 */
+    /** 当前用户的资料卡头像 URL（空 / 未注入头像服务时回退站点默认头像）。 */
     private String avatarUrl(long userId) {
         if (avatars == null) {
-            return UserStore.DEFAULT_AVATAR_URL;
+            return defaultAvatarUrl();
         }
         String url = avatars.avatarUrl(userId);
-        return Strings.isBlank(url) ? UserStore.DEFAULT_AVATAR_URL : url;
+        return Strings.isBlank(url) ? defaultAvatarUrl() : url;
     }
 
     /** 好友 / 仇敌列表 → 头像列表（对方那一侧的 id / 用户名 / 头像，批量查名与头像）。 */
@@ -211,13 +211,18 @@ public final class SocialProfilePageDisplayHook implements UserProfileHook {
         return 0;
     }
 
-    /** 头像文件名 → URL（空 / 未知回退默认头像）。 */
+    /** 头像文件名 → URL（空 / 未知回退站点默认头像）。 */
     private String avatarUrl(String fileName) {
         if (Strings.isBlank(fileName) || avatars == null) {
-            return UserStore.DEFAULT_AVATAR_URL;
+            return defaultAvatarUrl();
         }
         String url = avatars.url(fileName);
-        return Strings.isBlank(url) ? UserStore.DEFAULT_AVATAR_URL : url;
+        return Strings.isBlank(url) ? defaultAvatarUrl() : url;
+    }
+
+    /** 站点默认头像（core 共享设置；Timeless 等皮肤写入的值在这里也会生效）。 */
+    private String defaultAvatarUrl() {
+        return users == null ? UserStore.DEFAULT_AVATAR_URL : users.defaultAvatarUrl();
     }
 
     /** 留言作者的用户名（一次批量查，避免每条留言查一次）。 */

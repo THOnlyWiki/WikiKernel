@@ -73,6 +73,20 @@ class AvatarUploadTest {
     }
 
     @Test
+    void siteDefaultAvatarAppliesToUsersWithoutUpload() {
+        SocialProfileFakes.FakeUsers users = new SocialProfileFakes.FakeUsers()
+                .add(7, "甲", "u7-9.png")
+                .add(8, "乙", "")
+                .defaultAvatar("/img/site-default.svg");
+        AvatarSupport support = new AvatarSupport(new SocialProfileFakes.FakeAvatars(), users);
+
+        assertEquals("/avatars/u7-9.png", support.avatarUrl(7));
+        assertEquals("/img/site-default.svg", support.avatarUrl(8));
+        assertEquals("/img/site-default.svg", support.avatarUrl(0));
+        assertEquals("/img/site-default.svg", support.url(""));
+    }
+
+    @Test
     void uploadApiFollowsTheOldPermissionAndValidationRules() {
         SocialProfileFakes.FakeUsers users = new SocialProfileFakes.FakeUsers().add(7, "甲", "");
         SocialProfileFakes.FakeAvatars avatars = new SocialProfileFakes.FakeAvatars();

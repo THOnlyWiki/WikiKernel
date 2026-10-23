@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.web.FileTitles;
 import cc.thonly.wikikernel.web.WikiTitles;
+import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import java.util.ArrayList;
@@ -30,12 +31,18 @@ final class ReportScans {
     private ReportScans() {
     }
 
-    /** 正文里的页面链接目标（已规范化；分类 / 文件 / 特殊页 / 外部链接不算页面链接）。 */
+    /** 兼容旧调用：没有页面标题时无法解析相对子页面链接。 */
     static List<String> pageLinks(String content) {
+        return pageLinks(content, "");
+    }
+
+    /** 正文里的页面链接目标（已解析相对子页面并规范化；分类 / 文件 / 特殊页 / 外部链接不算）。 */
+    static List<String> pageLinks(String content, String pageTitle) {
         List<String> targets = new ArrayList<>();
         Matcher matcher = LINK.matcher(content == null ? "" : content);
         while (matcher.find()) {
-            String target = WikiTitles.normalize(matcher.group(1));
+            String target = WikiTitles.normalize(
+                    WikiLinkScanner.resolveRelativeTarget(matcher.group(1), pageTitle));
             if (!target.isEmpty() && !skipped(target)) {
                 targets.add(target);
             }

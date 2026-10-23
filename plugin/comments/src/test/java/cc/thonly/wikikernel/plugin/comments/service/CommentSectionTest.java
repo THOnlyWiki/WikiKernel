@@ -140,6 +140,16 @@ class CommentSectionTest {
     }
 
     @Test
+    void anonymousCommentUsesConfiguredDefaultAvatar() {
+        Fixture fixture = new Fixture();
+        fixture.store.put(1L, comment(1, "首页", null, null, "匿名评论", false));
+        fixture.defaultAvatar("/img/site-default.svg");
+        String html = fixture.section(true, true).render("首页", Viewer.ANONYMOUS);
+
+        assertTrue(html.contains("src=\"/img/site-default.svg\""), html);
+    }
+
+    @Test
     void hookAutoDisplaysAndHonorsManualAndDisabledTags() {
         Fixture fixture = new Fixture();
         fixture.store.put(1L, comment(1, "首页", null, 7L, "内容", false));
@@ -331,6 +341,12 @@ class CommentSectionTest {
     private static final class Fixture {
 
         private final Map<Long, WikiComment> store = new LinkedHashMap<>();
+        private String defaultAvatarUrl = UserStore.DEFAULT_AVATAR_URL;
+
+        Fixture defaultAvatar(String url) {
+            this.defaultAvatarUrl = url;
+            return this;
+        }
 
         CommentSection section(boolean enabled, boolean userInteraction) {
             return section(enabled, userInteraction, true);
@@ -420,10 +436,16 @@ class CommentSectionTest {
                 public boolean exists(String username) {
                     return false;
                 }
-            @Override
-            public List<UserRef> randomWithAvatar(int limit) {
-                return List.of();
-            }
+
+                @Override
+                public String defaultAvatarUrl() {
+                    return defaultAvatarUrl;
+                }
+
+                @Override
+                public List<UserRef> randomWithAvatar(int limit) {
+                    return List.of();
+                }
 
             };
             WikiText wikiText = (wikitext, pageTitle) -> wikitext

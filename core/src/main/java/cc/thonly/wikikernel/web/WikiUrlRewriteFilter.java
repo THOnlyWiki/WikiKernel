@@ -35,7 +35,7 @@ public class WikiUrlRewriteFilter extends OncePerRequestFilter {
      * {@code init} / {@code version} / {@code render} 同理（安装向导 / 版本端点 / 渲染端点）。
      */
     private static final Set<String> RESERVED_SEGMENTS = Set.of(
-            "api", "api.php", "wiki", "css", "js", "img", "vendor", "schemas",
+            "api", "api.php", "auth", "wiki", "css", "js", "img", "vendor", "schemas",
             "skins", "plugins", "files", "avatars", "error",
             "email", "password", "init", "version", "render",
             "load.php", "index.php", "thumb.php",

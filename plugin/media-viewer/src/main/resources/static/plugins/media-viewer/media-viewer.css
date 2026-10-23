@@ -369,16 +369,27 @@ html.wiki-image-viewer-open {
     position: relative;
     flex: 1 1 auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    /* 不要用 center：图片放大到超过 stage 时，flex 居中会把溢出部分放到负方向，
+       左侧 / 顶部永远滚不到，只能看到中心。改为 flex-start + img margin:auto：
+       图片小于 stage 时自动居中，图片大于 stage 时从左上角开始，配合滚动/拖拽可看全图。 */
+    align-items: flex-start;
+    justify-content: flex-start;
     overflow: auto;
     padding: 56px 64px;
+    cursor: grab;
+    touch-action: none;
+    overscroll-behavior: contain;
+}
+
+.wiki-image-viewer-stage.dragging {
+    cursor: grabbing;
 }
 
 .wiki-image-viewer-stage img {
     display: block;
     max-width: none;
     max-height: none;
+    margin: auto;
     user-select: none;
     -webkit-user-drag: none;
 }

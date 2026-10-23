@@ -359,10 +359,12 @@
             </section>
             </div><!--/* /.pref-panels */-->
 
-            <!--/* 保存结果提示：放在保存条上方，不会被保存条盖住 */-->
-            <p id="preferences-message" class="form-message" hidden></p>
-            <div class="pref-actions">
-                <button type="submit" class="wiki-button" th:text="#{preferences.save}">保存</button>
+            <!--/* 保存条：Timeless 下整页滚动，这一块 sticky 在视口底部；提示与按钮始终一起可见 */-->
+            <div class="pref-footer">
+                <p id="preferences-message" class="form-message" hidden></p>
+                <div class="pref-actions">
+                    <button type="submit" class="wiki-button" th:text="#{preferences.save}">保存</button>
+                </div>
             </div>
         </form>
 

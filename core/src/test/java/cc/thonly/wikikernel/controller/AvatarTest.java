@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.controller;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
+import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.UserService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
@@ -20,6 +21,7 @@ import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -50,6 +52,39 @@ class AvatarTest {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private SiteSettingsService siteSettingsService;
+
+    @Test
+    void configuredDefaultAvatarAppliesToUserPage() throws Exception {
+        WikiUser user = insertUser("默认头像用户" + System.nanoTime());
+        String userPage = "用户:" + user.getUsername();
+        wikiPageService.editPage(user, userPage, "个人简介");
+        siteSettingsService.set(SiteSettingsService.DEFAULT_AVATAR_KEY, "/img/avatar-site-default.svg");
+        try {
+            mockMvc.perform(get("/wiki/{title}", userPage))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("/img/avatar-site-default.svg")));
+        } finally {
+            siteSettingsService.set(SiteSettingsService.DEFAULT_AVATAR_KEY, "");
+        }
+    }
+
+    @Test
+    void currentUserAvatarModelUsesFreshDatabaseValue() throws Exception {
+        WikiUser user = insertUser("顶栏头像用户" + System.nanoTime());
+        String page = "顶栏头像测试页" + System.nanoTime();
+        wikiPageService.editPage(user, page, "正文");
+        String avatar = "u" + user.getId() + "-topbar.png";
+        userService.updateAvatar(user.getId(), avatar);
+
+        // 会话里的 WikiUser 副本还是注册时的空头像；CurrentUserAdvice 必须重新查库，
+        // 这样 SocialProfile 上传后刷新页面，Timeless 顶栏也能立即显示新头像。
+        mockMvc.perform(get("/wiki/{title}", page).session(sessionOf(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("currentUserAvatarUrl", "/avatars/" + avatar));
+    }
 
     @Test
     void userPageProfileUsesDefaultAvatarWithoutPlugin() throws Exception {

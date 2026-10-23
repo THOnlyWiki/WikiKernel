@@ -187,8 +187,8 @@ public class FingerprintLoginApiController {
 
     /**
      * 客户端 IP（限流键的一部分）。
-     * 这里用 {@code RemoteAddr}：core 的 {@code ClientIpResolver}（可信代理头）只在 core 侧，
-     * 插件侧拿到的是同一台服务器上的 socket 地址，防爆破足够了。
+     * core 的 {@code ClientInfoFilter} 在 {@code wikikernel.http.trust-proxy-headers=true} 时会包装请求，
+     * 因此这里的 {@code RemoteAddr} 在 Docker / CDN 后面也是真实客户端 IP。
      */
     private static String clientIp(HttpServletRequest request) {
         return request == null ? "" : request.getRemoteAddr();

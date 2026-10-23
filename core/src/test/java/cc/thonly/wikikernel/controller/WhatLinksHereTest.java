@@ -97,6 +97,19 @@ class WhatLinksHereTest {
     }
 
     @Test
+    void listsRelativeSubpageLinks() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        String parent = "链入父页" + suffix;
+        String child = parent + "/子页";
+        wikiPageService.editPage(null, child, "子页正文");
+        wikiPageService.editPage(null, parent, "[[/子页|子页链接]]");
+
+        mockMvc.perform(get("/wiki/{title}", "特殊:链入页面").param("page", child))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(">" + parent + "</a>")));
+    }
+
+    @Test
     void filtersByNamespaceAndPaginates() throws Exception {
         String suffix = String.valueOf(System.nanoTime());
         String target = "翻页目标" + suffix;

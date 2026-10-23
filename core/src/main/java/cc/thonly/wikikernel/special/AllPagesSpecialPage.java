@@ -148,7 +148,7 @@ public class AllPagesSpecialPage implements SpecialPage {
 
     /** 页面最新内容是否是 {@code #REDIRECT}（隐藏重定向用）。 */
     private boolean isRedirect(WikiPage page) {
-        return WikiRedirect.targetOf(wikiPageService.getLatestContent(page.getId()).orElse(""))
+        return WikiRedirect.targetOf(wikiPageService.getLatestContent(page.getId()).orElse(""), page.getTitle())
                 .isPresent();
     }
 

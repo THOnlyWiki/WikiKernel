@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
 import cc.thonly.wikikernel.service.PermissionService;
+import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.service.UserService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -25,11 +26,24 @@ public class UserStoreImpl implements UserStore {
     private final WikiUserMapper userMapper;
     private final UserService userService;
     private final PermissionService permissionService;
+    private final SiteSettingsService siteSettingsService;
 
-    public UserStoreImpl(WikiUserMapper userMapper, UserService userService, PermissionService permissionService) {
+    public UserStoreImpl(WikiUserMapper userMapper, UserService userService, PermissionService permissionService,
+                         SiteSettingsService siteSettingsService) {
         this.userMapper = userMapper;
         this.userService = userService;
         this.permissionService = permissionService;
+        this.siteSettingsService = siteSettingsService;
+    }
+
+    @Override
+    public String defaultAvatarUrl() {
+        if (siteSettingsService == null) {
+            return UserStore.DEFAULT_AVATAR_URL;
+        }
+        String configured = SiteSettingsServiceImpl.normalizeAvatar(
+                siteSettingsService.get(SiteSettingsService.DEFAULT_AVATAR_KEY, ""));
+        return configured.isEmpty() ? UserStore.DEFAULT_AVATAR_URL : configured;
     }
 
     @Override

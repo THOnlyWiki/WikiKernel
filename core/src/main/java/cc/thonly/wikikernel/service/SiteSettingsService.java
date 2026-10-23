@@ -1,5 +1,7 @@
 package cc.thonly.wikikernel.service;
 
+import cc.thonly.wikikernel.common.service.SiteConfig;
+
 /**
  * 站点设置（键值）：存 {@code wiki_setting}，内存缓存；可在「特殊:权限配置」页修改，
  * LocalSettings.yaml 的 {@code wikikernel.permissions.*} 默认值启动时导入（见实现类）。
@@ -14,6 +16,13 @@ public interface SiteSettingsService {
 
     /** 站点图标 URL（favicon.ico / &lt;link rel="icon"&gt;）；空 = 内置 wiki-logo.svg。 */
     String FAVICON_KEY = "site.favicon";
+
+    /**
+     * 站点默认头像 URL（未上传头像的用户 / 匿名评论等使用）；空 = 内置
+     * {@code /img/avatar-default.svg}。这是 core 与各插件共享的键，Timeless 的「默认头像」
+     * 设置也写这里，评论 / SocialProfile 不需要依赖 Timeless 插件即可读取。
+     */
+    String DEFAULT_AVATAR_KEY = SiteConfig.DEFAULT_AVATAR_KEY;
 
     /** 是否输出 {@code <meta name="referrer" content="no-referrer">}（默认关闭）。 */
     String NO_REFERRER_KEY = "site.no-referrer";

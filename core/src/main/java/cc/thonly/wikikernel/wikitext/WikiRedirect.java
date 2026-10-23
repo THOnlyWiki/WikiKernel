@@ -12,13 +12,21 @@ import java.util.regex.Pattern;
 public final class WikiRedirect {
 
     private static final Pattern PATTERN = Pattern.compile(
-            "(?is)^\\s*#\\s*(redirect|重定向)\\s*:?\\s*\\[\\[\\s*([^\\]|#]+?)\\s*(?:\\|[^\\]]*)?\\]\\]");
+            "(?is)^\\s*#\\s*(redirect|重定向|重新導向|重新导向|転送)\\s*:?\\s*\\[\\[\\s*([^\\]|#]+?)\\s*(?:\\|[^\\]]*)?\\]\\]");
 
     private WikiRedirect() {
     }
 
     /** 解析重定向目标标题；不是重定向返回空。 */
     public static Optional<String> targetOf(String wikitext) {
+        return targetOf(wikitext, "");
+    }
+
+    /**
+     * 解析重定向目标，并按当前页面解析子页面相对写法
+     * （{@code #REDIRECT [[/子页]]} / {@code [[../兄弟]]}）。
+     */
+    public static Optional<String> targetOf(String wikitext, String pageTitle) {
         if (wikitext == null || wikitext.isEmpty()) {
             return Optional.empty();
         }
@@ -26,7 +34,7 @@ public final class WikiRedirect {
         if (!matcher.find()) {
             return Optional.empty();
         }
-        String target = matcher.group(2).trim();
+        String target = WikiLinkScanner.resolveRelativeTarget(matcher.group(2), pageTitle);
         return target.isEmpty() ? Optional.empty() : Optional.of(target);
     }
 }

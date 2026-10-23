@@ -136,7 +136,7 @@ public class SiteSettingsServiceImpl implements SiteSettingsService, Application
         }
     }
 
-    /** 站点图标只接受空串、站内绝对路径或 http(s) URL，避免 javascript: 等进入 link href。 */
+    /** 站点图标 / 默认头像只接受空串、站内绝对路径或 http(s) URL，避免 javascript: 等进入页面。 */
     public static String normalizeFavicon(String raw) {
         String value = raw == null ? "" : raw.trim();
         if (value.isEmpty()) {
@@ -147,6 +147,11 @@ public class SiteSettingsServiceImpl implements SiteSettingsService, Application
             return value;
         }
         return "";
+    }
+
+    /** 默认头像 URL 的归一化规则与 favicon 相同（留空 = 使用内置默认头像）。 */
+    public static String normalizeAvatar(String raw) {
+        return normalizeFavicon(raw);
     }
 
     /**

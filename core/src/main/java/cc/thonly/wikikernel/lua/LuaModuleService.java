@@ -1985,7 +1985,10 @@ public class LuaModuleService {
                         .compile("(?is)^\\s*#redirect\\s*\\[\\[\\s*([^\\]|#]+)")
                         .matcher(content);
                 if (redirect.find()) {
-                    table.set("redirectTarget", titleTable(redirect.group(1).trim(), contentLookup, false));
+                    table.set("redirectTarget", titleTable(
+                            cc.thonly.wikikernel.wikitext.WikiLinkScanner.resolveRelativeTarget(
+                                    redirect.group(1).trim(), currentTitle),
+                            contentLookup, false));
                 }
             }
             table.set("getCurrentTitle", new ZeroArgFunction() {
