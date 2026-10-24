@@ -7,6 +7,7 @@ import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.db.mapper.WikiPageCategoryMapper;
 import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
+import cc.thonly.wikikernel.service.impl.PageIndexGate;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
@@ -32,15 +33,18 @@ public class UnusedCategoriesSpecialPage extends AbstractReportPage {
     private final WikiPageMapper wikiPageMapper;
     private final WikiPageCategoryMapper categoryMapper;
     private final AccessControlService accessControlService;
+    private final PageIndexGate indexGate;
 
     public UnusedCategoriesSpecialPage(MessageSource messageSource,
                                        WikiPageMapper wikiPageMapper,
                                        WikiPageCategoryMapper categoryMapper,
-                                       AccessControlService accessControlService) {
+                                       AccessControlService accessControlService,
+                                       PageIndexGate indexGate) {
         super(messageSource);
         this.wikiPageMapper = wikiPageMapper;
         this.categoryMapper = categoryMapper;
         this.accessControlService = accessControlService;
+        this.indexGate = indexGate;
     }
 
     @Override
@@ -65,6 +69,7 @@ public class UnusedCategoriesSpecialPage extends AbstractReportPage {
 
     @Override
     public String render(SpecialPageRequest request) {
+        indexGate.awaitIdle();
         Set<String> used = new HashSet<>();
         for (WikiPageCategory row : categoryMapper.selectList(Wrappers.<WikiPageCategory>lambdaQuery()
                 .select(WikiPageCategory::getCategoryTitle))) {

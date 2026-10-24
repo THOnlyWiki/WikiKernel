@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.common.extension.SpecialPageCategories;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.db.mapper.WikiPageCategoryMapper;
 import cc.thonly.wikikernel.service.AccessControlService;
+import cc.thonly.wikikernel.service.impl.PageIndexGate;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
@@ -25,13 +26,16 @@ public class MostLinkedCategoriesSpecialPage extends AbstractRankReportPage {
 
     private final WikiPageCategoryMapper categoryMapper;
     private final AccessControlService accessControlService;
+    private final PageIndexGate indexGate;
 
     public MostLinkedCategoriesSpecialPage(MessageSource messageSource,
                                            WikiPageCategoryMapper categoryMapper,
-                                           AccessControlService accessControlService) {
+                                           AccessControlService accessControlService,
+                                           PageIndexGate indexGate) {
         super(messageSource);
         this.categoryMapper = categoryMapper;
         this.accessControlService = accessControlService;
+        this.indexGate = indexGate;
     }
 
     @Override
@@ -61,6 +65,7 @@ public class MostLinkedCategoriesSpecialPage extends AbstractRankReportPage {
 
     @Override
     protected List<Rank> ranks(SpecialPageRequest request) {
+        indexGate.awaitIdle();
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (WikiPageCategory row : categoryMapper.selectList(Wrappers.<WikiPageCategory>lambdaQuery()
                 .last("LIMIT " + INDEX_SCAN_LIMIT))) {
