@@ -51,8 +51,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "::error::Gradle build failed. Last 40 log lines:"
-          tail -n 40 build.log | sed 's/^/::error::/'
+          echo "::error::Gradle build failed. Failure summary:"
+          grep -E 'FAILED|What went wrong|Execution failed|There were failing tests|tests completed|Caused by:|^[A-Za-z0-9_.$]+ > .* FAILED' build.log \
+            | tail -n 20 \
+            | sed 's/^/::error::/'
 
       - name: Upload distribution
         uses: actions/upload-artifact@v4
