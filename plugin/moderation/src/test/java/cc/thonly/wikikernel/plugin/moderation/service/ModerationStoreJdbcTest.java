@@ -233,6 +233,16 @@ class ModerationStoreJdbcTest {
     private record TestDatabase(Connection connection) implements PluginDatabase {
 
         @Override
+        public String databaseProductName() {
+            return "H2";
+        }
+
+        @Override
+        public List<String> tableNames() {
+            return List.of();
+        }
+
+        @Override
         public int update(String sql, Object... args) {
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 bind(statement, args);
