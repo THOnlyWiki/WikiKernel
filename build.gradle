@@ -37,6 +37,9 @@ subprojects {
 
         tasks.withType(Test).configureEach {
             useJUnitPlatform()
+            // 测试断言依赖中文文案；固定测试 JVM 的默认 Locale，避免 CI（en_US）与本地（zh_CN）结果不一致。
+            systemProperty 'user.language', 'zh'
+            systemProperty 'user.country', 'CN'
             // 测试沙箱工作目录：隔离仓库根目录的 LocalSettings.yaml 与散落文件。
             // application.yaml 里的 spring.config.import 是双路径（./ 与 ../，后者供 IDEA 识别 LocalSettings.yaml），
             // 从 core/ 运行时 ../ 正好是仓库根、会把真实配置带进测试，因此测试统一在 build/test-working-dir 下运行；
