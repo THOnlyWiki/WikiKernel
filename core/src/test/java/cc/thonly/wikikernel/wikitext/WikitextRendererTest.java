@@ -576,6 +576,19 @@ class WikitextRendererTest {
     }
 
     @Test
+    void tableCellTemplateOutputIsNotMistakenForAttributes() {
+        WikitextRenderer local = new WikitextRenderer(new WikitextProperties(), name -> Optional.ofNullable(
+                Map.of("模板:注释", "<p style=\"color:grey;margin:0\"><small>{{{1|}}}</small></p>")
+                        .get(name)));
+        String html = local.render(
+                "{|\n|-\n| 多媒体文件 || {{注释|具体用法见[[Help:使用方法|使用方法与帮助]]以及[[特殊:上传文件]]。}}\n|}",
+                "测试");
+        assertTrue(html.contains("具体用法见"), html);
+        assertTrue(html.contains("使用方法与帮助"), html);
+        assertFalse(html.contains("使用方法与帮助]]"), html);
+    }
+
+    @Test
     void nestedParameterDefaultInTemplate() {
         java.util.Map<String, String> map = Map.of(
                 "模板:Docname", "模板:Documentation/doc",

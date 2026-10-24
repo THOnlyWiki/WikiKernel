@@ -2042,7 +2042,7 @@ public class WikitextRenderer {
             String body = cell.content();
             String attributes = "";
             int bar = body.indexOf('|');
-            if (bar > 0 && body.substring(0, bar).contains("=")) {
+            if (bar > 0 && looksLikeCellAttributes(body.substring(0, bar))) {
                 attributes = body.substring(0, bar);
                 body = body.substring(bar + 1);
             }
@@ -2052,6 +2052,21 @@ public class WikitextRenderer {
         }
         html.append("</tr>");
         cells.clear();
+    }
+
+    /**
+     * 单元格属性只应出现在单元格正文最前面，例如 {@code style="…" | 内容}、
+     * {@code width=50% | 内容}。模板展开后的 HTML（或链接/模板语法）里也可能有 {@code =}
+     * 和 {@code |}，不能把整段模板输出误判成属性。
+     */
+    private static boolean looksLikeCellAttributes(String text) {
+        String value = text.trim();
+        return !value.isEmpty()
+                && value.indexOf('<') < 0
+                && value.indexOf('>') < 0
+                && value.indexOf('{') < 0
+                && value.indexOf('[') < 0
+                && value.matches("[\\w-]+\\s*=.*");
     }
 
     private String renderCellAttributes(String attributesText) {
