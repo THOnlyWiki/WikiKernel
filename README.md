@@ -1,5 +1,7 @@
 # WikiKernel
 
+[![Build](https://github.com/THOnlyWiki/WikiKernel/actions/workflows/build.yml/badge.svg)](https://github.com/THOnlyWiki/WikiKernel/actions/workflows/build.yml)
+
 WikiKernel 是一个用 Java 21 和 Spring Boot 4 写的 wiki 引擎。它按 MediaWiki 的
 方式来组织内容：页面与修订版本、命名空间、Wikitext 与模板、特殊页面，以及兼容
 MediaWiki 的 `/api.php` 和 `mw` JS API。皮肤、扩展语法和治理功能都做成插件，core
