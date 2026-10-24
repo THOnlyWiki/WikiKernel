@@ -41,7 +41,18 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build, test, and create distribution
-        run: ./gradlew build dist checkPluginDependencies --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew build dist checkPluginDependencies \
+            --no-daemon --console=plain --stacktrace 2>&1 | tee build.log
+
+      - name: Show build failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "::error::Gradle build failed. Last 40 log lines:"
+          tail -n 40 build.log | sed 's/^/::error::/'
 
       - name: Upload distribution
         uses: actions/upload-artifact@v4
