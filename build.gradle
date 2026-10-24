@@ -5,9 +5,17 @@ plugins {
 
 description = 'WikiKernel：common（通用）/ core（核心）/ plugin（可选插件，独立编译）'
 
+def releaseVersion = System.getenv('WIKIKERNEL_VERSION')?.trim()
+if (releaseVersion?.startsWith('v')) {
+    releaseVersion = releaseVersion.substring(1)
+}
+if (releaseVersion?.isEmpty()) {
+    releaseVersion = null
+}
+
 allprojects {
     group = 'cc.thonly'
-    version = '0.0.1-SNAPSHOT'
+    version = releaseVersion ?: '0.0.1-SNAPSHOT'
 }
 
 subprojects {

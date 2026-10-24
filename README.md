@@ -90,6 +90,19 @@ npm install
 npm start
 ```
 
+## 发布
+
+推送 `v*` 标签会触发 GitHub Actions：运行完整构建与测试，打包 `build/dist`，
+然后自动创建或更新对应的 GitHub Release。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Release 产物是 `wikikernel-v0.1.0.zip`，内部保留 `wikikernel-server.jar`、`plugins/`、
+启动脚本和示例配置。普通分支推送只构建并上传 Actions artifact，不会创建 Release。
+
 ## 参与
 
 欢迎提交 issue 和 pull request。改完插件或 core 后，提交前至少跑一次

@@ -3,12 +3,17 @@ name: Build
 on:
   push:
     branches: [master, main]
+    tags: ['v*']
   pull_request:
     branches: [master, main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  # Tags build a dated release; normal branches keep the snapshot version.
+  WIKIKERNEL_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
 
 concurrency:
   group: build-${{ github.ref }}
@@ -79,3 +84,33 @@ jobs:
             **/build/test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: wikikernel-dist
+          path: release
+
+      - name: Package release zip
+        shell: bash
+        run: |
+          cd release
+          zip -r "wikikernel-${GITHUB_REF_NAME}.zip" .
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: WikiKernel ${{ github.ref_name }}
+          files: release/wikikernel-*.zip
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
