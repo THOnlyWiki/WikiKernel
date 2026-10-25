@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.controller;
 
 import cc.thonly.wikikernel.common.access.AccessAction;
+import cc.thonly.wikikernel.common.data.WikiAccessRule;
 import cc.thonly.wikikernel.common.data.WikiPermissionType;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
@@ -99,6 +100,42 @@ class InterfaceAdminTest {
     }
 
     @Test
+    void wildcardAndPrefixRulesDoNotBypassInterfaceAdmin() throws Exception {
+        String stamp = String.valueOf(System.nanoTime());
+        String base = "界面通配" + stamp;
+        String existingJs = base + ".js";
+        String newJs = base + "新建.js";
+        wikiPageService.editPage(null, existingJs, "var a = 1;");
+
+        WikiUser normal = insertUser("界面通配普通用户" + System.nanoTime());
+        // 线上常见配置：* 编辑 = 用户。它只应影响普通页面，不能顺带放开界面页。
+        WikiAccessRule wildcardEdit = accessControlService.saveRule(
+                "*", AccessAction.EDIT, PermissionService.GROUP_USER);
+        WikiAccessRule wildcardCreate = accessControlService.saveRule(
+                "*", AccessAction.CREATE, PermissionService.GROUP_USER);
+        // 前缀规则同样不能绕过界面页保护。
+        WikiAccessRule prefixEdit = accessControlService.saveRule(
+                base + "*", AccessAction.EDIT, PermissionService.GROUP_USER);
+        try {
+            mockMvc.perform(get("/wiki/{title}", existingJs).param("action", "edit")
+                            .session(sessionOf(normal)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("只有界面管理员可以编辑")))
+                    .andExpect(content().string(not(containsString("id=\"wiki-edit-form\""))));
+            mockMvc.perform(post("/wiki/{title}", existingJs).with(csrf()).session(sessionOf(normal))
+                            .param("content", "var hacked = 1;"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/wiki/{title}", newJs).with(csrf()).session(sessionOf(normal))
+                            .param("content", "var created = 1;"))
+                    .andExpect(status().isForbidden());
+        } finally {
+            deleteRuleQuietly(wildcardEdit);
+            deleteRuleQuietly(wildcardCreate);
+            deleteRuleQuietly(prefixEdit);
+        }
+    }
+
+    @Test
     void typescriptAndVuePagesAreInterfaceProtected() throws Exception {
         String stamp = String.valueOf(System.nanoTime());
         String ts = "界面TS" + stamp + ".ts";
@@ -180,6 +217,12 @@ class InterfaceAdminTest {
         WikiUser user = insertUser("界面管理员" + System.nanoTime());
         permissionService.replaceFor(user.getId(), List.of(PermissionService.GROUP_INTERFACE_ADMIN));
         return user;
+    }
+
+    private void deleteRuleQuietly(WikiAccessRule rule) {
+        if (rule != null && rule.getId() != null) {
+            accessControlService.deleteRule(rule.getId());
+        }
     }
 
     private MockHttpSession sessionOf(WikiUser user) {

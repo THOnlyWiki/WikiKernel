@@ -102,16 +102,31 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
 
     @Override
     public String requiredGroups(AccessAction action, String target) {
-        return findRule(action, target)
-                .map(WikiAccessRule::getGroupNames)
-                .orElseGet(() -> builtinGroups(action, target));
+        String title = Strings.trimToEmpty(target);
+        Optional<WikiAccessRule> rule = findRule(action, title);
+        if (isInterfaceWrite(action, title)) {
+            // 界面页的写权限是一道独立的「编辑站点 CSS / JS」门槛：全局 * / 前缀规则
+            // （例如 * 编辑 = 用户）只用于普通页面，不能顺带把界面页也放开。
+            // 只有针对该页面标题的**精确规则**才能显式覆盖，便于处理特例。
+            return rule.filter(matched -> title.equals(Strings.trimToEmpty(matched.getTarget())))
+                    .map(WikiAccessRule::getGroupNames)
+                    .orElse(PermissionService.GROUP_INTERFACE_ADMIN);
+        }
+        return rule.map(WikiAccessRule::getGroupNames)
+                .orElseGet(() -> builtinGroups(action, title));
+    }
+
+    /** 是否是需要「界面管理员」的写操作（编辑 / 创建 / 移动 CSS、JS、TS、Vue 页面）。 */
+    private static boolean isInterfaceWrite(AccessAction action, String title) {
+        return (action == AccessAction.EDIT || action == AccessAction.CREATE || action == AccessAction.MOVE)
+                && CodePages.isInterfacePage(title);
     }
 
     /**
      * 内置默认值：
      * <ul>
      *     <li>CSS / JS 页面（{@code *.css} / {@code *.js}）：编辑 / 创建 / 移动默认只有「界面管理员」
-     *     （仿 MediaWiki 的 interface-admin / editsitecss / editsitejs，可用访问规则覆盖）；</li>
+     *     （仿 MediaWiki 的 interface-admin / editsitecss / editsitejs；只有精确页面规则可覆盖）；</li>
      *     <li>微件（Widget）命名空间仿 MediaWiki 的 editwidgets：编辑 / 创建 / 移动默认只有「小部件编辑者」
      *     （管理员不豁免；可在 特殊:权限配置 加规则覆盖）；</li>
      *     <li>WikiKernel（界面）命名空间：编辑 / 创建 / 移动默认只有管理员（可在 特殊:权限配置 覆盖）；</li>
