@@ -1,3 +1,12 @@
+pluginManagement {
+    repositories {
+        // Android Gradle Plugin 只发布在 Google 的仓库
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
@@ -7,6 +16,8 @@ rootProject.name = 'WikiKernel'
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
+        // Android 构建要用的 aapt2 等构件只在 Google 仓库里
+        google()
     }
 }
 
@@ -21,3 +32,12 @@ file('plugin')
         ?.findAll { it.directory && new File(it, 'build.gradle').exists() }
         ?.sort { it.name }
         ?.each { include "plugin:${it.name}" }
+
+// Android 客户端。只有本机装了 Android SDK 才纳入构建：
+// 服务端 CI 和没装工具链的机器不会被 AGP 拖累，本机则能在 IDE 里当子工程打开。
+def androidSdkAvailable = System.getenv('ANDROID_HOME') != null
+        || System.getenv('ANDROID_SDK_ROOT') != null
+        || new File(settingsDir, 'local.properties').exists()
+if (androidSdkAvailable) {
+    include 'thonlywiki-app'
+}

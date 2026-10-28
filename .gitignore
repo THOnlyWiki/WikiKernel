@@ -56,3 +56,7 @@ core/run/
 **/run/files/
 **/run/plugins/
 **/run/*.db
+
+### 独立子工程：自带 .git，单独关联 GitHub 仓库 ###
+/thonlywiki-app/
+local.properties
