@@ -39,5 +39,5 @@ def androidSdkAvailable = System.getenv('ANDROID_HOME') != null
         || System.getenv('ANDROID_SDK_ROOT') != null
         || new File(settingsDir, 'local.properties').exists()
 if (androidSdkAvailable) {
-    include 'client'
+    include 'client:app'
 }
