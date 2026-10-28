@@ -60,3 +60,6 @@ core/run/
 ### 独立子工程：自带 .git，单独关联 GitHub 仓库 ###
 /client/
 local.properties
+
+### WorkBuddy 本地工作数据，不入库 ###
+.workbuddy-ai/
