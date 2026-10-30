@@ -19,6 +19,15 @@ import java.util.Map;
  */
 public class TeamTag implements ParserTag {
 
+    /**
+     * 页面属性键：本页有组队区块。
+     *
+     * <p>{@link TeamHeadProvider} 靠它决定要不要注入脚本与样式——
+     * 只有写了 {@code <team />} 的页面才加载，别的页面一个字节都不多。
+     * 属性在渲染时写入、保存后持久化（和 {@code comments} 属性一个机制）。
+     */
+    public static final String PROPERTY = "team";
+
     @Override
     public String name() {
         return "team";
@@ -41,6 +50,8 @@ public class TeamTag implements ParserTag {
             event = "0";
         }
         String eventName = attribute(attributes, "name");
+
+        call.context().setProperty(PROPERTY, "1");
 
         return "<div class=\"wiki-team\""
                 + " data-year=\"" + escape(year) + "\""

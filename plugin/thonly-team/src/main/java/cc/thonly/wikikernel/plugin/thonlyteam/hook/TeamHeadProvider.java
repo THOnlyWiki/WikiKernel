@@ -8,8 +8,10 @@ import cc.thonly.wikikernel.plugin.thonlyteam.TeamPlugin;
 import java.util.List;
 
 /**
- * 组队的样式与脚本。站点级注入（脚本自己判断页面里有没有 {@code .wiki-team}，
- * 没有就直接返回，开销可以忽略）。
+ * 组队的样式与脚本。
+ *
+ * <p>**页面级注入**：只有写了 {@code <team />} 的页面（属性 {@link TeamTag#PROPERTY}）才加载，
+ * 其它页面不注入。这样既省流量，也保证安全提醒弹窗只可能出现在组队页面。
  */
 public class TeamHeadProvider implements HtmlHeadProvider {
 
@@ -26,12 +28,16 @@ public class TeamHeadProvider implements HtmlHeadProvider {
 
     @Override
     public boolean siteWide() {
-        return true;
+        return false;
     }
 
     @Override
     public List<String> headItems(HeadContext context) {
         if (siteConfig != null && !siteConfig.getBoolean(TeamPlugin.FEATURE_KEY, true)) {
+            return List.of();
+        }
+        // 页面里没有 <team /> 就不注入
+        if (context == null || !context.properties().containsKey(TeamTag.PROPERTY)) {
             return List.of();
         }
         return List.of(
