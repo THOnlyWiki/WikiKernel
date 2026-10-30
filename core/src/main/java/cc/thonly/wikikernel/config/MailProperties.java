@@ -44,8 +44,8 @@ public class MailProperties {
     /** 发件人地址（留空 = 用 {@link #username}）。 */
     private String from = "";
 
-    /** 发件人显示名。 */
-    private String fromName = "WikiKernel";
+    /** 发件人显示名；留空 = 使用当前站点名称（wikikernel.site.name），旧默认值 WikiKernel 也按留空处理。 */
+    private String fromName = "";
 
     /** 确认 / 重置等令牌的有效期（小时）。 */
     private int tokenExpireHours = 24;

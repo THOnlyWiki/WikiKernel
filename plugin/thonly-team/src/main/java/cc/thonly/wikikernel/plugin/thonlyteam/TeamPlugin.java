@@ -4,9 +4,12 @@ import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.common.extension.LogType;
 import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.ParserTag;
+import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.plugin.PluginContext;
 import cc.thonly.wikikernel.common.plugin.PluginDescriptor;
 import cc.thonly.wikikernel.common.plugin.WikiPlugin;
+import cc.thonly.wikikernel.common.service.AccessCheck;
+import cc.thonly.wikikernel.common.service.CurrentUser;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.plugin.thonlyteam.data.WikiTeam;
 import cc.thonly.wikikernel.plugin.thonlyteam.data.WikiTeamMember;
@@ -14,6 +17,8 @@ import cc.thonly.wikikernel.plugin.thonlyteam.data.WikiTeamReport;
 import cc.thonly.wikikernel.plugin.thonlyteam.hook.TeamHeadProvider;
 import cc.thonly.wikikernel.plugin.thonlyteam.hook.TeamMessages;
 import cc.thonly.wikikernel.plugin.thonlyteam.hook.TeamTag;
+import cc.thonly.wikikernel.plugin.thonlyteam.service.TeamStore;
+import cc.thonly.wikikernel.plugin.thonlyteam.web.TeamAdminPage;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -46,6 +51,15 @@ public class TeamPlugin implements WikiPlugin {
     @Autowired
     private SiteConfig siteConfig;
 
+    @Autowired
+    private TeamStore teamStore;
+
+    @Autowired
+    private AccessCheck accessCheck;
+
+    @Autowired
+    private CurrentUser currentUser;
+
     @Override
     public PluginDescriptor descriptor() {
         return new PluginDescriptor(
@@ -68,6 +82,7 @@ public class TeamPlugin implements WikiPlugin {
         context.register(MessageBundle.class, new TeamMessages());
         context.register(ParserTag.class, new TeamTag());
         context.register(HtmlHeadProvider.class, new TeamHeadProvider(siteConfig));
+        context.register(SpecialPage.class, new TeamAdminPage(teamStore, accessCheck, currentUser));
     }
 
     @Override

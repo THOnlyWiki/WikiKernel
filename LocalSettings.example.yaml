@@ -337,7 +337,8 @@ wikikernel:
     ssl: false
     # 发件人（留空 = 用 username）
     from: ""
-    from-name: WikiKernel
+    # 发件人显示名（留空 = 跟随站点名称 / wikikernel.site.name）
+    from-name: ""
     # 确认 / 重置等令牌的有效期（小时）
     token-expire-hours: 24
     # 邮箱确认邮件的发送冷却（秒；0 = 不限制），防止被用来反复刷别人的邮箱

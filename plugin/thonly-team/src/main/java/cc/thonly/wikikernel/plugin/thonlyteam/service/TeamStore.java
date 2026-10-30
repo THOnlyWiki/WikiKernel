@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -60,6 +62,30 @@ public class TeamStore {
             teams.add(team(row));
         }
         return teams;
+    }
+
+    /** 全部队伍（含已解散），给「特殊:组队管理」用 */
+    public List<WikiTeam> listAll() {
+        List<DbRow> rows = database.query("SELECT * FROM wiki_team ORDER BY id DESC");
+        List<WikiTeam> teams = new ArrayList<>(rows.size());
+        for (DbRow row : rows) {
+            teams.add(team(row));
+        }
+        return teams;
+    }
+
+    /** 每支队伍的举报数，key = teamId */
+    public Map<Long, Integer> reportCounts() {
+        Map<Long, Integer> counts = new HashMap<>();
+        List<DbRow> rows = database.query(
+                "SELECT team_id, COUNT(*) AS c FROM wiki_team_report GROUP BY team_id");
+        for (DbRow row : rows) {
+            Long teamId = row.longOrNull("team_id");
+            if (teamId != null) {
+                counts.put(teamId, row.intValue("c", 0));
+            }
+        }
+        return counts;
     }
 
     public Optional<WikiTeam> find(long id) {

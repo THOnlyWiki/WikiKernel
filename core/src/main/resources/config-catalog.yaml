@@ -665,8 +665,8 @@ groups:
         description: 发件人地址；留空 = 用 username。
       - key: wikikernel.email.from-name
         type: string
-        default: WikiKernel
-        description: 发件人显示名。
+        default: ""
+        description: 发件人显示名；留空 = 使用当前站点名称（wikikernel.site.name）。
       - key: wikikernel.email.token-expire-hours
         type: integer
         default: 24

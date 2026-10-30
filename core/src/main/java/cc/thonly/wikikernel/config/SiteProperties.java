@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *   site: {name: 我的维基}
  * </pre>
  * 站点名称显示在浏览器标题栏（「页面名 - 站点名」）、页眉图标提示、页脚、搜索框占位符、
- * 邮件主题与 API 的 {@code sitename} 等；留空 = 使用默认名 {@code WikiKernel}。
+ * 邮件主题 / 发件人显示名与 API 的 {@code sitename} 等；留空 = 使用默认名 {@code WikiKernel}。
  * <p>
  * 文件里显式写了的每次启动导入数据库设置（{@code site.name}），会覆盖「特殊:权限配置」里的修改。
  */

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
  * 可在 {@code /init} 安装向导或「特殊:权限配置 → 站点设置」修改。
  * <p>
  * 显示在浏览器标题栏（「页面名 - 站点名」）、页眉图标提示、页脚、搜索框占位符、
- * 邮件主题 / 正文与动作 API 的 {@code sitename} 等；空 = 默认 {@code WikiKernel}。
+ * 邮件主题 / 正文 / 发件人显示名与动作 API 的 {@code sitename} 等；空 = 默认 {@code WikiKernel}。
  */
 @Service
 public class SiteNameService {

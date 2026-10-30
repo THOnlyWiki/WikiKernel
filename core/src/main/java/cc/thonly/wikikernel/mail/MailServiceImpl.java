@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.mail;
 import cc.thonly.wikikernel.common.extension.EmailType;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.MailProperties;
+import cc.thonly.wikikernel.service.SiteNameService;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -24,12 +25,18 @@ public class MailServiceImpl implements MailService {
 
     private static final Logger log = LoggerFactory.getLogger(MailServiceImpl.class);
 
+    /** 旧版本固定使用的默认发件人显示名；遇到它时也回退到站点名称。 */
+    private static final String LEGACY_DEFAULT_FROM_NAME = "WikiKernel";
+
     private final MailProperties properties;
     private final EmailTypeRegistry emailTypeRegistry;
+    private final SiteNameService siteNameService;
 
-    public MailServiceImpl(MailProperties properties, EmailTypeRegistry emailTypeRegistry) {
+    public MailServiceImpl(MailProperties properties, EmailTypeRegistry emailTypeRegistry,
+                           SiteNameService siteNameService) {
         this.properties = properties;
         this.emailTypeRegistry = emailTypeRegistry;
+        this.siteNameService = siteNameService;
     }
 
     @Override
@@ -87,11 +94,7 @@ public class MailServiceImpl implements MailService {
             helper.setSubject(subject);
             helper.setText(text, false);
             String from = fromAddress();
-            if (Strings.isBlank(properties.getFromName())) {
-                helper.setFrom(from);
-            } else {
-                helper.setFrom(new InternetAddress(from, properties.getFromName(), "UTF-8"));
-            }
+            helper.setFrom(new InternetAddress(from, fromDisplayName(), "UTF-8"));
             sender.send(message);
         } catch (Exception exception) {
             log.warn("邮件发送失败（type={}, to={}, host={}）：{}", typeId, to,
@@ -105,5 +108,18 @@ public class MailServiceImpl implements MailService {
         return Strings.isBlank(properties.getFrom())
                 ? Strings.trimToEmpty(properties.getUsername())
                 : Strings.trimToEmpty(properties.getFrom());
+    }
+
+    /**
+     * 发件人显示名：优先使用显式配置的 {@code wikikernel.email.from-name}；
+     * 留空（或仍是旧版本的默认值 {@code WikiKernel}）时跟随「站点名称」
+     * （特殊:权限配置 → 站点设置 / wikikernel.site.name）。
+     */
+    String fromDisplayName() {
+        String configured = Strings.trimToEmpty(properties.getFromName());
+        if (configured.isEmpty() || LEGACY_DEFAULT_FROM_NAME.equalsIgnoreCase(configured)) {
+            return siteNameService.name();
+        }
+        return configured;
     }
 }
