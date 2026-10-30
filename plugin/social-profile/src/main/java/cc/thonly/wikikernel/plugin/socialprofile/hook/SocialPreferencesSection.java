@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.plugin.socialprofile.hook;
 
 import cc.thonly.wikikernel.common.extension.PreferenceContext;
 import cc.thonly.wikikernel.common.extension.PreferenceSection;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.service.ProfileService;
 import org.springframework.web.util.HtmlUtils;
@@ -74,7 +75,8 @@ public final class SocialPreferencesSection implements PreferenceSection {
         html.append("</div><div class=\"form-actions\"><button type=\"submit\" class=\"wiki-button\">")
                 .append(escape(text(context, "socialProfile.preferences.save")))
                 .append("</button></div><p class=\"form-message\" role=\"alert\" hidden></p>")
-                .append("<p class=\"wiki-hint\"><a href=\"/wiki/特殊:编辑资料\">")
+                .append("<p class=\"wiki-hint\"><a href=\"")
+                .append(escape(WikiUrls.pagePath("特殊:编辑资料"))).append("\">")
                 .append(escape(text(context, "socialProfile.editProfile")))
                 .append("</a></p></form>");
         return html.toString();

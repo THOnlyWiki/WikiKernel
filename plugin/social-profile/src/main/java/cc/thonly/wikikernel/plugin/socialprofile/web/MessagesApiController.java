@@ -3,18 +3,22 @@ package cc.thonly.wikikernel.plugin.socialprofile.web;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.util.AjaxCode;
 import cc.thonly.wikikernel.common.util.AjaxResult;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiMessage;
 import cc.thonly.wikikernel.plugin.socialprofile.service.MessageCenter;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -34,13 +38,103 @@ public class MessagesApiController {
     private final AccessCheck access;
     private final CurrentUser currentUser;
     private final SocialProfileSupport support;
+    private final UserStore users;
 
     public MessagesApiController(MessageCenter messages, AccessCheck access, CurrentUser currentUser,
-                                 SocialProfileSupport support) {
+                                 SocialProfileSupport support, UserStore users) {
         this.messages = messages;
         this.access = access;
         this.currentUser = currentUser;
         this.support = support;
+        this.users = users;
+    }
+
+    // ==================== 读（App / 前端列表用） ====================
+
+    /** 收件箱：最近若干条，App 自己按对方分组显示会话列表 */
+    @GetMapping("/list")
+    public AjaxResult<Map<String, Object>> list(
+            @RequestParam(value = "limit", required = false, defaultValue = "50") int limit) {
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED,
+                    support.message("permissions.loginRequired"));
+        }
+        int size = Math.max(1, Math.min(200, limit));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (WikiMessage message : messages.inbox(viewer.id())) {
+            if (rows.size() >= size) {
+                break;
+            }
+            rows.add(row(message, viewer.id()));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("messages", rows);
+        data.put("unread", messages.unreadCount(viewer.id()));
+        return AjaxResult.success(data);
+    }
+
+    /** 与某人的完整对话；打开即把对方发来的未读标为已读 */
+    @GetMapping("/thread")
+    public AjaxResult<Map<String, Object>> thread(@RequestParam("with") String with) {
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED,
+                    support.message("permissions.loginRequired"));
+        }
+        String name = Strings.trimToEmpty(with);
+        if (name.isEmpty()) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST,
+                    support.message("messages.recipientRequired"));
+        }
+        Optional<UserStore.UserRef> other = users.byName(name);
+        if (other.isEmpty()) {
+            return AjaxResult.error(AjaxCode.NOT_FOUND, support.message("messages.notFound"));
+        }
+        long otherId = other.get().id();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (WikiMessage message : messages.conversation(viewer.id(), otherId)) {
+            rows.add(row(message, viewer.id()));
+        }
+        messages.markConversationRead(viewer.id(), otherId);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("messages", rows);
+        data.put("with", other.get().username());
+        return AjaxResult.success(data);
+    }
+
+    /** 未读数（抽屉角标用） */
+    @GetMapping("/unread-count")
+    public AjaxResult<Map<String, Object>> unreadCount() {
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED,
+                    support.message("permissions.loginRequired"));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("unread", messages.unreadCount(viewer.id()));
+        return AjaxResult.success(data);
+    }
+
+    private Map<String, Object> row(WikiMessage message, long meId) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", message.getId());
+        map.put("fromId", message.getFromUserId());
+        map.put("toId", message.getToUserId());
+        map.put("from", usernameOf(message.getFromUserId()));
+        map.put("to", usernameOf(message.getToUserId()));
+        map.put("content", message.getContent());
+        map.put("read", Boolean.TRUE.equals(message.getRead()));
+        map.put("incoming", message.getToUserId() != null && message.getToUserId() == meId);
+        map.put("createAt", message.getCreateAt() == null ? "" : message.getCreateAt().toString());
+        return map;
+    }
+
+    private String usernameOf(Long userId) {
+        if (userId == null) {
+            return "";
+        }
+        return users.byId(userId).map(UserStore.UserRef::username).orElse("");
     }
 
     /** 发送私信（wikitext 内容）。 */

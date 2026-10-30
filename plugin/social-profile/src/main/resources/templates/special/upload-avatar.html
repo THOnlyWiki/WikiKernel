@@ -14,7 +14,7 @@
     </p>
     <p class="wiki-form-error" th:if="${!featureDisabled and avatarLogin}">
         <span th:text="#{avatar.loginRequired}">请先登录后上传头像。</span>
-        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+        <a th:href="${wikiUrl.login()}" th:text="#{source.login}">登录</a>
     </p>
 
     <th:block th:unless="${featureDisabled or avatarLogin}">

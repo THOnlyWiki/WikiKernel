@@ -34,7 +34,7 @@
         <th:block th:if="${boardNoTarget}">
             <p class="wiki-form-error">
                 <span th:text="#{permissions.loginRequired}">请先登录。</span>
-                <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+                <a th:href="${wikiUrl.login()}" th:text="#{source.login}">登录</a>
             </p>
             <div class="sp-empty-block">
                 <p class="sp-empty-next">
@@ -109,7 +109,7 @@
                    th:text="#{socialProfile.board.closedHint}">该用户已关闭留言板，无法发表留言。</p>
                 <p class="sp-hint" th:if="${!boardCanPost and !boardSelf and boardAllowBoard}">
                     <span th:text="#{socialProfile.board.loginHint}">登录后即可留言。</span>
-                    <a th:if="${loginRequired}" th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+                    <a th:if="${loginRequired}" th:href="${wikiUrl.login()}" th:text="#{source.login}">登录</a>
                 </p>
 
                 <!-- 留言列表 / 空态 -->

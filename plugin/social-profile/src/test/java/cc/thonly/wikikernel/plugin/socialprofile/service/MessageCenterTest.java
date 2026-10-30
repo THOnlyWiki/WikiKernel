@@ -97,24 +97,24 @@ class MessageCenterTest {
 
         // 功能关闭 → 403
         MessagesApiController disabled = new MessagesApiController(center, SocialProfileFakes.access(null),
-                SocialProfileFakes.currentUser(alice), SocialProfileFakes.support(false));
+                SocialProfileFakes.currentUser(alice), SocialProfileFakes.support(false), users);
         assertEquals(AjaxCode.FORBIDDEN, AjaxCode.fromCode(disabled.send("乙", "x").getCode()).orElseThrow());
         assertEquals(AjaxCode.FORBIDDEN, AjaxCode.fromCode(disabled.delete(1).getCode()).orElseThrow());
 
         // 未登录 → 401
         MessagesApiController anonymous = new MessagesApiController(center, SocialProfileFakes.access(null),
-                SocialProfileFakes.currentUser(Viewer.ANONYMOUS), SocialProfileFakes.support(true));
+                SocialProfileFakes.currentUser(Viewer.ANONYMOUS), SocialProfileFakes.support(true), users);
         assertEquals(AjaxCode.UNAUTHORIZED, AjaxCode.fromCode(anonymous.send("乙", "x").getCode()).orElseThrow());
 
         // 被封禁 → 403 + 封禁说明
         MessagesApiController blocked = new MessagesApiController(center,
                 SocialProfileFakes.access("你已被封禁，不能发送私信。"),
-                SocialProfileFakes.currentUser(alice), SocialProfileFakes.support(true));
+                SocialProfileFakes.currentUser(alice), SocialProfileFakes.support(true), users);
         assertEquals("你已被封禁，不能发送私信。", blocked.send("乙", "x").getMessage());
 
         MessagesApiController controller = new MessagesApiController(center,
                 SocialProfileFakes.access(null), SocialProfileFakes.currentUser(alice),
-                SocialProfileFakes.support(true));
+                SocialProfileFakes.support(true), users);
 
         // 参数与规则错误 → 400 + 本地化文案
         assertEquals("请输入收件人用户名。", controller.send("  ", "x").getMessage());

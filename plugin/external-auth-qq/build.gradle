@@ -2,14 +2,22 @@ plugins {
     id 'java'
 }
 
-description = 'QQ 互联 OAuth 第三方登录 / 注册 provider（外部插件）。'
+description = 'QQ 邮箱验证绑定 + 可选 QQ 互联 OAuth 登录（外部插件）。'
 
 dependencies {
     compileOnly project(':common')
     compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
     compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
     compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'tools.jackson.core:jackson-databind'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'com.h2database:h2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
 }
 
 processResources {
