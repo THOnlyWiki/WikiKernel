@@ -26,8 +26,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ExternalAuthServiceTest {
@@ -41,6 +43,7 @@ class ExternalAuthServiceTest {
                 "test", "code", null, state, request);
         assertEquals(42L, result.user().getId());
         assertEquals("/wiki/首页", result.redirectTo());
+        verify(fixture.avatarService).importAfterRegistration(eq(fixture.provider), eq(42L), any());
     }
 
     @Test
@@ -65,10 +68,12 @@ class ExternalAuthServiceTest {
 
     private static final class Fixture {
         private final AtomicReference<String> state = new AtomicReference<>();
+        private final ExternalAuthProvider provider;
+        private final ExternalAuthAvatarService avatarService;
         private final ExternalAuthService service;
 
         private Fixture() throws Exception {
-            ExternalAuthProvider provider = mock(ExternalAuthProvider.class);
+            this.provider = mock(ExternalAuthProvider.class);
             when(provider.id()).thenReturn("test");
             when(provider.displayName()).thenReturn("Test");
             when(provider.available()).thenReturn(true);
@@ -108,10 +113,11 @@ class ExternalAuthServiceTest {
             TitleBlacklistService blacklist = mock(TitleBlacklistService.class);
             when(blacklist.check(anyString(), any(), any())).thenReturn(Optional.empty());
 
+            this.avatarService = mock(ExternalAuthAvatarService.class);
             this.service = new ExternalAuthService(
                     new ExternalAuthProviderRegistry(List.of(provider)),
                     settings, identities, users, features, hooks, blocks, blacklist,
-                    new StaticMessageSource());
+                    avatarService, new StaticMessageSource());
         }
 
         private String start(MockHttpServletRequest request, boolean link) throws Exception {

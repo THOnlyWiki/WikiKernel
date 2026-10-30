@@ -23,9 +23,12 @@ public final class EchoKeys {
     /** 通知类型：新用户欢迎。 */
     public static final String TYPE_WELCOME = "welcome";
 
+    /** 通知类型：组队相关（有人加入你的队伍 / 申请加入）。 */
+    public static final String TYPE_TEAM = "team";
+
     /** 全部通知类型（顺序 = 特殊:通知 页过滤标签与偏好里的展示顺序）。 */
     public static final List<String> TYPES = List.of(
-            TYPE_EDIT_USER_TALK, TYPE_MENTION, TYPE_REVERT, TYPE_WELCOME);
+            TYPE_EDIT_USER_TALK, TYPE_MENTION, TYPE_REVERT, TYPE_TEAM, TYPE_WELCOME);
 
     /**
      * Echo 的两个铃铛分组（与 MediaWiki Echo 一致）：

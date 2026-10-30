@@ -106,6 +106,8 @@ public class EchoView {
                     .append(" ").append(escape(support.message("echo.desc.revert.before", null)))
                     .append(" ").append(page == null ? "" : page)
                     .append(" ").append(escape(support.message("echo.desc.revert.after", null)));
+            case EchoKeys.TYPE_TEAM -> html.append(actor)
+                    .append(" ").append(escape(support.message("echo.desc.team", "更新了你的组队")));
             case EchoKeys.TYPE_WELCOME -> html.append(escape(
                     support.message("echo.desc.welcome", "欢迎来到本 Wiki！祝您编辑愉快。")));
             default -> html.append(actor).append(" ").append(escape(support.message("echo.desc.generic", null)));

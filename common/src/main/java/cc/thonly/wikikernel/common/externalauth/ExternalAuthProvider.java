@@ -54,6 +54,15 @@ public interface ExternalAuthProvider extends Extension {
         return enabled() && configured();
     }
 
+    /**
+     * 首次自动注册成功后，是否尝试把 provider 返回的头像导入本地头像存储。
+     * 默认关闭；需要头像的 provider（目前是 GitHub）覆盖为 {@code true}。
+     * 真正的落盘由已加载的头像桥（如 SocialProfile）完成，没有桥时自动跳过。
+     */
+    default boolean importAvatarOnRegister() {
+        return false;
+    }
+
     /** 构造 provider 授权页 URL。 */
     String authorizationUrl(String state, String redirectUri) throws Exception;
 

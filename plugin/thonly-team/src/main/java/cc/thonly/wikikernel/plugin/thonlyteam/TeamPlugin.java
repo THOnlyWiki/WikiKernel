@@ -45,6 +45,7 @@ public class TeamPlugin implements WikiPlugin {
 
     /** 日志类型 */
     public static final String LOG_TEAM_CREATE = "teamcreate";
+    public static final String LOG_TEAM_JOIN = "teamjoin";
     public static final String LOG_TEAM_DELETE = "teamdelete";
     public static final String LOG_TEAM_REPORT = "teamreport";
 
@@ -76,9 +77,11 @@ public class TeamPlugin implements WikiPlugin {
 
     @Override
     public void onStart(PluginContext context) {
-        context.register(LogType.class, new TeamLogType(LOG_TEAM_CREATE));
-        context.register(LogType.class, new TeamLogType(LOG_TEAM_DELETE));
-        context.register(LogType.class, new TeamLogType(LOG_TEAM_REPORT));
+        // 发起 / 加入 / 解散 混排进「最近更改」；举报不进（敏感，只在日志和管理页看）
+        context.register(LogType.class, new TeamLogType(LOG_TEAM_CREATE, true));
+        context.register(LogType.class, new TeamLogType(LOG_TEAM_JOIN, true));
+        context.register(LogType.class, new TeamLogType(LOG_TEAM_DELETE, true));
+        context.register(LogType.class, new TeamLogType(LOG_TEAM_REPORT, false));
         context.register(MessageBundle.class, new TeamMessages());
         context.register(ParserTag.class, new TeamTag());
         context.register(HtmlHeadProvider.class, new TeamHeadProvider(siteConfig));
@@ -90,7 +93,10 @@ public class TeamPlugin implements WikiPlugin {
         return List.of(WikiTeam.class, WikiTeamMember.class, WikiTeamReport.class);
     }
 
-    /** 日志类型：展示名走消息键 {@code log.typeName.<id>} */
-    record TeamLogType(String id) implements LogType {
+    /**
+     * 日志类型：展示名走消息键 {@code log.typeName.<id>}。
+     * {@code inRecentChanges} 决定要不要混排进「最近更改」。
+     */
+    record TeamLogType(String id, boolean inRecentChanges) implements LogType {
     }
 }

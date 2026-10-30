@@ -135,6 +135,25 @@ public class EchoNotifier {
     }
 
     /** 欢迎通知（新用户注册成功后写一次）。 */
+    /**
+     * 通用通知（供其它插件通过 {@code NotificationSink} 调用）：
+     * 尊重收件人的偏好设置，发邮件也走同一条链路。
+     *
+     * @return 是否真的发出
+     */
+    public boolean notify(long recipientUserId, String type, Long actorUserId, String pageTitle,
+                          String comment) {
+        if (recipientUserId <= 0 || type == null || type.isBlank()) {
+            return false;
+        }
+        if (!enabled(recipientUserId, type)) {
+            return false;
+        }
+        store.insert(newNotification(recipientUserId, type, actorUserId, pageTitle, null, comment));
+        maybeSendEmail(recipientUserId, type, actorUserId, pageTitle);
+        return true;
+    }
+
     public void welcome(Long userId) {
         if (userId == null) {
             return;

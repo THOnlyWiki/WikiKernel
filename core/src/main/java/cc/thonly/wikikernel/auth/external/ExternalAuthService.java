@@ -61,6 +61,7 @@ public class ExternalAuthService {
     private final RegistrationHookService registrationHooks;
     private final BlockService blockService;
     private final TitleBlacklistService titleBlacklistService;
+    private final ExternalAuthAvatarService avatarService;
     private final MessageSource messageSource;
 
     public ExternalAuthService(ExternalAuthProviderRegistry providers,
@@ -71,6 +72,7 @@ public class ExternalAuthService {
                                RegistrationHookService registrationHooks,
                                BlockService blockService,
                                TitleBlacklistService titleBlacklistService,
+                               ExternalAuthAvatarService avatarService,
                                MessageSource messageSource) {
         this.providers = providers;
         this.settings = settings;
@@ -80,6 +82,7 @@ public class ExternalAuthService {
         this.registrationHooks = registrationHooks;
         this.blockService = blockService;
         this.titleBlacklistService = titleBlacklistService;
+        this.avatarService = avatarService;
         this.messageSource = messageSource;
     }
 
@@ -186,6 +189,9 @@ public class ExternalAuthService {
         if (linked.isEmpty()) {
             throw new ExternalAuthException(message("auth.external.linkConflict"));
         }
+        // 首次自动注册：只有 provider 声明需要、且本地有头像桥时才导入；
+        // 失败只记日志，不影响本次登录。
+        avatarService.importAfterRegistration(provider, created.getId(), profile);
         return new Result(created, authState.returnTo());
     }
 

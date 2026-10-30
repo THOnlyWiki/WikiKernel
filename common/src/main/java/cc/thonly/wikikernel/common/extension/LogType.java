@@ -20,6 +20,16 @@ public interface LogType extends Extension {
         return id();
     }
 
+    /**
+     * 是否混排进「最近更改」。
+     *
+     * <p>最近更改默认只显示版本 + core 内置的几种日志类型；插件想让自己的
+     * 事件出现在最近更改里，把这里返回 true 即可，不用改 core。
+     */
+    default boolean inRecentChanges() {
+        return false;
+    }
+
     /** 目标类型：页面 / 用户 / 纯文本（决定日志页里目标怎么展示）。 */
     default TargetKind targetKind() {
         return TargetKind.TEXT;

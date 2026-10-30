@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.plugin.thonlyteam.web;
 
 import cc.thonly.wikikernel.common.access.AccessAction;
+import cc.thonly.wikikernel.common.extension.NotificationSink;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.CurrentUser;
@@ -58,6 +59,10 @@ public class TeamApiController {
     private final LogWriter logWriter;
     private final SiteConfig siteConfig;
     private final MessageSource messageSource;
+
+    /** 通知桥（Echo 提供）；没装通知插件时为 null */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationSink notificationSink;
 
     public TeamApiController(TeamStore store, AccessCheck access, CurrentUser currentUser,
                              LogWriter logWriter, SiteConfig siteConfig,
@@ -237,6 +242,11 @@ public class TeamApiController {
             store.addMember(id, viewer.id(), viewer.name(), "member", status);
         }
 
+        logWriter.record(TeamPlugin.LOG_TEAM_JOIN, viewer.id(),
+                "队伍 " + id + " · " + team.getTitle(),
+                instant ? "加入" : "申请加入");
+        notifyOwner(team, viewer, instant);
+
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("status", status);
         return AjaxResult.success(
@@ -345,6 +355,20 @@ public class TeamApiController {
         logWriter.record(TeamPlugin.LOG_TEAM_REPORT, viewer.id(),
                 "队伍 " + id + " · " + found.get().getTitle(), cleanReason);
         return AjaxResult.success(message("team.reported"), null);
+    }
+
+    /** 有人加入 / 申请加入时通知团长（Echo） */
+    private void notifyOwner(WikiTeam team, Viewer viewer, boolean instant) {
+        if (notificationSink == null || team.getOwnerId() == null) {
+            return;
+        }
+        String action = instant ? " 加入了你的队伍：" : " 申请加入你的队伍：";
+        try {
+            notificationSink.notify(team.getOwnerId(), "team", viewer.id(), null,
+                    viewer.name() + action + team.getTitle());
+        } catch (RuntimeException ignored) {
+            // 通知失败不影响加入本身
+        }
     }
 
     // ==================== 内部 ====================

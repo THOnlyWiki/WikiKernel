@@ -11,7 +11,9 @@ import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
 import cc.thonly.wikikernel.log.LogEntryView;
 import cc.thonly.wikikernel.log.LogFormatter;
+import cc.thonly.wikikernel.common.extension.LogType;
 import cc.thonly.wikikernel.log.LogTypeConfig;
+import cc.thonly.wikikernel.service.LogTypeRegistry;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.PermissionService;
@@ -85,6 +87,30 @@ public class RecentChangesSpecialPage implements SpecialPage {
     private final WikiPageMapper wikiPageMapper;
     private final UserService userService;
     private final LogService logService;
+    /** 混排进最近更改的日志类型：core 内置白名单 + 插件声明 inRecentChanges 的类型（懒加载） */
+    private volatile Set<String> recentLogTypes;
+    private final LogTypeRegistry logTypeRegistry;
+
+    /**
+     * 计算「要混排进最近更改的日志类型」。
+     *
+     * <p>**必须懒加载**：这个页面是 Spring 单例，构造时机早于插件注册 LogType，
+     * 在构造函数里算会漏掉插件声明的类型。
+     */
+    private Set<String> recentLogTypes() {
+        Set<String> cached = recentLogTypes;
+        if (cached == null) {
+            Set<String> types = new java.util.LinkedHashSet<>(LOG_TYPES);
+            for (LogType type : logTypeRegistry.all()) {
+                if (type.inRecentChanges()) {
+                    types.add(type.id());
+                }
+            }
+            cached = Set.copyOf(types);
+            recentLogTypes = cached;
+        }
+        return cached;
+    }
     private final LogFormatter logFormatter;
     private final PermissionService permissionService;
     private final AccessControlService accessControlService;
@@ -99,11 +125,13 @@ public class RecentChangesSpecialPage implements SpecialPage {
                                     PermissionService permissionService,
                                     AccessControlService accessControlService,
                                     SiteSettingsService siteSettingsService,
+                                    LogTypeRegistry logTypeRegistry,
                                     MessageSource messageSource) {
         this.wikiRevisionMapper = wikiRevisionMapper;
         this.wikiPageMapper = wikiPageMapper;
         this.userService = userService;
         this.logService = logService;
+        this.logTypeRegistry = logTypeRegistry;
         this.logFormatter = logFormatter;
         this.permissionService = permissionService;
         this.accessControlService = accessControlService;
@@ -483,7 +511,7 @@ public class RecentChangesSpecialPage implements SpecialPage {
                                                  boolean canManage, WikiUser viewer,
                                                  Set<Long> botUserIds, boolean hideBots) {
         List<WikiLog> logs = logService.recent(null, null, canManage, limit).stream()
-                .filter(log -> LOG_TYPES.contains(log.getLogType()))
+                .filter(log -> recentLogTypes().contains(log.getLogType()))
                 .filter(log -> logVisible(log, viewer))
                 .filter(log -> log.getTime() != null && !log.getTime().isBefore(since))
                 // 机器人用户的日志操作：默认隐藏（?hidebots=0 显示并标「机」）
