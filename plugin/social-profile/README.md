@@ -35,6 +35,7 @@
 | --- | --- |
 | `SpecialPage` | `特殊:上传头像`、`特殊:私信`（插件自带模板与文案） |
 | `UserProfileHook` | 用户页资料卡的头像地址与「贡献 \| …」额外链接 |
+| `ExternalAuthAvatarBridge` | 第三方（GitHub）首次注册后的头像导入；`features.social-profile=false` 时不落盘 |
 | `HtmlHeadProvider`（`siteWide()`） | 注入插件 CSS / JS、`WIKI_CONFIG.userInteraction = true` 与 `WIKI_MESSAGES` 文案 |
 | `MessageBundle` | `avatar.*` / `messages.*` / `special.messages` / `special.uploadAvatar` / `tools.sendMessage`（键名与迁移前 core 一致） |
 | `@RestController` / `@Controller` | 头像上传、私信 API、`/avatars/<文件名>` 文件服务 |

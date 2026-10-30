@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.plugin.socialprofile;
 
+import cc.thonly.wikikernel.common.externalauth.ExternalAuthAvatarBridge;
 import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.PageDisplayHook;
@@ -111,6 +112,8 @@ class SocialProfilePluginTest {
         assertTrue(pages.stream().anyMatch(RandomUsersSpecialPage.class::isInstance));
 
         assertInstanceOf(HtmlHeadProvider.class, context.lookup(HtmlHeadProvider.class).get(0));
+        assertInstanceOf(ExternalAuthAvatarBridge.class,
+                context.lookup(ExternalAuthAvatarBridge.class).get(0));
         // 两个 UserProfileHook：资料卡链接（order 100）+ 资料卡下方/正文之前的 SocialProfile 面板（order 300）
         List<UserProfileHook> profileHooks = context.lookup(UserProfileHook.class);
         assertEquals(2, profileHooks.size(), "链接钩子 + 面板钩子");

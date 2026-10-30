@@ -7,8 +7,9 @@
 (function () {
     'use strict';
 
-    var TYPE_LABELS = { car: '拼车', room: '拼房', company: '同行', booth: '摊位', shoot: '拍摄' };
-    var TYPE_OPTIONS = ['company', 'car', 'room', 'booth', 'shoot'];
+    // 没有「拼房」：平台不撮合陌生人合宿，这类需求请自行在群里沟通
+    var TYPE_LABELS = { car: '拼车', company: '同行', booth: '摊位', shoot: '拍摄' };
+    var TYPE_OPTIONS = ['company', 'car', 'booth', 'shoot'];
 
     function esc(text) {
         return String(text == null ? '' : text)

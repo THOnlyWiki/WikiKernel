@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.plugin.socialprofile;
 
+import cc.thonly.wikikernel.common.externalauth.ExternalAuthAvatarBridge;
 import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.PageViewHook;
@@ -38,6 +39,7 @@ import cc.thonly.wikikernel.plugin.socialprofile.service.MessageStore;
 import cc.thonly.wikikernel.plugin.socialprofile.service.PointsRulesProvider;
 import cc.thonly.wikikernel.plugin.socialprofile.service.PointsService;
 import cc.thonly.wikikernel.plugin.socialprofile.service.ProfileService;
+import cc.thonly.wikikernel.plugin.socialprofile.service.SocialProfileAvatarBridge;
 import cc.thonly.wikikernel.plugin.socialprofile.service.SocialProfileView;
 import cc.thonly.wikikernel.plugin.socialprofile.service.UserAwardStore;
 import cc.thonly.wikikernel.plugin.socialprofile.service.UserBoardStore;
@@ -237,6 +239,10 @@ public class SocialProfilePlugin implements WikiPlugin {
                 friends, gifts, avatars, awards, currentUser));
         context.register(SpecialPage.class, new RandomUsersSpecialPage(userStore, support, profiles, board,
                 friends, gifts, avatars));
+        // 第三方（GitHub）注册后的头像导入桥：只有本插件加载且功能开启时才真正落盘。
+        // core 只会在 provider 声明 importAvatarOnRegister() 且注册成功时调用。
+        context.register(ExternalAuthAvatarBridge.class,
+                new SocialProfileAvatarBridge(avatars, support));
         // 用户页资料卡（头像 + 私信 / 留言板 / 好友 / 礼物 / 积分 / 编辑资料链接）
         context.register(UserProfileHook.class,
                 new UserProfileLinksHook(avatars, support, board, friends, gifts));

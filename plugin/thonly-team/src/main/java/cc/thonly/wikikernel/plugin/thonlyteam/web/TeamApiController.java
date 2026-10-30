@@ -53,6 +53,16 @@ public class TeamApiController {
     private static final int REASON_MAX = 200;
     private static final int MAX_CAPACITY = 30;
 
+    /**
+     * 允许的组队类型。
+     *
+     * <p>**没有 room（拼房）**：平台不撮合陌生人合宿。拼房是把两个陌生人配对到
+     * 同一间房过夜，一旦出事平台很难说清「只是提供信息」，所以这类需求交给用户
+     * 自己在群里沟通，风险自担。
+     */
+    private static final java.util.Set<String> ALLOWED_TYPES =
+            java.util.Set.of("car", "company", "booth", "shoot");
+
     private final TeamStore store;
     private final AccessCheck access;
     private final CurrentUser currentUser;
@@ -181,12 +191,20 @@ public class TeamApiController {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("team.contactTooLong", CONTACT_MAX));
         }
 
+        String cleanType = Strings.trimToEmpty(type);
+        if (cleanType.isEmpty()) {
+            cleanType = "company";
+        }
+        if (!ALLOWED_TYPES.contains(cleanType)) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST, message("team.typeInvalid"));
+        }
+
         Viewer viewer = currentUser.viewer();
         WikiTeam team = new WikiTeam();
         team.setEventYear(eventYear);
         team.setEventId(eventId);
         team.setEventName(Strings.trimToEmpty(eventName));
-        team.setType(Strings.trimToEmpty(type).isEmpty() ? "company" : Strings.trimToEmpty(type));
+        team.setType(cleanType);
         team.setTitle(cleanTitle);
         team.setNote(cleanNote);
         team.setContact(cleanContact);

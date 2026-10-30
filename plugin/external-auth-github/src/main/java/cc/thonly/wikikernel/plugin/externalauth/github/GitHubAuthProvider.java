@@ -77,6 +77,12 @@ public final class GitHubAuthProvider implements ExternalAuthProvider {
         return List.of("read:user", "user:email");
     }
 
+    /** GitHub 注册后自动把 avatar_url 交给本地头像桥（仅 SocialProfile 生效时才会落盘）。 */
+    @Override
+    public boolean importAvatarOnRegister() {
+        return true;
+    }
+
     @Override
     public boolean enabled() {
         return config.getBoolean(enabledSettingKey(), false);
