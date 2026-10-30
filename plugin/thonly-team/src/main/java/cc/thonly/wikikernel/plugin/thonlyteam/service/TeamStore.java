@@ -50,6 +50,18 @@ public class TeamStore {
         return teams;
     }
 
+    /** 整年的队伍（eventId 缺省时用，给「组队跑展」总览页） */
+    public List<WikiTeam> listByYear(int eventYear) {
+        List<DbRow> rows = database.query(
+                "SELECT * FROM wiki_team WHERE event_year = ? AND status <> ? ORDER BY id DESC",
+                eventYear, STATUS_DELETED);
+        List<WikiTeam> teams = new ArrayList<>(rows.size());
+        for (DbRow row : rows) {
+            teams.add(team(row));
+        }
+        return teams;
+    }
+
     public Optional<WikiTeam> find(long id) {
         return database.queryOne("SELECT * FROM wiki_team WHERE id = ?", id).map(TeamStore::team);
     }

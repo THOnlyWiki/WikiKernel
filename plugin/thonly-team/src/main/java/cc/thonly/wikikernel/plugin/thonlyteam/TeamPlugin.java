@@ -1,12 +1,20 @@
 package cc.thonly.wikikernel.plugin.thonlyteam;
 
+import cc.thonly.wikikernel.common.extension.HtmlHeadProvider;
 import cc.thonly.wikikernel.common.extension.LogType;
+import cc.thonly.wikikernel.common.extension.MessageBundle;
+import cc.thonly.wikikernel.common.extension.ParserTag;
 import cc.thonly.wikikernel.common.plugin.PluginContext;
 import cc.thonly.wikikernel.common.plugin.PluginDescriptor;
 import cc.thonly.wikikernel.common.plugin.WikiPlugin;
+import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.plugin.thonlyteam.data.WikiTeam;
 import cc.thonly.wikikernel.plugin.thonlyteam.data.WikiTeamMember;
 import cc.thonly.wikikernel.plugin.thonlyteam.data.WikiTeamReport;
+import cc.thonly.wikikernel.plugin.thonlyteam.hook.TeamHeadProvider;
+import cc.thonly.wikikernel.plugin.thonlyteam.hook.TeamMessages;
+import cc.thonly.wikikernel.plugin.thonlyteam.hook.TeamTag;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -35,6 +43,9 @@ public class TeamPlugin implements WikiPlugin {
     public static final String LOG_TEAM_DELETE = "teamdelete";
     public static final String LOG_TEAM_REPORT = "teamreport";
 
+    @Autowired
+    private SiteConfig siteConfig;
+
     @Override
     public PluginDescriptor descriptor() {
         return new PluginDescriptor(
@@ -54,6 +65,9 @@ public class TeamPlugin implements WikiPlugin {
         context.register(LogType.class, new TeamLogType(LOG_TEAM_CREATE));
         context.register(LogType.class, new TeamLogType(LOG_TEAM_DELETE));
         context.register(LogType.class, new TeamLogType(LOG_TEAM_REPORT));
+        context.register(MessageBundle.class, new TeamMessages());
+        context.register(ParserTag.class, new TeamTag());
+        context.register(HtmlHeadProvider.class, new TeamHeadProvider(siteConfig));
     }
 
     @Override

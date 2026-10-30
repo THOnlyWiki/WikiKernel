@@ -72,16 +72,19 @@ public class TeamApiController {
 
     // ==================== 读 ====================
 
-    /** 某场活动下的队伍列表。不需要登录，但也不返回联系方式。 */
+    /** 某场活动下的队伍列表；eventId 省略时列整年。不需要登录，也不返回联系方式。 */
     @GetMapping("/list")
-    public AjaxResult<Map<String, Object>> list(@RequestParam("year") int year,
-                                                @RequestParam("eventId") int eventId) {
+    public AjaxResult<Map<String, Object>> list(
+            @RequestParam("year") int year,
+            @RequestParam(value = "eventId", required = false, defaultValue = "0") int eventId) {
         if (!enabled()) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, message("team.featureDisabled"));
         }
         Viewer viewer = currentUser.viewer();
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (WikiTeam team : store.listByEvent(year, eventId)) {
+        List<WikiTeam> teams = eventId > 0
+                ? store.listByEvent(year, eventId) : store.listByYear(year);
+        for (WikiTeam team : teams) {
             rows.add(summary(team, viewer));
         }
         Map<String, Object> data = new LinkedHashMap<>();
