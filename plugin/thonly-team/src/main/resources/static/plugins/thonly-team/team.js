@@ -53,8 +53,8 @@
         }
     }
 
-    /** 通用弹层：buttons = [{label, primary, danger, onClick}] */
-    function dialog(title, sub, bodyHtml, buttons) {
+    /** 通用弹层：buttons = [{label, primary, danger, onClick}]；sticky = 点遮罩不关 */
+    function dialog(title, sub, bodyHtml, buttons, sticky) {
         var mask = document.createElement('div');
         mask.className = 'team-mask';
         mask.innerHTML = '<div class="team-dialog">'
@@ -76,11 +76,13 @@
             });
             actions.appendChild(button);
         });
-        mask.addEventListener('click', function (event) {
-            if (event.target === mask) {
-                close(mask);
-            }
-        });
+        if (!sticky) {
+            mask.addEventListener('click', function (event) {
+                if (event.target === mask) {
+                    close(mask);
+                }
+            });
+        }
         document.body.appendChild(mask);
         return mask;
     }
@@ -94,6 +96,43 @@
         }
         box.textContent = text;
         box.className = 'team-message' + (ok ? ' ok' : '');
+    }
+
+    /** 安全提醒的本地确认标记（文案改了换 key 就会再弹一次） */
+    var NOTICE_KEY = 'wiki-team-notice-v1';
+
+    var NOTICE_BODY = '<p class="team-notice-lead">组队信息由用户自行发布，'
+        + '平台不担保任何一方的身份和意图，请自行判断。</p>'
+        + '<ul class="team-notice-list">'
+        + '<li>本功能只用于拼车、同行、摊位、拍摄，<strong>不提供住宿拼单</strong>。</li>'
+        + '<li>首次见面请选白天、人多的地方，不要单独赴约。</li>'
+        + '<li>未成年人参加线下活动需监护人同意。</li>'
+        + '<li>遇到骚扰、诱导、可疑行为，点开队伍用「举报」，站长会核实处理。</li>'
+        + '</ul>'
+        + '<p class="team-notice-warn">违规者：解散队伍、封禁账号、群内公示。</p>';
+
+    function showNotice() {
+        return dialog('组队安全提醒', '', NOTICE_BODY, [
+            {
+                label: '我已了解', primary: true,
+                onClick: function (mask) {
+                    try {
+                        window.localStorage.setItem(NOTICE_KEY, '1');
+                    } catch (e) {
+                        // 隐私模式下写不了，每次都会弹，可以接受
+                    }
+                    close(mask);
+                }
+            }
+        ], true);
+    }
+
+    function noticeAcknowledged() {
+        try {
+            return window.localStorage.getItem(NOTICE_KEY) === '1';
+        } catch (e) {
+            return false;
+        }
     }
 
     function setup(root) {
@@ -113,6 +152,15 @@
         var countEl = root.querySelector('.team-count');
         var actionsEl = root.querySelector('.team-actions');
         var listEl = root.querySelector('.team-list');
+
+        var safetyLink = document.createElement('a');
+        safetyLink.href = 'javascript:void(0)';
+        safetyLink.className = 'team-safety-link';
+        safetyLink.textContent = '安全提醒';
+        safetyLink.addEventListener('click', function () {
+            showNotice();
+        });
+        actionsEl.appendChild(safetyLink);
 
         if (eventId > 0) {
             var createButton = document.createElement('button');
@@ -385,6 +433,9 @@
             ]);
         }
 
+        if (!noticeAcknowledged()) {
+            showNotice();
+        }
         load();
     }
 

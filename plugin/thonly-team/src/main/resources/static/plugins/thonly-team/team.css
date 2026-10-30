@@ -262,3 +262,51 @@
     display: block;
     margin-bottom: 2px;
 }
+
+/* ---------- 安全提醒 ---------- */
+
+.team-safety-link {
+    font-size: 12px;
+    color: #999;
+    text-decoration: none;
+    margin-right: 10px;
+    border-bottom: 1px dashed #ccc;
+}
+
+.team-safety-link:hover {
+    color: #c0392b;
+    border-bottom-color: #c0392b;
+}
+
+.team-notice-lead {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #444;
+    line-height: 1.7;
+}
+
+.team-notice-list {
+    margin: 0 0 10px;
+    padding-left: 20px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.9;
+}
+
+.team-notice-list li {
+    margin-bottom: 2px;
+}
+
+.team-notice-list strong {
+    color: #c0392b;
+}
+
+.team-notice-warn {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #fdf3f2;
+    border: 1px solid #f0d6d2;
+    font-size: 12px;
+    color: #a3341f;
+}
