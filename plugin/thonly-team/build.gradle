@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+}
+
+description = '组队跑展：按活动发起的组队帖，联系方式加入后可见，支持审批与举报'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.slf4j:slf4j-api'
+    compileOnly 'tools.jackson.core:jackson-databind'
+}
+
+// 插件名 / 版本来自本目录的 gradle.properties，构建时展开进 META-INF/wiki-plugin.properties
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}
