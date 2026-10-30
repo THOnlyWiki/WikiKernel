@@ -41,7 +41,7 @@ public final class EchoKeys {
     public static final String GROUP_NOTICE = "notice";
 
     /** 提醒（alert）包含的类型。 */
-    public static final List<String> ALERT_TYPES = List.of(TYPE_EDIT_USER_TALK, TYPE_MENTION, TYPE_REVERT);
+    public static final List<String> ALERT_TYPES = List.of(TYPE_EDIT_USER_TALK, TYPE_MENTION, TYPE_REVERT, TYPE_TEAM);
 
     /** 一般通知（notice）包含的类型。 */
     public static final List<String> NOTICE_TYPES = List.of(TYPE_WELCOME);
