@@ -61,11 +61,11 @@ public class MessagesApiController {
                     support.message("permissions.loginRequired"));
         }
         int size = Math.max(1, Math.min(200, limit));
+        // 用双向可见的消息：只查收件箱的话，自己发起的会话在对方回复前不会出现
+        List<WikiMessage> all = messages.allVisible(viewer.id());
+        int from = Math.max(0, all.size() - size);
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (WikiMessage message : messages.inbox(viewer.id())) {
-            if (rows.size() >= size) {
-                break;
-            }
+        for (WikiMessage message : all.subList(from, all.size())) {
             rows.add(row(message, viewer.id()));
         }
         Map<String, Object> data = new LinkedHashMap<>();
