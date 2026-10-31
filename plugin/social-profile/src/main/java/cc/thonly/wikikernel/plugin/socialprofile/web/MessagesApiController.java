@@ -74,6 +74,39 @@ public class MessagesApiController {
         return AjaxResult.success(data);
     }
 
+    /**
+     * 按用户名搜人（App 私信页「找用户发起会话」用）。
+     *
+     * <p>只返回用户名 + 头像，够列表用；结果里去掉自己。
+     */
+    @GetMapping("/search-users")
+    public AjaxResult<Map<String, Object>> searchUsers(
+            @RequestParam(value = "q", required = false, defaultValue = "") String q,
+            @RequestParam(value = "limit", required = false, defaultValue = "20") int limit) {
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED,
+                    support.message("permissions.loginRequired"));
+        }
+        String keyword = q == null ? "" : q.trim();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        if (!keyword.isEmpty()) {
+            for (UserStore.UserRef user : users.search(keyword, Math.max(1, Math.min(50, limit)))) {
+                if (user.id() == viewer.id()) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", user.id());
+                row.put("username", user.username());
+                row.put("avatar", user.avatarUrl(UserStore.DEFAULT_AVATAR_URL));
+                rows.add(row);
+            }
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("users", rows);
+        return AjaxResult.success(data);
+    }
+
     /** 与某人的完整对话；打开即把对方发来的未读标为已读 */
     @GetMapping("/thread")
     public AjaxResult<Map<String, Object>> thread(@RequestParam("with") String with) {

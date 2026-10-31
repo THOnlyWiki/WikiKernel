@@ -95,6 +95,19 @@ public class UserServiceImpl extends ServiceImpl<WikiUserMapper, WikiUser> imple
     }
 
     @Override
+    public java.util.List<WikiUser> searchByUsername(String keyword, int limit) {
+        String query = keyword == null ? "" : keyword.trim();
+        if (query.isEmpty() || limit <= 0) {
+            return java.util.List.of();
+        }
+        return lambdaQuery()
+                .like(WikiUser::getUsername, query)
+                .orderByAsc(WikiUser::getUsername)
+                .last("LIMIT " + Math.min(limit, 50))
+                .list();
+    }
+
+    @Override
     public Optional<WikiUser> findByUsername(String username) {
         if (Strings.isBlank(username)) {
             return Optional.empty();

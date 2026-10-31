@@ -62,4 +62,13 @@ public interface UserStore {
      * @param limit 最多几个（{@code <= 0} = 不返回）
      */
     List<UserRef> randomWithAvatar(int limit);
+
+    /**
+     * 按用户名片段搜索（不区分大小写）。
+     *
+     * <p>默认返回空列表——测试替身不必实现；真实实现见 core 的 {@code UserStoreImpl}。
+     */
+    default List<UserRef> search(String keyword, int limit) {
+        return List.of();
+    }
 }

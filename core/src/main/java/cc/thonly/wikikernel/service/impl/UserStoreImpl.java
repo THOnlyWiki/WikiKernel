@@ -58,6 +58,13 @@ public class UserStoreImpl implements UserStore {
     }
 
     @Override
+    public List<UserRef> search(String keyword, int limit) {
+        return userService.searchByUsername(keyword, limit).stream()
+                .map(UserStoreImpl::ref)
+                .toList();
+    }
+
+    @Override
     public Map<Long, String> names(Collection<Long> userIds) {
         return userService.usernames(userIds == null ? List.of() : userIds);
     }

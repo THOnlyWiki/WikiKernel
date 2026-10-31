@@ -45,6 +45,14 @@ public interface UserService {
     Optional<WikiUser> findByUsername(String username);
 
     /**
+     * 按用户名片段搜索（不区分大小写，按名字排序）。
+     *
+     * @param keyword 关键字，空串返回空列表
+     * @param limit   最多几条（{@code <= 0} 返回空列表）
+     */
+    java.util.List<WikiUser> searchByUsername(String keyword, int limit);
+
+    /**
      * 重命名用户（改 {@code wiki_user.username}；用户名没有唯一约束，重名前用 {@link #isExisted} 查重）。
      * 新名为空 / 含非法字符 / 与旧名相同 / 已被占用 / 用户不存在时返回空（服务层防御，调用方仍应先校验并提示）。
      */
@@ -53,7 +61,8 @@ public interface UserService {
     /** 按电子邮箱查用户（忽略大小写）。 */
     Optional<WikiUser> findByEmail(String email);
 
-    /** 更新密码（存 MediaWiki 格式哈希，见 {@link MediaWikiPassword}），返回是否成功。 */
+    
+/** 更新密码（存 MediaWiki 格式哈希，见 {@link MediaWikiPassword}），返回是否成功。 */
     boolean updatePassword(long userId, String rawPassword);
 
     /** 按 ID 查用户（参数设置等取最新数据用）。 */
