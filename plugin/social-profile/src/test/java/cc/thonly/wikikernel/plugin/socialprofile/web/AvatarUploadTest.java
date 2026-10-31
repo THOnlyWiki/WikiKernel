@@ -97,35 +97,35 @@ class AvatarUploadTest {
         // 功能关闭 → 403（用户交互功能未启用。）
         AvatarApiController disabled = new AvatarApiController(avatarSupport,
                 SocialProfileFakes.access(null), SocialProfileFakes.currentUser(
-                SocialProfileFakes.viewer(7, "甲")), SocialProfileFakes.support(false));
+                SocialProfileFakes.viewer(7, "甲")), SocialProfileFakes.support(false), null);
         assertEquals(AjaxCode.FORBIDDEN, AjaxCode.fromCode(disabled.upload(png).getCode()).orElseThrow());
 
         // 匿名 → 401
         AvatarApiController anonymous = new AvatarApiController(avatarSupport,
                 SocialProfileFakes.access(null),
                 SocialProfileFakes.currentUser(Viewer.ANONYMOUS),
-                SocialProfileFakes.support(true));
+                SocialProfileFakes.support(true), null);
         assertEquals(AjaxCode.UNAUTHORIZED, AjaxCode.fromCode(anonymous.upload(png).getCode()).orElseThrow());
 
         // 被封禁 → 403 + 封禁说明
         AvatarApiController blocked = new AvatarApiController(avatarSupport,
                 SocialProfileFakes.access("你已被封禁，不能上传头像。"),
                 SocialProfileFakes.currentUser(SocialProfileFakes.viewer(7, "甲")),
-                SocialProfileFakes.support(true));
+                SocialProfileFakes.support(true), null);
         assertEquals("你已被封禁，不能上传头像。", blocked.upload(png).getMessage());
 
         // 账号不存在 → 404
         AvatarApiController missing = new AvatarApiController(avatarSupport,
                 SocialProfileFakes.access(null),
                 SocialProfileFakes.currentUser(SocialProfileFakes.viewer(99, "幽灵")),
-                SocialProfileFakes.support(true));
+                SocialProfileFakes.support(true), null);
         assertEquals(AjaxCode.NOT_FOUND, AjaxCode.fromCode(missing.upload(png).getCode()).orElseThrow());
 
         // 非图片 → 400 + 本地化文案（消息键 avatar.notImage）
         AvatarApiController controller = new AvatarApiController(avatarSupport,
                 SocialProfileFakes.access(null),
                 SocialProfileFakes.currentUser(SocialProfileFakes.viewer(7, "甲")),
-                SocialProfileFakes.support(true));
+                SocialProfileFakes.support(true), null);
         MockMultipartFile text = new MockMultipartFile("file", "a.txt", "text/plain", "x".getBytes());
         assertEquals("只能上传 PNG / JPEG / GIF / WebP 格式的图片。", controller.upload(text).getMessage());
 

@@ -3,11 +3,13 @@ package cc.thonly.wikikernel.plugin.socialprofile.web;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.util.AjaxCode;
 import cc.thonly.wikikernel.common.util.AjaxResult;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.service.AvatarSupport;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,16 +36,34 @@ public class AvatarApiController {
     private final AccessCheck access;
     private final CurrentUser currentUser;
     private final SocialProfileSupport support;
+    private final UserStore users;
 
     public AvatarApiController(AvatarSupport avatars, AccessCheck access, CurrentUser currentUser,
-                               SocialProfileSupport support) {
+                               SocialProfileSupport support, UserStore users) {
         this.avatars = avatars;
         this.access = access;
         this.currentUser = currentUser;
         this.support = support;
+        this.users = users;
     }
 
     /** 上传 / 替换当前用户头像。 */
+    /** 当前用户头像地址（App 抽屉头部用）；没设过头像返回空串 */
+    @GetMapping
+    public AjaxResult<Map<String, Object>> current() {
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED,
+                    support.message("permissions.loginRequired"));
+        }
+        String avatar = users.byId(viewer.id())
+                .map(ref -> ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL))
+                .orElse("");
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("avatar", avatar);
+        return AjaxResult.success(data);
+    }
+
     @PostMapping
     public AjaxResult<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) {
         if (!support.enabled()) {
