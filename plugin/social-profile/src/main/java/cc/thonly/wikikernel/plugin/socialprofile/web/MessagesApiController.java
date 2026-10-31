@@ -161,6 +161,7 @@ public class MessagesApiController {
         map.put("read", Boolean.TRUE.equals(message.getRead()));
         map.put("incoming", message.getToUserId() != null && message.getToUserId() == meId);
         map.put("createAt", message.getCreateAt() == null ? "" : message.getCreateAt().toString());
+        map.put("recalled", Boolean.TRUE.equals(message.getRecalled()));
         return map;
     }
 
@@ -213,6 +214,24 @@ public class MessagesApiController {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("id", message.getId());
             return AjaxResult.success(support.message("messages.sent"), data);
+        } catch (IllegalArgumentException exception) {
+            String key = Strings.trimToEmpty(exception.getMessage());
+            return AjaxResult.error(AjaxCode.BAD_REQUEST,
+                    support.message(key.isEmpty() ? "messages.notFound" : key));
+        }
+    }
+
+    /** 撤回自己发出的私信（发出后 2 分钟内）。 */
+    @PostMapping("/recall")
+    public AjaxResult<Void> recall(@RequestParam("id") long id) {
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) {
+            return AjaxResult.error(AjaxCode.UNAUTHORIZED,
+                    support.message("permissions.loginRequired"));
+        }
+        try {
+            messages.recall(viewer.id(), id);
+            return AjaxResult.success();
         } catch (IllegalArgumentException exception) {
             String key = Strings.trimToEmpty(exception.getMessage());
             return AjaxResult.error(AjaxCode.BAD_REQUEST,

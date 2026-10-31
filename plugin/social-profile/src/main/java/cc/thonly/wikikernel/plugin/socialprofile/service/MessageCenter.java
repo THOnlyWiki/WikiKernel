@@ -36,6 +36,32 @@ public final class MessageCenter {
         this.users = users;
     }
 
+    /**
+     * 撤回自己发出的私信。
+     *
+     * <p>只能撤回自己的、2 分钟内的、还没撤回过的；内容会被清空，两侧都只留「已撤回」。
+     *
+     * @throws IllegalArgumentException 各种不满足时抛消息键，由调用方翻译成文案
+     */
+    public WikiMessage recall(long userId, long messageId) {
+        WikiMessage message = messages.find(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("messages.notFound"));
+        if (!java.util.Objects.equals(message.getFromUserId(), userId)) {
+            throw new IllegalArgumentException("messages.recallNotMine");
+        }
+        if (Boolean.TRUE.equals(message.getRecalled())) {
+            throw new IllegalArgumentException("messages.recallAlready");
+        }
+        if (message.getCreateAt() == null
+                || message.getCreateAt().plus(RECALL_WINDOW).isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalArgumentException("messages.recallExpired");
+        }
+        message.setRecalled(true);
+        message.setContent("");
+        messages.update(message);
+        return message;
+    }
+
     /** 收件箱（自己一侧未删除，新的在前）。 */
     public List<WikiMessage> inbox(long userId) {
         return messages.received(userId, NO_LIMIT);
@@ -72,6 +98,9 @@ public final class MessageCenter {
      * @return 已写入的记录（带自增 ID）
      * @throws IllegalArgumentException 收件人不存在 / 发给自己（消息键）
      */
+    /** 撤回时限：发出后 2 分钟内 */
+    public static final java.time.Duration RECALL_WINDOW = java.time.Duration.ofMinutes(2);
+
     /** 单条私信最大字数（网页端与 App 共用这一处限制） */
     public static final int MAX_LENGTH = 2000;
 

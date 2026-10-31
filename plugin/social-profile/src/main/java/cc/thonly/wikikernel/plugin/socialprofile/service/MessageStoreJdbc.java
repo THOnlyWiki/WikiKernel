@@ -59,6 +59,7 @@ public class MessageStoreJdbc implements MessageStore {
         add(assignments, args, "from_deleted", message.getFromDeleted());
         add(assignments, args, "to_deleted", message.getToDeleted());
         add(assignments, args, "create_at", message.getCreateAt());
+        add(assignments, args, "recalled", message.getRecalled());
         if (!assignments.isEmpty()) {
             args.add(message.getId());
             database.update("UPDATE wiki_message SET " + String.join(", ", assignments) + " WHERE id = ?",
@@ -124,6 +125,7 @@ public class MessageStoreJdbc implements MessageStore {
         message.setFromDeleted(row.boolValue("from_deleted", false));
         message.setToDeleted(row.boolValue("to_deleted", false));
         message.setCreateAt(row.dateTime("create_at"));
+        message.setRecalled(row.boolValue("recalled", false));
         return message;
     }
 

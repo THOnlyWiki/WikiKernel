@@ -57,4 +57,12 @@ public class WikiMessage {
     /** 发送时间。 */
     @DbColumn(nullable = false)
     private LocalDateTime createAt;
+
+    /**
+     * 已撤回：内容清空，两侧都只看到「已撤回」占位。
+     *
+     * <p>发送后 2 分钟内可撤回，超时不允许（规则在 {@code MessageCenter}）。
+     */
+    @DbColumn(defaultValue = "0")
+    private Boolean recalled = false;
 }
