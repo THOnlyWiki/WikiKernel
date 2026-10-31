@@ -67,7 +67,28 @@ public final class SidebarParser {
             label = target;
         }
         boolean external = target.matches("(?i)^https?://.*");
-        String href = external ? target : WikiUrls.pagePrefix() + WikiUrls.normalizeSpecialTitle(target).replace(' ', '_');
+        String href;
+        if (external) {
+            href = target;
+        } else {
+            // 站内目标统一走 WikiUrls.pagePath()：保留子页面的 /，逐段百分号编码非 ASCII 标题。
+            // 不能直接拼 pagePrefix() + 原始中文标题，否则自定义侧栏里「特殊:参数设置」这类
+            // 链接会以裸 UTF-8 路径发给 Tomcat。查询串 / 锚点原样保留，不能当成标题编码。
+            int suffixAt = suffixIndex(target);
+            String title = suffixAt < 0 ? target : target.substring(0, suffixAt);
+            String suffix = suffixAt < 0 ? "" : target.substring(suffixAt);
+            href = WikiUrls.pagePath(title) + suffix;
+        }
         return new SidebarItem(label, href, external);
+    }
+
+    /** 查询串 / 锚点的起始位置；没有则返回 -1。 */
+    private static int suffixIndex(String target) {
+        int query = target.indexOf('?');
+        int fragment = target.indexOf('#');
+        if (query < 0) {
+            return fragment;
+        }
+        return fragment < 0 ? query : Math.min(query, fragment);
     }
 }

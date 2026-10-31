@@ -123,11 +123,22 @@ public class MessagesApiController {
         map.put("toId", message.getToUserId());
         map.put("from", usernameOf(message.getFromUserId()));
         map.put("to", usernameOf(message.getToUserId()));
+        map.put("avatar", avatarOf(message.getFromUserId()));
         map.put("content", message.getContent());
         map.put("read", Boolean.TRUE.equals(message.getRead()));
         map.put("incoming", message.getToUserId() != null && message.getToUserId() == meId);
         map.put("createAt", message.getCreateAt() == null ? "" : message.getCreateAt().toString());
         return map;
+    }
+
+    /** 头像地址（站内相对路径，默认头像由客户端自己画） */
+    private String avatarOf(Long userId) {
+        if (userId == null) {
+            return "";
+        }
+        return users.byId(userId)
+                .map(ref -> ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL))
+                .orElse("");
     }
 
     private String usernameOf(Long userId) {

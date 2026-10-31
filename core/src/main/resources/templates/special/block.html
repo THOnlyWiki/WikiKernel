@@ -11,7 +11,7 @@
 
     <p class="wiki-form-error" th:if="${blockLogin}">
         <span th:text="#{block.loginRequired}">请先登录再封禁用户。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${pageUrl})}" th:text="#{source.login}">登录</a>
+        <a th:href="${wikiUrl.loginTo(pageUrl)}" th:text="#{source.login}">登录</a>
     </p>
     <p class="wiki-form-error" th:if="${!canBlock and !blockLogin}" th:text="#{block.forbidden}">
         只有管理员可以封禁用户或 IP。

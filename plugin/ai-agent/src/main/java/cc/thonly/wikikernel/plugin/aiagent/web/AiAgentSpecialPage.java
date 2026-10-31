@@ -92,6 +92,7 @@ public class AiAgentSpecialPage implements SpecialPage {
         model.put("canManage", canManage);
         model.put("keysPanel", keysPanel);
         model.put("chatVisible", !keysPanel && agentService.enabled() && agentService.allowed(viewer));
+        model.put("preferencesUrl", AiAgentSupport.pagePath("特殊:参数设置"));
 
         List<Map<String, Object>> providers = new ArrayList<>();
         if (!keysPanel) {

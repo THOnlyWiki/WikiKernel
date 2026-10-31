@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.common.web;
 
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -84,6 +85,58 @@ public final class WikiUrls {
         return pagePrefix + Arrays.stream(normalized.split("/", -1))
                 .map(WikiUrls::encodeSegment)
                 .collect(Collectors.joining("/"));
+    }
+
+    /**
+     * 把站内页面路径编码成浏览器 / Tomcat 都接受的形式，保留查询串与锚点：
+     * {@code /wiki/特殊:登录?returnto=/首页} → {@code /wiki/%E7%89%B9%E6%AE%8A%3A%E7%99%BB%E5%BD%95?returnto=/首页}。
+     * <p>
+     * 非页面路径（API / 邮箱确认 / 静态资源等）原样返回；裸根部署时这些顶层路由不能
+     * 被当成页面标题编码。已经是编码形式的标题会先解码再统一编码，避免 {@code %25}。
+     */
+    public static String encodePath(String path) {
+        if (path == null || path.isEmpty() || !looksLikePagePath(path)) {
+            return path;
+        }
+        String rest = pagePathRest(path);
+        if (rest == null) {
+            return path;
+        }
+        int suffixAt = pathSuffixIndex(rest);
+        String title = suffixAt < 0 ? rest : rest.substring(0, suffixAt);
+        String suffix = suffixAt < 0 ? "" : rest.substring(suffixAt);
+        try {
+            title = URLDecoder.decode(title, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+            // 非法百分号编码：保持原文，下面仍会逐段编码。
+        }
+        return pagePath(title) + suffix;
+    }
+
+    /** 是否是页面路径（裸根部署时排除 api / auth / email / 静态资源等顶层路由）。 */
+    private static boolean looksLikePagePath(String path) {
+        String prefix = pagePrefix;
+        if (!"/".equals(prefix)) {
+            return path.startsWith(prefix);
+        }
+        if (!path.startsWith("/")) {
+            return false;
+        }
+        return !RESERVED_ROOT_PATHS.stream().anyMatch(path::startsWith);
+    }
+
+    /** 裸根部署下不能按页面标题编码的顶层路由。 */
+    private static final java.util.List<String> RESERVED_ROOT_PATHS = java.util.List.of(
+            "/api/", "/api.php", "/auth/", "/email/", "/password/", "/init", "/version", "/render",
+            "/css/", "/js/", "/skins/", "/plugins/", "/avatars/", "/files/", "/proxy_");
+
+    private static int pathSuffixIndex(String value) {
+        int query = value.indexOf('?');
+        int fragment = value.indexOf('#');
+        if (query < 0) {
+            return fragment;
+        }
+        return fragment < 0 ? query : Math.min(query, fragment);
     }
 
     /**

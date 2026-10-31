@@ -7,10 +7,10 @@
     <div class="wiki-auth">
         <p class="auth-subtitle" th:if="${registerAvailable}">
             <span th:text="#{auth.haveNoAccount}">还没有账号？</span>
-            <a th:href="@{/wiki/特殊:注册}" th:text="#{auth.createAccount}">创建账号</a>
+            <a th:href="${wikiUrl.register()}" th:text="#{auth.createAccount}">创建账号</a>
         </p>
         <p class="auth-subtitle">
-            <a th:href="@{/wiki/特殊:重置密码}" th:text="#{auth.forgotPassword}">忘记密码？</a>
+            <a th:href="${wikiUrl.passwordReset()}" th:text="#{auth.forgotPassword}">忘记密码？</a>
         </p>
 
         <p class="wiki-warning" th:if="${externalError}" th:text="${externalError}">第三方登录失败。</p>

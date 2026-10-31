@@ -797,15 +797,15 @@ class WikiPageControllerTest {
         mockMvc.perform(get("/wiki/{title}", "侧边栏演示"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("wiki-sidebar")))
-                .andExpect(content().string(containsString("href=\"/wiki/特殊:特殊页面\"")))
+                .andExpect(content().string(containsString("href=\"" + WikiUrls.pagePath("特殊:特殊页面") + "\"")))
                 .andExpect(content().string(containsString(">特殊页面</a>")))
                 // $title$ 占位替换为当前页面标题
-                .andExpect(content().string(containsString("href=\"/wiki/侧边栏演示?action=info\"")));
+                .andExpect(content().string(containsString("href=\"" + WikiUrls.pagePath("侧边栏演示") + "?action=info\"")));
 
         // 特殊页也必须使用 WikiKernel:Sidebar 的自定义内容，而不是被工具箱逻辑换成内置侧栏
         mockMvc.perform(get("/wiki/{title}", "特殊:最近更改"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("href=\"/wiki/特殊:特殊页面\"")))
+                .andExpect(content().string(containsString("href=\"" + WikiUrls.pagePath("特殊:特殊页面") + "\"")))
                 .andExpect(content().string(containsString(">特殊页面</a>")));
 
         // 错误页（没有工具箱覆盖）同样替换 $title$（标题取原始请求 URI）
@@ -813,7 +813,7 @@ class WikiPageControllerTest {
                         .requestAttr(jakarta.servlet.RequestDispatcher.ERROR_STATUS_CODE, 404)
                         .requestAttr(jakarta.servlet.RequestDispatcher.ERROR_REQUEST_URI, "/wiki/侧边栏演示"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(containsString("href=\"/wiki/侧边栏演示?action=info\"")));
+                .andExpect(content().string(containsString("href=\"" + WikiUrls.pagePath("侧边栏演示") + "?action=info\"")));
     }
 
     @Test

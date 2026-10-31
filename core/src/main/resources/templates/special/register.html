@@ -10,7 +10,7 @@
         </p>
         <p class="auth-subtitle">
             <span th:text="#{auth.haveAccount}">已有账号？</span>
-            <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{auth.login}">登录</a>
+            <a th:href="${wikiUrl.loginTo(loginReturnTo)}" th:text="#{auth.login}">登录</a>
         </p>
 
         <form id="wiki-register-form" class="wiki-form" th:action="@{/api/user/register}" method="post"

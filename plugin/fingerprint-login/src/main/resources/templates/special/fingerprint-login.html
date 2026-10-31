@@ -11,7 +11,7 @@
         在这里管理自己的浏览器指纹。
     </p>
     <p class="wiki-hint" th:unless="${loggedIn}">
-        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:指纹登录'})}"
+        <a th:href="${loginUrl}"
            th:text="#{fingerprint.special.loginLink}">登录</a>
     </p>
     <p class="wiki-hint" th:if="${loggedIn}">

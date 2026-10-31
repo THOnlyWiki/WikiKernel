@@ -12,7 +12,7 @@
     </p>
     <p class="wiki-form-error" th:if="${!featureDisabled and notificationsLogin}">
         <span th:text="#{echo.loginRequired}">请先登录再查看通知。</span>
-        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+        <a th:href="${wikiUrl.login()}" th:text="#{source.login}">登录</a>
     </p>
 
     <th:block th:unless="${featureDisabled or notificationsLogin}">

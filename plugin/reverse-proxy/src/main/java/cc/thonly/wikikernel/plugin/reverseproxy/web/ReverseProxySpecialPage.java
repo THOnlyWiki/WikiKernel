@@ -7,10 +7,13 @@ import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.plugin.reverseproxy.ReverseProxySupport;
 import cc.thonly.wikikernel.plugin.reverseproxy.model.ReverseProxyRoute;
 import cc.thonly.wikikernel.plugin.reverseproxy.service.ReverseProxyConfigService;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,6 +79,8 @@ public class ReverseProxySpecialPage implements SpecialPage {
 
         model.put("reverseProxyFeatureDisabled", featureDisabled);
         model.put("reverseProxyLoginRequired", !loggedIn);
+        model.put("loginUrl", WikiUrls.pagePath("特殊:登录") + "?returnto="
+                + URLEncoder.encode(WikiUrls.pagePath("特殊:反向代理"), StandardCharsets.UTF_8));
         model.put("reverseProxyForbidden", loggedIn && !canManage);
         model.put("reverseProxyCanManage", canManage);
         model.put("reverseProxySpecialTitle", ReverseProxyConfigService.SPECIAL_TITLE);

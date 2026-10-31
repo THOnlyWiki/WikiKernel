@@ -6,7 +6,7 @@
 <section class="mw-rc-page">
     <p class="wiki-warning" th:if="${loginRequired}">
         <span th:text="#{recentChanges.loginRequired}">请先登录后再查看最近更改。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{source.login}">登录</a>
+        <a th:href="${wikiUrl.loginTo(loginReturnTo)}" th:text="#{source.login}">登录</a>
     </p>
 
     <th:block th:unless="${loginRequired}">

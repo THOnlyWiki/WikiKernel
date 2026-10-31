@@ -46,15 +46,27 @@ class AuthApiTest {
 
     @Test
     void authPagesRender() throws Exception {
-        mockMvc.perform(get("/wiki/{title}", "特殊:登录"))
+        mockMvc.perform(get("/wiki/{title}", "特殊:登录").param("returnto", "/wiki/首页"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"wiki-login-form\"")))
-                .andExpect(content().string(containsString("记住我的登录状态")));
+                .andExpect(content().string(containsString("记住我的登录状态")))
+                // 登录成功后 auth.js 使用这个隐藏值跳转，必须是编码路径
+                .andExpect(content().string(containsString(
+                        "name=\"returnto\" value=\"/wiki/%E9%A6%96%E9%A1%B5\"")))
+                // 注册 / 忘记密码入口必须是百分号编码路径，不能输出裸「特殊:」
+                .andExpect(content().string(containsString(
+                        "href=\"/wiki/%E7%89%B9%E6%AE%8A%3A%E6%B3%A8%E5%86%8C\"")))
+                .andExpect(content().string(containsString(
+                        "href=\"/wiki/%E7%89%B9%E6%AE%8A%3A%E9%87%8D%E7%BD%AE%E5%AF%86%E7%A0%81\"")))
+                .andExpect(content().string(not(containsString("href=\"/wiki/特殊:"))));
 
         mockMvc.perform(get("/wiki/{title}", "特殊:注册"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"wiki-register-form\"")))
-                .andExpect(content().string(containsString("确认密码")));
+                .andExpect(content().string(containsString("确认密码")))
+                .andExpect(content().string(containsString(
+                        "href=\"/wiki/%E7%89%B9%E6%AE%8A%3A%E7%99%BB%E5%BD%95")))
+                .andExpect(content().string(not(containsString("href=\"/wiki/特殊:"))));
 
         // MediaWiki 英文别名
         mockMvc.perform(get("/wiki/{title}", "Special:CreateAccount"))

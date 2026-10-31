@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.auth.external;
 
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,7 +11,7 @@ class ExternalAuthSettingsTest {
 
     @Test
     void returnToOnlyAllowsLocalPaths() {
-        assertEquals("/wiki/首页", ExternalAuthSettings.safeReturnTo("/wiki/首页", "/"));
+        assertEquals(WikiUrls.pagePath("首页"), ExternalAuthSettings.safeReturnTo("/wiki/首页", "/"));
         assertEquals("/wiki/a?b=1", ExternalAuthSettings.safeReturnTo("/wiki/a?b=1", "/"));
         assertEquals("/", ExternalAuthSettings.safeReturnTo("//evil.example", "/"));
         assertEquals("/", ExternalAuthSettings.safeReturnTo("https://evil.example", "/"));

@@ -6,7 +6,7 @@
 <section>
     <p class="wiki-warning" th:if="${loginRequired}">
         <span th:text="#{preferences.loginRequired}">请先登录后再修改参数设置。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:text="#{source.login}">登录</a>
+        <a th:href="${wikiUrl.loginTo(loginReturnTo)}" th:text="#{source.login}">登录</a>
     </p>
 
     <th:block th:if="${user != null}">
@@ -79,7 +79,7 @@
                            跳到 特殊:修改密码（带 returnto 回来） */-->
                     <span class="oo-ui-widget oo-ui-widget-enabled oo-ui-buttonElement oo-ui-buttonElement-framed oo-ui-labelElement pref-password-button">
                         <a role="button" tabindex="0" rel="nofollow" class="oo-ui-buttonElement-button mdui-ripple"
-                           th:href="@{/wiki/{t}(t=${'特殊:修改密码'},returnto=${'特殊:参数设置'})}">
+                           th:href="${wikiUrl.changePassword(wikiUrl.preferences())}">
                             <span class="oo-ui-iconElement-icon oo-ui-iconElement-noIcon"></span>
                             <span class="oo-ui-labelElement-label"
                                   th:text="#{preferences.password.changeButton}">更改密码</span>
@@ -300,9 +300,9 @@
                     监视列表显示你监视页面的最近更改；在页面页签里点「监视 / 取消监视」加入或移除。
                 </p>
                 <p>
-                    <a th:href="@{/wiki/特殊:监视列表}" th:text="#{watch.title}">监视列表</a>
+                    <a th:href="${wikiUrl.page('特殊:监视列表')}" th:text="#{watch.title}">监视列表</a>
                     <span class="language-separator">|</span>
-                    <a th:href="@{/wiki/特殊:编辑监视列表}" th:text="#{watch.edit}">编辑监视列表</a>
+                    <a th:href="${wikiUrl.page('特殊:编辑监视列表')}" th:text="#{watch.edit}">编辑监视列表</a>
                 </p>
             </section>
 

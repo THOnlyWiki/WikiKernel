@@ -147,7 +147,7 @@
                     AI 只起草：确认前请核对（可以直接改正文），确认后以你的名义直接保存。
                 </span>
                 <span class="wiki-hint">
-                    <a th:href="@{/wiki/特殊:参数设置(hash='ai')}" th:text="#{aiAgent.keysHint}">填自己的密钥</a>
+                    <a th:href="${preferencesUrl + '#ai'}" th:text="#{aiAgent.keysHint}">填自己的密钥</a>
                 </span>
             </div>
 

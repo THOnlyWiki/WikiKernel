@@ -9,10 +9,10 @@
 <body>
 <ul th:fragment="personal" class="personal-tools">
     <li th:if="${currentUser == null}">
-        <a th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}" th:title="#{auth.login}" th:text="#{auth.login}">登录</a>
+        <a th:href="${wikiUrl.loginTo(loginReturnTo)}" th:title="#{auth.login}" th:text="#{auth.login}">登录</a>
     </li>
     <li th:if="${currentUser == null and registerAvailable}">
-        <a th:href="@{/wiki/特殊:注册(returnto=${loginReturnTo})}" th:title="#{auth.registerTitle}" th:text="#{auth.register}">注册</a>
+        <a th:href="${wikiUrl.registerTo(loginReturnTo)}" th:title="#{auth.registerTitle}" th:text="#{auth.register}">注册</a>
     </li>
     <li class="personal-user" th:if="${currentUser != null}">
         <a th:href="@{/wiki/{t}(t=${'用户:' + currentUser.username})}"
@@ -23,15 +23,15 @@
            th:text="#{common.talk}" th:title="#{personal.talkTitle}">讨论</a>
     </li>
     <li th:if="${currentUser != null}">
-        <a th:href="@{/wiki/特殊:参数设置}" th:text="#{special.preferences}"
+        <a th:href="${wikiUrl.preferences()}" th:text="#{special.preferences}"
            th:title="#{personal.preferencesTitle}">参数设置</a>
     </li>
     <li th:if="${currentUser != null}">
-        <a th:href="@{/wiki/特殊:外观}" th:text="#{special.appearance}"
+        <a th:href="${wikiUrl.appearance()}" th:text="#{special.appearance}"
            th:title="#{personal.appearanceTitle}">外观</a>
     </li>
     <li th:if="${currentUser != null}">
-        <a th:href="@{/wiki/特殊:用户贡献(name=${currentUser.username})}"
+        <a th:href="${wikiUrl.withQuery('特殊:用户贡献', 'name', currentUser.username)}"
            th:text="#{personal.contributions}" th:title="#{personal.contributionsTitle}">贡献</a>
     </li>
     <li th:if="${currentUser != null}">

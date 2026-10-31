@@ -47,6 +47,7 @@ public class EchoView {
         row.put("pageTitle", pageTitle);
         row.put("pageUrl", pageTitle == null ? null : EchoSupport.pagePath(pageTitle));
         row.put("actorName", actorName);
+        row.put("actorAvatar", actorAvatar(notification.getActorUserId()));
         row.put("actorUrl", actorName == null ? null : EchoSupport.pagePath("用户:" + actorName));
         row.put("comment", notification.getComment());
         row.put("html", describe(notification, type, actorName, pageTitle));
@@ -127,6 +128,15 @@ public class EchoView {
             case EchoKeys.TYPE_WELCOME -> "🎉";
             default -> "🔔";
         };
+    }
+
+    private String actorAvatar(Long actorUserId) {
+        if (actorUserId == null) {
+            return "";
+        }
+        return userStore.byId(actorUserId)
+                .map(ref -> ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL))
+                .orElse("");
     }
 
     private String actorName(Long actorUserId) {

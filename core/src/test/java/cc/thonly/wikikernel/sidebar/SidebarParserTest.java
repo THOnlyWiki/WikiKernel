@@ -28,12 +28,13 @@ class SidebarParserTest {
 
         SidebarItem home = navigation.getItems().get(0);
         assertEquals("首页", home.getLabel());
-        assertEquals("/wiki/首页", home.getHref());
+        assertEquals("/wiki/%E9%A6%96%E9%A1%B5", home.getHref());
         assertFalse(home.isExternal());
 
         SidebarItem allPages = navigation.getItems().get(1);
         assertEquals("全部页面", allPages.getLabel());
-        assertEquals("/wiki/特殊:全部页面", allPages.getHref());
+        assertEquals("/wiki/%E7%89%B9%E6%AE%8A%3A%E5%85%A8%E9%83%A8%E9%A1%B5%E9%9D%A2",
+                allPages.getHref());
 
         SidebarItem external = sections.get(1).getItems().get(0);
         assertEquals("外部链接", external.getLabel());

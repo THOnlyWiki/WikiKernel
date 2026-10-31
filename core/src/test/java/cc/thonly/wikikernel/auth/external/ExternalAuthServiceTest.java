@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.data.WikiExternalIdentity;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.RegistrationGuard;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthUser;
 import cc.thonly.wikikernel.service.BlockService;
 import cc.thonly.wikikernel.service.FeatureService;
@@ -42,7 +43,7 @@ class ExternalAuthServiceTest {
         ExternalAuthService.Result result = fixture.service.callback(
                 "test", "code", null, state, request);
         assertEquals(42L, result.user().getId());
-        assertEquals("/wiki/首页", result.redirectTo());
+        assertEquals(WikiUrls.pagePath("首页"), result.redirectTo());
         verify(fixture.avatarService).importAfterRegistration(eq(fixture.provider), eq(42L), any());
     }
 

@@ -427,7 +427,8 @@ class FingerprintLoginPluginTest {
 
         assertEquals(Boolean.TRUE, model.get("enabled"));
         assertEquals(Boolean.TRUE, model.get("loggedIn"));
-        assertEquals("/wiki/特殊:参数设置", model.get("preferencesUrl"));
+        assertEquals(cc.thonly.wikikernel.common.web.WikiUrls.pagePath("特殊:参数设置"),
+                model.get("preferencesUrl"));
         String html = String.valueOf(model.get("panelHtml"));
         assertTrue(html.contains("我的手机"), html);
         assertFalse(html.contains("别人的手机"), "管理员 / 其他人都看不到别人的指纹");

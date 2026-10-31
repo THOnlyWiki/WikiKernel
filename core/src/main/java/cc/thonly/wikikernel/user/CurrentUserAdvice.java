@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.service.PermissionService;
+import cc.thonly.wikikernel.web.WikiUrlHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -116,6 +117,12 @@ public class CurrentUserAdvice {
             path = path + "?" + query;
         }
         return path.startsWith("/") && !path.startsWith("//") ? path : "/";
+    }
+
+    /** 模板 URL 生成器：登录 / 注册 / 参数设置等特殊页链接统一走编码路径。 */
+    @ModelAttribute("wikiUrl")
+    public WikiUrlHelper wikiUrl() {
+        return WikiUrlHelper.INSTANCE;
     }
 
     @ModelAttribute("assetVersion")

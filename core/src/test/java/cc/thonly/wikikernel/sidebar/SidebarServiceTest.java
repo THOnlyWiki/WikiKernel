@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.sidebar;
 
 import cc.thonly.wikikernel.common.data.WikiPage;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.WikiPageService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +62,7 @@ class SidebarServiceTest {
 
         assertEquals(1, sections.size());
         assertEquals("测试组", sections.get(0).getTitle());
-        assertEquals("/wiki/首页", sections.get(0).getItems().get(0).getHref());
+        assertEquals(WikiUrls.pagePath("首页"), sections.get(0).getItems().get(0).getHref());
     }
 
     @Test
@@ -82,10 +83,10 @@ class SidebarServiceTest {
         assertEquals(1, sections.size());
         List<SidebarItem> items = sections.get(0).getItems();
         assertEquals(4, items.size(), "说明行不是条目");
-        assertEquals("/wiki/特殊:链入页面?page=模板:信息框", items.get(0).getHref());
-        assertEquals("/wiki/模板:信息框?action=info", items.get(1).getHref(), "$title$ = 完整标题");
-        assertEquals("/wiki/模板:信息框?action=info", items.get(2).getHref(), "{{FULLPAGENAME}} = 完整标题");
-        assertEquals("/wiki/信息框?action=info", items.get(3).getHref(), "{{PAGENAME}} = 去掉命名空间");
+        assertEquals(WikiUrls.pagePath("特殊:链入页面") + "?page=模板:信息框", items.get(0).getHref());
+        assertEquals(WikiUrls.pagePath("模板:信息框") + "?action=info", items.get(1).getHref(), "$title$ = 完整标题");
+        assertEquals(WikiUrls.pagePath("模板:信息框") + "?action=info", items.get(2).getHref(), "{{FULLPAGENAME}} = 完整标题");
+        assertEquals(WikiUrls.pagePath("信息框") + "?action=info", items.get(3).getHref(), "{{PAGENAME}} = 去掉命名空间");
     }
 
     @Test

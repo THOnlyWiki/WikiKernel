@@ -9,7 +9,7 @@
 
     <p class="wiki-hint" th:if="${!loggedIn}">
         <span th:text="#{apiSandbox.notLoggedIn}">未登录：写操作会返回 notloggedin。</span>
-        <a th:href="@{/wiki/特殊:登录}" th:text="#{source.login}">登录</a>
+        <a th:href="${wikiUrl.login()}" th:text="#{source.login}">登录</a>
     </p>
 
     <form id="api-sandbox-form" class="wiki-form api-sandbox-form"

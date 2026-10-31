@@ -35,7 +35,13 @@
                 && !/%5c|%2f|%0d|%0a|%00|%09/i.test(href)) {
             return href;
         }
-        return '/wiki/特殊:参数设置';
+        // 服务端通过 data-default-return 注入编码后的路径（含自定义页面前缀）；
+        // 这个字面量只是没有该属性时的兜底，仍使用百分号编码，避免把裸 UTF-8 路径交给 Tomcat。
+        var fallback = form.getAttribute('data-default-return');
+        if (fallback) {
+            return fallback;
+        }
+        return '/wiki/%E7%89%B9%E6%AE%8A:%E5%8F%82%E6%95%B0%E8%AE%BE%E7%BD%AE';
     }
 
     form.addEventListener('submit', function (event) {

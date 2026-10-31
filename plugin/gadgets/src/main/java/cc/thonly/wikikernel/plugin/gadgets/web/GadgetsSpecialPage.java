@@ -4,6 +4,7 @@ import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageCategories;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.service.CurrentUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.plugin.gadgets.GadgetsPlugin;
 import cc.thonly.wikikernel.plugin.gadgets.service.GadgetService;
 import java.util.LinkedHashMap;
@@ -57,7 +58,7 @@ public class GadgetsSpecialPage implements SpecialPage {
         model.put("enabled", gadgets.enabled());
         model.put("canManage", currentUser != null && currentUser.inGroup(GadgetsPlugin.GROUP_GADGET_ADMIN));
         model.put("definitionUrl", gadgets.definitionPageUrl());
-        model.put("preferencesUrl", "/wiki/特殊:参数设置");
+        model.put("preferencesUrl", WikiUrls.pagePath("特殊:参数设置"));
         model.put("gadgets", gadgets.visibleDefinitions().stream().map(definition -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("name", definition.name());

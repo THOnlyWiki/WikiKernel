@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.special;
 import cc.thonly.wikikernel.auth.external.ExternalAuthService;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.FeatureService;
 import cc.thonly.wikikernel.web.SafeReturnTo;
 import org.springframework.context.MessageSource;
@@ -61,6 +62,6 @@ public class LoginSpecialPage implements SpecialPage {
     }
 
     static String safeReturnTo(String value) {
-        return SafeReturnTo.path(value, "/");
+        return WikiUrls.encodePath(SafeReturnTo.path(value, "/"));
     }
 }

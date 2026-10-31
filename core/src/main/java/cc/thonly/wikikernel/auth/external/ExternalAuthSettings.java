@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.auth.external;
 
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.SiteSettingsService;
 import cc.thonly.wikikernel.web.SafeReturnTo;
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,9 +80,9 @@ public final class ExternalAuthSettings {
         }
     }
 
-    /** 只允许站内绝对路径，防止开放重定向。 */
+    /** 只允许站内绝对路径，防止开放重定向；页面路径统一编码后再存储 / 跳转。 */
     public static String safeReturnTo(String value, String fallback) {
-        return SafeReturnTo.path(value, fallback);
+        return WikiUrls.encodePath(SafeReturnTo.path(value, fallback));
     }
 }
 

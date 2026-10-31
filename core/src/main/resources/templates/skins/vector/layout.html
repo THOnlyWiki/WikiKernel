@@ -93,7 +93,7 @@
                     <a th:if="${currentUser != null}" href="#" id="watch-toggle"
                        th:attr="data-title=${wikiTitle},data-watched=${watched}"
                        th:text="${watched} ? #{watch.unwatch} : #{watch.watch}">监视</a>
-                    <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录(returnto=${loginReturnTo})}"
+                    <a th:if="${currentUser == null}" th:href="${wikiUrl.loginTo(loginReturnTo)}"
                        th:text="#{watch.watch}">监视</a>
                 </li>
             </ul>

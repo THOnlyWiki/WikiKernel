@@ -18,7 +18,7 @@
 
     <p class="wiki-form-error" th:if="${reverseProxyLoginRequired}">
         <span th:text="#{reverseProxy.loginRequired}">请先登录后再配置反向代理。</span>
-        <a th:href="@{/wiki/特殊:登录(returnto=${'/wiki/特殊:反向代理'})}"
+        <a th:href="${loginUrl}"
            th:text="#{source.login}">登录</a>
     </p>
 

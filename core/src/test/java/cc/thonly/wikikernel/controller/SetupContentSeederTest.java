@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.controller;
 
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.db.ddl.SetupContentSeeder;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
@@ -85,7 +86,7 @@ class SetupContentSeederTest {
         assertTrue(tools.getItems().stream().anyMatch(item -> "页面信息".equals(item.getLabel())));
         // $title$ 已替换为当前页面
         assertTrue(tools.getItems().stream().anyMatch(item ->
-                "页面信息".equals(item.getLabel()) && "/wiki/首页?action=info".equals(item.getHref())));
+                "页面信息".equals(item.getLabel()) && (WikiUrls.pagePath("首页") + "?action=info").equals(item.getHref())));
         // 编辑帮助
         assertTrue(contentOf("帮助:编辑").contains("编辑帮助"));
         // 只种一次（标记已写入）

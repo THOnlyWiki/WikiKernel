@@ -22,8 +22,8 @@
             <button type="submit" class="wiki-button" th:text="#{common.search}">搜索</button>
         </form>
         <div class="plain-personal">
-            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:登录}" th:text="#{auth.login}">登录</a>
-            <a th:if="${currentUser == null}" th:href="@{/wiki/特殊:注册}" th:text="#{auth.register}">注册</a>
+            <a th:if="${currentUser == null}" th:href="${wikiUrl.login()}" th:text="#{auth.login}">登录</a>
+            <a th:if="${currentUser == null}" th:href="${wikiUrl.register()}" th:text="#{auth.register}">注册</a>
             <a th:if="${currentUser != null}"
                th:href="@{/wiki/{t}(t=${'用户:' + currentUser.username})}"
                th:text="${currentUser.username}">用户名</a>
@@ -31,11 +31,11 @@
                th:href="@{/wiki/{t}(t=${'用户讨论:' + currentUser.username})}"
                th:text="#{common.talk}">讨论</a>
             <a th:if="${currentUser != null}"
-               th:href="@{/wiki/特殊:参数设置}" th:text="#{special.preferences}">参数设置</a>
+               th:href="${wikiUrl.preferences()}" th:text="#{special.preferences}">参数设置</a>
             <a th:if="${currentUser != null}"
-               th:href="@{/wiki/特殊:外观}" th:text="#{special.appearance}">外观</a>
+               th:href="${wikiUrl.appearance()}" th:text="#{special.appearance}">外观</a>
             <a th:if="${currentUser != null}"
-               th:href="@{/wiki/特殊:用户贡献(name=${currentUser.username})}"
+               th:href="${wikiUrl.withQuery('特殊:用户贡献', 'name', currentUser.username)}"
                th:text="#{personal.contributions}">贡献</a>
             <a th:if="${currentUser != null}" th:href="@{/api/user/logout}" th:text="#{auth.logout}">退出</a>
             <!-- 插件个人工具条目（PersonalToolbarHook：私信入口 + 未读计数等） -->
