@@ -72,6 +72,9 @@ public final class MessageCenter {
      * @return 已写入的记录（带自增 ID）
      * @throws IllegalArgumentException 收件人不存在 / 发给自己（消息键）
      */
+    /** 单条私信最大字数（网页端与 App 共用这一处限制） */
+    public static final int MAX_LENGTH = 2000;
+
     public WikiMessage send(long fromUserId, String toUsername, String content) {
         String name = Strings.trimToEmpty(toUsername);
         UserStore.UserRef to = users.byName(name)
@@ -79,10 +82,14 @@ public final class MessageCenter {
         if (fromUserId <= 0 || Objects.equals(fromUserId, to.id())) {
             throw new IllegalArgumentException("messages.selfNotAllowed");
         }
+        String body = Strings.trimToEmpty(content);
+        if (body.length() > MAX_LENGTH) {
+            throw new IllegalArgumentException("messages.tooLong");
+        }
         WikiMessage message = new WikiMessage();
         message.setFromUserId(fromUserId);
         message.setToUserId(to.id());
-        message.setContent(Strings.trimToEmpty(content));
+        message.setContent(body);
         message.setRead(false);
         message.setFromDeleted(false);
         message.setToDeleted(false);
