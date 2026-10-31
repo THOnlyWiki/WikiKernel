@@ -2,6 +2,10 @@
 *.bat text eol=crlf
 *.jar binary
 
+# 配置 Schema 是生成器逐字节比对的产物（ConfigCatalogConsistencyTest），
+# 必须是 LF；Windows 上 autocrlf=true 会转成 CRLF 导致测试必挂
+core/src/main/resources/static/schemas/*.json text eol=lf
+
 # GitHub Linguist：本仓库按 Java 项目统计（前端资源 / 脚本不计入语言占比）
 * linguist-detectable=false
 *.java linguist-detectable=true
