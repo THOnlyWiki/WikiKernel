@@ -368,6 +368,11 @@ groups:
         type: integer
         default: 300
         description: 条目有效期（秒）。
+      - key: wikikernel.cache.page.memory-size-mb
+        type: integer
+        default: 128
+        enum: [64, 128, 256]
+        description: 内置缓存容量（MB）；手动选择 memory 或 Redis 不可用时使用，按估算驻留内存执行 LRU 淘汰。
       - key: wikikernel.cache.page.max-entries
         type: integer
         default: 500

@@ -2,6 +2,11 @@ package cc.thonly.wikikernel.service;
 
 import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.data.WikiAccessRule;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
+import java.util.HexFormat;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import jakarta.annotation.Nullable;
 
@@ -43,6 +48,24 @@ public interface AccessControlService {
 
     /** 删除一条规则，返回是否存在。 */
     boolean deleteRule(long ruleId);
+
+    /** Stable cache namespace for the current read rules, including in-flight render isolation. */
+    default String readPolicyFingerprint() {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (WikiAccessRule rule : allRules().stream()
+                    .filter(rule -> AccessAction.READ.id().equals(rule.getAction()))
+                    .sorted(Comparator.comparing(WikiAccessRule::getTarget)).toList()) {
+                String target = rule.getTarget();
+                String groups = rule.getGroupNames();
+                String value = target.length() + ":" + target + groups.length() + ":" + groups;
+                digest.update(value.getBytes(StandardCharsets.UTF_8));
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 unavailable", exception);
+        }
+    }
 
     /** 清空缓存并重新从数据库加载（保存 / 导入 / 测试用）。 */
     void reload();

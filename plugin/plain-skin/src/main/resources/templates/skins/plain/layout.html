@@ -55,7 +55,9 @@
     </nav>
 
     <main id="content">
+        <th:block th:replace="~{fragments/system-interface :: notice}"/>
         <h1 id="firstHeading" class="firstHeading" th:if="${hideTitle == null || !hideTitle}" th:text="${pageTitle}">页面标题</h1>
+        <th:block th:replace="~{fragments/system-interface :: tagline}"/>
         <!-- 所有页面统一的内容容器：#bodyContent + .wiki-content（正文排版与词条一致） -->
         <div id="bodyContent" class="wiki-content" th:insert="${content}">
             <p>页面内容</p>

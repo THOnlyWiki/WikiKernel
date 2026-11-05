@@ -172,7 +172,7 @@ class ActionApiTest {
         mockMvc.perform(get("/api.php").param("action", "parse")
                         .param("page", title).param("prop", "wikitext")
                         .param("formatversion", "2"))
-                .andExpect(jsonPath("$.parse.wikitext").value(""));
+                .andExpect(jsonPath("$.error.code").value("missingtitle"));
         mockMvc.perform(get("/api.php").param("action", "query")
                         .param("pageids", String.valueOf(page.getId()))
                         .param("prop", "revisions").param("rvprop", "content")

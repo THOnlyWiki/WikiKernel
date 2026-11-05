@@ -11,6 +11,7 @@ import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.BlockService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.user.UserSession;
+import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.wikitext.VisualEditorService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.MessageSource;
@@ -285,9 +286,12 @@ public class VisualEditorApiController {
         if (block.isPresent()) {
             return new Denied(AjaxCode.FORBIDDEN, blockService.notice(block.get()));
         }
-        String normalized = Strings.trimToEmpty(title);
+        String normalized = WikiTitles.normalize(title);
         if (normalized.isEmpty()) {
             return new Denied(AjaxCode.BAD_REQUEST, message("error.titleRequired"));
+        }
+        if (!accessControlService.canRead(normalized, user)) {
+            return new Denied(AjaxCode.FORBIDDEN, message("error.readForbidden"));
         }
         WikiPage existing = wikiPageService.getByTitle(normalized).orElse(null);
         AccessAction action = existing == null ? AccessAction.CREATE : AccessAction.EDIT;

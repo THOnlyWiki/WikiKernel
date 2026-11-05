@@ -23,14 +23,13 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Arrays;
 
 /**
  * 上传文件访问：{@code GET /files/{storedName}}（当前版本与历史版本共用）。
  * <p>
  * 查看权限按 {@code 文件:<name>} 走访问规则（默认所有人可看）；软删除的文件仅删除权限者可见（其余 404）。
- * 图片内联展示（可缓存，存储名唯一所以 immutable），其它类型强制下载，避免同源执行。
+ * 图片内联展示；文件只允许私有缓存并要求重新校验权限，其它类型强制下载，避免同源执行。
  */
 @Controller
 public class FileController {
@@ -92,7 +91,7 @@ public class FileController {
         }
         // 支持 HTTP Range（音视频拖动进度条需要 206 Partial Content）
         headers.set("Accept-Ranges", "bytes");
-        headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());
+        headers.setCacheControl(CacheControl.noCache().cachePrivate());
 
         long[] range = parseRange(request.getHeader("Range"), content.length);
         if (range != null) {
@@ -139,7 +138,7 @@ public class FileController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("image/webp"));
         headers.set("X-Content-Type-Options", "nosniff");
-        headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());
+        headers.setCacheControl(CacheControl.noCache().cachePrivate());
         headers.setContentLength(content.length);
         return new ResponseEntity<>(content, headers, HttpStatus.OK);
     }

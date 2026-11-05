@@ -49,8 +49,7 @@ java -jar build\dist\wikikernel-server.jar
 
 ## 扩展插件
 
-`plugin/` 下有 39 个插件：30 个 MediaWiki 扩展或皮肤的移植，8 个自研插件，1 个演示插件。
-`installPlugins` 会收集除 `dep-demo` 以外的 38 个。按用途分：
+`plugin/` 下有 42 个插件；`installPlugins` 会收集除 `dep-demo` 以外的 41 个。按用途分：
 
 - 内容与标记：`math`、`easy-timeline`、`graph`、`widget`、`gadgets`、`template-data`、
   `input-box`、`category-tree`、`popups`、`page-banner`、`no-title`、`variables`、
@@ -61,6 +60,7 @@ java -jar build\dist\wikikernel-server.jar
   `fingerprint-login`、`external-auth-github`、`external-auth-qq`
 - 文件与存储：`media-viewer`、`multi-upload`、`flash-player`、`oss-extension`（原图与历史版本同步到 OSS）
 - 皮肤：`plain-skin`、`kawaii-timeless`
+- 服务器资源：[`cpu-guard`](plugin/cpu-guard/README.md)（Debian JVM CPU 配额与锁核，默认适配 2 vCPU）
 - 站点定制：`thonly-wiki-extensions`（活动日程、日历、地图）
 - AI：`ai-agent`
 - 演示：`dep-demo`（不随发行）

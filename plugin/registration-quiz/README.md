@@ -57,6 +57,10 @@
 
 ## 与 MediaWiki 原版的差异
 
+原生 App 可通过 `GET /api/registration-quiz/challenge` 获取当前题目：开启时返回
+`{"required":true,"index":0,"question":"题目"}`，关闭或无有效题目时仅返回 `{"required":false}`。
+响应禁止缓存，不返回答案。注册仍向 `/api/user/register` 提交 `registerQuizIndex` 和 `registerAnswer`，由同一个注册钩子校验。
+
 - 这里对应的是 MediaWiki 的 QuestyCaptcha（问题 / 答案对）思路，而不是 ConfirmEdit 的图片 / reCAPTCHA 验证；
 - MediaWiki 的 QuestyCaptcha 是「一个答案对应一个问题」，本实现使用**一行一题 + 任意多个可接受答案**
   （`问题 | 答案1 | 答案2`），并保留旧的两个等长数组 + 下标校验兼容；

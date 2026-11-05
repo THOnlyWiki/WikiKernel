@@ -76,7 +76,9 @@ public class AvatarStoreJdbc implements AvatarStore {
         if (content.length > (long) maxMb * 1024 * 1024) {
             throw new IllegalArgumentException("avatar.tooLarge");
         }
-        String fileName = "u" + userId + "-" + System.currentTimeMillis() + "." + extension;
+        extension = imageExtension(content);
+        String fileName = "u" + userId + "-" + System.currentTimeMillis() + "-"
+                + java.util.UUID.randomUUID().toString().substring(0, 8) + "." + extension;
         Path directory = directory();
         Path target = directory.resolve(fileName).normalize();
         if (!target.startsWith(directory)) {
@@ -118,6 +120,22 @@ public class AvatarStoreJdbc implements AvatarStore {
     }
 
     @Override
+    public String remove(long userId) {
+        var user = users.byId(userId).orElseThrow(() -> new IllegalArgumentException("permissions.userNotFound"));
+        String previous = Strings.trimToEmpty(user.avatar());
+        if (previous.isEmpty()) { return users.defaultAvatarUrl(); }
+        int changed = database.update("UPDATE wiki_user SET avatar = ? WHERE id = ? AND avatar = ?", "", userId, previous);
+        if (changed != 1) { throw new IllegalArgumentException("avatar.changed"); }
+        if (previous.startsWith("u" + userId + "-")) {
+            resolve(previous).ifPresent(old -> {
+                try { Files.deleteIfExists(old); }
+                catch (IOException exception) { log.warn("旧头像删除失败 {}: {}", previous, exception.getMessage()); }
+            });
+        }
+        return users.defaultAvatarUrl();
+    }
+
+    @Override
     public String url(String fileName) {
         String name = Strings.trimToEmpty(fileName);
         return name.isEmpty() ? users.defaultAvatarUrl() : "/avatars/" + name;
@@ -139,5 +157,36 @@ public class AvatarStoreJdbc implements AvatarStore {
             }
         }
         return CONTENT_TYPES.get(contentType);
+    }
+
+    /** 文件扩展名与客户端 MIME 不能证明内容是图片；只读取元数据，避免大图解码占满内存。 */
+    private static String imageExtension(byte[] bytes) {
+        String extension;
+        if (starts(bytes, new byte[]{(byte)137,80,78,71,13,10,26,10})) { extension = "png"; }
+        else if (starts(bytes, new byte[]{(byte)255,(byte)216,(byte)255})) { extension = "jpg"; }
+        else if (starts(bytes, "GIF87a".getBytes(java.nio.charset.StandardCharsets.US_ASCII))
+                || starts(bytes, "GIF89a".getBytes(java.nio.charset.StandardCharsets.US_ASCII))) { extension = "gif"; }
+        else if (bytes.length >= 20 && bytes[0]=='R' && bytes[1]=='I' && bytes[2]=='F' && bytes[3]=='F'
+                && bytes[8]=='W' && bytes[9]=='E' && bytes[10]=='B' && bytes[11]=='P') { return "webp"; }
+        else { throw new IllegalArgumentException("avatar.notImage"); }
+        try (var input = new javax.imageio.stream.MemoryCacheImageInputStream(new java.io.ByteArrayInputStream(bytes))) {
+            var readers = javax.imageio.ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) { throw new IllegalArgumentException("avatar.notImage"); }
+            var reader = readers.next();
+            try {
+                reader.setInput(input);
+                int width = reader.getWidth(0), height = reader.getHeight(0);
+                if (width <= 0 || height <= 0 || (long) width * height > 16_777_216L) {
+                    throw new IllegalArgumentException("avatar.tooLarge");
+                }
+            } finally { reader.dispose(); }
+        } catch (IOException exception) { throw new IllegalArgumentException("avatar.notImage"); }
+        return extension;
+    }
+
+    private static boolean starts(byte[] data, byte[] prefix) {
+        if (data.length < prefix.length) { return false; }
+        for (int i = 0; i < prefix.length; i++) { if (data[i] != prefix[i]) { return false; } }
+        return true;
     }
 }

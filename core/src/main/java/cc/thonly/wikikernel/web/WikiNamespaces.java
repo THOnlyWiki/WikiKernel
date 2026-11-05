@@ -217,6 +217,11 @@ public final class WikiNamespaces {
         return byId("wikikernel").map(namespace -> matches(title, namespace)).orElse(false);
     }
 
+    /** MediaWiki 界面配置命名空间（不包含讨论页）。 */
+    public static boolean isMediaWiki(String title) {
+        return byId("mediawiki").map(namespace -> matches(title, namespace)).orElse(false);
+    }
+
     /** 是否属于用户命名空间正文页（{@code 用户:X} / {@code User:X}，不含用户讨论页）。 */
     public static boolean isUser(String title) {
         return byId("user").map(namespace -> matches(title, namespace)).orElse(false);

@@ -223,6 +223,11 @@ public final class SocialProfileFakes {
         }
 
         @Override
+        public List<UserRef> newest(int limit) {
+            return users.values().stream().sorted(Comparator.comparingLong(UserRef::id).reversed()).limit(Math.max(0,limit)).toList();
+        }
+
+        @Override
         public Map<Long, String> names(Collection<Long> userIds) {
             Map<Long, String> names = new LinkedHashMap<>();
             for (Long id : userIds) {
@@ -300,6 +305,13 @@ public final class SocialProfileFakes {
             files.put(fileName, content);
             current.put(userId, fileName);
             return url(fileName);
+        }
+
+        @Override
+        public String remove(long id) {
+            String file = current.remove(id);
+            if (file != null) { files.remove(file); }
+            return url("");
         }
 
         @Override

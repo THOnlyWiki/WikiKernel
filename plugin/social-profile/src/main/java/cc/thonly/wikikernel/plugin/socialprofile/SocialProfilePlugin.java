@@ -215,7 +215,15 @@ public class SocialProfilePlugin implements WikiPlugin {
     public void onStart(PluginContext context) {
 
         context.register(MessageBundle.class, new SocialProfileMessages());
+        var parsers = new cc.thonly.wikikernel.plugin.socialprofile.parser.SocialProfileParsers(userStore, accessCheck, support);
+        for (String name : List.of("avatar", "newusers", "randomuserswithavatars")) {
+            context.register(cc.thonly.wikikernel.common.extension.ParserFunction.class, parsers.function(name));
+        }
+        for (String name : List.of("newusers", "randomuserswithavatars")) {
+            context.register(cc.thonly.wikikernel.common.extension.ParserTag.class, parsers.tag(name));
+        }
         // 原有能力：头像上传 + 私信
+        context.register(SpecialPage.class, new cc.thonly.wikikernel.plugin.socialprofile.web.RemoveAvatarSpecialPage(userStore, accessCheck, currentUser, support));
         context.register(SpecialPage.class, new UploadAvatarSpecialPage(avatars, userStore, support));
         context.register(SpecialPage.class,
                 new MessagesSpecialPage(messages, userStore, wikiText, support));

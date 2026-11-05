@@ -9,6 +9,7 @@ import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.service.WikiText;
+import cc.thonly.wikikernel.common.service.TimeDisplay;
 import cc.thonly.wikikernel.plugin.comments.CommentsPlugin;
 import cc.thonly.wikikernel.plugin.comments.data.WikiComment;
 import cc.thonly.wikikernel.plugin.comments.hook.CommentSectionHook;
@@ -78,6 +79,39 @@ class CommentSectionTest {
         new CommentTag().render(tagCall(enabled, Map.of("disabled", "false")));
         assertEquals("1", enabled.get(CommentTag.PROPERTY));
         assertNull(enabled.get(CommentTag.DISABLED_PROPERTY));
+    }
+
+    @Test
+    void commentTimesUseViewerTimeZoneWithoutRewritingStoredTimes() {
+        Fixture fixture = new Fixture();
+        WikiComment comment = comment(1, "首页", null, 7L, "北京时间评论", false);
+        LocalDateTime stored = LocalDateTime.of(2026, 11, 4, 14, 8);
+        comment.setCreateAt(stored);
+        fixture.store.put(1L, comment);
+        fixture.timeDisplay = (time, pattern) -> time.atZone(java.time.ZoneOffset.UTC)
+                .withZoneSameInstant(java.time.ZoneId.of("Asia/Shanghai"))
+                .format(java.time.format.DateTimeFormatter.ofPattern(pattern));
+        CommentSection section = fixture.section(true, true);
+        String initial = section.render("首页", fixture.viewer(7L, "作者"));
+        String refresh = section.render("首页", fixture.viewer(7L, "作者"));
+        assertTrue(initial.contains("2026-11-04 22:08"), initial);
+        assertTrue(refresh.contains("2026-11-04 22:08"), refresh);
+        assertFalse(initial.contains("2026-11-04 14:08"), initial);
+        assertEquals(stored, comment.getCreateAt());
+    }
+
+    @Test
+    void invalidLocalizedPatternStillUsesViewerTimeZoneInFallback() {
+        Fixture fixture = new Fixture();
+        fixture.store.put(1L, comment(1, "首页", null, 7L, "时间格式回退", false));
+        org.springframework.context.support.StaticMessageSource messages = new org.springframework.context.support.StaticMessageSource();
+        messages.addMessage("format.dateTime", org.springframework.context.i18n.LocaleContextHolder.getLocale(), "invalid pattern");
+        fixture.messages = messages;
+        fixture.timeDisplay = (time, pattern) -> time.atZone(java.time.ZoneOffset.UTC)
+                .withZoneSameInstant(java.time.ZoneId.of("Asia/Shanghai"))
+                .format(java.time.format.DateTimeFormatter.ofPattern(pattern));
+        String html = fixture.section(true, true).render("首页", fixture.viewer(7L, "作者"));
+        assertTrue(html.contains("2026-01-02 11:04"), html);
     }
 
     @Test
@@ -339,6 +373,9 @@ class CommentSectionTest {
 
     /** 内存数据替身：评论表 + 用户 + 头像 + 渲染 + 访问控制。 */
     private static final class Fixture {
+        private MessageSource messages = MESSAGES;
+        private TimeDisplay timeDisplay = (time, pattern) -> time == null ? ""
+                : time.format(java.time.format.DateTimeFormatter.ofPattern(pattern));
 
         private final Map<Long, WikiComment> store = new LinkedHashMap<>();
         private String defaultAvatarUrl = UserStore.DEFAULT_AVATAR_URL;
@@ -462,7 +499,7 @@ class CommentSectionTest {
                     return Optional.empty();
                 }
             };
-            return new CommentSection(comments, users, wikiText, access, config, MESSAGES);
+            return new CommentSection(comments, users, wikiText, access, config, messages, timeDisplay);
         }
 
         Viewer viewer(long id, String name, String... groups) {

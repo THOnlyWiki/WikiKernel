@@ -219,7 +219,8 @@ class PageProtectionTest {
         String protectHtml = mockMvc.perform(get("/wiki/{title}", "特殊:保护页面").param("page", title).session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"wiki-protect-form\"")))
-                .andExpect(content().string(containsString("仅管理员可编辑")))
+                .andExpect(content().string(containsString("protect-read-groups")))
+                .andExpect(content().string(containsString("protect-edit-groups")))
                 .andExpect(content().string(containsString(backLink)))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertTrue(protectHtml.indexOf(">确认</button>") >= 0

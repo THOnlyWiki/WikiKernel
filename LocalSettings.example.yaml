@@ -15,6 +15,13 @@
 # ============================================================
 
 wikikernel:
+  # ---------------- 内置缓存 / Redis ----------------
+  cache:
+    page:
+      enabled: false           # 设为 true 开启页面正文缓存
+      backend: auto            # auto / redis：Redis 不可用时回退；memory：手动选择内置缓存
+      memory-size-mb: 128       # 内置缓存容量：64 / 128 / 256 MB，默认 128
+
   # ---------------- 服务器时间 ----------------
   # 服务器时区（IANA ID，如 Asia/Shanghai）；留空 = JVM / 操作系统默认。
   # 启动时设置 JVM 默认时区，影响评论时间等 LocalDateTime.now() 写入的时间；

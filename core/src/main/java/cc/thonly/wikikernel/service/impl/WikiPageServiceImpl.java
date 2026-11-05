@@ -548,6 +548,7 @@ public class WikiPageServiceImpl implements WikiPageService {
 
     @Override
     public List<String> getCSS(String title, String skinId) {
+        title = WikiTitles.normalize(title);
         List<String> styles = new ArrayList<>();
 
         // 1. 全站样式：Wiki.css + WikiKernel:Common.css（依次注入，顺序稳定）
@@ -614,6 +615,7 @@ public class WikiPageServiceImpl implements WikiPageService {
 
     @Override
     public List<String> getJS(String title, String skinId) {
+        title = WikiTitles.normalize(title);
         List<String> scripts = new ArrayList<>();
 
         // 1. 全站脚本：WikiKernel:Wiki.js + WikiKernel:Common.js

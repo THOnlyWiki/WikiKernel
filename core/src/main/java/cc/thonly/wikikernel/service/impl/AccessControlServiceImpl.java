@@ -11,6 +11,7 @@ import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.web.CodePages;
 import cc.thonly.wikikernel.web.ConfigPages;
 import cc.thonly.wikikernel.web.WikiNamespaces;
+import cc.thonly.wikikernel.web.WikiTitles;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
 
     @Override
     public Optional<WikiAccessRule> findRule(AccessAction action, String target) {
-        String value = Strings.trimToEmpty(target);
+        String value = WikiTitles.normalize(target);
         WikiAccessRule exact = null;
         WikiAccessRule prefix = null;
         int prefixLength = -1;
@@ -84,7 +85,7 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
             if (!action.id().equals(rule.getAction())) {
                 continue;
             }
-            String ruleTarget = Strings.trimToEmpty(rule.getTarget());
+            String ruleTarget = WikiTitles.normalize(rule.getTarget());
             if (AccessAction.EVERYONE.equals(ruleTarget)) {
                 star = rule;
             } else if (ruleTarget.endsWith("*")) {
@@ -102,13 +103,13 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
 
     @Override
     public String requiredGroups(AccessAction action, String target) {
-        String title = Strings.trimToEmpty(target);
+        String title = WikiTitles.normalize(target);
         Optional<WikiAccessRule> rule = findRule(action, title);
         if (isInterfaceWrite(action, title)) {
             // 界面页的写权限是一道独立的「编辑站点 CSS / JS」门槛：全局 * / 前缀规则
             // （例如 * 编辑 = 用户）只用于普通页面，不能顺带把界面页也放开。
             // 只有针对该页面标题的**精确规则**才能显式覆盖，便于处理特例。
-            return rule.filter(matched -> title.equals(Strings.trimToEmpty(matched.getTarget())))
+            return rule.filter(matched -> title.equals(WikiTitles.normalize(matched.getTarget())))
                     .map(WikiAccessRule::getGroupNames)
                     .orElse(PermissionService.GROUP_INTERFACE_ADMIN);
         }
@@ -134,7 +135,7 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
      * </ul>
      */
     private static String builtinGroups(AccessAction action, String target) {
-        String title = Strings.trimToEmpty(target);
+        String title = WikiTitles.normalize(target);
         boolean write = action == AccessAction.EDIT || action == AccessAction.CREATE || action == AccessAction.MOVE;
         if (write && (WikiNamespaces.isGadget(title)
                 || title.equalsIgnoreCase("WikiKernel:Gadgets-definition"))) {
@@ -143,7 +144,7 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
         if (write && CodePages.isInterfacePage(title)) {
             return PermissionService.GROUP_INTERFACE_ADMIN;
         }
-        if (write && WikiNamespaces.isWikiKernel(title)) {
+        if (write && (WikiNamespaces.isWikiKernel(title) || WikiNamespaces.isMediaWiki(title))) {
             return PermissionService.GROUP_ADMIN;
         }
         if (ConfigPages.hiddenWhenUnreadable(title) && action == AccessAction.READ) {
@@ -287,7 +288,7 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
         if (value.isEmpty()) {
             throw new IllegalArgumentException("访问控制目标不能为空");
         }
-        return value;
+        return WikiTitles.normalize(value);
     }
 
     /** 归一化用户组字符串：* 原样；否则按 | 拆分、去空白后重新拼接（空 = 无人）。 */

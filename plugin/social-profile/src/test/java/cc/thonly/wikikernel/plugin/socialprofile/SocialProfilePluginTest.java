@@ -98,7 +98,7 @@ class SocialProfilePluginTest {
 
         // 11 个特殊页：2 个原有（头像 / 私信）+ 9 个 SocialProfile
         List<SpecialPage> pages = context.lookup(SpecialPage.class);
-        assertEquals(11, pages.size());
+        assertEquals(12, pages.size());
         assertTrue(pages.stream().anyMatch(UploadAvatarSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(MessagesSpecialPage.class::isInstance));
         assertTrue(pages.stream().anyMatch(EditProfileSpecialPage.class::isInstance));

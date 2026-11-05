@@ -81,6 +81,9 @@ import java.util.stream.Collectors;
 @Service
 public class ActionApiService {
 
+    private static final Set<String> POST_ACTIONS = Set.of(
+            "edit", "move", "delete", "protect", "block", "unblock", "upload", "rollback", "login", "logout");
+
     /** Action API 错误（code + info，由控制器转成 MediaWiki 风格 JSON）。 */
     public static class ApiError extends RuntimeException {
         private final String code;
@@ -180,6 +183,10 @@ public class ActionApiService {
     // ==================== 入口 ====================
 
     public Object handle(String action, Map<String, String> params, HttpServletRequest request, int formatVersion) {
+        if (POST_ACTIONS.contains(action) && !"POST".equalsIgnoreCase(request.getMethod())) {
+            throw new ApiError("mustbeposted", "The " + action + " action must be requested using POST.");
+        }
+        checkAssertions(params, request);
         return switch (action) {
             case "query" -> query(params, request, formatVersion);
             case "parse" -> parse(params, request, formatVersion);
@@ -193,12 +200,41 @@ public class ActionApiService {
             case "compare" -> compare(params, request, formatVersion);
             case "rollback" -> rollback(params, request, formatVersion);
             case "login" -> login(params, request, formatVersion);
-            case "logout" -> logout(request);
+            case "logout" -> logout(params, request);
             case "tokens" -> legacyTokens(params, request);
             case "opensearch" -> opensearch(params, request);
             case "help" -> help();
             default -> pluginAction(action, params, request, formatVersion);
         };
+    }
+
+    private void checkAssertions(Map<String, String> params, HttpServletRequest request) {
+        WikiUser user = UserSession.current(request);
+        String assertion = params.get("assert");
+        if (assertion != null) {
+            switch (assertion) {
+                case "user" -> {
+                    if (user == null) {
+                        throw new ApiError("assertuserfailed", "Assertion that the user is logged in failed.");
+                    }
+                }
+                case "anon" -> {
+                    if (user != null) {
+                        throw new ApiError("assertanonfailed", "Assertion that the user is anonymous failed.");
+                    }
+                }
+                case "bot" -> {
+                    if (user == null || !permissionService.has(user.getId(), PermissionService.GROUP_BOT)) {
+                        throw new ApiError("assertbotfailed", "Assertion that the user has the bot right failed.");
+                    }
+                }
+                default -> throw new ApiError("badvalue", "Unrecognized value for parameter assert.");
+            }
+        }
+        if (params.containsKey("assertuser")
+                && (user == null || !user.getUsername().equals(params.get("assertuser")))) {
+            throw new ApiError("assertnameduserfailed", "Assertion that the user is the specified user failed.");
+        }
     }
 
     /** 插件提供的 action（common 的 {@code ActionApiModule}）；未命中返回 {@code unknown_action}。 */
@@ -324,7 +360,7 @@ public class ActionApiService {
         // pages（titles / pageids / revids）；redirects=1 时跟随 #REDIRECT
         List<Map<String, Object>> redirectRows = new ArrayList<>();
         List<PageRef> refs = resolvePages(params, user,
-                "1".equals(Strings.trimToEmpty(params.get("redirects"))), redirectRows);
+                params.containsKey("redirects"), redirectRows);
         if (!redirectRows.isEmpty()) {
             query.put("redirects", redirectRows);
         }
@@ -478,7 +514,7 @@ public class ActionApiService {
             }
             query.put("pages", pages);
         }
-        if ("1".equals(Strings.trimToEmpty(params.get("indexpageids")))) {
+        if (params.containsKey("indexpageids")) {
             List<Object> ids = new ArrayList<>();
             for (PageRef ref : refs) {
                 if (ref.page() != null) {
@@ -1163,7 +1199,11 @@ public class ActionApiService {
         files.sort(Comparator.comparing(WikiFile::getName, String.CASE_INSENSITIVE_ORDER));
         List<Map<String, Object>> items = new ArrayList<>();
         String next = null;
+        WikiUser viewer = UserSession.current(request);
         for (WikiFile file : files) {
+            if (!accessControlService.canRead("File:" + file.getName(), viewer)) {
+                continue;
+            }
             if (!cursor.isEmpty() && file.getName().compareToIgnoreCase(cursor) <= 0) {
                 continue;
             }
@@ -1202,11 +1242,13 @@ public class ActionApiService {
             title = "\u63a5\u53e3\u89e3\u6790";
         }
         WikiPage page = title.isEmpty() ? null : wikiPageService.getVisibleByTitle(title).orElse(null);
-        if (page != null && !accessControlService.canRead(title, user)) {
+        if (!accessControlService.canRead(title, user)) {
             throw new ApiError("permissiondenied", "You do not have permission to read this page.");
         }
-        String content = text != null ? text
-                : (page == null ? "" : wikiPageService.getLatestContent(page.getId()).orElse(""));
+        if (text == null && page == null) {
+            throw new ApiError("missingtitle", "The page you specified doesn't exist.");
+        }
+        String content = text != null ? text : wikiPageService.getLatestContent(page.getId()).orElse("");
         List<String> props = splitComma(params.get("prop"));
         if (props.isEmpty()) {
             props = List.of("text");
@@ -1278,10 +1320,10 @@ public class ActionApiService {
             throw new ApiError("blocked", blockService.notice(block.get()));
         }
         WikiPage existing = wikiPageService.getByTitle(title).orElse(null);
-        if (existing == null && "1".equals(Strings.trimToEmpty(params.get("nocreate")))) {
+        if (existing == null && params.containsKey("nocreate")) {
             throw new ApiError("nocreate-missing", "The page you specified doesn't exist.");
         }
-        if (existing != null && "1".equals(Strings.trimToEmpty(params.get("createonly")))) {
+        if (existing != null && params.containsKey("createonly")) {
             throw new ApiError("articleexists", "The article you tried to create has been created already.");
         }
         AccessAction action = existing == null ? AccessAction.CREATE : AccessAction.EDIT;
@@ -1301,11 +1343,17 @@ public class ActionApiService {
             throw new ApiError("titleblacklisted", "The title is blacklisted.");
         }
         Long baserevid = parseLong(params.get("baserevid"));
+        if (params.containsKey("baserevid") && (baserevid == null || baserevid < 0)) {
+            throw new ApiError("badinteger", "The baserevid parameter must be a non-negative integer.");
+        }
+        if (existing == null && baserevid != null && baserevid > 0) {
+            throw new ApiError("pagedeleted", "The page has been deleted since you started editing.");
+        }
         if (existing != null && baserevid != null && !Objects.equals(baserevid, existing.getLatestRevisionId())) {
             throw new ApiError("editconflict", "Edit conflict detected; reload the page and try again.");
         }
         String oldText = existing == null ? "" : wikiPageService.getLatestContent(existing.getId()).orElse("");
-        String submittedText = Strings.trimToEmpty(params.get("text"));
+        String submittedText = params.getOrDefault("text", "");
         boolean expandSignatures = true;
         String content;
         if (section.isEmpty()) {
@@ -1318,7 +1366,7 @@ public class ActionApiService {
             }
         } else {
             // 段落编辑：只展开新提交的段落，再替换进旧正文。
-            content = applySection(existing, oldText, section, params,
+            content = applySection(oldText, section, params,
                     SignatureExpander.expand(submittedText, user, LocalDateTime.now()));
             expandSignatures = false;
         }
@@ -1327,7 +1375,7 @@ public class ActionApiService {
         // （迁移前 api.php 不受 ConfirmEdit 影响，所以验证码钩子在 api 来源直接放行）
         RequestEditContext apiEditContext = RequestEditContext.api(
                 request, viewerOf(user), new RequestEditContext.FormValues(title, existing == null,
-                        content, summary, "1".equals(Strings.trimToEmpty(params.get("minor"))),
+                        content, summary, params.containsKey("minor") && !params.containsKey("notminor"),
                         existing == null ? EditContext.ACTION_CREATE : EditContext.ACTION_EDIT,
                         baserevid, params, false));
         EditHookService.Decision editDecision = editHookService.beforeSave(apiEditContext);
@@ -1348,9 +1396,9 @@ public class ActionApiService {
             root.put("edit", edit);
             return root;
         }
-        boolean bot = "1".equals(Strings.trimToEmpty(params.get("bot")))
+        boolean bot = params.containsKey("bot")
                 && permissionService.has(user.getId(), PermissionService.GROUP_BOT);
-        boolean minor = "1".equals(Strings.trimToEmpty(params.get("minor")));
+        boolean minor = params.containsKey("minor") && !params.containsKey("notminor");
         if (existing != null && oldText.equals(content)) {
             Map<String, Object> edit = new LinkedHashMap<>();
             edit.put("result", "Success");
@@ -1415,11 +1463,8 @@ public class ActionApiService {
     }
 
     /** {@code action=edit} 的 {@code section} 参数（仿 MediaWiki）：0=导语、N=第 N 段、{@code new}=追加新段落。 */
-    private String applySection(WikiPage existing, String oldText, String section,
+    private String applySection(String oldText, String section,
                                 Map<String, String> params, String submittedText) {
-        if (existing == null) {
-            throw new ApiError("nosuchsection", "There is no section " + section + ".");
-        }
         if ("new".equalsIgnoreCase(section)) {
             String heading = Strings.trimToEmpty(params.get("sectiontitle"));
             String text = submittedText;
@@ -1507,7 +1552,7 @@ public class ActionApiService {
             throw new ApiError("protectedpage", "This page has been protected; only administrators can move it.");
         }
         String reason = Strings.trimToEmpty(params.get("reason"));
-        boolean leaveRedirect = !"1".equals(Strings.trimToEmpty(params.get("noredirect")));
+        boolean leaveRedirect = !params.containsKey("noredirect");
         WikiPage moved = wikiPageService.movePage(user, page.getTitle(), to, leaveRedirect);
         Map<String, Object> move = new LinkedHashMap<>();
         move.put("from", page.getTitle());
@@ -1591,7 +1636,7 @@ public class ActionApiService {
         }
         String reason = Strings.trimToEmpty(params.get("reason"));
         WikiBlock block = blockService.block(user, target, BlockExpiry.resolve(expiry, LocalDateTime.now()),
-                reason, isApiOn(params.get("noemail")), isApiOn(params.get("nocreate")), isApiOn(params.get("anononly")));
+                reason, params.containsKey("noemail"), params.containsKey("nocreate"), params.containsKey("anononly"));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("user", block.getTarget());
         result.put("id", block.getId());
@@ -1864,7 +1909,7 @@ public class ActionApiService {
 
     private Map<String, Object> login(Map<String, String> params, HttpServletRequest request, int fv) {
         String lgname = Strings.trimToEmpty(params.get("lgname"));
-        String lgpassword = Strings.trimToEmpty(params.get("lgpassword"));
+        String lgpassword = params.getOrDefault("lgpassword", "");
         String token = Strings.trimToEmpty(params.get("lgtoken"));
         String loginToken = ActionApiTokens.login(request);
         Map<String, Object> root = new LinkedHashMap<>();
@@ -1909,7 +1954,8 @@ public class ActionApiService {
         return root;
     }
 
-    private Map<String, Object> logout(HttpServletRequest request) {
+    private Map<String, Object> logout(Map<String, String> params, HttpServletRequest request) {
+        requireCsrf(params, request);
         UserSession.logout(request);
         return new LinkedHashMap<>();
     }

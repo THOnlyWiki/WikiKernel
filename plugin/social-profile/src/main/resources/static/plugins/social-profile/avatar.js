@@ -12,6 +12,21 @@
     var button = document.getElementById('avatar-upload');
     var box = document.getElementById('avatar-message');
     var image = document.querySelector('.wiki-avatar');
+    var remove = document.getElementById('avatar-remove');
+    if (remove) {
+        remove.addEventListener('click', function () {
+            if (!window.confirm(MESSAGES.avatarRemoveConfirm || 'Remove this avatar?')) { return; }
+            remove.disabled = true;
+            fetch('/api/user/avatar/remove', {method:'POST',
+                headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
+                body:new URLSearchParams({user:remove.getAttribute('data-user') || ''})
+            }).then(function (response) { return response.json(); }).then(function (result) {
+                showMessage(result.message || MESSAGES.operationFailed, result.code === 200);
+                if (result.code === 200 && image && result.data && result.data.url) { swapAvatar(image, result.data.url); }
+            }).catch(function () { showMessage(MESSAGES.networkError || 'Network error'); })
+            .finally(function () { remove.disabled = false; });
+        });
+    }
     if (!input || !button) {
         return;
     }

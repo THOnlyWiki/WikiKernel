@@ -1,5 +1,8 @@
 package cc.thonly.wikikernel.web;
 
+import cc.thonly.wikikernel.config.HttpProperties;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -31,6 +34,17 @@ import java.util.Set;
 @Component
 public class SameOriginWriteFilter extends OncePerRequestFilter {
 
+    private final HttpProperties properties;
+
+    public SameOriginWriteFilter() {
+        this(new HttpProperties());
+    }
+
+    @Autowired
+    public SameOriginWriteFilter(HttpProperties properties) {
+        this.properties = properties;
+    }
+
     /** 需要检查的写方法。 */
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
@@ -51,7 +65,7 @@ public class SameOriginWriteFilter extends OncePerRequestFilter {
                 reject(response);
                 return;
             }
-            if (sameOrigin(origin, request.getHeader("Host"))) {
+            if (sameOrigin(origin, request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -61,7 +75,7 @@ public class SameOriginWriteFilter extends OncePerRequestFilter {
 
         String referer = trim(request.getHeader("Referer"));
         if (!referer.isEmpty()) {
-            if (sameOrigin(referer, request.getHeader("Host"))) {
+            if (sameOrigin(referer, request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -117,31 +131,37 @@ public class SameOriginWriteFilter extends OncePerRequestFilter {
         return false;
     }
 
-    /** {@code Origin}/{@code Referer} 的主机（含端口）是否与请求 Host 一致。 */
-    private static boolean sameOrigin(String source, String host) {
+    /** {@code Origin}/{@code Referer} 的协议、主机和有效端口是否与当前请求一致。 */
+    private boolean sameOrigin(String source, HttpServletRequest request) {
+        String host = request.getHeader("Host");
         if (host == null || host.isBlank()) {
             return false;
         }
         try {
-            URI uri = URI.create(source);
-            String sourceHost = uri.getHost();
-            if (sourceHost == null) {
+            URI origin = URI.create(source);
+            String scheme = request.getScheme();
+            if (properties.isTrustProxyHeaders()) {
+                String forwardedProto = trim(request.getHeader("X-Forwarded-Proto")).split(",", 2)[0].trim();
+                if ("https".equalsIgnoreCase(forwardedProto) || "http".equalsIgnoreCase(forwardedProto)) {
+                    scheme = forwardedProto;
+                }
+            }
+            URI target = URI.create(scheme + "://" + host);
+            if (origin.getHost() == null || target.getHost() == null
+                    || origin.getRawUserInfo() != null || target.getRawUserInfo() != null
+                    || !("http".equalsIgnoreCase(origin.getScheme()) || "https".equalsIgnoreCase(origin.getScheme()))
+                    || !origin.getScheme().equalsIgnoreCase(target.getScheme())) {
                 return false;
             }
-            String sourcePort = uri.getPort() < 0 ? defaultPort(uri.getScheme()) : String.valueOf(uri.getPort());
-            int colon = host.lastIndexOf(':');
-            String hostName = colon > 0 ? host.substring(0, colon) : host;
-            String hostPort = colon > 0 ? host.substring(colon + 1) : null;
-            if (hostPort == null) {
-                hostPort = defaultPort(uri.getScheme());
-            }
-            return sourceHost.equalsIgnoreCase(hostName) && sourcePort.equals(hostPort);
+            int originPort = origin.getPort() < 0 ? defaultPort(origin.getScheme()) : origin.getPort();
+            int targetPort = target.getPort() < 0 ? defaultPort(target.getScheme()) : target.getPort();
+            return origin.getHost().equalsIgnoreCase(target.getHost()) && originPort == targetPort;
         } catch (IllegalArgumentException exception) {
             return false;
         }
     }
 
-    private static String defaultPort(String scheme) {
-        return "https".equalsIgnoreCase(scheme) ? "443" : "80";
+    private static int defaultPort(String scheme) {
+        return "https".equalsIgnoreCase(scheme) ? 443 : 80;
     }
 }

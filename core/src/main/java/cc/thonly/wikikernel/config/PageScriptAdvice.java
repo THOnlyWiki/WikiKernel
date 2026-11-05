@@ -83,7 +83,8 @@ public class PageScriptAdvice {
         String fullTitle = title.toString();
         Object rest = variables.get("rest");
         if (rest != null && !rest.toString().isEmpty()) {
-            fullTitle = fullTitle + "/" + rest;
+            String suffix = rest.toString();
+            fullTitle = fullTitle + (suffix.startsWith("/") ? "" : "/") + suffix;
         }
         return fullTitle;
     }

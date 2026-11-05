@@ -237,9 +237,18 @@
                     <select id="settings-cache-page-backend" name="cachePageBackend">
                         <option value="auto" th:selected="${cachePageBackend == 'auto'}" th:text="#{settings.cachePageBackendAuto}">自动（能用 Redis 就用 Redis）</option>
                         <option value="redis" th:selected="${cachePageBackend == 'redis'}" th:text="#{settings.cachePageBackendRedis}">只用 Redis</option>
-                        <option value="memory" th:selected="${cachePageBackend == 'memory'}" th:text="#{settings.cachePageBackendMemory}">只用进程内缓存</option>
+                        <option value="memory" th:selected="${cachePageBackend == 'memory'}" th:text="#{settings.cachePageBackendMemory}">内置缓存器</option>
                         <option value="none" th:selected="${cachePageBackend == 'none'}" th:text="#{settings.cachePageBackendNone}">不缓存</option>
                     </select>
+                </div>
+                <div class="form-field">
+                    <label for="settings-cache-page-memory-size" th:text="#{settings.cachePageMemorySize}">内置缓存容量</label>
+                    <select id="settings-cache-page-memory-size" name="cachePageMemorySizeMb">
+                        <option value="64" th:selected="${cachePageMemorySizeMb == 64}">64 MB</option>
+                        <option value="128" th:selected="${cachePageMemorySizeMb == 128}">128 MB</option>
+                        <option value="256" th:selected="${cachePageMemorySizeMb == 256}">256 MB</option>
+                    </select>
+                    <div class="wiki-hint" th:text="#{settings.cachePageMemoryHint}">手动选择内置缓存或 Redis 不可用时生效；重启后缓存清空。</div>
                 </div>
                 <div class="form-field">
                     <label for="settings-cache-page-ttl" th:text="#{settings.cachePageTtl}">缓存有效期（秒）</label>

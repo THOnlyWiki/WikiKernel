@@ -4,6 +4,7 @@
       th:replace="~{__${skin.layout}__ :: layout(${editHeading}, ~{:: section})}">
 <body>
 <section>
+    <th:block th:replace="~{fragments/system-interface :: editnotice}"/>
     <th:block th:unless="${editConflictNotice != null}">
         <p class="edit-intro" th:if="${editSection != null}"
            th:text="#{edit.introSection(${wikiTitle}, ${editSectionHeading})}">

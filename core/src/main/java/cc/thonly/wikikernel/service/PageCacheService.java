@@ -30,6 +30,14 @@ public interface PageCacheService extends PageCache {
     /** 站点设置键：进程内 LRU 条目上限（默认 500）。 */
     String MAX_ENTRIES_KEY = "cache.page.max-entries";
 
+    /** 内置缓存的容量档位（64 / 128 / 256 MB，默认 128）。 */
+    String MEMORY_SIZE_MB_KEY = "cache.page.memory-size-mb";
+
+    int memorySizeMb();
+
+    /** 立即按当前容量收缩内置缓存，不访问 Redis。 */
+    void trimMemory();
+
     /** 站点设置键：模板变更后是否批量预渲染（默认 true）。 */
     String PRELOAD_ON_TEMPLATE_CHANGE_KEY = "cache.page.preload-on-template-change";
 

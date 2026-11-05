@@ -6,6 +6,11 @@ import cc.thonly.wikikernel.common.plugin.Extension;
 import cc.thonly.wikikernel.plugin.PluginManager;
 import cc.thonly.wikikernel.service.PageDisplayHookService;
 import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.service.PermissionService;
+import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.db.mapper.WikiUserMapper;
+import cc.thonly.wikikernel.user.UserSession;
+import org.springframework.mock.web.MockHttpSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,8 +30,10 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * 页面显示钩子（{@link PageDisplayHook}）的 core 侧接线：
@@ -52,9 +59,61 @@ class PluginPageDisplayHookTest {
     @Autowired
     private FakeDisplayExtensions extensions;
 
+    @Autowired private PermissionService permissions;
+    @Autowired private WikiUserMapper users;
+
     @AfterEach
     void clearFakes() {
         extensions.hooks.clear();
+    }
+
+    @Test
+    void pluginMissingPageLoadsItsCssAndJavaScriptWithoutCreatingAnArticle() throws Exception {
+        String title = "插件 虚拟页面" + System.nanoTime() + "/子页面";
+        wikiPageService.editPage(null, title + "/Common.css", ".virtual-custom-css { color: rgb(1, 2, 3); }");
+        wikiPageService.editPage(null, title + "/Common.js", "window.VIRTUAL_CUSTOM_JS = true;");
+        extensions.hooks.add(new PageDisplayHook() {
+            @Override public String renderMissingPage(PageDisplayContext context) {
+                return context.title().equals(title) ? "<p class=\"virtual-custom-css\">虚拟正文</p>" : null;
+            }
+        });
+        String html = mockMvc.perform(get("/wiki/{title}/{rest}", title.split("/")[0].replace(' ', '_'), "子页面"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(".virtual-custom-css { color: rgb(1, 2, 3); }")))
+                .andExpect(content().string(containsString("/Common.js?action=raw&amp;ctype=text/javascript")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        mockMvc.perform(get("/wiki/{title}/{rest}", title.split("/")[0], "子页面/Common.js")
+                        .param("action", "raw").param("ctype", "text/javascript"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("window.VIRTUAL_CUSTOM_JS = true;"));
+        org.junit.jupiter.api.Assertions.assertTrue(wikiPageService.getByTitle(title).isEmpty());
+        java.nio.file.Path fixture = java.nio.file.Path.of("build/ui-fixtures/virtual-assets.html");
+        java.nio.file.Files.createDirectories(fixture.getParent());
+        java.nio.file.Files.writeString(fixture, html);
+    }
+
+    @Test
+    void protectedVirtualPageChecksReadPermissionBeforeRenderingItsBody() throws Exception {
+        String title = "受保护的虚拟页面" + System.nanoTime();
+        extensions.hooks.add(new PageDisplayHook() {
+            @Override public String renderMissingPage(PageDisplayContext context) {
+                return context.title().equals(title) ? "<p>PRIVATE_VIRTUAL_BODY</p>" : null;
+            }
+        });
+        WikiUser admin = new WikiUser();
+        admin.setUsername("VirtualAdmin" + System.nanoTime()); admin.setPassword("unused"); users.insert(admin);
+        permissions.grantDefault(admin.getId()); permissions.grant(admin.getId(), PermissionService.GROUP_ADMIN, null);
+        MockHttpSession session = new MockHttpSession(); session.setAttribute(UserSession.ATTRIBUTE, admin.toTransferCopy());
+        mockMvc.perform(post("/api/pages/protect").session(session).param("title", title)
+                        .param("readGroups", PermissionService.GROUP_ADMIN).param("editGroups", PermissionService.GROUP_ADMIN))
+                .andExpect(jsonPath("$.code").value(200));
+        mockMvc.perform(get("/wiki/{title}", title)).andExpect(status().isForbidden())
+                .andExpect(content().string(not(containsString("PRIVATE_VIRTUAL_BODY"))));
+        mockMvc.perform(get("/wiki/{title}", title).session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("PRIVATE_VIRTUAL_BODY")));
+        mockMvc.perform(get("/wiki/特殊:保护页面").session(session).param("page", title))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("id=\"wiki-protect-form\"")));
+        org.junit.jupiter.api.Assertions.assertTrue(wikiPageService.getByTitle(title).isEmpty());
     }
 
     @Test

@@ -71,4 +71,9 @@ public interface UserStore {
     default List<UserRef> search(String keyword, int limit) {
         return List.of();
     }
+
+    /** 最近注册的公开用户信息，按注册时间及 ID 倒序；实现应限制最大返回数量。 */
+    default List<UserRef> newest(int limit) {
+        return List.of();
+    }
 }

@@ -28,6 +28,11 @@ public interface AvatarStore {
      */
     String store(long userId, String originalFileName, String contentType, byte[] content);
 
+    /** 删除当前头像并恢复站点默认头像；实现需避免删除并发上传的新文件。 */
+    default String remove(long userId) {
+        throw new UnsupportedOperationException("Avatar removal is not supported");
+    }
+
     /** 按文件名解析磁盘路径（带路径穿越防护）；不存在返回空。 */
     Optional<Path> resolve(String fileName);
 

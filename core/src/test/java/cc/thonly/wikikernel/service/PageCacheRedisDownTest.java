@@ -27,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "spring.data.redis.port=6399",
         "spring.data.redis.timeout=300ms",
         "wikikernel.cache.page.enabled=true",
-        "wikikernel.cache.page.backend=redis"
+        "wikikernel.cache.page.backend=redis",
+        "wikikernel.cache.page.memory-size-mb=64"
 })
 class PageCacheRedisDownTest {
 
@@ -51,6 +52,8 @@ class PageCacheRedisDownTest {
         assertTrue(pageCacheService.enabled(), "Redis 连不上时缓存仍应可用（退回进程内 LRU）");
         assertEquals("memory", pageCacheService.backendName(),
                 "连不上 Redis 必须退回进程内 LRU，而不是让页面渲染失败");
+
+        assertEquals(64, pageCacheService.memorySizeMb());
 
         String title = "Redis降级页" + System.nanoTime();
         WikiPage page = wikiPageService.editPage(null, title, "'''Redis 不可用时照样渲染'''");

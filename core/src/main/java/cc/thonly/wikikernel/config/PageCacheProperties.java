@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *       enabled: false              # 总开关，默认关闭（开箱即安全）
  *       backend: auto               # auto / redis / memory / none
  *       ttl-seconds: 300            # 条目有效期
+ *       memory-size-mb: 128         # 内置缓存容量（64 / 128 / 256 MB）
  *       max-entries: 500            # 进程内 LRU 上限（条数）
  *       preload-on-template-change: true
  *       preload-parallelism: 8      # 不写 = CPU 核数
@@ -27,6 +28,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Data
 @ConfigurationProperties(prefix = "wikikernel.cache.page")
 public class PageCacheProperties {
+
+    public static final int DEFAULT_MEMORY_SIZE_MB = 128;
+
+    /** 内置缓存容量：64 / 128 / 256 MB，默认 128；同时适用于 Redis 的故障回退。 */
+    private Integer memorySizeMb = DEFAULT_MEMORY_SIZE_MB;
+
+    public static boolean supportedMemorySizeMb(int value) {
+        return value == 64 || value == 128 || value == 256;
+    }
+
+    public static int normalizeMemorySizeMb(Integer value) {
+        return value != null && supportedMemorySizeMb(value) ? value : DEFAULT_MEMORY_SIZE_MB;
+    }
 
     /** Redis 键前缀的默认值：与旧版硬编码一致，升级后仍读到同一批键。 */
     public static final String DEFAULT_REDIS_KEY_PREFIX = "wikikernel:pagecache:";

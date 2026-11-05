@@ -6,6 +6,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         "wikikernel.cache.page.ttl-seconds=60"
 })
 class PageCacheRedisTest {
+
+    private static final String TEST_REDIS_PREFIX = "wikikernel:test:" + UUID.randomUUID() + ":";
+
+    @DynamicPropertySource
+    static void isolatedRedisKeys(DynamicPropertyRegistry registry) {
+        registry.add("wikikernel.cache.page.redis.key-prefix", () -> TEST_REDIS_PREFIX);
+    }
 
     @Autowired
     private PageCacheService pageCacheService;

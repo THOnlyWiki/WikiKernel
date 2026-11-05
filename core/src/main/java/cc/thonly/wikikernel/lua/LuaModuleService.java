@@ -6,6 +6,7 @@ import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.service.TitleBlacklistService;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.web.WikiTitles;
+import cc.thonly.wikikernel.wikitext.TransclusionPolicy;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
@@ -71,6 +72,7 @@ public class LuaModuleService {
     private static final List<String> MODULE_PREFIXES = List.of("模块:", "Module:");
 
     private final WikiPageService wikiPageService;
+    private final TransclusionPolicy transclusionPolicy;
     private final MessageSource messageSource;
     private final LuaSiteInfoProvider siteInfoProvider;
     private final TitleBlacklistService titleBlacklistService;
@@ -110,17 +112,17 @@ public class LuaModuleService {
     }
 
     /** 模块标题 → 编译结果（LRU，访问加锁）。 */
-    private final Map<String, Compiled> cache = new LinkedHashMap<>(16, 0.75f, true) {
+    private final Map<ScopedModule, Compiled> cache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Compiled> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<ScopedModule, Compiled> eldest) {
             return size() > MAX_CACHE;
         }
     };
 
     /** 数据模块标题 → 已加载的数据表 + 依赖快照（见 {@code mw.loadData}）。 */
-    private final Map<String, DataEntry> dataCache = new LinkedHashMap<>(16, 0.75f, true) {
+    private final Map<ScopedModule, DataEntry> dataCache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, DataEntry> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<ScopedModule, DataEntry> eldest) {
             return size() > MAX_DATA_CACHE;
         }
     };
@@ -172,8 +174,9 @@ public class LuaModuleService {
 
     public LuaModuleService(WikiPageService wikiPageService, MessageSource messageSource,
                             LuaSiteInfoProvider siteInfoProvider,
-                            TitleBlacklistService titleBlacklistService) {
+                            TitleBlacklistService titleBlacklistService, TransclusionPolicy transclusionPolicy) {
         this.wikiPageService = wikiPageService;
+        this.transclusionPolicy = transclusionPolicy;
         this.messageSource = messageSource;
         this.siteInfoProvider = siteInfoProvider;
         this.titleBlacklistService = titleBlacklistService;
@@ -264,6 +267,9 @@ public class LuaModuleService {
 
     // ==================== 模块解析与编译 ====================
 
+    private record ScopedModule(String title, String readerScope) {
+    }
+
     private record ModuleSource(String title, long revisionId, String source) {
     }
 
@@ -294,7 +300,8 @@ public class LuaModuleService {
             }
         }
         for (String title : candidates.stream().distinct().toList()) {
-            Optional<WikiPage> page = wikiPageService.getVisibleByTitle(title);
+            Optional<WikiPage> page = wikiPageService.getVisibleByTitle(title)
+                .filter(candidate -> transclusionPolicy.canInclude(candidate.getTitle()));
             if (page.isPresent()) {
                 String source = wikiPageService.getLatestContent(page.get().getId()).orElse("");
                 long revision = page.get().getLatestRevisionId() == null
@@ -308,6 +315,7 @@ public class LuaModuleService {
     /** 模块标题的当前修订号（不存在 = -1；依赖检查用，只查页面不取正文）。 */
     private long latestRevisionOf(String title) {
         return wikiPageService.getVisibleByTitle(title)
+                .filter(candidate -> transclusionPolicy.canInclude(candidate.getTitle()))
                 .map(page -> page.getLatestRevisionId() == null ? 0L : page.getLatestRevisionId())
                 .orElse(-1L);
     }
@@ -323,9 +331,10 @@ public class LuaModuleService {
     }
 
     private Compiled compiled(ModuleSource module) {
+        ScopedModule cacheKey = new ScopedModule(module.title(), transclusionPolicy.cacheScope());
         Compiled cached;
         synchronized (cache) {
-            cached = cache.get(module.title());
+            cached = cache.get(cacheKey);
         }
         if (cached != null && cached.revisionId() == module.revisionId()
                 && dependenciesCurrent(cached.dependencies())) {
@@ -337,7 +346,7 @@ public class LuaModuleService {
         Compiled compiled = new Compiled(module.revisionId(), globals, chunk, debug,
                 LuaHtmlLibrary.load(globals), new ConcurrentHashMap<>());
         synchronized (cache) {
-            cache.put(module.title(), compiled);
+            cache.put(cacheKey, compiled);
         }
         return compiled;
     }
@@ -543,8 +552,9 @@ public class LuaModuleService {
         }
         ModuleSource module = found.get();
         recorder.put(module.title(), module.revisionId());
+        ScopedModule cacheKey = new ScopedModule(module.title(), transclusionPolicy.cacheScope());
         synchronized (dataCache) {
-            DataEntry entry = dataCache.get(module.title());
+            DataEntry entry = dataCache.get(cacheKey);
             if (entry != null && entry.revisionId() == module.revisionId()
                     && dependenciesCurrent(entry.dependencies())) {
                 return entry.table();
@@ -565,7 +575,7 @@ public class LuaModuleService {
             recorder.putAll(nested);
         }
         synchronized (dataCache) {
-            dataCache.put(module.title(), new DataEntry(module.revisionId(), Map.copyOf(nested), table));
+            dataCache.put(cacheKey, new DataEntry(module.revisionId(), Map.copyOf(nested), table));
         }
         return table;
     }
@@ -720,6 +730,7 @@ public class LuaModuleService {
             return null;
         }
         return wikiPageService.getVisibleByTitle(title)
+                .filter(candidate -> transclusionPolicy.canInclude(candidate.getTitle()))
                 .flatMap(page -> wikiPageService.getLatestContent(page.getId()))
                 .orElse(null);
     }

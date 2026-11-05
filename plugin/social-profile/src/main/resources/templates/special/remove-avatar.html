@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body><section>
+    <p th:if="${featureDisabled}" th:text="#{feature.userInteractionDisabledHint}"></p>
+    <p th:if="${!featureDisabled and avatarLogin}" th:text="#{permissions.loginRequired}"></p>
+    <p class="wiki-form-error" th:if="${avatarRemoveForbidden == true}" th:text="#{permissions.editForbidden}"></p>
+    <th:block th:if="${!featureDisabled and !avatarLogin and avatarRemoveForbidden == false}">
+        <p th:text="#{avatar.removeHint(${avatarUserName})}"></p>
+        <img class="wiki-avatar" width="75" height="75" th:src="${avatarUrl}" th:alt="${avatarUserName}"/>
+        <div class="form-actions">
+            <button type="button" id="avatar-remove" class="wiki-button wiki-button-danger"
+                    th:attr="data-user=${avatarUserName}" th:text="#{avatar.remove}"></button>
+            <a class="wiki-button" th:href="@{/wiki/特殊:上传头像}" th:text="#{avatar.upload}"></a>
+        </div>
+        <p id="avatar-message" class="form-message" role="status" hidden></p>
+    </th:block>
+</section></body></html>

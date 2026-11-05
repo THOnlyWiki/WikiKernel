@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConfigCatalogConsistencyTest {
 
     /** 配置全集的键数：新增 / 删除配置项时同步更新（配合下面的断言一起防漂移）。 */
-    private static final int EXPECTED_CATALOG_KEY_COUNT = 124;
+    private static final int EXPECTED_CATALOG_KEY_COUNT = 125;
 
     /** metadata 里由 @ConfigurationProperties 暴露的键（本测试的第二方）。 */
     private static Set<String> metadataKeys() {
@@ -108,6 +108,20 @@ class ConfigCatalogConsistencyTest {
     }
 
     /** 断言：提交在仓库里的 Schema 与现场重新生成的文本逐字节一致（跨平台忽略 CRLF 差异）。 */
+    @Test
+    void memorySizeSchemaUsesNumericPresetsAndDefault128() {
+        var schema = new tools.jackson.databind.ObjectMapper().readTree(ConfigSchemaGenerator.generate());
+        var capacity = schema.at("/properties/wikikernel/properties/cache/properties/page/properties/memory-size-mb");
+        assertEquals("integer", capacity.path("type").asString());
+        assertEquals(128, capacity.path("default").asInt());
+        assertEquals(3, capacity.path("enum").size());
+        int[] sizes = {64, 128, 256};
+        for (int index = 0; index < sizes.length; index++) {
+            assertTrue(capacity.path("enum").get(index).isIntegralNumber());
+            assertEquals(sizes[index], capacity.path("enum").get(index).asInt());
+        }
+    }
+
     @Test
     void committedSchemaMatchesGeneratedSchema() {
         String generated = ConfigSchemaGenerator.generate();

@@ -1313,3 +1313,18 @@ body:has(#profile-top) h1#firstHeading {
     margin: 0 !important;
     display: none;
 }
+
+/* 保留原版 35% / 60% 桌面分栏，修正 core 的 border-box 对原版头像尺寸的影响。 */
+.sp-profile-columns { container: social-profile / inline-size; display: flow-root; min-width: 0; }
+#profile-image img, .user-board-message-image img { box-sizing: content-box; }
+#profile-right { float: none; margin-inline-start: 91px; min-width: 0; }
+#profile-title { max-width: 100%; overflow-wrap: anywhere; }
+.profile-actions { overflow-wrap: anywhere; }
+.user-board-message-body { width: calc(100% - 44px); min-width: 0; margin-inline-end: 0; overflow-wrap: anywhere; }
+@container social-profile (max-width: 620px) {
+    #user-page-left, #user-page-right { float: none; width: 100%; min-width: 0; }
+    #user-page-left { margin-bottom: 20px; }
+    .user-page-message-form textarea { width: 100%; box-sizing: border-box; }
+}
+.skin-timeless-dark #user-page-left h2, .skin-timeless-dark #user-page-right h2 { color: var(--color-base--emphasized); }
+.skin-timeless-dark .user-board-message-from { background: var(--color-surface-2); }

@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+}
+
+description = 'CPU Guard: Debian cgroup v2 JVM CPU quota and affinity'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+processResources {
+    filesMatching('META-INF/wiki-plugin.properties') {
+        expand(pluginName: project.findProperty('pluginName') ?: project.name,
+                pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',
+                pluginDescription: project.findProperty('pluginDescription') ?: '')
+    }
+}
+
+jar {
+    archiveVersion = project.findProperty('pluginVersion') ?: project.version.toString()
+    from('deploy') { into 'deploy' }
+    from('README.md')
+}
+
+tasks.register('bundle', Zip) {
+    dependsOn tasks.named('jar')
+    archiveFileName = "cpu-guard-${project.findProperty('pluginVersion') ?: '1.0.0'}.zip"
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    from(tasks.named('jar').flatMap { it.archiveFile }) { into 'plugins' }
+    from('deploy') { into 'deploy' }
+    from('README.md')
+}

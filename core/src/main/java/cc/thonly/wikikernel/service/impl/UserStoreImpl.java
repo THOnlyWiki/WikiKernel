@@ -65,6 +65,15 @@ public class UserStoreImpl implements UserStore {
     }
 
     @Override
+    public List<UserRef> newest(int limit) {
+        if (limit <= 0) { return List.of(); }
+        return userMapper.selectList(Wrappers.<WikiUser>lambdaQuery()
+                        .orderByDesc(WikiUser::getCreateAt).orderByDesc(WikiUser::getId)
+                        .last("LIMIT " + Math.min(limit, 48))).stream()
+                .map(UserStoreImpl::ref).toList();
+    }
+
+    @Override
     public Map<Long, String> names(Collection<Long> userIds) {
         return userService.usernames(userIds == null ? List.of() : userIds);
     }

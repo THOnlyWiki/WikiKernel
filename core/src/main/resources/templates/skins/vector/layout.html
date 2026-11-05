@@ -113,10 +113,12 @@
 
         <main id="content">
             <!-- 页面横幅（页面标题上方）：由插件页面显示钩子（PageDisplayHook.beforeTitle）提供 -->
-            <div id="page-banner" th:if="${pageBeforeTitleHtml != null}">
+            <div id="page-banner" th:if="${pageBeforeTitleHtml != null or (systemInterface != null and systemInterface.noticeHtml != null)}">
+                <th:block th:replace="~{fragments/system-interface :: notice}"/>
                 <th:block th:each="fragment : ${pageBeforeTitleHtml}" th:utext="${fragment}"></th:block>
             </div>
             <h1 id="firstHeading" class="firstHeading" th:if="${hideTitle == null || !hideTitle}" th:text="${pageTitle}">页面标题</h1>
+        <th:block th:replace="~{fragments/system-interface :: tagline}"/>
             <!-- 子页面面包屑：a/b/c → < a/b < a（仿 MediaWiki 的 contentSub） -->
             <div th:replace="~{fragments/subpages :: subpages(${subpageBreadcrumb})}"></div>
             <!-- 所有页面统一的内容容器：#bodyContent + .wiki-content（正文排版与词条一致） -->

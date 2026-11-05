@@ -45,6 +45,9 @@ import java.util.Set;
 @RequestMapping("/api/pages")
 public class PageApiController {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private cc.thonly.wikikernel.service.PageProtectionService pageProtectionService;
+
     private final WikiPageService wikiPageService;
     private final PermissionService permissionService;
     private final AccessControlService accessControlService;
@@ -150,15 +153,38 @@ public class PageApiController {
     /** 保护 / 解除保护：{@code title} 页面标题，{@code protected=true|false}。 */
     @PostMapping("/protect")
     public AjaxResult<Map<String, Object>> protect(@RequestParam("title") String title,
-                                                   @RequestParam("protected") boolean protectedFlag,
+                                                   @RequestParam(value = "protected", required = false) Boolean legacyProtected,
+                                                   @RequestParam(value = "readGroups", required = false) List<String> readGroups,
+                                                   @RequestParam(value = "editGroups", required = false) List<String> editGroups,
                                                    HttpServletRequest request) {
         WikiUser user = UserSession.current(request);
         if (user == null) {
             return AjaxResult.error(AjaxCode.UNAUTHORIZED, message("permissions.loginRequired"));
         }
+        Optional<WikiTitles.TitleError> titleError = WikiTitles.validate(title);
+        if (titleError.isPresent()) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST,
+                    message(titleError.get().messageKey(), titleError.get().detail()));
+        }
         if (!accessControlService.can(AccessAction.PROTECT, title, user)) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, message("protect.forbidden"));
         }
+        if (blockService.currentBlock(user).isPresent()) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("protect.forbidden"));
+        }
+        boolean custom = readGroups != null || editGroups != null;
+        String reading = null, editing = null;
+        if (custom) {
+            try {
+                reading = pageProtectionService.normalize(readGroups);
+                editing = pageProtectionService.normalize(editGroups);
+            } catch (IllegalArgumentException exception) {
+                return AjaxResult.error(AjaxCode.BAD_REQUEST, message(exception.getMessage()));
+            }
+        } else if (legacyProtected == null) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST, message("protect.invalidGroups"));
+        }
+        boolean protectedFlag = custom ? PermissionService.GROUP_ADMIN.equals(editing) : legacyProtected;
         // 动作前钩子（ActionGuard，action=protect）
         ActionHookService.Decision protectDecision = actionHookService.beforeAction(RequestActionContext.builder(
                         request, Viewers.of(user, permissionService), "protect")
@@ -169,15 +195,23 @@ public class PageApiController {
         if (protectDecision.blocked()) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, protectDecision.message());
         }
-        Optional<WikiPage> page = wikiPageService.setProtected(user, Strings.trimToEmpty(title), protectedFlag);
-        if (page.isEmpty()) {
-            return AjaxResult.error(AjaxCode.NOT_FOUND, message("error.pageMissing", title));
+        Map<String, Object> data;
+        if (custom) {
+            String canonical = pageProtectionService.update(user, title, reading, editing);
+            data = new LinkedHashMap<>();
+            data.put("title", canonical);
+            data.put("url", WikiUrls.pagePath(canonical));
+        } else {
+            Optional<WikiPage> page = wikiPageService.setProtected(user, Strings.trimToEmpty(title), protectedFlag);
+            if (page.isEmpty()) {
+                return AjaxResult.error(AjaxCode.NOT_FOUND, message("error.pageMissing", title));
+            }
+            data = pageData(page.get());
         }
-        Map<String, Object> data = pageData(page.get());
         if (!protectDecision.warnings().isEmpty()) {
             data.put("warnings", protectDecision.warnings());
         }
-        return AjaxResult.success(message(protectedFlag ? "protect.successOn" : "protect.successOff"), data);
+        return AjaxResult.success(message(custom ? "protect.successRules" : protectedFlag ? "protect.successOn" : "protect.successOff"), data);
     }
 
     /**
@@ -261,9 +295,12 @@ public class PageApiController {
         if (block.isPresent()) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, blockService.notice(block.get()));
         }
-        String normalized = Strings.trimToEmpty(title);
+        String normalized = WikiTitles.normalize(title);
         if (normalized.isEmpty()) {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("error.titleRequired"));
+        }
+        if (!accessControlService.canRead(normalized, user)) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("error.readForbidden"));
         }
         WikiPage existing = wikiPageService.getByTitle(normalized).orElse(null);
         AccessAction action = existing == null ? AccessAction.CREATE : AccessAction.EDIT;

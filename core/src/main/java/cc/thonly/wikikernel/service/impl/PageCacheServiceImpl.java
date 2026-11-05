@@ -1,6 +1,7 @@
 package cc.thonly.wikikernel.service.impl;
 
 import cc.thonly.wikikernel.common.data.WikiPage;
+import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.common.service.PageLinkStore;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.PageCacheProperties;
@@ -133,6 +134,7 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
     private final WikiPageService wikiPageService;
     private final PageLinkStore pageLinkStore;
     private final Environment environment;
+    private final AccessControlService accessControlService;
     private final MemoryPageCacheBackend memoryBackend;
     private final RedisPageCacheBackend redisBackend;
     private final AtomicLong preloadedPages = new AtomicLong();
@@ -149,14 +151,16 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
                                 PageLinkStore pageLinkStore,
                                 Environment environment,
                                 ObjectProvider<StringRedisTemplate> redisTemplateProvider,
-                                ObjectProvider<ObjectMapper> objectMapperProvider) {
+                                ObjectProvider<ObjectMapper> objectMapperProvider,
+                                AccessControlService accessControlService) {
         this.siteSettingsService = siteSettingsService;
+        this.accessControlService = accessControlService;
         this.properties = properties;
         this.pageBodyRenderer = pageBodyRenderer;
         this.wikiPageService = wikiPageService;
         this.pageLinkStore = pageLinkStore;
         this.environment = environment;
-        this.memoryBackend = new MemoryPageCacheBackend(this::maxEntries);
+        this.memoryBackend = new MemoryPageCacheBackend(this::maxEntries, () -> memorySizeMb() * 1024L * 1024L);
         StringRedisTemplate redisTemplate = redisTemplateProvider.getIfAvailable();
         ObjectMapper objectMapper = objectMapperProvider.getIfAvailable();
         this.redisBackend = redisTemplate == null || objectMapper == null
@@ -191,9 +195,9 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
                     redisTarget(), this.lastProbeMillis, ttl().toSeconds());
             return;
         }
-        log.info("页面正文缓存：后端 = 进程内 LRU（{}），上限 {} 条、TTL {} 秒；"
+        log.info("页面正文缓存：后端 = 内置缓存（{}），容量 {} MB、上限 {} 条、TTL {} 秒；"
                         + "页面渲染结果按标题 + 版本号缓存，模板变更会失效并预渲染",
-                memoryReason(configured), maxEntries(), ttl().toSeconds());
+                memoryReason(configured), memorySizeMb(), maxEntries(), ttl().toSeconds());
     }
 
     // ==================== 读 / 写 ====================
@@ -204,12 +208,14 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
         if (!enabled()) {
             return this.pageBodyRenderer.render(page.getTitle(), content, revisionId);
         }
+        // Capture the policy key before rendering, so an in-flight render cannot populate a new policy's cache.
+        String renderKey = key(page.getTitle());
         Optional<PageBody> cached = get(page.getTitle(), revisionId);
         if (cached.isPresent()) {
             return cached.get();
         }
         PageBody rendered = this.pageBodyRenderer.render(page.getTitle(), content, revisionId);
-        writeEntry(key(page.getTitle()), rendered);
+        writeEntry(renderKey, rendered);
         return rendered;
     }
 
@@ -256,6 +262,7 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
     }
 
     private void writeEntry(String key, PageBody body) {
+        if ("0".equals(body.properties().get(cc.thonly.wikikernel.common.extension.WikiRenderContext.CACHE_EXPIRY_PROPERTY))) { return; }
         PageCacheBackend backend = selectedBackend();
         if (backend == null) {
             return;
@@ -311,7 +318,7 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
         String key = key(title);
         if (keepRevisionId != null) {
             PageBody cached = readEntry(key);
-            if (cached != null && cached.revisionId() == keepRevisionId) {
+            if (cached == null || cached.revisionId() == keepRevisionId) {
                 // 已经缓存了保存后的新版本（例如刚保存就打开了页面），不要把它删掉
                 return;
             }
@@ -594,11 +601,11 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
      * 正文渲染格式版本：渲染逻辑变化（如签名展开）时递增，让旧缓存键全部失效，
      * 不依赖管理员手动清 Redis。旧键会在 TTL 内自然过期。
      */
-    private static final String CACHE_KEY_VERSION = "v2:";
+    private static final String CACHE_KEY_VERSION = "v3:";
 
     /** 缓存键：规范化标题（与页面存储 / 查询同一套规则，插件传裸标题也能命中）。 */
-    private static String key(String title) {
-        return CACHE_KEY_VERSION + WikiTitles.normalize(title);
+    private String key(String title) {
+        return CACHE_KEY_VERSION + accessControlService.readPolicyFingerprint() + ":" + WikiTitles.normalize(title);
     }
 
     private boolean enabledFlag() {
@@ -623,6 +630,18 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
     private Duration ttl() {
         return Duration.ofSeconds(clamp(settingInt(TTL_SECONDS_KEY,
                 this.properties.getTtlSeconds(), DEFAULT_TTL_SECONDS), 1, MAX_TTL_SECONDS));
+    }
+
+    @Override
+    public int memorySizeMb() {
+        int yamlValue = PageCacheProperties.normalizeMemorySizeMb(properties.getMemorySizeMb());
+        int configured = settingInt(MEMORY_SIZE_MB_KEY, yamlValue, yamlValue);
+        return PageCacheProperties.supportedMemorySizeMb(configured) ? configured : yamlValue;
+    }
+
+    @Override
+    public void trimMemory() {
+        memoryBackend.trim();
     }
 
     private int maxEntries() {

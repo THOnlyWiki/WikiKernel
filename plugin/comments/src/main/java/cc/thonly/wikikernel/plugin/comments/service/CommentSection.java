@@ -6,13 +6,13 @@ import cc.thonly.wikikernel.common.service.AccessCheck;
 import cc.thonly.wikikernel.common.service.SiteConfig;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.service.WikiText;
+import cc.thonly.wikikernel.common.service.TimeDisplay;
 import cc.thonly.wikikernel.plugin.comments.CommentsPlugin;
 import cc.thonly.wikikernel.plugin.comments.data.WikiComment;
 import cc.thonly.wikikernel.plugin.comments.hook.CommentSectionHook;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -40,7 +40,7 @@ public class CommentSection {
     private static final String GROUP_ADMIN = "管理员";
     private static final String GROUP_BUREAUCRAT = "行政员";
 
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final String TIME_PATTERN = "yyyy-MM-dd HH:mm";
 
     private final CommentStore comments;
     private final UserStore users;
@@ -48,15 +48,17 @@ public class CommentSection {
     private final AccessCheck access;
     private final SiteConfig siteConfig;
     private final MessageSource messageSource;
+    private final TimeDisplay timeDisplay;
 
     public CommentSection(CommentStore comments, UserStore users, WikiText wikiText,
-                          AccessCheck access, SiteConfig siteConfig, MessageSource messageSource) {
+                          AccessCheck access, SiteConfig siteConfig, MessageSource messageSource, TimeDisplay timeDisplay) {
         this.comments = comments;
         this.users = users;
         this.wikiText = wikiText;
         this.access = access;
         this.siteConfig = siteConfig;
         this.messageSource = messageSource;
+        this.timeDisplay = timeDisplay;
     }
 
     /** 评论功能是否开启（站点设置 {@code features.comments}，默认开启）。 */
@@ -320,11 +322,11 @@ public class CommentSection {
         if (time == null) {
             return "";
         }
-        String pattern = message("format.dateTime", "yyyy-MM-dd HH:mm");
+        String pattern = message("format.dateTime", TIME_PATTERN);
         try {
-            return time.format(DateTimeFormatter.ofPattern(pattern));
+            return timeDisplay.format(time, pattern);
         } catch (RuntimeException exception) {
-            return time.format(TIME_FORMAT);
+            return timeDisplay.format(time, TIME_PATTERN);
         }
     }
 

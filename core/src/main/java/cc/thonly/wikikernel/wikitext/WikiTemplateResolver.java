@@ -10,14 +10,17 @@ import java.util.Optional;
 public class WikiTemplateResolver implements TemplateResolver {
 
     private final WikiPageService wikiPageService;
+    private final TransclusionPolicy transclusionPolicy;
 
-    public WikiTemplateResolver(WikiPageService wikiPageService) {
+    public WikiTemplateResolver(WikiPageService wikiPageService, TransclusionPolicy transclusionPolicy) {
         this.wikiPageService = wikiPageService;
+        this.transclusionPolicy = transclusionPolicy;
     }
 
     @Override
     public Optional<String> resolve(String title) {
         return wikiPageService.getByTitle(title)
+                .filter(page -> transclusionPolicy.canInclude(page.getTitle()))
                 .flatMap(page -> wikiPageService.getLatestContent(page.getId()));
     }
 }

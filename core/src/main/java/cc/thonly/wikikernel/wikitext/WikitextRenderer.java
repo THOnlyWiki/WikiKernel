@@ -169,6 +169,7 @@ public class WikitextRenderer {
     /** 当前线程正在进行的渲染上下文（渲染是同步的；嵌套渲染用保存 / 恢复）。 */
     private static final ThreadLocal<RenderContextState> CURRENT = new ThreadLocal<>();
 
+
     /** 站内统计（{{NUMBEROF*}} 魔术字用）；独立测试构造时为空。 */
     @Autowired(required = false)
     private WikiStatsService wikiStatsService;
@@ -180,6 +181,10 @@ public class WikitextRenderer {
     /** 页面 / 版本查询（REVISIONTIMESTAMP / REVISIONUSER 魔术字用）；独立测试构造时为空。 */
     @Autowired(required = false)
     private WikiPageService wikiPageService;
+
+    @Autowired(required = false)
+    private TransclusionPolicy transclusionPolicy;
+
 
     /** 用户名查询（REVISIONUSER 魔术字用）；独立测试构造时为空。 */
     @Autowired(required = false)
@@ -426,6 +431,9 @@ public class WikitextRenderer {
             String src = parseAttributes(matcher.group(1)).getOrDefault("src", "").trim();
             if (!src.isEmpty() && wikiPageService != null) {
                 for (String title : templateStylesTitles(src)) {
+                    if (transclusionPolicy != null && !transclusionPolicy.canInclude(title)) {
+                        continue;
+                    }
                     Optional<String> css = wikiPageService.getVisibleByTitle(title)
                             .flatMap(page -> wikiPageService.getLatestContent(page.getId()));
                     if (css.isPresent()) {
@@ -2115,7 +2123,7 @@ public class WikitextRenderer {
             "&(?:[A-Za-z][A-Za-z0-9]{1,31}|#\\d{1,7}|#[xX][0-9A-Fa-f]{1,6});");
 
     /** 当前渲染页面的标题（相对子页面链接 {@code [[/子页]]} 的基准）。 */
-    private static String currentPageTitle() {
+    public static String currentPageTitle() {
         RenderContextState state = CURRENT.get();
         return state == null ? "" : state.pageTitle();
     }

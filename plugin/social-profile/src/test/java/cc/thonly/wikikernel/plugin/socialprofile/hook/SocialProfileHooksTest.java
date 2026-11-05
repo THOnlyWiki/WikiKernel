@@ -135,7 +135,7 @@ class SocialProfileHooksTest {
     }
 
     @Test
-    void pageDisplayHookRendersSocialProfileColumnsAndBoard() {
+    void pageDisplayHookRendersSocialProfileColumnsAndBoard() throws Exception {
         profiles.save(1, new ProfileFields("male", "03-09", "上海", "杭州", "程序员", "写代码",
                 "https://example.com", "'''你好'''"));
         profiles.savePreferences(1, new ProfileService.SocialPreferences(true, true, true, true, true));
@@ -147,6 +147,10 @@ class SocialProfileHooksTest {
                 friends, giftService, awardService, view);
         assertEquals(300, hook.order());
         String html = hook.panelHtml(profile(1, "甲", false, SocialProfileFakes.viewer(2, "乙")));
+        java.nio.file.Path fixture = java.nio.file.Path.of("build", "ui-fixtures", "profile.html");
+        java.nio.file.Files.createDirectories(fixture.getParent());
+        java.nio.file.Files.writeString(fixture, "<div class=\"wiki-profile-plugin\">"
+                + hook.profileTopHtml(profile(1, "甲", false, SocialProfileFakes.viewer(2, "乙"))) + html + "</div>");
 
         // 原版两栏：左 35% 统计 / 礼物 / 勋章；右 60% 个人信息 / 用户墙
         assertTrue(html.contains("id=\"user-page-left\""), html);

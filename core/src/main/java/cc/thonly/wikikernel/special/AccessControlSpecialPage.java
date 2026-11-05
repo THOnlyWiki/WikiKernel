@@ -16,6 +16,7 @@ import cc.thonly.wikikernel.plugin.PluginFeatureSections;
 import cc.thonly.wikikernel.i18n.PermissionGroupLabels;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.FeatureService;
+import cc.thonly.wikikernel.service.PageCacheService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
@@ -56,6 +57,7 @@ public class AccessControlSpecialPage implements SpecialPage {
     private final PermissionService permissionService;
     private final SiteSettingsService siteSettingsService;
     private final FeatureService featureService;
+    private final PageCacheService pageCacheService;
     /** Plugin-contributed settings sections (core only renders key/value). */
     private final PluginFeatureSections featureSections;
     private final WikiPageMapper wikiPageMapper;
@@ -84,11 +86,12 @@ public class AccessControlSpecialPage implements SpecialPage {
                                     SiteNameService siteNameService,
                                     TypeScriptAssetService typeScriptAssetService,
                                     TypeScriptCompiler typeScriptCompiler,
-                                    ExternalAuthProviderRegistry externalAuthProviders) {
+                                    ExternalAuthProviderRegistry externalAuthProviders, PageCacheService pageCacheService) {
         this.accessControlService = accessControlService;
         this.permissionService = permissionService;
         this.siteSettingsService = siteSettingsService;
         this.featureService = featureService;
+        this.pageCacheService = pageCacheService;
         this.featureSections = featureSections;
         this.wikiPageMapper = wikiPageMapper;
         this.specialWikiPageService = specialWikiPageService;
@@ -194,6 +197,7 @@ public class AccessControlSpecialPage implements SpecialPage {
         model.put("cachePageEnabled", siteSettingsService.getBoolean("cache.page.enabled", false));
         model.put("cachePageBackend", siteSettingsService.get("cache.page.backend", "auto"));
         model.put("cachePageTtl", siteSettingsService.get("cache.page.ttl-seconds", "300"));
+        model.put("cachePageMemorySizeMb", pageCacheService.memorySizeMb());
         model.put("cachePageMaxEntries", siteSettingsService.get("cache.page.max-entries", "500"));
         model.put("cachePagePreload", siteSettingsService.getBoolean("cache.page.preload-on-template-change", true));
         model.put("cachePageParallelism", siteSettingsService.get("cache.page.preload-parallelism", ""));

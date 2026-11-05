@@ -32,6 +32,10 @@ public final class AvatarSupport {
         return avatars.store(userId, originalFileName, contentType, content);
     }
 
+    public String remove(long userId) {
+        return avatars.remove(userId);
+    }
+
     /** 某个用户的头像 URL（未上传 / 用户不存在 = 站点默认头像）。 */
     public String avatarUrl(long userId) {
         String defaultUrl = defaultAvatarUrl();

@@ -51,17 +51,39 @@ public class AvatarApiController {
     /** 当前用户头像地址（App 抽屉头部用）；没设过头像返回空串 */
     @GetMapping
     public AjaxResult<Map<String, Object>> current() {
+        if (!support.enabled()) { return AjaxResult.error(AjaxCode.FORBIDDEN, support.message("feature.userInteractionDisabled")); }
         Viewer viewer = currentUser.viewer();
         if (viewer == null || !viewer.loggedIn()) {
             return AjaxResult.error(AjaxCode.UNAUTHORIZED,
                     support.message("permissions.loginRequired"));
         }
         String avatar = users.byId(viewer.id())
-                .map(ref -> ref.avatarUrl(UserStore.DEFAULT_AVATAR_URL))
+                .map(ref -> ref.avatarUrl(users.defaultAvatarUrl()))
                 .orElse("");
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("avatar", avatar);
         return AjaxResult.success(data);
+    }
+
+    /** 本人可以移除自己的头像；移除他人头像需要对 RemoveAvatar 特殊页有管理权限。 */
+    @PostMapping("/remove")
+    public AjaxResult<Map<String, Object>> remove(@RequestParam(value = "user", required = false) String username) {
+        if (!support.enabled()) { return AjaxResult.error(AjaxCode.FORBIDDEN, support.message("feature.userInteractionDisabled")); }
+        Viewer viewer = currentUser.viewer();
+        if (viewer == null || !viewer.loggedIn()) { return AjaxResult.error(AjaxCode.UNAUTHORIZED, support.message("permissions.loginRequired")); }
+        Optional<String> block = access.blockNotice(viewer);
+        if (block.isPresent()) { return AjaxResult.error(AjaxCode.FORBIDDEN, block.get()); }
+        var target = Strings.isBlank(username) ? users.byId(viewer.id()) : users.byName(username);
+        if (target.isEmpty()) { return AjaxResult.error(AjaxCode.NOT_FOUND, support.message("permissions.userNotFound")); }
+        if (target.get().id() != viewer.id() && !access.can(cc.thonly.wikikernel.common.access.AccessAction.PROTECT,
+                "特殊:删除头像", viewer)) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, support.message("permissions.editForbidden"));
+        }
+        try {
+            return AjaxResult.success(support.message("avatar.removed"), Map.of("url", avatars.remove(target.get().id())));
+        } catch (IllegalArgumentException exception) {
+            return AjaxResult.error(AjaxCode.BAD_REQUEST, support.message(exception.getMessage()));
+        }
     }
 
     @PostMapping

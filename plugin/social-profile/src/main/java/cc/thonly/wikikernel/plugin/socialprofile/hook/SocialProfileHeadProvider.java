@@ -42,12 +42,13 @@ public final class SocialProfileHeadProvider implements HtmlHeadProvider {
         }
         return List.of(
                 "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile-base.css\">",
-                "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile.css\">",
+                "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile.css?v=2\">",
                 "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile-mobile.css\">",
                 "<script>window.WIKI_CONFIG = window.WIKI_CONFIG || {};"
                         + "window.WIKI_CONFIG.userInteraction = true;"
                         + "window.WIKI_CONFIG.socialProfile = true;"
                         + "window.WIKI_MESSAGES = Object.assign(window.WIKI_MESSAGES || {}, {"
+                        + "avatarRemoveConfirm: " + SocialProfileSupport.json(support.message("avatar.removeConfirm")) + ","
                         + "avatarSelect: " + SocialProfileSupport.json(
                         support.message("avatar.select")) + ","
                         + "avatarSaved: " + SocialProfileSupport.json(
@@ -93,7 +94,7 @@ public final class SocialProfileHeadProvider implements HtmlHeadProvider {
                         + "spOperationFailed: " + SocialProfileSupport.json(
                         support.message("socialProfile.error.failed"))
                         + "});</script>",
-                "<script defer src=\"/plugins/social-profile/avatar.js\"></script>",
+                "<script defer src=\"/plugins/social-profile/avatar.js?v=2\"></script>",
                 "<script defer src=\"/plugins/social-profile/messages.js\"></script>",
                 "<script defer src=\"/plugins/social-profile/social-profile.js\"></script>");
     }

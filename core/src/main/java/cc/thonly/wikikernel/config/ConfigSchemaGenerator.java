@@ -123,7 +123,11 @@ public final class ConfigSchemaGenerator {
             default -> descriptor.put("type", "string");
         }
         if (!entry.enumValues().isEmpty()) {
-            descriptor.put("enum", new ArrayList<>(entry.enumValues()));
+            descriptor.put("enum", entry.enumValues().stream().map(value -> switch (entry.type()) {
+                case "integer", "long" -> (Object) Long.parseLong(value);
+                case "boolean" -> (Object) Boolean.parseBoolean(value);
+                default -> (Object) value;
+            }).toList());
         }
         if (entry.secret()) {
             // 敏感项不给出 default：避免 IDEA / VS Code 补全时插入一个空值占位符

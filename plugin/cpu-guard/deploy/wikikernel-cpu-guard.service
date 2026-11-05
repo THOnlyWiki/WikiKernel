@@ -1,0 +1,23 @@
+# Edit User, WorkingDirectory, JAR path and CPU IDs before installation.
+# CPUQuota=25% means 25% of ONE logical CPU, not 25% of the whole VPS.
+[Unit]
+Description=WikiKernel with a conservative JVM CPU limit
+After=network.target
+
+[Service]
+Type=simple
+User=wikikernel
+Group=wikikernel
+WorkingDirectory=/opt/wikikernel
+ExecStart=/usr/bin/java -XX:ActiveProcessorCount=1 -Dwikikernel.cpu-guard.percent=25 -Dwikikernel.cpu-guard.basis=single-core -Dwikikernel.cpu-guard.machine-cpus=2 -Dfile.encoding=UTF-8 -jar /opt/wikikernel/wikikernel-server.jar
+CPUAccounting=yes
+CPUQuota=25%
+CPUQuotaPeriodSec=100ms
+AllowedCPUs=0
+CPUAffinity=0
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

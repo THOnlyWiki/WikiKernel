@@ -8,6 +8,7 @@ import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.web.WikiTitles;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,9 @@ import java.util.Map;
 public class ProtectPageSpecialPage implements SpecialPage {
 
     public static final String PARAM_PAGE = "page";
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private cc.thonly.wikikernel.service.PermissionService permissions;
 
     private final WikiPageService wikiPageService;
     private final AccessControlService accessControlService;
@@ -65,15 +69,40 @@ public class ProtectPageSpecialPage implements SpecialPage {
             return;
         }
 
-        WikiPage page = wikiPageService.getByTitle(title).orElse(null);
-        if (page == null) {
-            model.put("pageNotFound", true);
+        var error = WikiTitles.validate(title);
+        if (error.isPresent()) {
+            model.put("protectError", messageSource.getMessage(error.get().messageKey(),
+                    new Object[]{error.get().detail()}, LocaleContextHolder.getLocale()));
             return;
         }
+        title = WikiTitles.normalize(title);
+        WikiPage page = wikiPageService.getByTitle(title).orElse(null);
 
         WikiUser user = request.user();
         boolean canProtect = accessControlService.can(AccessAction.PROTECT, title, user);
+        if (page != null) { title = page.getTitle(); }
+        if (!canProtect && !accessControlService.canRead(title, user)) {
+            model.put("pageNotFound", true); return;
+        }
+        java.util.LinkedHashSet<String> groups = new java.util.LinkedHashSet<>();
+        permissions.allTypes().forEach(type -> groups.add(type.getName()));
+        for (AccessAction action : List.of(AccessAction.READ, AccessAction.EDIT)) {
+            String canonical = title;
+            var exact = accessControlService.findRule(action, canonical)
+                    .filter(rule -> canonical.equals(cc.thonly.wikikernel.web.WikiTitles.normalize(rule.getTarget())));
+            List<String> selected = exact.map(rule -> rule.getGroupNames().isEmpty()
+                    ? List.of(cc.thonly.wikikernel.service.PageProtectionService.DENY)
+                    : List.of(rule.getGroupNames().split("\\|")))
+                    .orElse(action == AccessAction.EDIT && page != null && Boolean.TRUE.equals(page.getProtectedPage())
+                            ? List.of(cc.thonly.wikikernel.service.PermissionService.GROUP_ADMIN)
+                            : List.of(cc.thonly.wikikernel.service.PageProtectionService.INHERIT));
+            model.put(action == AccessAction.READ ? "protectReadGroups" : "protectEditGroups", selected);
+            selected.stream().filter(value -> !value.startsWith("__") && !"*".equals(value)).forEach(groups::add);
+        }
+        model.put("protectionGroups", List.copyOf(groups));
         model.put("sourcePage", page);
+        model.put("sourceTitle", title);
+        model.put("protectUncreated", page == null);
         model.put("canProtect", canProtect);
         model.put("protectForbidden", !canProtect);
     }

@@ -11,6 +11,9 @@ import java.util.function.Supplier;
  */
 public interface WikiRenderContext {
 
+    /** 解析器设置此属性为 "0" 时，正文缓存不存储这次动态渲染结果。 */
+    String CACHE_EXPIRY_PROPERTY = "cache-expiry";
+
     /** 当前页面标题（含命名空间，如 {@code 模板:问候}）。 */
     String pageTitle();
 

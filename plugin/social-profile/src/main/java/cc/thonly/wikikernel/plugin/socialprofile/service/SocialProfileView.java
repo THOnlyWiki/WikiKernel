@@ -266,7 +266,7 @@ public final class SocialProfileView {
             return "";
         }
         StringBuilder html = new StringBuilder();
-        html.append("<div id=\"user-page-left\" class=\"clearfix\">");
+        html.append("<div class=\"sp-profile-columns\"><div id=\"user-page-left\" class=\"clearfix\">");
         html.append(statisticsSection(view));
         html.append(peopleSection(view, "socialProfile.classic.friends", view.friends()));
         html.append(peopleSection(view, "socialProfile.classic.foes", view.foes()));
@@ -277,7 +277,7 @@ public final class SocialProfileView {
         html.append("<div id=\"user-page-right\" class=\"clearfix\">");
         html.append(personalSection(view));
         html.append(boardSection(view));
-        html.append("</div><div class=\"visualClear\"></div>");
+        html.append("</div><div class=\"visualClear\"></div></div>");
         return html.toString();
     }
 

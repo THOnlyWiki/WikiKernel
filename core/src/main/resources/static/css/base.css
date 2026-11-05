@@ -5547,3 +5547,24 @@ table.wikitable.mw-version-plugins {
     color: var(--color-base, #202122);
     font-weight: 700;
 }
+/* 系统配置页公告与副标题；颜色继承当前皮肤。 */
+.wiki-site-notice, .wiki-edit-notice {
+    margin: 0 0 1em;
+    padding: .75em 1em;
+    border: 1px solid var(--border-color-base--darker, var(--wiki-border, #c8ccd1));
+    border-radius: var(--border-radius--medium, 4px);
+    background: var(--color-surface-2, #f8f9fa);
+    color: var(--color-base, var(--wiki-text, #202122));
+    overflow-wrap: anywhere;
+}
+.wiki-site-notice > :first-child, .wiki-edit-notice > :first-child { margin-top: 0; }
+.wiki-site-notice > :last-child, .wiki-edit-notice > :last-child { margin-bottom: 0; }
+.wiki-site-tagline {
+    margin: -.25em 0 1em;
+    color: var(--color-base--subtle, #72777d);
+    font-size: .85em;
+    overflow-wrap: anywhere;
+}
+.wiki-site-tagline p { margin: 0; }
+
+.wiki-form select.wiki-protection-groups { width: 100%; max-width: 32em; height: auto; min-height: 10em; padding: .5em; }

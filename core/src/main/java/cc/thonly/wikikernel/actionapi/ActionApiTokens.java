@@ -53,6 +53,10 @@ public final class ActionApiTokens {
     }
 
     private static String ensure(HttpServletRequest request, String key) {
+        if (request instanceof JsonpRequest) {
+            // MediaWiki's anonymous token; never expose or create a browser's session token via JSONP.
+            return "+\\";
+        }
         HttpSession session = request.getSession(true);
         Object existing = session.getAttribute(key);
         if (existing instanceof String value && !value.isEmpty()) {

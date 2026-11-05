@@ -1,4 +1,4 @@
-# social-profile（用户交互移植：头像上传 + 用户间私信）
+# social-profile（社交资料、用户关系与互动）
 
 原 core 内置能力的插件化：**用户页头像上传**（仿 MediaWiki SocialProfile 的资料卡）与
 **用户间私信**（`特殊:私信` / `Special:Messages`）。开关沿用 `features.social-profile`（默认开启）。
@@ -47,27 +47,14 @@
 | `common.service.WikiText` | 私信正文按 wikitext 渲染（与页面正文同一套渲染器） |
 | `common.service.SiteConfig` | 读 `features.social-profile`（与 core 的站点设置同一个键） |
 
-## 与 MediaWiki 原版的差异
+## 原版兼容与本次补齐
 
-- **SocialProfile 功能不完整**：已有头像、私信、留言板、好友、礼物（`Special:SendGift` / `Special:Gifts` / `Special:GiftManager`）、积分等级；
-  没有用户页 DIY 版式（UserPage 皮肤）、礼物商城 / 付费礼物等；资料卡也不是独立页面，而是用户页顶部的一块（core 的
-  `fragments/user-profile.html` 渲染，插件只填头像与链接）；
-- **私信不是邮件**：是站内 `wiki_message` 表里的私信，不发送任何电子邮件，也没有
-  MediaWiki 的 `EmailUser` / `Echo`（通知）集成——没有通知徽章、没有「新消息」提示（Echo）、
-  没有 `Special:Notifications`；「已读」是收件人打开即标记（没有 MediaWiki 的
-  「发送邮件副本」选项）；
-- **头像尺寸**：只限制最大尺寸（资料卡 180×180、上传页 240×240 显示），按原图比例缩放，
-  不做 MediaWiki `$wgUploadAvatar` 的裁剪 / 缩略图多尺寸（没有生成 65×65 等头像副本）；
-  头像文件不做版本历史（替换即删除旧文件），也没有头像审核 / 删除日志；
-- **未读徽标**：私信未读数只在「特殊:私信」页面上显示（顶栏旧的「私信（N）」入口已随 Echo 移植移除，
-  通知统一走 Echo 插件的「提醒 / 一般通知」铃铛）；没有 MediaWiki 的跨设备未读同步；
-- **时间显示**：私信时间按 `format.dateTime` 消息键格式化（服务器时区；服务器时区由
-  `LocalSettings.yaml` 的 `wikikernel.time.zone` 配置，如 `Asia/Shanghai`）；
-  core 的显示时区换算（`time.WikiTime` + 用户时区设置）只在 core 内部生效，
-  插件拿不到这个 ThreadLocal，所以私信时间不受「参数设置 → 时区」影响（其余页面照常）；
-- **头像上传页**：`特殊:上传头像` 只是本插件的简化上传页（选择图片即上传），
-  没有 MediaWiki 上传页的版权协议选择、文件名冲突处理、`$wgUploadNavigationUrl` 跳转；
-  也没有 `Special:UploadAvatar` 之外的 `Special:RemoveAvatar`（删除头像要重新上传覆盖）。
+头像解析函数、最新 / 随机用户头像列表、删除头像入口及资料页布局的对照结果，见 [UPSTREAM-COMPATIBILITY.md](UPSTREAM-COMPATIBILITY.md)。
+
+- `{{#avatar:用户名|m}}`（s/m/ml/l 或像素大小）；
+- `<newusers count="10" row="5"/>`、`<randomuserswithavatars count="10" row="4" size="ml"/>`，也支持相应 `#` 函数写法；
+- `特殊:删除头像` / `Special:RemoveAvatar`，`POST /api/user/avatar/remove`（可选 `user` 参数）；本人可删除自己的头像，删除他人头像需要该特殊页的 protect 权限；
+- 桌面沿用原版资料页两栏，窄正文变为纵排；头像、留言区修正 box-sizing 和长文本换行。
 
 ## 相关
 

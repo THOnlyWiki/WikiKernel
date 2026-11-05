@@ -24,6 +24,8 @@ public final class TransferNamespaces {
             new Entry(5, "WikiKernel讨论"),
             new Entry(6, "文件"),
             new Entry(7, "文件讨论"),
+            new Entry(8, "MediaWiki"),
+            new Entry(9, "MediaWiki讨论"),
             new Entry(10, "模板"),
             new Entry(11, "模板讨论"),
             new Entry(12, "帮助"),
@@ -67,6 +69,8 @@ public final class TransferNamespaces {
             case "wikikernel-talk" -> 5;
             case "file" -> 6;
             case "file-talk" -> 7;
+            case "mediawiki" -> 8;
+            case "mediawiki-talk" -> 9;
             case "template" -> 10;
             case "template-talk" -> 11;
             case "help" -> 12;

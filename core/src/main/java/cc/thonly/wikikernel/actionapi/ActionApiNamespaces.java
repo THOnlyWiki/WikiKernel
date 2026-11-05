@@ -21,6 +21,8 @@ public final class ActionApiNamespaces {
             new Ns(5, "WikiKernel讨论"),
             new Ns(6, "文件"),
             new Ns(7, "文件讨论"),
+            new Ns(8, "MediaWiki"),
+            new Ns(9, "MediaWiki讨论"),
             new Ns(10, "模板"),
             new Ns(11, "模板讨论"),
             new Ns(12, "帮助"),
@@ -43,20 +45,7 @@ public final class ActionApiNamespaces {
 
     /** 标题的命名空间编号（最长前缀优先；未识别按主命名空间 0）。 */
     public static int idOf(String title) {
-        String value = title == null ? "" : title;
-        int best = 0;
-        int length = -1;
-        for (Ns ns : LIST) {
-            if (ns.id() == 0) {
-                continue;
-            }
-            String prefix = ns.name() + ":";
-            if (value.regionMatches(true, 0, prefix, 0, prefix.length()) && prefix.length() > length) {
-                best = ns.id();
-                length = prefix.length();
-            }
-        }
-        return best;
+        return cc.thonly.wikikernel.transfer.TransferNamespaces.mediaWikiId(title);
     }
 
     /** 标题是否属于命名空间 {@code nsId}（{@code nsId < 0} = 不过滤）。 */
@@ -69,17 +58,8 @@ public final class ActionApiNamespaces {
 
     /** 去掉命名空间前缀后的标题（主命名空间原样）。 */
     public static String bareTitle(String title) {
-        String value = title == null ? "" : title;
-        for (Ns ns : LIST) {
-            if (ns.id() == 0) {
-                continue;
-            }
-            String prefix = ns.name() + ":";
-            if (value.regionMatches(true, 0, prefix, 0, prefix.length())) {
-                return value.substring(prefix.length());
-            }
-        }
-        return value;
+        String value = cc.thonly.wikikernel.web.WikiNamespaces.canonicalize(title);
+        return idOf(value) == 0 ? value : value.substring(value.indexOf(':') + 1);
     }
 
     /** 带规范前缀的完整标题。 */
@@ -116,6 +96,8 @@ public final class ActionApiNamespaces {
             case 5 -> "WikiKernel talk";
             case 6 -> "File";
             case 7 -> "File talk";
+            case 8 -> "MediaWiki";
+            case 9 -> "MediaWiki talk";
             case 10 -> "Template";
             case 11 -> "Template talk";
             case 12 -> "Help";

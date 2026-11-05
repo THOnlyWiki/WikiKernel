@@ -5,6 +5,7 @@ import cc.thonly.wikikernel.transfer.TransferTimes;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,17 +44,26 @@ public class ActionApiController {
     public ResponseEntity<String> api(@RequestParam Map<String, String> params, HttpServletRequest request) {
         int formatVersion = parseFormatVersion(params.get("formatversion"));
         String action = Strings.defaultIfBlank(params.get("action"), "help");
+        String callback = Strings.trimToEmpty(params.get("callback"));
+        boolean jsonp = !callback.isEmpty()
+                && callback.matches("[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*");
+        HttpServletRequest apiRequest = jsonp ? new JsonpRequest(request) : request;
 
-        ActionApiService.RequestContextHolder.set(request);
+        ActionApiService.RequestContextHolder.set(apiRequest);
         Object root;
         try {
-            root = service.handle(action, params, request, formatVersion);
+            if (!callback.isEmpty() && !jsonp) {
+                throw new ActionApiService.ApiError("badvalue", "Invalid JSONP callback.");
+            }
+            if (jsonp && !"GET".equalsIgnoreCase(request.getMethod())) {
+                throw new ActionApiService.ApiError("badvalue", "JSONP only supports GET requests.");
+            }
+            root = service.handle(action, params, apiRequest, formatVersion);
         } catch (ActionApiService.ApiError error) {
             root = errorBody(error.code(), error.getMessage(), error.extra());
         } catch (RuntimeException exception) {
             log.error("Action API 处理失败：action={}", action, exception);
-            root = errorBody("internal_api_error",
-                    exception.getMessage() == null ? "Internal error" : exception.getMessage(), Map.of());
+            root = errorBody("internal_api_error", "Internal error", Map.of());
         } finally {
             ActionApiService.RequestContextHolder.clear();
         }
@@ -64,7 +74,7 @@ public class ActionApiController {
             // 顶层统一拷贝成可变 LinkedHashMap（service 可能返回 Map.of() 这类不可变实现）
             Map<String, Object> map = new LinkedHashMap<>(original);
             map.putIfAbsent("servedby", "wikikernel");
-            if (!Strings.isBlank(params.get("curtimestamp"))) {
+            if (params.containsKey("curtimestamp")) {
                 map.put("curtimestamp", TransferTimes.toUtcIso(LocalDateTime.now()));
             }
             root = map;
@@ -80,7 +90,7 @@ public class ActionApiController {
                 log.error("Action API XML 序列化失败", exception);
                 xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<api><error code=\"internal_api_error\"/></api>";
             }
-            return ResponseEntity.ok()
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
                     .contentType(MediaType.parseMediaType("text/xml;charset=UTF-8"))
                     .body(xml);
         }
@@ -93,21 +103,21 @@ public class ActionApiController {
             json = "{\"error\":{\"code\":\"internal_api_error\",\"info\":\"serialization failed\",\"*\":\"serialization failed\"}}";
         }
 
-        String callback = Strings.trimToEmpty(params.get("callback"));
-        if (!callback.isEmpty() && callback.matches("[A-Za-z_][A-Za-z0-9_.]*")) {
-            return ResponseEntity.ok()
+        if (jsonp) {
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
                     .contentType(MediaType.parseMediaType("application/javascript;charset=UTF-8"))
                     .body(callback + "(" + json + ");");
         }
         String format = Strings.trimToEmpty(params.get("format")).toLowerCase(Locale.ROOT);
-        if ("jsonfm".equals(format)) {            String html = "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\">"
+        if ("jsonfm".equals(format)) {
+            String html = "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\">"
                     + "<title>API result</title></head><body><pre>"
                     + HtmlUtils.htmlEscape(json) + "</pre></body></html>";
-            return ResponseEntity.ok()
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
                     .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
                     .body(html);
         }
-        return ResponseEntity.ok()
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
                 .contentType(MediaType.parseMediaType("application/json;charset=UTF-8"))
                 .body(json);
     }

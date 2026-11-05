@@ -8,6 +8,8 @@ import cc.thonly.wikikernel.common.util.AjaxCode;
 import cc.thonly.wikikernel.common.util.AjaxResult;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.service.FeatureService;
+import cc.thonly.wikikernel.service.PageCacheService;
+import cc.thonly.wikikernel.config.PageCacheProperties;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.SiteNameService;
 import cc.thonly.wikikernel.service.SiteSettingsService;
@@ -39,6 +41,7 @@ public class SiteSettingsApiController {
 
     private final SiteSettingsService siteSettingsService;
     private final FeatureService featureService;
+    private final PageCacheService pageCacheService;
     /** Plugin-contributed settings sections (core only renders key/value). */
     private final PluginFeatureSections featureSections;
     private final PermissionService permissionService;
@@ -53,9 +56,10 @@ public class SiteSettingsApiController {
                                      PermissionService permissionService,
                                      TypeScriptAssetService typescriptAssetService,
                                      MessageSource messageSource,
-                                     ExternalAuthProviderRegistry externalAuthProviders) {
+                                     ExternalAuthProviderRegistry externalAuthProviders, PageCacheService pageCacheService) {
         this.siteSettingsService = siteSettingsService;
         this.featureService = featureService;
+        this.pageCacheService = pageCacheService;
         this.featureSections = featureSections;
         this.permissionService = permissionService;
         this.typescriptAssetService = typescriptAssetService;
@@ -76,6 +80,7 @@ public class SiteSettingsApiController {
                                  @RequestParam(value = "cachePageBackend", required = false) String cachePageBackend,
                                  @RequestParam(value = "cachePageTtl", required = false) String cachePageTtl,
                                  @RequestParam(value = "cachePageMaxEntries", required = false) String cachePageMaxEntries,
+                                 @RequestParam(value = "cachePageMemorySizeMb", required = false) String cachePageMemorySizeMb,
                                  @RequestParam(value = "cachePagePreload", required = false) String cachePagePreload,
                                  @RequestParam(value = "cachePageParallelism", required = false) String cachePageParallelism,
                                  @RequestParam(value = "typescript", required = false) String typescript,
@@ -93,6 +98,17 @@ public class SiteSettingsApiController {
         }
         if (!permissionService.canManage(user.getId())) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, message("access.forbidden"));
+        }
+        Integer memorySizeMb = null;
+        if (cachePageMemorySizeMb != null) {
+            try {
+                memorySizeMb = Integer.parseInt(cachePageMemorySizeMb.trim());
+            } catch (NumberFormatException exception) {
+                return AjaxResult.error(AjaxCode.BAD_REQUEST, message("settings.cachePageMemorySizeInvalid"));
+            }
+            if (!PageCacheProperties.supportedMemorySizeMb(memorySizeMb)) {
+                return AjaxResult.error(AjaxCode.BAD_REQUEST, message("settings.cachePageMemorySizeInvalid"));
+            }
         }
         if (siteName != null) {
             // 只有提交了该字段才改：老客户端 / 只改开关的调用不会动站点名称；空 = 回到默认名
@@ -126,6 +142,12 @@ public class SiteSettingsApiController {
         }
         if (cachePageMaxEntries != null) {
             siteSettingsService.set("cache.page.max-entries", Strings.trimToEmpty(cachePageMaxEntries));
+        }
+        if (memorySizeMb != null) {
+            siteSettingsService.set(PageCacheService.MEMORY_SIZE_MB_KEY, memorySizeMb.toString());
+        }
+        if (memorySizeMb != null || cachePageMaxEntries != null) {
+            pageCacheService.trimMemory();
         }
         if (cachePagePreload != null) {
             siteSettingsService.set("cache.page.preload-on-template-change", Boolean.toString(checked(cachePagePreload)));

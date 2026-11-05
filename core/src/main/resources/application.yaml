@@ -106,7 +106,9 @@ wikikernel:
       backend: auto
       # 条目有效期（秒）
       ttl-seconds: 300
-      # 进程内 LRU 的条目上限；不写 = 500
+      # 内置缓存容量（64 / 128 / 256 MB），Redis 故障回退也使用此上限
+      memory-size-mb: 128
+      # 内置缓存额外条数上限；不写 = 500
       max-entries: 500
       # 模板变更后是否用虚拟线程批量预渲染受影响页面（预热）
       preload-on-template-change: true

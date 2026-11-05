@@ -23,8 +23,6 @@
     <!-- Wikimedia Codex 2.7.0（本地内置，完整组件样式 + 图标）+ 本站旧 class 的 Codex 适配层 -->
     <link rel="stylesheet" th:href="@{/vendor/codex/2.7.0/codex.style.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/css/codex-bridge.css(v=${assetVersion})}">
-    <!-- 页面自定义样式（Wiki.css + {title}/XXX.css），服务端已转义 <，不会提前闭合 style -->
-    <style th:each="css : ${pageCss}" th:utext="${css}">/* 页面自定义样式 */</style>
     <script th:inline="javascript">
         /* 站点级前端配置：各功能插件自己往 window.WIKI_CONFIG 里加自己的键（core 不再内置功能开关）。
            这里合并而不是重建：前面的页面级插件片段可能已经写过自己的键，重建会把它们清掉 */
@@ -229,5 +227,7 @@
     <th:block th:each="headItem : ${pluginHeadItems}" th:utext="${headItem}"></th:block>
     <!-- 站点 / 页面自定义脚本：WikiKernel:Wiki.js + {标题}/任意.js（?action=raw 原样输出） -->
     <script th:each="scriptUrl : ${scriptUrls}" th:src="${scriptUrl}" defer></script>
+    <!-- 自定义样式放在皮肤、插件样式之后，允许覆盖默认外观；服务端已安全转义。 -->
+    <style th:each="css : ${pageCss}" th:utext="${css}">/* 页面自定义样式 */</style>
 </head>
 </html>

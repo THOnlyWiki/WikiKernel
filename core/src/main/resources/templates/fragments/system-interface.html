@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<aside th:fragment="notice" class="wiki-site-notice" role="note"
+       th:if="${systemInterface != null and systemInterface.noticeHtml != null}"
+       th:utext="${systemInterface.noticeHtml}"></aside>
+<div th:fragment="tagline" class="wiki-site-tagline"
+     th:if="${systemInterface != null and systemInterface.taglineHtml != null}"
+     th:utext="${systemInterface.taglineHtml}"></div>
+<aside th:fragment="editnotice" class="wiki-edit-notice" role="note"
+       th:if="${systemInterface != null and systemInterface.editNoticeHtml != null}"
+       th:utext="${systemInterface.editNoticeHtml}"></aside>
+</body>
+</html>
