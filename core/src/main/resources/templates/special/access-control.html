@@ -20,6 +20,19 @@
 
     <p id="access-message" class="form-message" hidden></p>
 
+    <div id="openapi-access" th:if="${canManage}">
+        <h2 th:text="#{access.openapi.title}">接口文档访问权限</h2>
+        <p class="wiki-hint" th:text="#{access.openapi.hint}"></p>
+        <form id="openapi-access-form" class="wiki-form access-rule-form" method="post">
+            <input type="hidden" name="target" th:value="${openApiRule.target}"/>
+            <input type="hidden" name="action" th:value="${openApiRule.action}"/>
+            <th:block th:replace="~{fragments/access-rule-scope :: scope(item=${openApiRule}, prefix=${'openapi'}, groups=${groups})}"/>
+            <div class="form-actions">
+                <button type="submit" class="wiki-button" th:text="#{access.save}">保存</button>
+            </div>
+        </form>
+    </div>
+
     <h2 th:text="#{settings.section}">站点设置</h2>
     <form id="site-settings-form" class="wiki-form" th:if="${canManage}" method="post">
         <fieldset class="setup-group">
@@ -399,7 +412,8 @@
         <tr th:each="item : ${rules}">
             <td>
                 <a th:if="${!#strings.startsWith(item.target, '*')}"
-                   th:href="@{/wiki/{title}(title=${item.target})}" th:text="${item.target}">首页</a>
+                   th:href="${item.target == openApiRule.target} ? @{/swagger-ui.html} : @{/wiki/{title}(title=${item.target})}"
+                   th:text="${item.target}">首页</a>
                 <span th:if="${#strings.startsWith(item.target, '*')}" th:text="${item.target}">帮助:*</span>
             </td>
             <td th:text="${item.actionName}">查看</td>

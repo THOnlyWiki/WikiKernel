@@ -7,7 +7,7 @@
     <label th:for="${prefix + '-everyone'}" class="access-scope-option">
         <input type="radio" th:id="${prefix + '-everyone'}" name="scope" value="everyone"
                th:checked="${item.scope == 'everyone'}"/>
-        <span th:text="#{access.scope.everyone}">所有人（含匿名）</span>
+        <span th:text="${item['everyoneLabel'] ?: #messages.msg('access.scope.everyone')}">所有人（含匿名）</span>
     </label>
     <label th:for="${prefix + '-nobody'}" class="access-scope-option">
         <input type="radio" th:id="${prefix + '-nobody'}" name="scope" value="nobody"

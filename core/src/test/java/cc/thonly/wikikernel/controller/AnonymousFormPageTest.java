@@ -1,13 +1,19 @@
 package cc.thonly.wikikernel.controller;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,7 +30,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @SpringBootTest(properties = "wikikernel.database.file=:memory:",
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ExtendWith(OutputCaptureExtension.class)
 class AnonymousFormPageTest {
+
+    private static final String LOGIN_PATH = "/wiki/%E7%89%B9%E6%AE%8A:%E7%99%BB%E5%BD%95";
 
     @LocalServerPort
     private int port;
@@ -53,7 +62,22 @@ class AnonymousFormPageTest {
 
     @Test
     void anonymousLoginPageRendersCompletely() throws Exception {
-        assertRendered("/wiki/%E7%89%B9%E6%AE%8A:%E7%99%BB%E5%BD%95", "wiki-login-form");
+        assertRendered(LOGIN_PATH + "?returnto=/wiki/%E9%A6%96%E9%A1%B5", "wiki-login-form");
+    }
+
+    @Test
+    void malformedReturnToReturns400WithoutServletError(CapturedOutput output) throws Exception {
+        String response = rawGet(LOGIN_PATH + "?returnto=%E6%9C%80%E");
+        assertTrue(response.startsWith("HTTP/1.1 400 "));
+        assertFalse(output.getAll().contains("InvalidParameterException"));
+    }
+
+    @Test
+    void siteInfoAcceptsUnencodedPipeInQuery() throws Exception {
+        String response = rawGet("/api.php?action=query&meta=siteinfo&siprop=extensions|general&format=json");
+        assertTrue(response.startsWith("HTTP/1.1 200 "));
+        assertTrue(response.contains("\"extensions\""));
+        assertTrue(response.contains("\"general\""));
     }
 
     @Test
@@ -64,5 +88,15 @@ class AnonymousFormPageTest {
     @Test
     void anonymousPasswordResetPageRendersCompletely() throws Exception {
         assertRendered("/wiki/%E7%89%B9%E6%AE%8A:%E9%87%8D%E7%BD%AE%E5%AF%86%E7%A0%81", "wiki-password-reset-request");
+    }
+
+    private String rawGet(String target) throws Exception {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("localhost", port), 5000);
+            socket.setSoTimeout(30000);
+            String request = "GET " + target + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+            socket.getOutputStream().write(request.getBytes(StandardCharsets.US_ASCII));
+            return new String(socket.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 }

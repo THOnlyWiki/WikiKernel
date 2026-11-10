@@ -2425,6 +2425,8 @@ public class WikitextRenderer {
             }
         }
 
+        boolean noViewer = link != null || List.of(options.getOrDefault("class", "").split("\\s+"))
+                .contains("noviewer");
         String image = "<img class=\"wiki-media-image\" src=\""
                 + HtmlSanitizer.escapeAttribute(fileService.thumbnailUrl(file,
                 width > 0 ? width : (thumb ? 220 : 0)))
@@ -2432,6 +2434,7 @@ public class WikitextRenderer {
                 + (width > 0 ? " width=\"" + width + "\"" : "")
                 + " data-file=\"" + attributeText(HtmlSanitizer.escapeText("文件:" + file.getName())) + "\""
                 + " data-original-src=\"" + HtmlSanitizer.escapeAttribute(fileService.urlOf(file)) + "\""
+                + (noViewer ? " data-no-viewer=\"true\"" : "")
                 + (caption.isEmpty() ? ""
                 : " data-caption=\"" + attributeText(HtmlSanitizer.escapeText(caption)) + "\"")
                 + " loading=\"lazy\">";

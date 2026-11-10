@@ -349,6 +349,13 @@ public class ActionApiService {
                 case "siteinfo" -> {
                     query.put("general", siteinfo(request));
                     query.put("namespaces", namespaces(v2));
+                    if (splitComma(params.get("siprop")).contains("extensions")) {
+                        query.put("extensions", pluginManager.loadedPlugins().stream()
+                                .map(plugin -> plugin.descriptor())
+                                .map(descriptor -> Map.of("name", descriptor.name(),
+                                        "version", descriptor.version(), "description", descriptor.description()))
+                                .toList());
+                    }
                 }
                 case "userinfo" -> query.put("userinfo", userinfo(user, request));
                 case "tokens" -> query.put("tokens", tokens(request, params.get("type")));

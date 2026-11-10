@@ -10,7 +10,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.unbescape.json.JsonEscape;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -42,7 +45,7 @@ class EditDraftTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(UserSession.ATTRIBUTE, user.toTransferCopy());
 
-        mockMvc.perform(get("/wiki/{title}", title).param("action", "edit").session(session))
+        String html = mockMvc.perform(get("/wiki/{title}", title).param("action", "edit").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("/js/edit-draft.js")))
                 .andExpect(content().string(containsString("id=\"edit-draft-notice\"")))
@@ -51,10 +54,9 @@ class EditDraftTest {
                 .andExpect(content().string(containsString("data-title=\"" + title + "\"")))
                 // 表单带当前修订号，用于冲突检测
                 .andExpect(content().string(containsString("data-revision=")))
-                // WIKI_MESSAGES 里有恢复 / 自动保存 / 冲突提示文案
-                .andExpect(content().string(containsString("已恢复上次未保存的草稿")))
-                .andExpect(content().string(containsString("草稿已自动保存到本地")))
-                .andExpect(content().string(containsString("被修改过")));
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonEscape.unescapeJson(html), allOf(containsString("已恢复上次未保存的草稿"),
+                containsString("草稿已自动保存到本地"), containsString("被修改过")));
 
         // 脚本本体：localStorage 键前缀 / 关闭确认 / 自动保存 / 修订号冲突检测
         mockMvc.perform(get("/js/edit-draft.js"))

@@ -156,6 +156,20 @@ class MediaViewerTest {
         assertTrue(filePage.contains("data-file=\"文件:" + name + "\""), "文件页大图应带文件标题");
     }
 
+    @Test
+    void imageOptionsCanOptOutOfViewer() throws Exception {
+        WikiUser admin = adminUser();
+        String name = "跳过查看器" + System.nanoTime() + ".png";
+        fileService.store(admin, name, "图", new byte[]{9, 8, 7, 6});
+        String page = "图片链接页" + System.nanoTime();
+        String image = "[[文件:" + name;
+        wikiPageService.editPage(admin, page, image + "|class=example noviewer]]\n"
+                + image + "|link=]]\n" + image + "|link=首页]]\n" + image + "]]");
+
+        String html = renderPage(page);
+        assertEquals(3, html.split("data-no-viewer=\"true\"", -1).length - 1, html);
+    }
+
     // ==================== 工具 ====================
 
     private String renderPage(String title) throws Exception {

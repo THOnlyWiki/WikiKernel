@@ -292,7 +292,7 @@
     max-width: 100%;
 }
 
-/* ==================== 图片放大查看器（仿 MediaWiki MediaViewer） ==================== */
+/* ==================== 图片查看器 ==================== */
 html.wiki-image-viewer-open {
     overflow: hidden;
 }
@@ -303,203 +303,251 @@ html.wiki-image-viewer-open {
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.92);
+    background: #000;
+    color: #202122;
+    font-size: 14px;
+    overscroll-behavior: contain;
+}
+
+.wiki-image-viewer [hidden],
+.wiki-image-viewer[hidden] {
+    display: none !important;
+}
+
+.wiki-image-viewer-main {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
     color: #fff;
 }
 
-.wiki-image-viewer[hidden] {
-    display: none;
+.wiki-image-viewer-stage {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    padding: 48px 64px;
+    touch-action: none;
+}
+
+.wiki-image-viewer-stage img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: grab;
+}
+
+.wiki-image-viewer-stage.dragging,
+.wiki-image-viewer-stage.dragging img {
+    cursor: grabbing;
 }
 
 .wiki-image-viewer-top {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: max(4px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: linear-gradient(rgba(0, 0, 0, 0.65), transparent);
-    z-index: 3;
+    gap: 4px;
 }
 
-.wiki-image-viewer-title {
-    color: #fff;
-    font-size: 14px;
-    text-decoration: none;
-    opacity: 0.95;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.wiki-image-viewer button {
+    font: inherit;
+    box-shadow: none;
+    transform: none;
+    touch-action: manipulation;
 }
 
-.wiki-image-viewer-title:hover {
-    text-decoration: underline;
-}
-
-.wiki-image-viewer-button {
+.wiki-image-viewer-button,
+.wiki-image-viewer-nav {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 36px;
-    height: 36px;
-    padding: 0 8px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 6px;
     border: 0;
     border-radius: 2px;
     background: transparent;
     color: inherit;
-    font-size: 16px;
     cursor: pointer;
-    flex: 0 0 auto;
 }
 
-.wiki-image-viewer-button:hover {
-    background: rgba(255, 255, 255, 0.15);
+.wiki-image-viewer-button svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
 }
 
-.wiki-image-viewer-close {
-    margin-left: auto;
-    width: 36px;
-    font-size: 24px;
-    line-height: 1;
+.wiki-image-viewer-main button {
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
 }
 
-.wiki-image-viewer-stage {
-    position: relative;
-    flex: 1 1 auto;
-    display: flex;
-    /* 不要用 center：图片放大到超过 stage 时，flex 居中会把溢出部分放到负方向，
-       左侧 / 顶部永远滚不到，只能看到中心。改为 flex-start + img margin:auto：
-       图片小于 stage 时自动居中，图片大于 stage 时从左上角开始，配合滚动/拖拽可看全图。 */
-    align-items: flex-start;
-    justify-content: flex-start;
-    overflow: auto;
-    padding: 56px 64px;
-    cursor: grab;
-    touch-action: none;
-    overscroll-behavior: contain;
+.wiki-image-viewer-main button:hover {
+    background: #333;
 }
 
-.wiki-image-viewer-stage.dragging {
-    cursor: grabbing;
+.wiki-image-viewer button:focus-visible,
+.wiki-image-viewer a:focus-visible,
+.wiki-image-viewer input:focus-visible {
+    outline: 2px solid #36c;
+    outline-offset: 2px;
 }
 
-.wiki-image-viewer-stage img {
-    display: block;
-    max-width: none;
-    max-height: none;
-    margin: auto;
-    user-select: none;
-    -webkit-user-drag: none;
-}
-
-.wiki-image-viewer-status {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    padding: 8px 14px;
-    border-radius: 2px;
-    background: rgba(0, 0, 0, 0.7);
-    font-size: 13px;
-}
-
-.wiki-image-viewer-status[hidden] {
-    display: none;
+.wiki-image-viewer-main button:focus-visible {
+    outline-color: #fff;
 }
 
 .wiki-image-viewer-nav {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
-    z-index: 3;
-    width: 48px;
-    height: 72px;
-    border: 0;
-    border-radius: 2px;
-    background: rgba(0, 0, 0, 0.4);
-    color: #fff;
-    font-size: 36px;
-    line-height: 1;
-    cursor: pointer;
+    translate: 0 -50%;
+    height: 64px;
 }
 
-.wiki-image-viewer-nav:hover {
-    background: rgba(0, 0, 0, 0.7);
-}
-
-.wiki-image-viewer-nav[hidden] {
-    display: none;
+.wiki-image-viewer-nav svg {
+    width: 28px;
+    height: 28px;
 }
 
 .wiki-image-viewer-prev {
-    left: 8px;
+    left: max(4px, env(safe-area-inset-left));
 }
 
 .wiki-image-viewer-next {
-    right: 8px;
+    right: max(4px, env(safe-area-inset-right));
+}
+
+.wiki-image-viewer-status {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    max-width: calc(100% - 32px);
+    padding: 8px 14px;
+    background: #202122;
+    border-radius: 2px;
 }
 
 .wiki-image-viewer-bottom {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 8px 14px;
-    background: rgba(0, 0, 0, 0.72);
-    z-index: 3;
+    gap: 12px 20px;
+    padding: 8px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+    border-top: 1px solid #a2a9b1;
+    background: #f8f9fa;
 }
 
-.wiki-image-viewer-caption {
+.wiki-image-viewer-info {
     flex: 1 1 auto;
-    font-size: 13px;
-    opacity: 0.9;
+    min-width: 0;
+}
+
+.wiki-image-viewer-title {
     overflow: hidden;
+    font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.wiki-image-viewer-caption {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #54595d;
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+}
+
 .wiki-image-viewer-controls {
     display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
 }
 
-.wiki-image-viewer-zoom {
-    min-width: 56px;
+.wiki-image-viewer-controls .wiki-image-viewer-button {
+    font-size: 18px;
+}
+
+.wiki-image-viewer-controls .wiki-image-viewer-zoom {
+    min-width: 54px;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
 }
 
-.wiki-image-viewer-download {
-    position: relative;
+.wiki-image-viewer-controls button:hover,
+.wiki-image-viewer-controls button[aria-expanded='true'] {
+    background: #eaecf0;
+}
+
+.wiki-image-viewer a.wiki-image-viewer-details {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 2px;
+    background: #36c;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.wiki-image-viewer a.wiki-image-viewer-details:hover {
+    background: #2a4b8d;
+    color: #fff;
 }
 
 .wiki-image-viewer-menu {
+    box-sizing: border-box;
     position: absolute;
-    right: 0;
-    bottom: calc(100% + 6px);
-    min-width: 230px;
-    padding: 4px 0;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(100% + 8px);
+    width: min(360px, calc(100% - 16px));
+    max-height: 55vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px;
+    border: 1px solid #a2a9b1;
+    border-radius: 2px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.wiki-image-viewer-menu label {
+    display: block;
+    padding: 8px 12px;
+}
+
+.wiki-image-viewer-menu input {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px;
     border: 1px solid #a2a9b1;
     border-radius: 2px;
     background: #fff;
     color: #202122;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    z-index: 4;
+    font-size: 16px;
 }
 
-.wiki-image-viewer-menu[hidden] {
-    display: none;
-}
-
-.wiki-image-viewer-menu-item {
+.wiki-image-viewer .wiki-image-viewer-menu-item {
     display: block;
     box-sizing: border-box;
     width: 100%;
     padding: 8px 12px;
     border: 0;
-    background: none;
+    background: transparent;
     color: #202122;
     font-size: 13px;
     text-align: left;
@@ -507,180 +555,48 @@ html.wiki-image-viewer-open {
     cursor: pointer;
 }
 
-.wiki-image-viewer-menu-item:hover {
+.wiki-image-viewer .wiki-image-viewer-menu-item:hover {
     background: #eaecf0;
 }
 
-.wiki-image-viewer-menu-item:disabled {
+.wiki-image-viewer .wiki-image-viewer-menu-item:disabled {
     color: #72777d;
     cursor: default;
 }
 
 .wiki-image-viewer-menu-status {
     padding: 6px 12px;
-    color: #d33;
+    color: #b32424;
     font-size: 12px;
 }
 
-.wiki-image-viewer-menu-status[hidden] {
-    display: none;
-}
-
-@media (max-width: 600px) {
+@media (max-width: 640px) {
     .wiki-image-viewer-stage {
         padding: 48px 8px;
     }
 
     .wiki-image-viewer-nav {
-        width: 36px;
-        height: 52px;
-        font-size: 26px;
+        height: 48px;
+    }
+
+    .wiki-image-viewer-nav svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .wiki-image-viewer-bottom {
+        display: block;
+        padding-top: 6px;
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+    }
+
+    .wiki-image-viewer-controls {
+        gap: 0;
+    }
+
+    .wiki-image-viewer a.wiki-image-viewer-details {
+        margin-left: auto;
+        min-height: 44px;
     }
 }
-
-/* ==================== 图片查看器精修（对齐 MediaWiki MultimediaViewer 的观感） ====================
-   追加在末尾，靠「同权重后加载」覆盖上面的初版样式：
-   更实的深色遮罩、顶栏 / 底栏窄条、圆形按钮、图片投影、两侧大箭头。 */
-.wiki-image-viewer {
-    background: rgba(11, 13, 14, 0.94);
-    font-size: 14px;
-}
-
-.wiki-image-viewer-top {
-    padding: 8px 12px;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
-}
-
-.wiki-image-viewer-title {
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-}
-
-/* 皮肤里的链接规则（#mw-wrapper a 等）会把它染成蓝色，这里用更高权重压回白色 */
-.wiki-image-viewer a.wiki-image-viewer-title,
-.wiki-image-viewer a.wiki-image-viewer-title:hover {
-    color: #ffffff;
-}
-
-.wiki-image-viewer-button {
-    min-width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
-    transition: background-color 0.15s ease;
-}
-
-.wiki-image-viewer-button:hover {
-    background: rgba(255, 255, 255, 0.22);
-}
-
-.wiki-image-viewer-close {
-    width: 34px;
-    font-size: 20px;
-}
-
-.wiki-image-viewer-close:hover {
-    background: rgba(220, 60, 60, 0.75);
-}
-
-.wiki-image-viewer-stage {
-    padding: 64px 88px 88px;
-}
-
-.wiki-image-viewer-stage img {
-    box-shadow: 0 4px 40px rgba(0, 0, 0, 0.7);
-    background: #ffffff;
-}
-
-.wiki-image-viewer-nav {
-    position: absolute;
-    top: 50%;
-    z-index: 4;
-    width: 56px;
-    height: 56px;
-    margin-top: -28px;
-    border: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    font-size: 30px;
-    line-height: 1;
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-}
-
-.wiki-image-viewer-nav:hover {
-    background: rgba(255, 255, 255, 0.28);
-}
-
-.wiki-image-viewer-prev {
-    left: 16px;
-}
-
-.wiki-image-viewer-next {
-    right: 16px;
-}
-
-.wiki-image-viewer-bottom {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 3;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 48px;
-    padding: 8px 14px;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.35));
-}
-
-.wiki-image-viewer-caption {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    color: #eaecf0;
-    font-size: 13px;
-    line-height: 1.4;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.wiki-image-viewer-controls {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 6px;
-}
-
-.wiki-image-viewer-zoom {
-    min-width: 52px;
-    border-radius: 17px;
-    font-size: 12px;
-}
-
-.wiki-image-viewer-status {
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.75);
-    font-size: 13px;
-}
-
-.wiki-image-viewer-menu {
-    border-radius: 6px;
-    background: #202122;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
-}
-
-.wiki-image-viewer-menu-item {
-    color: #eaecf0;
-}
-
-/* 非 MediaWiki 皮肤（plain / vector / fallback）下也一样好看：工具条按钮不吃站点糖果主题 */
-.wiki-image-viewer button {
-    font-family: inherit;
-    box-shadow: none;
-    transform: none;
-}
-

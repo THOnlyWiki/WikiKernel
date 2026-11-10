@@ -25,7 +25,15 @@ spring:
           max-age: 1h
           cache-public: true
 
+springdoc:
+  swagger-ui:
+    disable-swagger-default-url: true
+    validator-url: none
+
 server:
+  tomcat:
+    # 兼容 MediaWiki 客户端在多值查询参数中直接使用竖线。
+    relaxed-query-chars: ['|']
   servlet:
     session:
       # 禁用 URL 重写（;jsessionid=...），避免 Session ID 泄漏到 Referer / 日志。

@@ -10,7 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.unbescape.json.JsonEscape;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -91,7 +93,8 @@ class SkinSystemTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("\"wgNamespaceNumber\":0")))
                 .andExpect(content().string(containsString("\"wgIsArticle\":true")))
-                .andExpect(content().string(containsString("\"wgPageName\":\"" + title + "\"")));
+                .andExpect(result -> assertThat(JsonEscape.unescapeJson(result.getResponse().getContentAsString()),
+                        containsString("\"wgPageName\":\"" + title + "\"")));
         // 特殊页：命名空间 -1
         mockMvc.perform(get("/wiki/{title}", "特殊:版本"))
                 .andExpect(content().string(containsString("\"wgNamespaceNumber\":-1")));

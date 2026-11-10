@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.unbescape.json.JsonEscape;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.net.URLEncoder;
@@ -532,7 +533,6 @@ class PreferencesTest {
      * 这样断言的是脚本运行时的文案，而不是被转义后的字面量。
      */
     private static String unescapeJs(String text) {
-        return text.replace("\\/", "/").replace("\\\"", "\"")
-                .replace("\\u003C", "<").replace("\\u003E", ">").replace("\\u0026", "&");
+        return JsonEscape.unescapeJson(text);
     }
 }

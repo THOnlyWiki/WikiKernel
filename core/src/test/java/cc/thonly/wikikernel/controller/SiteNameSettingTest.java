@@ -14,9 +14,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.unbescape.json.JsonEscape;
 
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -154,7 +156,8 @@ class SiteNameSettingTest {
             mockMvc.perform(get("/wiki/{title}", title))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("<title>" + title + " - " + name + "</title>")))
-                    .andExpect(content().string(containsString("wgSiteName\":\"" + name + "\"")))
+                    .andExpect(result -> assertThat(JsonEscape.unescapeJson(result.getResponse().getContentAsString()),
+                            containsString("wgSiteName\":\"" + name + "\"")))
                     .andExpect(content().string(containsString("alt=\"" + name + "\"")))
                     .andExpect(content().string(containsString("placeholder=\"搜索 " + name + "\"")))
                     .andExpect(content().string(containsString(name + " · Powered by Spring Boot")));

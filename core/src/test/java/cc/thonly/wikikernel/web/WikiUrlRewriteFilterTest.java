@@ -46,6 +46,11 @@ class WikiUrlRewriteFilterTest {
         // 原有保留段
         assertNull(WikiUrlRewriteFilter.rewrite("/api.php"));
         assertNull(WikiUrlRewriteFilter.rewrite("/api/query"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/swagger-ui.html"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/swagger-ui/index.html"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/v3/api-docs"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/v3/api-docs.yaml"));
+        assertNull(WikiUrlRewriteFilter.rewrite("/webjars/swagger-ui/index.html"));
         assertNull(WikiUrlRewriteFilter.rewrite("/css/base.css"));
         assertNull(WikiUrlRewriteFilter.rewrite("/skins/kawaii-timeless/main.css"));
         assertNull(WikiUrlRewriteFilter.rewrite("/plugins/echo/echo.js"));

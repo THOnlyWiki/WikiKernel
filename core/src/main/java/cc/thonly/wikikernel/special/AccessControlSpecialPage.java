@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.special;
 
+import cc.thonly.wikikernel.config.SpringDocAccessConfig;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
 import cc.thonly.wikikernel.auth.external.ExternalAuthProviderRegistry;
 import cc.thonly.wikikernel.auth.external.ExternalAuthSettings;
@@ -228,6 +229,11 @@ public class AccessControlSpecialPage implements SpecialPage {
             defaults.add(row);
         }
         model.put("defaults", defaults);
+        String openApiTarget = SpringDocAccessConfig.ACCESS_TARGET;
+        Map<String, Object> openApiRule = ruleRow(AccessAction.READ, openApiTarget,
+                accessControlService.requiredGroups(AccessAction.READ, openApiTarget), null);
+        openApiRule.put("everyoneLabel", message("access.openapi.loggedIn"));
+        model.put("openApiRule", openApiRule);
         model.put("newRule", ruleRow(AccessAction.READ, "", "", null));
         model.put("rules", accessControlService.allRules().stream()
                 .map(rule -> {
@@ -237,6 +243,10 @@ public class AccessControlSpecialPage implements SpecialPage {
                     }
                     Map<String, Object> row = ruleRow(action, rule.getTarget(), rule.getGroupNames(), rule.getId());
                     row.put("actionName", message("access.action." + action.id(), action.id()));
+                    if (openApiTarget.equals(rule.getTarget()) && action == AccessAction.READ
+                            && AccessAction.EVERYONE.equals(rule.getGroupNames())) {
+                        row.put("groupsText", message("access.openapi.loggedIn"));
+                    }
                     return row;
                 })
                 .filter(java.util.Objects::nonNull)
@@ -253,6 +263,7 @@ public class AccessControlSpecialPage implements SpecialPage {
         }
         specialWikiPageService.getObject().listRegisteredPages()
                 .forEach(page -> options.add("特殊:" + page.name()));
+        options.add(openApiTarget);
         model.put("pageOptions", options.stream()
                 .map(title -> Map.of("title", title, "url", WikiUrls.pagePath(title)))
                 .toList());
