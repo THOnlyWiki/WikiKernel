@@ -5,7 +5,7 @@ import cc.thonly.wikikernel.common.extension.MessageBundle;
 import cc.thonly.wikikernel.common.extension.SearchHit;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.service.AccessCheck;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiConfig;
+import cc.thonly.wikikernel.common.ai.AiConfig;
 import cc.thonly.wikikernel.common.service.CategoryCounts;
 import cc.thonly.wikikernel.common.service.CategoryMember;
 import cc.thonly.wikikernel.common.service.CategoryStore;
@@ -22,7 +22,7 @@ import cc.thonly.wikikernel.common.service.WikiDiff;
 import cc.thonly.wikikernel.common.service.WikiPageStore;
 import cc.thonly.wikikernel.common.service.WikiText;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiAgentService;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiProviderRegistry;
+import cc.thonly.wikikernel.common.ai.AiProviderRegistry;
 import cc.thonly.wikikernel.plugin.aiagent.service.MarkdownRenderer;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
@@ -57,6 +57,17 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class AiAgentFakes {
 
+    public static cc.thonly.wikikernel.common.ai.AiProviderFactory providerFactory() {
+        return new cc.thonly.wikikernel.common.ai.AiProviderFactory() {
+            public cc.thonly.wikikernel.common.ai.AiProvider create(String id, cc.thonly.wikikernel.common.ai.AiProviderConfig config) {
+                return new cc.thonly.wikikernel.plugin.aiagent.service.MockProvider(id, config);
+            }
+            public boolean isPublicUrl(String url) {
+                return cc.thonly.wikikernel.plugin.aiagent.service.AiUrlPolicy.isPublicHttpUrl(url);
+            }
+        };
+    }
+
     private AiAgentFakes() {
     }
 
@@ -84,7 +95,7 @@ public final class AiAgentFakes {
 
         public Fixture() {
             support = new AiAgentSupport(siteConfig, messages);
-            registry = new AiProviderRegistry(aiConfig, new ObjectMapper(), support);
+            registry = new AiProviderRegistry(aiConfig, providerFactory(), support::message);
             service = new AiAgentService(registry, aiConfig, support, accessCheck, pageQuery, pageStore,
                     pageLinks, categories, search, users, wikiText, wikiDiff, editSubmitter,
                     new MarkdownRenderer(), new ObjectMapper());

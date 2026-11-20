@@ -90,6 +90,21 @@ class AllPagesTest {
     }
 
     @Test
+    void servesFilteredSectionWithoutSkinWhenRequested() throws Exception {
+        String prefix = "片段筛选" + System.nanoTime();
+        insertPage(prefix);
+        insertPage(prefix + "B");
+
+        mockMvc.perform(get("/wiki/{title}", "特殊:全部页面")
+                        .param("from", prefix).param("to", prefix).param("_wkfragment", "query"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-wiki-query=\"all-pages\"")))
+                .andExpect(content().string(containsString(">" + prefix + "</a>")))
+                .andExpect(content().string(not(containsString(">" + prefix + "B</a>"))))
+                .andExpect(content().string(not(containsString("<head>"))));
+    }
+
+    @Test
     void paginatesWithNextAndPreviousLinks() throws Exception {
         String suffix = String.valueOf(System.nanoTime());
         String prefix = "翻页测试" + suffix + "-";

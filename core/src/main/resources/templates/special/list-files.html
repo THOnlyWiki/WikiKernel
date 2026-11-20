@@ -5,44 +5,41 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section class="listfiles-page">
+<section class="listfiles-page" th:fragment="query" data-wiki-query="list-files">
     <div class="mw-specialpage-summary">
         <p th:text="#{listFiles.summary}">本特殊页面展示所有上传的文件。</p>
     </div>
 
-    <!-- 线上是 OOUI 的 framed 表单面板：fieldset + legend「文件列表」 -->
-    <form id="mw-listfiles-form" class="listfiles-form" method="get" th:action="@{/wiki/特殊:文件列表}">
-        <fieldset class="listfiles-fieldset">
-            <legend class="listfiles-legend" th:text="#{special.fileList}">文件列表</legend>
-            <div class="listfiles-fields">
-                <span class="listfiles-field">
-                    <label for="listfiles-limit" th:text="#{listFiles.limitLabel}">每页项数：</label>
-                    <select id="listfiles-limit" name="limit">
-                        <option th:each="n : ${limitOptions}" th:value="${n}" th:text="${n}"
-                                th:selected="${n == limitValue}">50</option>
-                    </select>
-                </span>
-                <span class="listfiles-field">
-                    <label for="listfiles-user" th:text="#{listFiles.userLabel}">用户名：</label>
-                    <input type="text" id="listfiles-user" name="user" maxlength="255"
-                           th:value="${userFilter}" class="listfiles-user-input"/>
-                </span>
-                <label class="listfiles-check">
-                    <input type="checkbox" name="ilshowall" value="1" th:checked="${showAll}"/>
-                    <span th:text="#{listFiles.showAll}">包括文件的旧版本</span>
-                </label>
-                <input type="hidden" name="sort" th:value="${sortValue}"/>
-                <input type="hidden" name="dir" th:value="${dirValue}"/>
-                <button type="submit" class="wiki-button listfiles-submit" th:text="#{allPages.submit}">提交</button>
+    <form id="mw-listfiles-form" class="wiki-form listfiles-form wiki-filter-panel" method="get" th:action="@{/wiki/特殊:文件列表}">
+        <div class="wiki-filter-grid">
+            <div class="wiki-filter-field">
+                <label for="listfiles-limit" th:text="#{listFiles.limitLabel}">每页项数：</label>
+                <select id="listfiles-limit" name="limit">
+                    <option th:each="n : ${limitOptions}" th:value="${n}" th:text="${n}"
+                            th:selected="${n == limitValue}">50</option>
+                </select>
             </div>
-        </fieldset>
+            <div class="wiki-filter-field">
+                <label for="listfiles-user" th:text="#{listFiles.userLabel}">用户名：</label>
+                <input type="text" id="listfiles-user" name="user" maxlength="255" th:value="${userFilter}"/>
+            </div>
+        </div>
+        <div class="wiki-filter-actions">
+            <label class="wiki-filter-choice">
+                <input type="checkbox" name="ilshowall" value="1" th:checked="${showAll}"/>
+                <span th:text="#{listFiles.showAll}">包括文件的旧版本</span>
+            </label>
+            <input type="hidden" name="sort" th:value="${sortValue}"/>
+            <input type="hidden" name="dir" th:value="${dirValue}"/>
+            <button type="submit" class="wiki-button wiki-button-primary" th:text="#{allPages.submit}">提交</button>
+        </div>
     </form>
 
     <p th:if="${#lists.isEmpty(files)}" th:text="#{listFiles.empty}">还没有上传任何文件。</p>
 
     <th:block th:unless="${#lists.isEmpty(files)}">
         <!-- 分页导航（线上 TablePager：首页 / 上一页 / 下一页 / 末页，上下各一条） -->
-        <div class="listfiles-nav">
+        <div class="listfiles-nav" data-wiki-query-links>
             <a th:if="${firstOffset != null}"
                th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${firstOffset})}"
                class="listfiles-nav-link" th:text="#{listFiles.first}">首页</a>
@@ -65,16 +62,16 @@
             <thead>
             <tr>
                 <th class="listfiles-sort">
-                    <a th:href="@{/wiki/特殊:文件列表(sort='date', dir=${dateDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
+                    <a data-wiki-query-link th:href="@{/wiki/特殊:文件列表(sort='date', dir=${dateDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
                        th:text="#{listFiles.date}" title="排序">日期</a>
                 </th>
                 <th class="listfiles-sort">
-                    <a th:href="@{/wiki/特殊:文件列表(sort='name', dir=${nameDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
+                    <a data-wiki-query-link th:href="@{/wiki/特殊:文件列表(sort='name', dir=${nameDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
                        th:text="#{listFiles.name}" title="排序">名称</a>
                 </th>
                 <th th:text="#{listFiles.thumb}">缩略图</th>
                 <th class="listfiles-sort">
-                    <a th:href="@{/wiki/特殊:文件列表(sort='size', dir=${sizeDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
+                    <a data-wiki-query-link th:href="@{/wiki/特殊:文件列表(sort='size', dir=${sizeDir}, limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null})}"
                        th:text="#{files.size}" title="排序">大小</a>
                 </th>
                 <th th:text="#{listFiles.user}">用户</th>
@@ -117,7 +114,7 @@
             </tbody>
         </table>
 
-        <div class="listfiles-nav">
+        <div class="listfiles-nav" data-wiki-query-links>
             <a th:if="${firstOffset != null}"
                th:href="@{/wiki/特殊:文件列表(limit=${limitValue}, user=${userFilter}, ilshowall=${showAll ? 1 : null}, sort=${sortValue}, dir=${dirValue}, offset=${firstOffset})}"
                class="listfiles-nav-link" th:text="#{listFiles.first}">首页</a>

@@ -1,4 +1,6 @@
 package cc.thonly.wikikernel.plugin.aiagent.service;
+import cc.thonly.wikikernel.common.ai.AiProviderRegistry;
+import cc.thonly.wikikernel.common.ai.AiVendorCatalog;
 
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentFakes;
@@ -53,8 +55,8 @@ class AiProviderRegistryLabelTest {
     @Test
     void missingVendorMessageFallsBackToTheVendorIdNeverToChinese() {
         AiAgentFakes.Fixture fixture = new AiAgentFakes.Fixture();
-        AiProviderRegistry registry = new AiProviderRegistry(fixture.aiConfig, new ObjectMapper(),
-                new AiAgentSupport(fixture.siteConfig, new PartialMessageSource()));
+        AiProviderRegistry registry = new AiProviderRegistry(fixture.aiConfig, AiAgentFakes.providerFactory(),
+                new AiAgentSupport(fixture.siteConfig, new PartialMessageSource())::message);
 
         assertEquals("OpenAI (localized)", registry.vendorLabel("openai"), "有译文时用译文");
         assertEquals("mock", registry.vendorLabel("mock"), "缺键时回退成厂商 id");

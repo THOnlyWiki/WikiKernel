@@ -3,14 +3,18 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section class="user-rights">
+<section class="user-rights" th:fragment="query" data-wiki-query="user-rights">
     <!-- 选择用户 -->
     <fieldset class="user-rights-fieldset">
         <legend th:text="#{userRights.selectUser}">选择用户</legend>
-        <form id="wiki-rights-lookup" class="wiki-form wiki-form-inline" th:action="@{/wiki/特殊:用户权限}" method="get">
-            <label for="wpUsername" th:text="#{userRights.usernameLabel}">输入用户名：</label>
-            <input type="text" id="wpUsername" name="name" th:value="${lookupName}" autofocus required/>
-            <button type="submit" class="wiki-button" th:text="#{userRights.loadGroups}">加载用户组</button>
+        <form id="wiki-rights-lookup" class="wiki-form wiki-filter-panel" th:action="@{/wiki/特殊:用户权限}" method="get">
+            <div class="wiki-filter-field">
+                <label for="wpUsername" th:text="#{userRights.usernameLabel}">输入用户名：</label>
+                <input type="text" id="wpUsername" name="name" th:value="${lookupName}" autofocus required/>
+            </div>
+            <div class="wiki-filter-actions">
+                <button type="submit" class="wiki-button wiki-button-primary" th:text="#{userRights.loadGroups}">加载用户组</button>
+            </div>
         </form>
         <p class="wiki-form-error" th:if="${nameRequired}" th:text="#{userRights.usernameRequired}">
             请输入用户名。

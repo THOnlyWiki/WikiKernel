@@ -3,7 +3,7 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section>
+<section th:fragment="query" data-wiki-query="export">
     <p class="export-intro" th:text="#{export.intro}">
         导出页面数据（Wikitext / 完整历史 / 引用模板），可用于备份、迁移或提供给 MediaWiki 导入。
     </p>
@@ -42,14 +42,18 @@
         </div>
     </form>
 
-    <form id="wiki-export-addns" class="wiki-form wiki-form-inline" method="get"
+    <form id="wiki-export-addns" class="wiki-form wiki-filter-panel" method="get"
           th:action="@{/wiki/特殊:导出页面}">
-        <label for="wpAddns" th:text="#{export.addNamespace}">添加命名空间全部页面：</label>
-        <select id="wpAddns" name="addns">
-            <option th:each="option : ${namespaceOptions}" th:value="${option.id}"
-                    th:text="${option.label}" th:selected="${option.selected}">主命名空间</option>
-        </select>
-        <button type="submit" class="wiki-button" th:text="#{export.addNamespaceButton}">添加</button>
+        <div class="wiki-filter-field">
+            <label for="wpAddns" th:text="#{export.addNamespace}">添加命名空间全部页面：</label>
+            <select id="wpAddns" name="addns">
+                <option th:each="option : ${namespaceOptions}" th:value="${option.id}"
+                        th:text="${option.label}" th:selected="${option.selected}">主命名空间</option>
+            </select>
+        </div>
+        <div class="wiki-filter-actions">
+            <button type="submit" class="wiki-button wiki-button-primary" th:text="#{export.addNamespaceButton}">添加</button>
+        </div>
     </form>
     <p class="wiki-hint" th:if="${addedNamespaceCount != null}"
        th:text="#{export.addedCount(${addedNamespaceCount}, ${addedNamespaceName})}">

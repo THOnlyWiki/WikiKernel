@@ -3,30 +3,41 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section>
-    <form class="log-filter-form" method="get" th:action="@{/wiki/特殊:日志}">
-        <div class="wiki-filter">
-            <select name="type" th:attr="aria-label=#{log.filter}">
-                <option value="" th:selected="${#strings.isEmpty(selectedType)}"
-                        th:text="#{log.filter.all}">全部公开日志</option>
-                <option th:each="type : ${logTypes}" th:value="${type.id}"
-                        th:selected="${selectedType == type.id}" th:text="${type.name}">创建页面</option>
-            </select>
-            <input type="text" name="name" th:value="${selectedName}" list="log-user-list"
-                   th:placeholder="#{log.filter.userPlaceholder}" th:attr="aria-label=#{log.filter.user}"/>
-            <input type="text" name="page" th:value="${selectedPage}"
-                   th:placeholder="#{log.filter.pagePlaceholder}" th:attr="aria-label=#{log.filter.page}"/>
-            <button type="submit" class="wiki-button" th:text="#{log.filter.search}">搜索</button>
+<section th:fragment="query" data-wiki-query="log">
+    <form class="wiki-form log-filter-form wiki-filter-panel" method="get" th:action="@{/wiki/特殊:日志}">
+        <div class="wiki-filter-grid">
+            <div class="wiki-filter-field">
+                <label for="log-filter-type" th:text="#{log.filter}">日志类型</label>
+                <select name="type" id="log-filter-type">
+                    <option value="" th:selected="${#strings.isEmpty(selectedType)}"
+                            th:text="#{log.filter.all}">全部公开日志</option>
+                    <option th:each="type : ${logTypes}" th:value="${type.id}"
+                            th:selected="${selectedType == type.id}" th:text="${type.name}">创建页面</option>
+                </select>
+            </div>
+            <div class="wiki-filter-field">
+                <label for="log-filter-user" th:text="#{log.filter.user}">用户</label>
+                <input type="text" id="log-filter-user" name="name" th:value="${selectedName}" list="log-user-list"
+                       th:placeholder="#{log.filter.userPlaceholder}"/>
+            </div>
+            <div class="wiki-filter-field">
+                <label for="log-filter-page" th:text="#{log.filter.page}">目标页面</label>
+                <input type="text" id="log-filter-page" name="page" th:value="${selectedPage}"
+                       th:placeholder="#{log.filter.pagePlaceholder}"/>
+            </div>
         </div>
-        <div class="wiki-filter">
-            <label>
-                <span th:text="#{log.filter.start}">起始时间</span>
-                <input type="datetime-local" name="start" th:value="${startValue}" step="1"/>
-            </label>
-            <label>
-                <span th:text="#{log.filter.end}">结束时间</span>
-                <input type="datetime-local" name="end" th:value="${endValue}" step="1"/>
-            </label>
+        <div class="wiki-filter-grid">
+            <div class="wiki-filter-field">
+                <label for="log-filter-start" th:text="#{log.filter.start}">起始时间</label>
+                <input type="datetime-local" id="log-filter-start" name="start" th:value="${startValue}" step="1"/>
+            </div>
+            <div class="wiki-filter-field">
+                <label for="log-filter-end" th:text="#{log.filter.end}">结束时间</label>
+                <input type="datetime-local" id="log-filter-end" name="end" th:value="${endValue}" step="1"/>
+            </div>
+        </div>
+        <div class="wiki-filter-actions">
+            <button type="submit" class="wiki-button wiki-button-primary" th:text="#{log.filter.search}">搜索</button>
         </div>
         <datalist id="log-user-list">
             <option th:each="userOption : ${userOptions}" th:value="${userOption}"></option>
@@ -41,7 +52,7 @@
     <p id="log-message" class="form-message" hidden></p>
 
     <!-- 分页：每页 10 / 50 / 100 / 500 + 最新 / 上一页 / 下一页（仿 MediaWiki Special:Log；链接保留筛选条件） -->
-    <div class="log-pager" th:if="${!#lists.isEmpty(rows) or prevUrl != null}">
+    <div class="log-pager" data-wiki-query-links th:if="${!#lists.isEmpty(rows) or prevUrl != null}">
         <span class="log-pager-sizes">
             <span th:text="#{log.page.perPage}">每页：</span><th:block
                 th:each="option, iter : ${limitOptions}"><span th:if="${iter.index > 0}"
@@ -108,7 +119,7 @@
     </table>
 
     <!-- 底部分页（与顶部一致） -->
-    <div class="log-pager" th:if="${!#lists.isEmpty(rows) or prevUrl != null}">
+    <div class="log-pager" data-wiki-query-links th:if="${!#lists.isEmpty(rows) or prevUrl != null}">
         <span class="log-pager-sizes">
             <span th:text="#{log.page.perPage}">每页：</span><th:block
                 th:each="option, iter : ${limitOptions}"><span th:if="${iter.index > 0}"

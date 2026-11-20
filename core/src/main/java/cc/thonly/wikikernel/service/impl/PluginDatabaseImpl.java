@@ -41,18 +41,20 @@ public class PluginDatabaseImpl implements PluginDatabase {
 
     @Override
     public String databaseProductName() {
-        try (Connection connection = jdbc.getDataSource().getConnection()) {
-            return connection.getMetaData().getDatabaseProductName();
-        } catch (SQLException exception) {
+        try {
+            return jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<String>)
+                    connection -> connection.getMetaData().getDatabaseProductName());
+        } catch (org.springframework.dao.DataAccessException exception) {
             return "unknown";
         }
     }
 
     @Override
     public List<String> tableNames() {
-        try (Connection connection = jdbc.getDataSource().getConnection()) {
-            return new ArrayList<>(DdlSchema.existingTables(connection.getMetaData()).keySet());
-        } catch (SQLException exception) {
+        try {
+            return jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<List<String>>)
+                    connection -> new ArrayList<>(DdlSchema.existingTables(connection.getMetaData()).keySet()));
+        } catch (org.springframework.dao.DataAccessException exception) {
             throw new IllegalStateException("读取数据库表名失败", exception);
         }
     }

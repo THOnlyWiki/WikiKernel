@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body><section class="newsroom" data-newsroom>
+    <p>投稿和 AI 起草的内容都先进入草稿。提交审核后，由具有审核权限的编辑发布。</p>
+    <p><a data-news-url>查看活动资讯</a> · <a data-ai-url>AI 管理</a></p>
+    <p role="status" aria-live="polite" data-news-status></p>
+    <div class="newsroom-layout">
+        <aside class="newsroom-list"><h2>稿件</h2><button type="button" data-news-new>新建投稿</button><div data-drafts></div></aside>
+        <div>
+            <details class="news-ai"><summary>从宣传文案起草新闻</summary>
+                <form data-news-generate>
+                    <label>原公告链接<input type="url" name="sourceUrl" required placeholder="https://"></label>
+                    <label>来源材料<textarea name="input" rows="6" maxlength="24000" required></textarea></label>
+                    <button type="submit">生成待审核草稿</button>
+                </form>
+                <div data-job-status aria-live="polite"></div>
+            </details>
+            <form data-news-editor>
+                <input name="id" type="hidden" value="0"><input name="version" type="hidden" value="0">
+                <h2 data-editor-title>新建投稿</h2>
+                <label>标题<input name="title" maxlength="120" required></label>
+                <div class="news-fields">
+                    <label>类型<select name="category"><option>定档</option><option>变更</option><option>报名</option><option selected>预告</option><option>回顾</option><option>站务</option></select></label>
+                    <label>地区<select name="region"><option value="">未指定</option></select></label>
+                </div>
+                <label>摘要<textarea name="summary" rows="2" maxlength="300"></textarea></label>
+                <label>正文<textarea name="body" rows="14" maxlength="60000" required></textarea></label>
+                <p class="news-meta">正文按文本展示，保留换行。请核对时间、地点和报名条件，并附上来源。</p>
+                <div class="news-fields"><label>来源名称<input name="sourceName" maxlength="120"></label>
+                    <label>来源链接<input name="sourceUrl" type="url"></label></div>
+                <label>封面文件地址<input name="cover" placeholder="/files/…"></label>
+                <details><summary>关联活动与展示时间</summary>
+                    <div class="news-fields"><label>活动年份<input name="activityYear" type="number" min="2000" max="2100"></label>
+                        <label>关联活动<select name="activityId"><option value="0">不关联活动</option></select></label></div>
+                    <input name="activityRevision" type="hidden">
+                    <label>发布时间<input name="publishAt" type="datetime-local"></label>
+                    <label>首页展示截止<input name="expiresAt" type="datetime-local"></label>
+                    <label>置顶截止<input name="pinUntil" type="datetime-local"></label>
+                </details>
+                <div class="news-actions">
+                    <button type="submit">保存草稿</button>
+                    <button type="button" data-news-preview>预览</button>
+                    <button type="button" data-news-action="submit">提交审核</button>
+                    <button type="button" data-news-action="publish" hidden>审核通过并发布</button>
+                    <button type="button" data-news-action="reject" hidden>退回修改</button>
+                    <button type="button" data-news-action="withdraw" hidden>撤下公开版本</button>
+                </div>
+                <p data-save-hint class="news-meta"></p>
+            </form>
+            <div data-news-preview-area hidden class="news-preview"></div>
+            <details><summary>操作记录</summary><div data-news-history>选择稿件后查看。</div></details>
+        </div>
+    </div>
+</section></body></html>

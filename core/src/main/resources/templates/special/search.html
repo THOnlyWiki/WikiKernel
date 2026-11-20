@@ -3,7 +3,7 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section class="mw-search-page">
+<section class="mw-search-page" th:fragment="query" data-wiki-query="search">
     <form id="search" class="mw-search-form" th:action="@{/wiki/特殊:搜索}" method="get">
         <div class="mw-search-form-row">
             <input type="search" name="search" th:value="${q}"
@@ -17,7 +17,7 @@
              th:text="#{search.summary(${q}, ${resultCount})}">
             关键字“…”共 0 条结果
         </div>
-        <div class="mw-search-profile-tabs">
+        <div class="mw-search-profile-tabs" data-wiki-query-links>
             <div class="search-types">
                 <ul>
                     <li th:classappend="${profile == 'default'} ? 'current' : 'normal'">
@@ -41,7 +41,7 @@
         </div>
     </form>
 
-    <form th:if="${advanced}" class="mw-search-advanced wiki-form"
+    <form th:if="${advanced}" class="mw-search-advanced wiki-form wiki-filter-panel"
           th:action="@{/wiki/特殊:搜索}" method="get">
         <input type="hidden" name="search" th:value="${q}"/>
         <input type="hidden" name="profile" value="advanced"/>
@@ -52,14 +52,14 @@
                 选择要搜索的命名空间；不勾选 = 主命名空间。
             </p>
             <div class="mw-search-namespace-grid">
-                <label class="pref-checkbox" th:each="option : ${namespaceOptions}">
+                <label class="wiki-filter-choice" th:each="option : ${namespaceOptions}">
                     <input type="checkbox" th:attr="name=${option['name']}" value="1"
                            th:checked="${option['selected']}"/>
                     <span th:text="${option['label']}">主命名空间</span>
                 </label>
             </div>
         </fieldset>
-        <div class="form-actions">
+        <div class="wiki-filter-actions">
             <button type="submit" class="wiki-button wiki-button-primary"
                     th:text="#{common.search}">搜索</button>
         </div>

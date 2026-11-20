@@ -16,6 +16,10 @@
 
     <p class="rc-summary" th:text="#{recentChanges.intro}">此页面可以追踪本wiki的最近更改。</p>
 
+    <th:block th:if="${skin.id == 'kawaii-timeless'}">
+        <th:block th:replace="~{special/recent-changes-timeless :: controls}"></th:block>
+    </th:block>
+    <th:block th:unless="${skin.id == 'kawaii-timeless'}">
     <!-- 过滤器栏 -->
     <div class="rc-filters">
         <div class="rc-filters-head">
@@ -89,6 +93,7 @@
             </ul>
         </details>
     </div>
+    </th:block>
 
     <p th:if="${#lists.isEmpty(days)}" th:text="#{recentChanges.empty}">没有最近的更改。</p>
 
@@ -112,14 +117,16 @@
         <div class="rc-day" th:each="day : ${days}">
             <h2 class="rc-day-title" th:text="${day.label}">2026年10月5日 (星期一)</h2>
             <ul class="rc-list">
-                <li th:each="entry : ${day.entries}" class="rc-entry" th:attr="data-key=${entry.key}">
+                <li th:each="entry : ${day.entries}" class="rc-entry" th:attr="data-key=${entry.key}"
+                    th:classappend="${entry.highlight == true} ? 'rc-author-highlight'">
                 <!-- 同一词条多次更改：折叠（摘要行带 N次更改） -->
                 <details class="rc-group" th:if="${entry.kind == 'group' and entry.count > 1}">
                     <summary>
                         <th:block th:replace="~{special/recent-changes-line :: rcLine(${entry.latest})}">…</th:block>
                     </summary>
                     <ul class="rc-changes">
-                        <li th:each="change : ${entry.changes}">
+                        <li th:each="change : ${entry.changes}"
+                            th:classappend="${change.highlight == true} ? 'rc-author-highlight'">
                             <th:block th:replace="~{special/recent-changes-line :: rcLine(${change})}">…</th:block>
                         </li>
                     </ul>
@@ -143,7 +150,8 @@
                               th:text="${entry.targetsText}">[甲；乙]</span>
                     </summary>
                     <ul class="rc-changes">
-                        <li th:each="logEntry : ${entry.entries}">
+                        <li th:each="logEntry : ${entry.entries}"
+                            th:classappend="${logEntry.highlight == true} ? 'rc-author-highlight'">
                             <div class="rc-line rc-log-line"
                                  th:classappend="${logEntry.hided} ? ' rc-hided'">
                                 <th:block th:replace="~{special/recent-changes-log :: rcLogLine(${logEntry})}">…</th:block>

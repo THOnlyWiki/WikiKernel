@@ -80,6 +80,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ActionApiService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private cc.thonly.wikikernel.i18n.SystemMessages systemMessages;
 
     private static final Set<String> POST_ACTIONS = Set.of(
             "edit", "move", "delete", "protect", "block", "unblock", "upload", "rollback", "login", "logout");
@@ -358,6 +360,7 @@ public class ActionApiService {
                     }
                 }
                 case "userinfo" -> query.put("userinfo", userinfo(user, request));
+                case "allmessages" -> query.put("allmessages", allMessages(params, v2));
                 case "tokens" -> query.put("tokens", tokens(request, params.get("type")));
                 default -> throw new ApiError("badvalue",
                         "Unrecognized value for parameter \"meta\": " + meta);
@@ -415,6 +418,39 @@ public class ActionApiService {
             root.put("continue", continueMap);
         }
         return root;
+    }
+
+    private List<Map<String, Object>> allMessages(Map<String, String> params, boolean v2) {
+        String language = params.getOrDefault("amlang", LocaleContextHolder.getLocale().getLanguage().equals("en") ? "en" : "zh-hans");
+        if (Set.of("zh", "zh-cn").contains(language)) language = "zh-hans";
+        Locale locale = systemMessages.languages().get(language);
+        if (locale == null) throw new ApiError("badvalue", "Unsupported amlang value.");
+        String customised = params.getOrDefault("amcustomised", "all");
+        if (!Set.of("all", "modified", "unmodified").contains(customised)) throw new ApiError("badvalue", "Invalid amcustomised value.");
+        var entries = systemMessages.entries(locale);
+        Map<String, cc.thonly.wikikernel.i18n.SystemMessages.Entry> catalogue = new LinkedHashMap<>();
+        entries.forEach(entry -> catalogue.put(entry.name(), entry));
+        String requested = params.getOrDefault("ammessages", "*");
+        var names = requested.equals("*") ? new ArrayList<>(catalogue.keySet()) : splitComma(requested);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String key : names) {
+            if (!key.startsWith(params.getOrDefault("amprefix", "")) || !key.contains(params.getOrDefault("amfilter", ""))
+                    || (!params.getOrDefault("amfrom", "").isBlank() && key.compareTo(params.get("amfrom")) < 0)
+                    || (!params.getOrDefault("amto", "").isBlank() && key.compareTo(params.get("amto")) > 0)) continue;
+            var entry = catalogue.get(key);
+            boolean modified = entry != null && entry.modified();
+            if (!customised.equals("all") && modified != customised.equals("modified")) continue;
+            Map<String, Object> row = new LinkedHashMap<>(); row.put("name", key);
+            row.put("normalizedname", key.isEmpty() ? key : Character.toLowerCase(key.charAt(0)) + key.substring(1));
+            if (entry == null) row.put("missing", v2 ? true : "");
+            else {
+                row.put("*", entry.currentText());
+                if (modified) row.put("customised", v2 ? true : "");
+                if (params.containsKey("amincludedefault")) row.put("default", entry.defaultText());
+            }
+            result.add(row);
+        }
+        return result;
     }
 
     /** 页面引用（存在 / 缺失 + 解析到的页面）。 */
@@ -841,6 +877,14 @@ public class ActionApiService {
         return new ListResult(items, cont);
     }
 
+    private boolean virtualLogTarget(WikiLog log) {
+        boolean registered = pluginManager.extensions(cc.thonly.wikikernel.common.extension.LogType.class).stream()
+                .anyMatch(type -> type.id().equals(log.getLogType()) && type.inRecentChanges()
+                        && type.targetKind() == cc.thonly.wikikernel.common.extension.LogType.TargetKind.PAGE);
+        return registered && wikiPageMapper.selectCount(Wrappers.<WikiPage>lambdaQuery()
+                .eq(WikiPage::getTitle, WikiTitles.normalize(log.getTarget()))) == 0;
+    }
+
     private ListResult recentChanges(Map<String, String> params, WikiUser user, boolean v2) {
         int limit = intParam(params.get("rclimit"), 50, 1, 500);
         List<Integer> namespaces = intList(params.get("rcnamespace"));
@@ -876,7 +920,8 @@ public class ActionApiService {
         }
         for (WikiLog log : logService.recent(null, null, false, Math.min(2000, limit * 10))) {
             String logTarget = Strings.trimToEmpty(log.getTarget());
-            if (!logTarget.isEmpty() && wikiPageService.getVisibleByTitle(logTarget).isEmpty()) {
+            if (!logTarget.isEmpty() && wikiPageService.getVisibleByTitle(logTarget).isEmpty()
+                    && !virtualLogTarget(log)) {
                 continue;
             }
             if (!namespaces.isEmpty() && !namespaces.contains(ActionApiNamespaces.idOf(logTarget))) {

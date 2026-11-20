@@ -1,8 +1,9 @@
 package cc.thonly.wikikernel.plugin.aiagent.service;
+import cc.thonly.wikikernel.common.ai.AiProviderRegistry;
 
 import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.extension.Viewer;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiConfig;
+import cc.thonly.wikikernel.common.ai.AiConfig;
 import cc.thonly.wikikernel.common.service.EditSubmitter;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentFakes;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentSupport;

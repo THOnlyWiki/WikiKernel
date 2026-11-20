@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body><section class="ai-management">
+    <p>在这里管理站点 AI 接口，以及活动整理和新闻起草使用的模型。<a th:href="${aiAgentUrl}">打开词条 AI 代理</a></p>
+    <p th:unless="${aiManager}">只有管理员或行政员可以配置站点 AI。</p>
+    <div th:if="${aiManager}" data-ai-management>
+        <p role="status" aria-live="polite" data-status></p>
+        <h2>站点接口</h2><div data-providers></div>
+        <details><summary>添加接口</summary><form data-provider-form class="wiki-form">
+            <label>配置标识 <input name="id" required pattern="[a-z][a-z0-9-]{0,39}" placeholder="news-model"></label>
+            <label>显示名称 <input name="label" maxlength="80"></label>
+            <label>协议 <select name="type"><option value="openai">OpenAI 兼容</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option></select></label>
+            <label>接口地址 <input name="baseUrl" type="url" placeholder="https://example.com/v1"></label>
+            <label>模型 <input name="model" required maxlength="120"></label>
+            <label>API 密钥 <input name="apiKey" type="password" autocomplete="new-password"></label>
+            <label>代理 <input name="proxy" placeholder="可选"></label>
+            <label><input name="allowPrivate" type="checkbox" value="true">允许此配置连接本机或内网服务</label>
+            <button type="submit">保存接口</button>
+        </form></details>
+        <h2>使用场景</h2><div data-scenes></div>
+        <h2>词条编辑代理</h2>
+        <form data-agent-policy-form class="wiki-form">
+            <label><input name="enabled" type="checkbox" value="true">启用 AI 词条编辑代理</label>
+            <label><input name="allowNormal" type="checkbox" value="true">允许普通登录用户使用</label>
+            <p>词条对话与编辑功能由 AI 代理插件提供。AI代理用户、管理员和行政员可在启用后使用。</p>
+            <button type="submit">保存代理权限</button>
+        </form>
+        <h2>请求限额</h2>
+        <form data-limits-form class="wiki-form">
+            <label>同时运行的请求数<input name="concurrency" type="number" min="1" max="4" required></label>
+            <label>每天最多请求数（UTC 日界）<input name="dailyCalls" type="number" min="1" max="10000" required></label>
+            <label>单次请求超时（秒）<input name="timeout" type="number" min="5" max="300" required></label>
+            <button type="submit">保存限额</button>
+        </form>
+        <h2>最近调用</h2><div data-calls></div>
+    </div>
+    <link rel="stylesheet" href="/css/ai-management.css">
+    <script defer src="/js/ai-management.js"></script>
+</section></body></html>

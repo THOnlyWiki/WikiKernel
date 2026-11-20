@@ -193,21 +193,40 @@ public class SidebarService {
 
     /** 页面缺失时的兜底侧边栏（文案跟随当前语言）：导航 + 完整「工具」箱（仿 MediaWiki）。 */
     private List<SidebarSection> defaultSidebar() {
+        return defaultSidebar(this::message);
+    }
+
+    private List<SidebarSection> defaultSidebar(java.util.function.Function<String, String> text) {
         String home = WikiUrls.pagePath("首页");
         return List.of(
-                new SidebarSection(message("sidebar.navigation"), List.of(
-                        new SidebarItem(message("common.home"), home, false),
-                        new SidebarItem(message("special.allPages"), WikiUrls.pagePath("特殊:全部页面"), false),
-                        new SidebarItem(message("special.specialPages"), WikiUrls.pagePath("特殊:特殊页面"), false))),
+                new SidebarSection(text.apply("sidebar.navigation"), List.of(
+                        new SidebarItem(text.apply("common.home"), home, false),
+                        new SidebarItem(text.apply("special.allPages"), WikiUrls.pagePath("特殊:全部页面"), false),
+                        new SidebarItem(text.apply("special.specialPages"), WikiUrls.pagePath("特殊:特殊页面"), false))),
                 // 工具条目由 UserToolsSidebar 在内容页替换为「当前页面」版本；此处是页面缺失时的兜底目标
-                new SidebarSection(message("sidebar.tools"), List.of(
-                        new SidebarItem(message("tools.whatLinksHere"), WikiUrls.pagePath("特殊:链入页面"), false),
-                        new SidebarItem(message("tools.relatedChanges"), WikiUrls.pagePath("特殊:相关更改"), false),
-                        new SidebarItem(message("tools.upload"), WikiUrls.pagePath("特殊:上传文件"), false),
-                        new SidebarItem(message("tools.specialPages"), WikiUrls.pagePath("特殊:特殊页面"), false),
-                        new SidebarItem(message("tools.printable"), home + "?printable=yes", false),
-                        new SidebarItem(message("tools.permanentLink"), home + "?oldid=", false),
-                        new SidebarItem(message("tools.pageInfo"), WikiUrls.pagePath("特殊:页面信息"), false))));
+                new SidebarSection(text.apply("sidebar.tools"), List.of(
+                        new SidebarItem(text.apply("tools.whatLinksHere"), WikiUrls.pagePath("特殊:链入页面"), false),
+                        new SidebarItem(text.apply("tools.relatedChanges"), WikiUrls.pagePath("特殊:相关更改"), false),
+                        new SidebarItem(text.apply("tools.upload"), WikiUrls.pagePath("特殊:上传文件"), false),
+                        new SidebarItem(text.apply("tools.specialPages"), WikiUrls.pagePath("特殊:特殊页面"), false),
+                        new SidebarItem(text.apply("tools.printable"), home + "?printable=yes", false),
+                        new SidebarItem(text.apply("tools.permanentLink"), home + "?oldid=", false),
+                        new SidebarItem(text.apply("tools.pageInfo"), WikiUrls.pagePath("特殊:页面信息"), false))));
+    }
+
+    /** Equivalent wikitext for the built-in sidebar, used by Special:AllMessages and its editor preload. */
+    public String defaultSource(java.util.Locale locale) {
+        var defaults = messageSource instanceof cc.thonly.wikikernel.i18n.PluginMessageSource source
+                ? source.defaults(locale) : Map.<String, String>of();
+        StringBuilder source = new StringBuilder();
+        for (SidebarSection section : defaultSidebar(key -> defaults.containsKey(key) ? defaults.get(key) : messageSource.getMessage(key, null, locale))) {
+            source.append("* ").append(section.getTitle()).append('\n');
+            for (SidebarItem item : section.getItems()) {
+                String target = item.isExternal() ? item.getHref() : WikiUrls.pagePathRest(item.getHref());
+                source.append("** ").append(target).append('|').append(item.getLabel()).append('\n');
+            }
+        }
+        return source.toString();
     }
 
     private String message(String key) {

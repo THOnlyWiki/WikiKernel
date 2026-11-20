@@ -91,7 +91,7 @@ class AiAgentTest {
     }
 
     @Test
-    void specialPageAndApisDoNotExistWithoutThePlugin() throws Exception {
+    void agentRemainsOptionalWhileCoreOwnsKeys() throws Exception {
         siteSettingsService.set("features.ai-agent", Boolean.toString(true));
         try {
             WikiUser agent = agentUser("无插件代理用户");
@@ -111,10 +111,10 @@ class AiAgentTest {
                     .andExpect(status().is4xxClientError());
             mockMvc.perform(post("/api/ai-keys").with(csrf()).session(sessionOf(agent))
                             .param("scope", "user").param("provider", "mock"))
-                    .andExpect(status().is4xxClientError());
+                    .andExpect(status().isOk());
             mockMvc.perform(post("/api/ai-keys/allow-normal").with(csrf()).session(sessionOf(agent))
                             .param("allow", "1"))
-                    .andExpect(status().is4xxClientError());
+                    .andExpect(status().isOk());
             // 迁移前的旧路径也不再存在
             mockMvc.perform(post("/api/ai-provider-keys").with(csrf()).session(sessionOf(agent))
                             .param("scope", "user").param("provider", "mock"))

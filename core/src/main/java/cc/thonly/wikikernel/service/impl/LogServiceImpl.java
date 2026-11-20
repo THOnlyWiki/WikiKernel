@@ -20,6 +20,24 @@ public class LogServiceImpl implements LogService {
     private static final int IP_SCAN_LIMIT = 5000;
 
     private final WikiLogMapper wikiLogMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<cc.thonly.wikikernel.service.LogTypeRegistry> types;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<cc.thonly.wikikernel.common.service.CurrentUser> current;
+
+    private List<WikiLog> visible(List<WikiLog> logs) {
+        if (types == null || current == null) return logs;
+        var registry = types.getIfAvailable(); var actor = current.getIfAvailable();
+        if (registry == null || actor == null) return logs;
+        var viewer = actor.viewer();
+        java.util.Map<String, cc.thonly.wikikernel.common.extension.LogType> registered = new java.util.HashMap<>();
+        registry.all().forEach(type -> registered.put(type.id(), type));
+        return logs.stream().filter(log -> {
+            var type = registered.get(log.getLogType());
+            try { return type == null || type.visibleTo(log, viewer); }
+            catch (RuntimeException exception) { return false; }
+        }).toList();
+    }
 
     public LogServiceImpl(WikiLogMapper wikiLogMapper) {
         this.wikiLogMapper = wikiLogMapper;
@@ -69,7 +87,7 @@ public class LogServiceImpl implements LogService {
         }
         query.orderByDesc(WikiLog::getId)
                 .last("LIMIT " + Math.max(1, limit) + " OFFSET " + Math.max(0, offset));
-        return wikiLogMapper.selectList(query);
+        return visible(wikiLogMapper.selectList(query));
     }
 
     @Override
@@ -83,7 +101,7 @@ public class LogServiceImpl implements LogService {
             query.eq(WikiLog::getHided, false);
         }
         query.orderByDesc(WikiLog::getId).last("LIMIT " + Math.max(1, limit));
-        return wikiLogMapper.selectList(query);
+        return visible(wikiLogMapper.selectList(query));
     }
 
     @Override
@@ -97,7 +115,7 @@ public class LogServiceImpl implements LogService {
             query.eq(WikiLog::getHided, false);
         }
         query.orderByDesc(WikiLog::getId).last("LIMIT " + Math.max(1, limit));
-        return wikiLogMapper.selectList(query);
+        return visible(wikiLogMapper.selectList(query));
     }
 
     @Override
@@ -108,16 +126,16 @@ public class LogServiceImpl implements LogService {
         }
         int capped = Math.max(1, limit);
         if (!value.contains("/")) {
-            return wikiLogMapper.selectList(Wrappers.<WikiLog>lambdaQuery()
+            return visible(wikiLogMapper.selectList(Wrappers.<WikiLog>lambdaQuery()
                     .eq(WikiLog::getIp, value)
                     .orderByDesc(WikiLog::getId)
-                    .last("LIMIT " + capped));
+                    .last("LIMIT " + capped)));
         }
         // CIDR：扫描最近日志后内存匹配（demo 规模足够；数据量大时可以加 ip 前缀索引）
-        return wikiLogMapper.selectList(Wrappers.<WikiLog>lambdaQuery()
+        return visible(wikiLogMapper.selectList(Wrappers.<WikiLog>lambdaQuery()
                         .isNotNull(WikiLog::getIp)
                         .orderByDesc(WikiLog::getId)
-                        .last("LIMIT " + IP_SCAN_LIMIT))
+                        .last("LIMIT " + IP_SCAN_LIMIT)))
                 .stream()
                 .filter(log -> IpAddresses.matches(log.getIp(), value))
                 .limit(capped)

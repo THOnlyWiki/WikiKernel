@@ -103,6 +103,37 @@ class RecentChangesTest {
     }
 
     @Test
+    void authorFiltersAndHighlightWorkWithHourlyRangeAndUngroupedRows() throws Exception {
+        WikiUser actor = insertUser("筛选测试用户" + System.nanoTime());
+        String suffix = String.valueOf(System.nanoTime());
+        String ownTitle = "筛选测试本人" + suffix;
+        String anonymousTitle = "筛选测试匿名" + suffix;
+        String oldTitle = "筛选测试过期" + suffix;
+        wikiPageService.editPage(actor, ownTitle, "第一版");
+        wikiPageService.editPage(actor, ownTitle, "第二版");
+        wikiPageService.editPage(null, anonymousTitle, "匿名版本");
+        WikiPage old = wikiPageService.editPage(actor, oldTitle, "三小时前的版本");
+        WikiRevision oldRevision = wikiRevisionMapper.selectById(old.getLatestRevisionId());
+        oldRevision.setCreateAt(LocalDateTime.now().minusHours(3));
+        wikiRevisionMapper.updateById(oldRevision);
+
+        mockMvc.perform(get("/wiki/{title}", "特殊:最近更改").session(sessionOf(actor))
+                        .param("hours", "2").param("group", "0").param("author", "own,newcomer")
+                        .param("highlight", "registered"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(ownTitle)))
+                .andExpect(content().string(containsString("class=\"rc-entry rc-author-highlight\"")))
+                .andExpect(content().string(containsString("data-key=\"r-")))
+                .andExpect(content().string(not(containsString(oldTitle))))
+                .andExpect(content().string(not(containsString(anonymousTitle))));
+
+        mockMvc.perform(get("/wiki/{title}", "特殊:最近更改").param("author", "anonymous"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(anonymousTitle)))
+                .andExpect(content().string(not(containsString(ownTitle))));
+    }
+
+    @Test
     void englishAliasAvailableAndHiddenPagesExcluded() throws Exception {
         // 英文 + 别名
         mockMvc.perform(get("/wiki/{title}", "Special:RecentChanges").param("uselang", "en"))

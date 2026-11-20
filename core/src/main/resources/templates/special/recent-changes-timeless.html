@@ -1,0 +1,181 @@
+<div class="rc-timeless" th:fragment="controls" xmlns:th="http://www.thymeleaf.org"
+     th:attr="data-filter-url=${currentFilterUrl},data-storage-error=#{recentChanges.savedError}">
+    <div class="rc-saved-bar">
+        <details class="rc-menu rc-saved" id="rc-saved">
+            <summary>
+                <span class="rc-icon" aria-hidden="true">bookmark</span>
+                <span th:text="#{recentChanges.savedFilters}">已保存的筛选条件</span>
+                <span class="rc-icon rc-chevron" aria-hidden="true">expand_more</span>
+            </summary>
+            <div class="rc-popover rc-saved-panel">
+                <div id="rc-saved-empty" class="rc-saved-empty">
+                    <span class="rc-icon" aria-hidden="true">bookmark</span>
+                    <div>
+                        <strong th:text="#{recentChanges.savedEmpty}">尚未保存筛选条件</strong>
+                        <p th:text="#{recentChanges.savedHint}">点击激活的过滤器区的书签图标保存。</p>
+                    </div>
+                </div>
+                <ul class="rc-saved-list" id="rc-saved-list" hidden></ul>
+                <template id="rc-saved-item">
+                    <li>
+                        <a class="rc-saved-link"></a>
+                        <button class="rc-icon-button" type="button" th:title="#{recentChanges.savedDelete}"
+                                th:aria-label="#{recentChanges.savedDelete}">
+                            <span class="rc-icon" aria-hidden="true">delete</span>
+                        </button>
+                    </li>
+                </template>
+                <form class="rc-save-form" id="rc-save-form" hidden>
+                    <label for="rc-save-name" th:text="#{recentChanges.savedName}">筛选条件名称</label>
+                    <div>
+                        <input id="rc-save-name" maxlength="60" required autocomplete="off">
+                        <button class="rc-control" type="submit" th:text="#{recentChanges.savedSave}">保存</button>
+                    </div>
+                </form>
+                <p class="rc-storage-status" id="rc-storage-status" role="status" hidden></p>
+            </div>
+        </details>
+    </div>
+
+    <div class="rc-filters">
+        <div class="rc-filter-tray">
+            <div class="rc-filters-head">
+                <span th:text="#{recentChanges.filters}">激活的过滤器</span>
+                <button type="button" id="rc-filters-toggle" class="rc-link-button"
+                        aria-controls="rc-active-filters" aria-expanded="true"
+                        th:attr="data-hide=#{recentChanges.filtersHide},data-show=#{recentChanges.filtersShow}"
+                        th:text="#{recentChanges.filtersHide}">隐藏</button>
+            </div>
+            <div class="rc-active-filters" id="rc-active-filters">
+                <div class="rc-chips">
+                    <span class="rc-filters-empty" th:if="${#lists.isEmpty(activeFilters)}"
+                          th:text="#{recentChanges.filtersEmpty}">没有激活的过滤器。</span>
+                    <span class="rc-chip" th:each="filter : ${activeFilters}"
+                          th:attr="data-filter-key=${filter.label + ':' + filter.highlight}"
+                          th:classappend="${filter.highlight == true} ? 'rc-chip-highlight'">
+                        <span class="rc-icon" aria-hidden="true" th:if="${filter.highlight == true}">edit</span>
+                        <span th:text="${filter.label}">过滤器</span>
+                        <a class="rc-chip-remove" th:href="${filter.removeUrl}" th:title="#{recentChanges.chipRemove}"
+                           th:aria-label="${#messages.msg('recentChanges.chipRemove') + ' ' + filter.label}">
+                            <span class="rc-icon" aria-hidden="true">close</span>
+                        </a>
+                    </span>
+                </div>
+                <div class="rc-tray-actions">
+                    <button class="rc-icon-button" type="button" id="rc-save-filter"
+                            th:title="#{recentChanges.savedAdd}" th:aria-label="#{recentChanges.savedAdd}">
+                        <span class="rc-icon" aria-hidden="true">bookmark</span>
+                    </button>
+                    <a class="rc-icon-button rc-chip-trash" th:if="${!#lists.isEmpty(activeFilters)}" th:href="${clearUrl}"
+                       th:title="#{recentChanges.clearFilters}" th:aria-label="#{recentChanges.clearFilters}">
+                        <span class="rc-icon" aria-hidden="true">delete</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="rc-filter-row">
+            <div class="rc-filter-search">
+                <details class="rc-menu rc-picker" id="rc-filter-picker">
+                    <summary th:title="#{recentChanges.filterMenu}" th:aria-label="#{recentChanges.filterMenu}"
+                             aria-controls="rc-filter-panel">
+                        <span class="rc-icon rc-picker-icon" aria-hidden="true"></span>
+                    </summary>
+                    <div class="rc-popover" id="rc-filter-panel">
+                        <div class="rc-picker-heading">
+                            <strong th:text="#{recentChanges.filtersMenuTitle}">过滤器</strong>
+                            <button class="rc-control" id="rc-highlight-toggle" type="button" aria-pressed="false">
+                                <span class="rc-icon" aria-hidden="true">edit</span>
+                                <span th:text="#{recentChanges.highlightResults}">高亮结果</span>
+                            </button>
+                        </div>
+                        <div class="rc-picker-options">
+                            <div class="rc-filter-category" th:each="group : ${authorFilterGroups}">
+                                <div class="rc-menu-heading" th:text="${group.label}">用户注册及经验</div>
+                                <ul>
+                                    <li th:each="option : ${group.options}">
+                                        <a class="rc-filter-choice" role="checkbox" th:aria-checked="${option.selected}"
+                                           th:aria-disabled="${option.disabled ? 'true' : null}"
+                                           th:href="${option.disabled ? null : option.url}"
+                                           th:attr="data-normal-url=${option.url},data-highlight-url=${option.highlightUrl},
+                                                    data-selected=${option.selected},data-highlighted=${option.highlighted}">
+                                            <span class="rc-choice-box" aria-hidden="true"></span>
+                                            <span>
+                                                <strong th:text="${option.label}">未注册</strong>
+                                                <span class="rc-choice-description" th:text="${option.description}">未登录的编者。</span>
+                                            </span>
+                                            <span class="rc-icon rc-choice-highlight" aria-hidden="true"
+                                                  th:if="${option.highlighted}">edit</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <p class="rc-picker-empty" id="rc-picker-empty" hidden
+                               th:text="#{recentChanges.noFilterMatch}">没有匹配的过滤器。</p>
+                        </div>
+                    </div>
+                </details>
+                <input type="search" id="rc-filter-input" th:placeholder="#{recentChanges.filterPlaceholder}"
+                       th:aria-label="#{recentChanges.filterPlaceholder}" aria-controls="rc-filter-panel" autocomplete="off"/>
+            </div>
+            <div class="rc-filter-actions">
+                <th:block th:replace="~{special/recent-changes-timeless :: optionMenu('list_alt', #{recentChanges.namespace}, ${namespaceOptions})}"></th:block>
+                <th:block th:replace="~{special/recent-changes-timeless :: optionMenu('sell', #{recentChanges.tags}, ${tagOptions})}"></th:block>
+            </div>
+        </div>
+    </div>
+
+    <div class="rc-toolbar">
+        <button type="button" id="rc-live-toggle" class="rc-live" aria-pressed="false">
+            <span class="rc-live-icon" aria-hidden="true">
+                <span class="rc-icon rc-live-start">play_arrow</span>
+                <span class="rc-icon rc-live-stop">stop</span>
+            </span>
+            <span th:text="#{recentChanges.liveUpdates}">动态更新</span>
+        </button>
+        <details class="rc-menu rc-range" id="rc-range">
+            <summary>
+                <span class="rc-icon" aria-hidden="true">settings</span>
+                <span th:text="${limitDaysLabel}">50次更改，7天</span>
+                <span class="rc-icon rc-chevron" aria-hidden="true">expand_more</span>
+            </summary>
+            <div class="rc-popover rc-range-panel">
+                <div class="rc-range-section">
+                    <div th:replace="~{special/recent-changes-timeless :: segment(#{recentChanges.resultCount}, ${limitOptions})}"></div>
+                    <a class="rc-group-toggle" role="checkbox" th:aria-checked="${grouped}" th:href="${groupToggleUrl}">
+                        <span class="rc-icon" aria-hidden="true" th:text="${grouped ? 'check_box' : 'check_box_outline_blank'}">check_box</span>
+                        <span th:text="#{recentChanges.groupResults}">组合显示同一页面结果</span>
+                    </a>
+                </div>
+                <div class="rc-range-section">
+                    <strong th:text="#{recentChanges.timeRange}">搜索的时间段</strong>
+                    <div th:replace="~{special/recent-changes-timeless :: segment(#{recentChanges.recentHours}, ${hourOptions})}"></div>
+                    <div th:replace="~{special/recent-changes-timeless :: segment(#{recentChanges.recentDays}, ${dayOptions})}"></div>
+                </div>
+            </div>
+        </details>
+    </div>
+</div>
+
+<details class="rc-menu" th:fragment="optionMenu(icon, label, options)" xmlns:th="http://www.thymeleaf.org">
+    <summary><span class="rc-icon" aria-hidden="true" th:text="${icon}">list_alt</span><span th:text="${label}">命名空间</span></summary>
+    <div class="rc-popover">
+        <ul>
+            <li th:each="option : ${options}">
+                <a th:replace="~{special/recent-changes-timeless :: filterOption(${option})}"></a>
+            </li>
+        </ul>
+    </div>
+</details>
+
+<a th:fragment="filterOption(option)" th:href="${option.url}" th:text="${option.label}"
+   th:classappend="${option.selected} ? 'selected'" th:aria-current="${option.selected ? 'true' : null}"
+   xmlns:th="http://www.thymeleaf.org">全部</a>
+
+<div class="rc-segment-field" th:fragment="segment(label, options)" xmlns:th="http://www.thymeleaf.org">
+    <div class="rc-range-label" th:text="${label}">显示的结果数</div>
+    <div class="rc-segments" role="group" th:aria-label="${label}">
+        <a th:each="option : ${options}" th:href="${option.url}" th:text="${option.value}" th:aria-label="${option.label}"
+           th:classappend="${option.selected} ? 'selected'" th:aria-current="${option.selected ? 'true' : null}">50</a>
+    </div>
+</div>

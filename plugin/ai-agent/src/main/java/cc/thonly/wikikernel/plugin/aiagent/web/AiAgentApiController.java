@@ -7,7 +7,7 @@ import cc.thonly.wikikernel.common.util.AjaxCode;
 import cc.thonly.wikikernel.common.util.AjaxResult;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentSupport;
 import cc.thonly.wikikernel.plugin.aiagent.model.AiAgentException;
-import cc.thonly.wikikernel.plugin.aiagent.model.AiException;
+import cc.thonly.wikikernel.common.ai.AiException;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiAgentService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

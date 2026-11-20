@@ -3,26 +3,26 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section>
+<section th:fragment="query" data-wiki-query="nuke">
     <p class="wiki-form-error" th:unless="${canManage}" th:text="#{nuke.noPermission}">需要管理员权限。</p>
 
     <th:block th:if="${canManage}">
         <p th:text="#{nuke.summary}">批量删除由指定用户创建的页面，或标题匹配前缀的页面。</p>
 
-        <form id="nuke-search-form" class="wiki-form" method="get"
+        <form id="nuke-search-form" class="wiki-form wiki-filter-panel" method="get"
               th:action="@{/wiki/特殊:大量删除}">
-            <div class="wiki-form-inline">
-                <div class="form-field">
+            <div class="wiki-filter-grid">
+                <div class="wiki-filter-field">
                     <label for="nuke-name" th:text="#{nuke.username}">用户名</label>
                     <input type="text" id="nuke-name" name="name" th:value="${nameValue}"
                            th:placeholder="#{nuke.usernameHint}"/>
                 </div>
-                <div class="form-field">
+                <div class="wiki-filter-field">
                     <label for="nuke-prefix" th:text="#{nuke.prefix}">标题前缀</label>
                     <input type="text" id="nuke-prefix" name="prefix" th:value="${prefixValue}"
                            th:placeholder="#{nuke.prefixHint}"/>
                 </div>
-                <div class="form-field">
+                <div class="wiki-filter-field">
                     <label for="nuke-limit" th:text="#{nuke.limit}">最多列出</label>
                     <select id="nuke-limit" name="limit">
                         <option th:each="option : ${limitOptions}" th:value="${option}"
@@ -30,7 +30,7 @@
                     </select>
                 </div>
             </div>
-            <div class="form-field">
+            <div class="wiki-filter-field">
                 <label for="nuke-titles" th:text="#{nuke.titles}">直接指定页面标题（每行一个）</label>
                 <textarea id="nuke-titles" name="titles" rows="6" th:text="${titlesValue}"
                           th:placeholder="#{nuke.titlesPlaceholder}"></textarea>
@@ -38,8 +38,8 @@
             <div class="wiki-hint" th:text="#{nuke.titlesHint}">
                 每行一个标题（可粘贴 [[链接]] 形式）；填写后将忽略上面的用户名 / 前缀条件。
             </div>
-            <div class="form-actions">
-                <button type="submit" class="wiki-button" th:text="#{nuke.search}">列出页面</button>
+            <div class="wiki-filter-actions">
+                <button type="submit" class="wiki-button wiki-button-primary" th:text="#{nuke.search}">列出页面</button>
             </div>
         </form>
 

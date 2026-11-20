@@ -4,6 +4,7 @@
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
 <section>
+    <p th:if="${canManage}"><a th:href="${wikiUrl.page('特殊:AI管理')}">AI 管理</a></p>
     <p th:text="#{access.intro}">
         在这里配置「谁可以查看 / 编辑 / 创建 / 移动 / 保护 / 删除」页面，保存后立即生效。
     </p>

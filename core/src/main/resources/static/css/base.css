@@ -146,28 +146,6 @@ table.mw-page-info td:first-child {
 }
 
 /* 链入页面（仿 MediaWiki Special:WhatLinksHere） */
-.mw-whatlinkshere-form fieldset {
-    border: 1px solid var(--wiki-border);
-    padding: 0.6em 0.9em 0.9em;
-}
-
-.mw-whatlinkshere-form legend {
-    padding: 0 0.4em;
-    font-weight: bold;
-}
-
-.mw-whatlinkshere-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4em 1.2em;
-}
-
-.mw-whatlinkshere-filters label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3em;
-}
-
 .mw-whatlinkshere-nav {
     color: var(--wiki-text-muted);
 }
@@ -285,6 +263,13 @@ table.mw-page-info td:first-child {
 
 .permission-reason {
     margin: 0.8em 0 0;
+}
+
+.permission-reason label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
 }
 
 .permission-reason-input {
@@ -856,6 +841,7 @@ table.mw-page-info td:first-child {
 
 /* ---------- 用户权限页（Special:UserRights 布局） ---------- */
 .user-rights-fieldset {
+    min-width: 0;
     margin: 0 0 1em;
     padding: 0.5em 0.8em 0.8em;
     border: 1px solid #a2a9b1;
@@ -3198,45 +3184,6 @@ form#file-upload-form input[type="file"]:active {
 }
 
 /* 表单：线上是 OOUI 的 framed panel（白底、灰边、2px 圆角、内边距 16px） */
-.listfiles-form .listfiles-fieldset {
-    margin: 0 0 1em;
-    padding: 16px;
-    border: 1px solid var(--wiki-border);
-    border-radius: 2px;
-    background: #ffffff;
-}
-
-.listfiles-form .listfiles-legend {
-    padding: 0 0.35em;
-    color: var(--wiki-text-muted, #54595d);
-    font-size: 0.875em;
-}
-
-.listfiles-form .listfiles-fields {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.6em 1.2em;
-}
-
-.listfiles-form .listfiles-field {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-    font-size: 0.875em;
-}
-
-.listfiles-form .listfiles-user-input {
-    width: 14em;
-}
-
-.listfiles-form .listfiles-check {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4em;
-    font-size: 0.875em;
-}
-
 /* 分页导航：线上在表格上下各一条（首页 / 上一页 / 下一页 / 末页，当前不可用的置灰） */
 .listfiles-nav {
     display: flex;
@@ -4121,46 +4068,6 @@ select:disabled {
 }
 
 /* ---------- 特殊:全部页面（仿 MediaWiki Special:AllPages） ---------- */
-.allpages-form {
-    max-width: none;
-    margin: 0.4em 0 0.6em;
-}
-
-.allpages-fields {
-    display: flex;
-    flex-direction: column; /* 竖排：每一行一组「标签 + 控件」 */
-    align-items: flex-start;
-    gap: 0.4em;
-}
-
-/* 一组「标签 + 控件」占一行 */
-.allpages-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-}
-
-.allpages-row label {
-    white-space: nowrap;
-}
-
-.allpages-form input[type="text"] {
-    width: 13em;
-    max-width: none;
-}
-
-.allpages-form select {
-    width: auto;
-    max-width: none;
-}
-
-.allpages-hide {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-    font-weight: normal;
-}
-
 /* 页面列表：三列（窄屏一列），每项前面的圆点由 ::marker 渲染（MediaWiki 经典样式） */
 .allpages-chunk {
     list-style: disc;
@@ -4237,21 +4144,6 @@ select:disabled {
 }
 
 /* ---------- 特殊:文件列表（TablePager 风格，仿 MediaWiki Special:ListFiles） ---------- */
-.listfiles-fields {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5em;
-}
-
-.listfiles-form label {
-    margin-left: 0.5em;
-}
-
-.listfiles-form label:first-child {
-    margin-left: 0;
-}
-
 .listfiles-nav {
     margin: 0.6em 0;
     min-height: 1.2em;

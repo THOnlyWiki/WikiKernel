@@ -262,6 +262,8 @@ public class PageCacheServiceImpl implements PageCacheService, ApplicationRunner
     }
 
     private void writeEntry(String key, PageBody body) {
+        // {{int:...}} can depend on interface edits and the current reader's message-page permissions.
+        if (body.properties().containsKey("interface-message-used")) return;
         if ("0".equals(body.properties().get(cc.thonly.wikikernel.common.extension.WikiRenderContext.CACHE_EXPIRY_PROPERTY))) { return; }
         PageCacheBackend backend = selectedBackend();
         if (backend == null) {

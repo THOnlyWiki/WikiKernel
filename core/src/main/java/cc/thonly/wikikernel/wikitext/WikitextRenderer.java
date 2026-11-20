@@ -825,6 +825,8 @@ public class WikitextRenderer {
                 yield first;
             }
             case "int" -> {
+                RenderContextState state = CURRENT.get();
+                if (state != null) state.setProperty("interface-message-used", "1");
                 if (messageSource == null) {
                     yield first;
                 }

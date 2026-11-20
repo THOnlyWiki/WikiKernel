@@ -2,11 +2,14 @@
  * 日志页的「隐藏 / 显示」按钮（仅管理员 / 行政员会看到）。
  * 提交到 POST /api/logs/hide，成功后刷新页面。
  */
-(function () {
+(function (init) {
+    init(document);
+    document.addEventListener('wiki:query-updated', function (event) { init(event.target); });
+})(function (root) {
     'use strict';
 
     var MESSAGES = window.WIKI_MESSAGES || {};
-    var forms = document.querySelectorAll('.log-hide-form');
+    var forms = root.querySelectorAll('.log-hide-form');
     if (!forms.length) {
         return;
     }
@@ -60,4 +63,4 @@
             });
         });
     });
-})();
+});

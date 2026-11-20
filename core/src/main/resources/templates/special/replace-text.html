@@ -3,7 +3,7 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section>
+<section th:fragment="query" data-wiki-query="replace-text">
     <p th:if="${canManage}" th:text="#{replaceText.summary}">
         在所有页面正文中查找并替换文本（支持正则；仿 MediaWiki 的 ReplaceText 扩展；需要管理员权限）。
     </p>

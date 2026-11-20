@@ -122,6 +122,10 @@ import java.util.Set;
 public class WikiPageController {
     /** 默认主页面标题（中文）；其它语言用消息键 {@code mainPage} 指定本地化标题。 */
     private static final String DEFAULT_MAIN_PAGE = "首页";
+    private static final Set<String> QUERY_VIEWS = Set.of(
+            "special/all-pages", "special/new-pages", "special/list-files", "special/log",
+            "special/all-messages", "special/what-links-here", "special/search", "special/user-rights",
+            "special/nuke", "special/export", "special/replace-text");
 
     /** #REDIRECT 链最多解析跳数（超过按普通页面渲染，防止死循环）。 */
     private static final int MAX_REDIRECTS = 5;
@@ -167,6 +171,8 @@ public class WikiPageController {
     /** TypeScript 编译器（把版本号写进 ETag：编译器升级后浏览器会自动拿到新产物）。 */
     private final TypeScriptCompiler typeScriptCompiler;
     private final MessageSource messageSource;
+    @org.springframework.beans.factory.annotation.Autowired
+    private cc.thonly.wikikernel.i18n.SystemMessages systemMessages;
     /** 皮肤注册表：取「本次请求真正生效的皮肤」，用于按皮肤注入站点 CSS / JS。 */
     private final SkinRegistry skinRegistry;
 
@@ -1336,6 +1342,10 @@ public class WikiPageController {
             }
         }
 
+        if (page == null && messageSource instanceof cc.thonly.wikikernel.i18n.PluginMessageSource) {
+            content = systemMessages.editDefault(title).orElse(content);
+        }
+
         // 段落编辑（仿 MediaWiki）：编辑框里只有该段（标题行 + 正文），保存时合并回整页
         Integer editSection = page == null || codeLanguage(title) != null
                 ? null : parseSection(parameters.get("section"));
@@ -2082,11 +2092,15 @@ public class WikiPageController {
             return modelAndView;
         }
 
-        ModelAndView modelAndView = new ModelAndView(match.page().template());
+        String view = match.page().template();
+        boolean queryFragment = view != null && QUERY_VIEWS.contains(view)
+                && "query".equals(request.getParameter("_wkfragment"));
+        ModelAndView modelAndView = new ModelAndView(queryFragment ? view + " :: query" : view);
         modelAndView.addObject("title", match.page().displayName());
         modelAndView.addObject("isSpecialPage", true);
-        modelAndView.addObject("sidebar",
-                this.userToolsSidebar.withSpecialPageTools(specialTitle, specialPath));
+        if (!queryFragment) {
+            modelAndView.addObject("sidebar", this.userToolsSidebar.withSpecialPageTools(specialTitle, specialPath));
+        }
         match.page().populate(specialRequest, modelAndView.getModel());
         // populate() 设置跳转键时直接 302（如“创建页面”输入标题后跳到编辑页）
         Object redirect = modelAndView.getModel().get(SpecialPage.REDIRECT_MODEL_ATTRIBUTE);

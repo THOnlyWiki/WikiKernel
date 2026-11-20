@@ -53,7 +53,22 @@
                     <option th:each="group : ${protectionGroups}" th:value="${group}" th:text="${group}" th:selected="${protectEditGroups.contains(group)}"></option>
                 </select>
             </div>
-            <p class="wiki-hint" th:text="#{protect.groupsHint}"></p>
+            <p class="wiki-hint protect-groups-fallback" th:text="#{protect.groupsHint}"></p>
+            <p class="wiki-hint protect-groups-touch" th:text="#{protect.groupsTouchHint}" hidden></p>
+            <template id="wiki-protection-picker">
+                <fieldset class="wiki-group-picker" th:attr="data-select-group=#{protect.selectGroup}">
+                    <legend></legend>
+                    <div class="wiki-group-modes" role="group"></div>
+                    <div class="wiki-group-options" hidden>
+                        <input type="search" autocomplete="off" th:placeholder="#{protect.findGroup}"
+                               th:aria-label="#{protect.findGroup}"/>
+                        <div class="wiki-filter-choices"></div>
+                        <p class="wiki-hint wiki-group-no-match" hidden role="status" th:text="#{protect.noGroupMatch}"></p>
+                    </div>
+                    <button type="button" class="wiki-button wiki-group-custom" aria-pressed="false"
+                            th:text="#{protect.selectedGroups}">指定用户组</button>
+                </fieldset>
+            </template>
             <div class="form-message" role="alert" hidden></div>
             <div class="form-actions">
                 <button type="submit" class="wiki-button" th:text="#{protect.submit}">确认</button>

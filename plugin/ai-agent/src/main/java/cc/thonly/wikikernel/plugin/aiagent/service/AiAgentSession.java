@@ -1,6 +1,6 @@
 package cc.thonly.wikikernel.plugin.aiagent.service;
 
-import cc.thonly.wikikernel.plugin.aiagent.model.AiMessage;
+import cc.thonly.wikikernel.common.ai.AiMessage;
 import cc.thonly.wikikernel.plugin.aiagent.model.AiProposal;
 
 import java.time.LocalDateTime;

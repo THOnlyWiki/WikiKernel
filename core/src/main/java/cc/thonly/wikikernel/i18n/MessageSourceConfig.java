@@ -14,7 +14,8 @@ import org.springframework.context.annotation.Configuration;
 public class MessageSourceConfig {
 
     @Bean
-    public PluginMessageSource messageSource(ObjectProvider<PluginManager> pluginManagerProvider) {
-        return new PluginMessageSource(pluginManagerProvider);
+    public PluginMessageSource messageSource(ObjectProvider<PluginManager> pluginManagerProvider,
+                                             ObjectProvider<InterfaceMessageOverrides> overrides) {
+        return new PluginMessageSource(pluginManagerProvider, overrides);
     }
 }

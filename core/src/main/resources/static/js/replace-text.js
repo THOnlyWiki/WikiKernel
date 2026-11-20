@@ -5,12 +5,15 @@
  *  - #replace-text-replace-all：勾选全部结果并提交（替换全部匹配）
  * 确认文案由模板通过 data-confirm-template 注入。
  */
-(function () {
+(function (init) {
+    init(document);
+    document.addEventListener('wiki:query-updated', function (event) { init(event.target); });
+})(function (root) {
     'use strict';
 
     var MESSAGES = window.WIKI_MESSAGES || {};
 
-    var form = document.getElementById('wiki-replace-text-form');
+    var form = root.querySelector('#wiki-replace-text-form');
     if (!form) {
         return;
     }
@@ -96,4 +99,4 @@
             submit();
         });
     }
-})();
+});

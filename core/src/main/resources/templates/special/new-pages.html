@@ -3,26 +3,28 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
-<section>
+<section th:fragment="query" data-wiki-query="new-pages">
     <p th:text="#{newPages.intro}">最近创建的页面（仿 MediaWiki 的 特殊:最新页面）。</p>
 
-    <form class="wiki-form allpages-form" method="get" th:action="@{/wiki/特殊:最新页面}">
-        <div class="allpages-fields">
-            <div class="allpages-row">
+    <form class="wiki-form allpages-form wiki-filter-panel" method="get" th:action="@{/wiki/特殊:最新页面}">
+        <div class="wiki-filter-grid">
+            <div class="wiki-filter-field">
                 <label for="newpages-namespace" th:text="#{newPages.namespace}">命名空间：</label>
                 <select id="newpages-namespace" name="namespace">
                     <option th:each="opt : ${namespaceOptions}" th:value="${opt.id}" th:text="${opt.label}"
                             th:selected="${opt.selected}">全部命名空间</option>
                 </select>
             </div>
-            <div class="allpages-row">
+            <div class="wiki-filter-field">
                 <label for="newpages-limit" th:text="#{newPages.limit}">显示条数：</label>
                 <select id="newpages-limit" name="limit">
                     <option th:each="value : ${limitOptions}" th:value="${value}"
                             th:selected="${selectedLimit == value}" th:text="${value}">50</option>
                 </select>
-                <button type="submit" class="wiki-button" th:text="#{allPages.submit}">提交</button>
             </div>
+        </div>
+        <div class="wiki-filter-actions">
+            <button type="submit" class="wiki-button wiki-button-primary" th:text="#{allPages.submit}">提交</button>
         </div>
     </form>
 

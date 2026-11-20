@@ -5,12 +5,15 @@
  * 只读模式（data-can-edit != "true"，即当前用户不是管理员/行政员）时脚本直接跳过。
  * 提示文案来自服务端（AjaxResult.message），网络错误用 head.html 注入的 WIKI_MESSAGES。
  */
-(function () {
+(function (init) {
+    init(document);
+    document.addEventListener('wiki:query-updated', function (event) { init(event.target); });
+})(function (root) {
     'use strict';
 
     var MESSAGES = window.WIKI_MESSAGES || {};
 
-    var form = document.getElementById('wiki-permissions-form');
+    var form = root.querySelector('#wiki-permissions-form');
     if (!form || form.getAttribute('data-can-edit') !== 'true') {
         return;
     }
@@ -117,4 +120,4 @@
             }
         });
     });
-})();
+});

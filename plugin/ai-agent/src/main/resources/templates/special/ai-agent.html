@@ -22,72 +22,7 @@
 
     <!-- ==================== 站点密钥面板（管理员：特殊:AI代理?keys=1） ==================== -->
     <th:block th:if="${keysPanel}">
-        <h2 th:text="#{settings.aiVendors}">AI 厂商（站点密钥）</h2>
-        <p class="wiki-hint" th:text="#{settings.aiVendorsHint}">
-            给「特殊:AI代理」配置站点共用的 AI 厂商密钥（网页保存、即时生效）。
-        </p>
-        <p class="wiki-hint">
-            <a th:href="@{/wiki/特殊:AI代理}" th:text="#{aiAgent.backToChat}">返回对话界面</a>
-        </p>
-        <form id="site-ai-keys-form" class="wiki-form" data-keys-scope="site"
-              th:attr="data-keys-confirm-clear=#{preferences.ai.clearConfirm}, data-keep-label=#{preferences.ai.keyKeep}, data-default-placeholder=#{preferences.ai.keyPlaceholder}">
-            <details class="ai-key-row" th:each="vendor : ${siteVendors}" th:attr="data-provider=${vendor.id},
-                     data-configured-label=#{preferences.ai.configured('{0}')},
-                     data-missing-label=#{preferences.ai.notConfigured}">
-                <summary>
-                    <span class="ai-key-chevron" aria-hidden="true"></span>
-                    <strong class="ai-key-name" th:text="${vendor.label}">DeepSeek</strong>
-                    <span class="ai-key-state" th:classappend="${vendor.siteConfigured} ? ' ok'"
-                          th:text="${vendor.siteConfigured} ? #{preferences.ai.configured(${vendor.siteMask})} : #{preferences.ai.notConfigured}">未配置</span>
-                    <span class="ai-key-hint" th:text="${vendor.hint}">说明</span>
-                    <span class="ai-key-hint" th:if="${vendor.yamlHasKey}"
-                          th:text="#{settings.aiVendorsYaml}">（LocalSettings.yaml 里已写密钥，未填站点密钥时生效）</span>
-                </summary>
-                <div class="ai-key-body">
-                <div class="form-field form-field-inline">
-                    <label th:attr="for=${'site-ai-key-' + vendor.id}" th:text="#{preferences.ai.key}">API 密钥</label>
-                    <input type="password" class="ai-key-input" th:id="${'site-ai-key-' + vendor.id}" autocomplete="off"
-                           th:placeholder="${vendor.siteConfigured} ? #{preferences.ai.keyKeep} : #{preferences.ai.keyPlaceholder}"/>
-                </div>
-                <div class="form-field form-field-inline">
-                    <label th:attr="for=${'site-ai-base-' + vendor.id}" th:text="#{preferences.ai.baseUrl}">API 地址（可选）</label>
-                    <input type="text" class="ai-base-input" th:id="${'site-ai-base-' + vendor.id}"
-                           th:value="${vendor.siteBaseUrl}" th:placeholder="${vendor.defaultBaseUrl}"/>
-                </div>
-                <div class="form-field form-field-inline">
-                    <label th:attr="for=${'site-ai-model-' + vendor.id}" th:text="#{preferences.ai.model}">模型（可选）</label>
-                    <input type="text" class="ai-model-input" th:id="${'site-ai-model-' + vendor.id}"
-                           th:value="${vendor.siteModel}" th:placeholder="${vendor.defaultModel}"/>
-                </div>
-                <div class="form-field form-field-inline">
-                    <label th:attr="for=${'site-ai-proxy-' + vendor.id}" th:text="#{preferences.ai.proxy}">代理（可选）</label>
-                    <input type="text" class="ai-proxy-input" th:id="${'site-ai-proxy-' + vendor.id}"
-                           th:value="${vendor.siteProxy}" th:placeholder="#{preferences.ai.proxyPlaceholder}"/>
-                </div>
-                <div class="ai-key-actions">
-                    <button type="button" class="wiki-button ai-key-save" th:text="#{preferences.ai.save}">保存</button>
-                    <button type="button" class="wiki-button ai-key-clear" th:text="#{preferences.ai.clear}">清除</button>
-                </div>
-                </div>
-            </details>
-            <p class="form-message ai-keys-message" hidden></p>
-        </form>
-
-        <form id="site-ai-allow-normal" class="wiki-form pref-section" data-allow-normal="1"
-              th:action="@{/api/ai-keys/allow-normal}" method="post">
-            <h2 th:text="#{settings.aiAgentAllowNormal}">允许普通用户使用</h2>
-            <label class="pref-checkbox">
-                <input type="checkbox" name="allowNormal" value="1" th:checked="${allowNormalUsers}"/>
-                <span th:text="#{settings.aiAgentAllowNormalLabel}">允许任何登录用户使用 AI 代理</span>
-            </label>
-            <div class="wiki-hint" th:text="#{settings.aiAgentAllowNormalHint(${agentGroup})}">
-                不勾选时只有「AI代理用户」组、管理员 / 行政员可用。
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="wiki-button" th:text="#{preferences.ai.save}">保存</button>
-            </div>
-            <p class="form-message" hidden></p>
-        </form>
+        <p><a th:href="${managementUrl}" th:text="#{aiAgent.coreManagement}">前往统一的 AI 管理</a></p>
     </th:block>
 
     <!-- ==================== 对话界面 ==================== -->

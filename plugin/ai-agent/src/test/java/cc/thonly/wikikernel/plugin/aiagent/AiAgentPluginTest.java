@@ -9,7 +9,7 @@ import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.extension.Viewer;
 import cc.thonly.wikikernel.common.data.WikiUser;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiConfig;
+import cc.thonly.wikikernel.common.ai.AiConfig;
 import cc.thonly.wikikernel.plugin.aiagent.hook.AiAgentHeadProvider;
 import cc.thonly.wikikernel.plugin.aiagent.hook.AiKeysPreferenceSection;
 import cc.thonly.wikikernel.plugin.aiagent.web.AiAgentSpecialPage;
@@ -275,15 +275,16 @@ class AiAgentPluginTest {
     }
 
     @Test
-    void siteKeysPanelShowsLocalizedVendorNamesAndHints() {
+    void oldSiteKeysEntryLinksToCoreManagement() {
         AiAgentFakes.Fixture fixture = new AiAgentFakes.Fixture();
         Viewer admin = fixture.admin("管理员甲");
 
         String html = renderSpecialPage(fixture, admin, Map.of(AiAgentSpecialPage.PARAM_KEYS, "1"),
                 Locale.SIMPLIFIED_CHINESE);
 
-        assertTrue(html.contains("演示模式（固定回复）"), "站点密钥面板的厂商名走插件 i18n：" + html);
-        assertTrue(html.contains("不是真实 AI"), "站点密钥面板的厂商提示走插件 i18n");
+        assertTrue(html.contains("AI 管理"), html);
+        assertTrue(html.contains("%E7%89%B9%E6%AE%8A%3AAI%E7%AE%A1%E7%90%86"), html);
+        assertFalse(html.contains("site-ai-keys-form"), html);
         assertFalse(html.contains("aiAgent.vendor."), "页面里不应出现厂商文案键名");
     }
 

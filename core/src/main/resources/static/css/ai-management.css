@@ -1,0 +1,8 @@
+.ai-management details,.ai-management form[data-scene-form]{margin:12px 0;padding:14px;border:1px solid var(--border-color,#c8ccd1);border-radius:8px;background:var(--background-color-base,#fff)}
+.ai-management summary{cursor:pointer;font-weight:600}
+.ai-management form{display:grid;gap:12px;max-width:720px}
+.ai-management label{display:block}
+.ai-management input:not([type=checkbox]),.ai-management select{box-sizing:border-box;width:100%;min-height:42px;font:inherit}
+.ai-management button{min-height:42px;cursor:pointer}
+.ai-management [data-status]{overflow-wrap:anywhere}
+@media(max-width:600px){.ai-management details,.ai-management form[data-scene-form]{padding:10px}.ai-management input,.ai-management select{font-size:16px!important}}

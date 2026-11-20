@@ -1,0 +1,12 @@
+.all-messages{min-width:0;color:inherit}
+.mw-allmessages-nav{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 18px;margin:16px 0}
+.mw-allmessages-nav>a,.mw-allmessages-nav>span{display:inline-flex;align-items:center;min-height:40px}
+.mw-allmessages-nav>span{color:var(--color-subtle,#72777d)}
+#mw-allmessagestable{width:100%;table-layout:fixed;border-collapse:collapse;font:inherit}
+#mw-allmessagestable .am-name{width:38%}
+#mw-allmessagestable th,#mw-allmessagestable td{border:1px solid var(--border-color-base,#a2a9b1);padding:6px 8px;vertical-align:top;overflow-wrap:anywhere;word-break:normal}
+#mw-allmessagestable th{text-align:center;background:var(--background-color-neutral-subtle,#eaecf0)}
+#mw-allmessagestable .am_title>span{white-space:nowrap;font-size:.9em}
+#mw-allmessagestable pre{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;margin:0;padding:0;border:0;background:none;color:inherit;box-shadow:none;font:inherit;line-height:1.6}
+#mw-allmessagestable .am_actual{background:var(--background-color-success-subtle,#eaf3ed)}
+@media(max-width:600px){#mw-allmessagestable .am-name{width:36%}#mw-allmessagestable th,#mw-allmessagestable td{padding:6px;font-size:13px}.mw-allmessages-nav{gap:8px 12px}}

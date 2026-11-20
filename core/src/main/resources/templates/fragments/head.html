@@ -123,7 +123,11 @@
             toolbarFilePreview: /*[[#{toolbar.filePreview}]]*/ '',
             toolbarFileDrop: /*[[#{toolbar.fileDrop}]]*/ '',
             deletedRestoreConfirm: /*[[#{deletedRestoreConfirm}]]*/ '',
-            deletedRestored: /*[[#{deletedRestored}]]*/ ''
+            deletedRestored: /*[[#{deletedRestored}]]*/ '',
+            queryLoading: /*[[#{query.loading}]]*/ '',
+            queryFailed: /*[[#{query.failed}]]*/ '',
+            queryUpdated: /*[[#{query.updated}]]*/ '',
+            queryRetry: /*[[#{query.retry}]]*/ ''
         });
         /* MediaWiki 兼容：页面配置（mw.config 的 RLCONF）与模块启动队列（RLQ，由 /js/mediawiki.js 处理） */
         window.RLCONF = /*[[${mwConfig}]]*/ {};
@@ -166,6 +170,7 @@
          math / popups / graph / social-profile（插件经 head 扩展注入脚本与样式） -->
     <script th:src="@{/js/permissions.js(v=${assetVersion})}" defer></script>
     <script th:src="@{/js/logs.js(v=${assetVersion})}" defer></script>
+    <script th:if="${isSpecialPage}" th:src="@{/js/wiki-query.js(v=${assetVersion})}" defer></script>
     <script th:src="@{/js/recent-changes.js(v=${assetVersion})}" defer></script>
     <script th:src="@{/js/page-actions.js(v=${assetVersion})}" defer></script>
     <script th:src="@{/js/access-control.js(v=${assetVersion})}" defer></script>

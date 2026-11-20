@@ -30,6 +30,11 @@ public interface LogType extends Extension {
         return false;
     }
 
+    /** Additional visibility rules for plugin-owned objects such as unpublished news. */
+    default boolean visibleTo(cc.thonly.wikikernel.common.data.WikiLog log, Viewer viewer) {
+        return true;
+    }
+
     /** 目标类型：页面 / 用户 / 纯文本（决定日志页里目标怎么展示）。 */
     default TargetKind targetKind() {
         return TargetKind.TEXT;

@@ -23,12 +23,15 @@ import java.util.Set;
  */
 public class PluginMessageSource implements MessageSource {
 
-    private final ResourceBundleMessageSource base;
+    private final CoreMessages base;
     private final ObjectProvider<PluginManager> pluginManagerProvider;
+    private final ObjectProvider<InterfaceMessageOverrides> overrides;
 
-    public PluginMessageSource(ObjectProvider<PluginManager> pluginManagerProvider) {
+    public PluginMessageSource(ObjectProvider<PluginManager> pluginManagerProvider,
+                               ObjectProvider<InterfaceMessageOverrides> overrides) {
         this.pluginManagerProvider = pluginManagerProvider;
-        this.base = new ResourceBundleMessageSource();
+        this.overrides = overrides;
+        this.base = new CoreMessages();
         this.base.setBasenames("messages");
         this.base.setDefaultEncoding("UTF-8");
         this.base.setFallbackToSystemLocale(false);
@@ -37,6 +40,8 @@ public class PluginMessageSource implements MessageSource {
     @Override
     public String getMessage(String code, Object[] args, String defaultMessage, Locale locale) {
         Locale effective = locale == null ? Locale.getDefault() : locale;
+        String custom = customMessage(code, args, effective);
+        if (custom != null) return custom;
         try {
             String core = base.getMessage(code, args, null, effective);
             if (core != null) {
@@ -71,6 +76,8 @@ public class PluginMessageSource implements MessageSource {
             return null;
         }
         Locale effective = locale == null ? Locale.getDefault() : locale;
+        String custom = customMessage(code, args, effective);
+        if (custom != null) return custom;
         try {
             String core = base.getMessage(code, args, null, effective);
             if (core != null) {
@@ -111,6 +118,37 @@ public class PluginMessageSource implements MessageSource {
     }
 
     // ==================== 内部实现 ====================
+
+    private String customMessage(String code, Object[] args, Locale locale) {
+        if (code == null) return null;
+        var store = overrides.getIfAvailable();
+        var value = store == null ? null : store.find(code, locale);
+        return value == null ? null : format(value.text(), args);
+    }
+
+    /** Unformatted installed defaults, including active plugin bundles, with the same core-first precedence. */
+    public Map<String, String> defaults(Locale locale) {
+        Map<String, String> result = new java.util.TreeMap<>(base.raw(locale));
+        var manager = pluginManagerProvider.getIfAvailable();
+        if (manager != null) for (var bundle : manager.extensions(MessageBundle.class)) {
+            for (String language : localeFallback(locale)) {
+                var texts = bundle.messages().get(language);
+                if (texts != null) texts.forEach(result::putIfAbsent);
+            }
+        }
+        return java.util.Collections.unmodifiableMap(result);
+    }
+
+    private static final class CoreMessages extends ResourceBundleMessageSource {
+        Map<String, String> raw(Locale locale) {
+            try {
+                var bundle = getResourceBundle("messages", locale == null ? Locale.SIMPLIFIED_CHINESE : locale);
+                Map<String, String> result = new java.util.TreeMap<>();
+                for (String key : bundle.keySet()) result.put(key, bundle.getString(key));
+                return result;
+            } catch (java.util.MissingResourceException exception) { return Map.of(); }
+        }
+    }
 
     private String pluginMessage(String code, Object[] args, Locale locale) {
         PluginManager pluginManager = pluginManagerProvider.getIfAvailable();

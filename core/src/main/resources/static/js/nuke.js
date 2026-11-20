@@ -5,11 +5,14 @@
  *  - 「删除全部匹配页面」提交当前列出的所有 titles
  *  - 提交前用模板注入的 data-confirm-template 做 confirm()，成功后刷新
  */
-(function () {
+(function (init) {
+    init(document);
+    document.addEventListener('wiki:query-updated', function (event) { init(event.target); });
+})(function (root) {
     'use strict';
 
     var MESSAGES = window.WIKI_MESSAGES || {};
-    var form = document.getElementById('wiki-nuke-form');
+    var form = root.querySelector('#wiki-nuke-form');
     if (!form) {
         return;
     }
@@ -111,4 +114,4 @@
             submit(titles, allButton);
         });
     }
-})();
+});

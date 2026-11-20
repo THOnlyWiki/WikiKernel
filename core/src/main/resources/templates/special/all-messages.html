@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body><section class="all-messages" th:fragment="query" data-wiki-query="all-messages">
+    <link rel="stylesheet" href="/css/all-messages.css?v=1">
+    <p th:text="#{allmessagestext}"></p>
+    <p class="wiki-warning" th:if="${amUnknownLanguage}" th:text="#{allmessages-unknown-language}"></p>
+    <form method="get" th:action="${amUrl}" class="wiki-form mw-allmessages-form wiki-filter-panel">
+        <div class="wiki-filter-field">
+            <label for="am-prefix" th:text="#{allmessages-prefix}"></label>
+            <input id="am-prefix" name="prefix" type="text" th:value="${amPrefix}">
+        </div>
+        <fieldset><legend th:text="#{allmessages-filter}"></legend>
+            <div class="wiki-filter-choices">
+                <label class="wiki-filter-choice"><input type="radio" name="filter" value="unmodified" th:checked="${amFilter == 'unmodified'}"><span th:text="#{allmessages-filter-unmodified}"></span></label>
+                <label class="wiki-filter-choice"><input type="radio" name="filter" value="all" th:checked="${amFilter == 'all'}"><span th:text="#{allmessages-filter-all}"></span></label>
+                <label class="wiki-filter-choice"><input type="radio" name="filter" value="modified" th:checked="${amFilter == 'modified'}"><span th:text="#{allmessages-filter-modified}"></span></label>
+            </div>
+        </fieldset>
+        <div class="wiki-filter-grid">
+            <div class="wiki-filter-field">
+                <label for="am-lang" th:text="#{allmessages-language}"></label>
+                <select id="am-lang" name="lang"><option th:each="lang : ${amLanguages}" th:value="${lang}" th:selected="${lang == amLang}" th:text="${lang == 'en' ? 'en - English' : 'zh-hans - 中文（简体）'}"></option></select>
+            </div>
+            <div class="wiki-filter-field">
+                <label for="am-limit" th:text="#{table_pager_limit_label}"></label>
+                <select id="am-limit" name="limit"><option th:each="size : ${amLimits}" th:value="${size}" th:text="${size}" th:selected="${size == amLimit}"></option></select>
+            </div>
+        </div>
+        <div class="wiki-filter-actions"><button type="submit" class="wiki-button wiki-button-primary" th:text="#{allmessages-filter-submit}"></button></div>
+    </form>
+    <nav class="mw-allmessages-nav" th:fragment="pager" data-wiki-query-links th:attr="aria-label=#{allmessages-navigation}">
+        <th:block th:each="item : ${amPager}">
+            <a th:if="${!#strings.isEmpty(item.url)}" th:href="${item.url}" th:text="${item.label}"></a>
+            <span th:if="${#strings.isEmpty(item.url)}" aria-disabled="true" th:text="${item.label}"></span>
+        </th:block>
+    </nav>
+    <p class="allmessages-empty" th:if="${#lists.isEmpty(allMessagesRows)}" th:text="#{allmessages-no-matching}"></p>
+    <table class="wikitable" id="mw-allmessagestable" th:unless="${#lists.isEmpty(allMessagesRows)}">
+        <colgroup><col class="am-name"><col></colgroup>
+        <thead><tr><th rowspan="2" scope="col" th:text="#{allmessagesname}"></th><th scope="col" th:text="#{allmessagesdefault}"></th></tr>
+        <tr><th scope="col" th:text="#{allmessagescurrent}"></th></tr></thead>
+        <tbody><th:block th:each="item : ${allMessagesRows}">
+            <tr th:class="${item.entry.modified ? 'allmessages-customised' : 'allmessages-default'}">
+                <td class="am_title" th:rowspan="${item.entry.modified ? 2 : 1}">
+                    <a th:href="${item.editUrl}" th:class="${item.entry.modified ? '' : 'new'}" th:text="${item.entry.name}"></a>
+                    <span>（<a th:href="${item.talkUrl}" th:text="#{allmessages-talk}"></a>）</span>
+                </td>
+                <td class="am_default"><pre th:text="${item.entry.defaultText}"></pre></td>
+            </tr>
+            <tr class="allmessages-customised" th:if="${item.entry.modified}"><td class="am_actual"><pre th:text="${item.entry.currentText}"></pre></td></tr>
+        </th:block></tbody>
+    </table>
+    <nav th:replace="~{::pager}"></nav>
+</section></body></html>

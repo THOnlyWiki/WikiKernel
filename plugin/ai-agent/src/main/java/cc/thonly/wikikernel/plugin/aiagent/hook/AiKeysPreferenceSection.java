@@ -3,7 +3,7 @@ package cc.thonly.wikikernel.plugin.aiagent.hook;
 import cc.thonly.wikikernel.common.extension.PreferenceContext;
 import cc.thonly.wikikernel.common.extension.PreferenceSection;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentSupport;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiProviderRegistry;
+import cc.thonly.wikikernel.common.ai.AiProviderRegistry;
 
 import java.util.List;
 import java.util.Map;

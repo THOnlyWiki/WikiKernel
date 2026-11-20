@@ -1,0 +1,16 @@
+plugins { id 'java' }
+description = '活动资讯、投稿审核与首页展示'
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'tools.jackson.core:jackson-databind'
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'org.springframework.boot:spring-boot-starter-jdbc-test'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'tools.jackson.core:jackson-databind'
+    testRuntimeOnly 'org.xerial:sqlite-jdbc'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

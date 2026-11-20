@@ -275,6 +275,241 @@ body .wiki-hint {
     line-height: 1.5;
 }
 
+.wiki-query-status {
+    position: fixed;
+    z-index: 60;
+    inset-inline-end: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    max-width: calc(100% - 24px);
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-surface-4, #c8ccd1);
+    border-radius: 6px;
+    background: var(--color-surface-1, var(--background-color-base, #fff));
+    color: var(--color-base, #202122);
+    box-shadow: 0 3px 12px rgb(0 0 0 / 16%);
+}
+
+.wiki-query-status [hidden],
+.wiki-query-status[hidden] {
+    display: none !important;
+}
+
+.wiki-query-status-silent {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    pointer-events: none;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.wiki-query-progress {
+    display: inline-block;
+    flex: none;
+    width: 1em;
+    height: 1em;
+    border: 2px solid var(--color-surface-4, #c8ccd1);
+    border-top-color: var(--color-primary, var(--color-progressive, #36c));
+    border-radius: 50%;
+    animation: wiki-query-spin 0.7s linear infinite;
+}
+
+@keyframes wiki-query-spin {
+    to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wiki-query-progress { animation: none; }
+}
+
+/* Query forms in special pages share the same field, choice and action layout. */
+body .wiki-form.wiki-filter-panel,
+body .wiki-group-picker {
+    --filter-accent: var(--color-primary, var(--color-progressive, #36c));
+    --filter-surface: var(--color-surface-1, var(--background-color-base, #fff));
+    --filter-panel: var(--color-surface-2, var(--background-color-neutral-subtle, #f8f9fa));
+    --filter-border: var(--color-surface-4, var(--border-color-subtle, #c8ccd1));
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+body .wiki-form.wiki-filter-panel {
+    display: grid;
+    gap: 12px;
+    max-width: 64rem;
+    margin: 0 0 1.25rem;
+    padding: clamp(12px, 2vw, 18px);
+    border: 1px solid var(--filter-border);
+    border-radius: 6px;
+    background: var(--filter-panel);
+}
+
+body .wiki-filter-panel fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+body .wiki-filter-panel legend {
+    margin-bottom: 4px;
+    padding: 0;
+    font-weight: 600;
+}
+
+.wiki-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: 10px 14px;
+}
+
+.wiki-filter-field {
+    display: grid;
+    align-content: start;
+    gap: 5px;
+    min-width: 0;
+}
+
+.wiki-filter-field > label {
+    font-size: .875rem;
+    font-weight: 600;
+}
+
+body .wiki-filter-panel .wiki-filter-field :is(input, select, textarea),
+body .wiki-form .wiki-group-picker input[type="search"] {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 40px;
+    padding: 6px 9px;
+    border: 1px solid var(--filter-border);
+    border-radius: 4px;
+    background: var(--filter-surface);
+    color: var(--color-base, #202122);
+    font-size: 1rem;
+}
+
+body .wiki-filter-panel .wiki-filter-field :is(input, select, textarea):focus-visible,
+body .wiki-filter-panel .wiki-filter-choice input:focus-visible,
+body .wiki-group-picker :is(input, button):focus-visible {
+    border-color: var(--filter-accent);
+    outline: 2px solid var(--filter-accent);
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+.wiki-filter-actions,
+.wiki-filter-choices {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+}
+
+body .wiki-form .wiki-filter-choice,
+body .wiki-group-picker .wiki-filter-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    min-height: 36px;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-weight: 400;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+body .wiki-form .wiki-filter-choice input {
+    flex: none;
+    margin: 0;
+    accent-color: var(--filter-accent);
+}
+
+body .wiki-form .wiki-filter-choice:has(input:checked) {
+    border-color: var(--filter-border);
+    background: var(--filter-surface);
+}
+
+body .wiki-filter-panel .wiki-filter-actions > .wiki-button-primary,
+body .wiki-group-picker .wiki-group-modes button[aria-pressed="true"] {
+    border-color: var(--filter-accent);
+    background: var(--filter-accent);
+    color: var(--color-inverted, #fff);
+}
+
+body .wiki-filter-panel .wiki-filter-actions > .wiki-button {
+    min-height: 38px;
+    margin-inline-start: auto;
+}
+
+body .wiki-filter-panel .wiki-filter-actions > .wiki-button:hover,
+body .wiki-group-picker .wiki-group-modes button[aria-pressed="true"]:hover {
+    filter: brightness(.93);
+}
+
+body .wiki-filter-panel .mw-search-namespace-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11em), 1fr));
+}
+
+body .wiki-group-picker {
+    margin: 0;
+    padding: 10px 12px 12px;
+    border: 1px solid var(--filter-border);
+    border-radius: 6px;
+    background: var(--filter-panel);
+}
+
+.wiki-group-picker legend {
+    padding: 0 5px;
+    font-weight: 600;
+}
+
+#wiki-protect-form [hidden] {
+    display: none !important;
+}
+
+.wiki-group-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body .wiki-group-picker .wiki-group-modes .wiki-button {
+    min-height: 36px;
+    max-width: 100%;
+    margin: 0;
+    white-space: normal;
+    text-align: start;
+    box-shadow: none;
+}
+
+.wiki-group-options {
+    margin-top: 10px;
+}
+
+.wiki-group-options .wiki-filter-choices {
+    margin-top: 6px;
+}
+
+body.skin-timeless .pref-layout .pref-content .form-field :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+body.skin-timeless .pref-layout .pref-content :is(button, .wiki-button),
+body .wiki-form input[type="file"] {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+
 /* ===== 表格：Wikitable / 插件表格 ===== */
 body .wikitable,
 body .messages-table,

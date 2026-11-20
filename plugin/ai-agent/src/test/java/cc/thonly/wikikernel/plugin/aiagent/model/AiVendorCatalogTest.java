@@ -1,4 +1,5 @@
 package cc.thonly.wikikernel.plugin.aiagent.model;
+import cc.thonly.wikikernel.common.ai.AiVendorCatalog;
 
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentMessages;
 import org.junit.jupiter.api.Test;

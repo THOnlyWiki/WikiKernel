@@ -5,12 +5,12 @@ import cc.thonly.wikikernel.common.extension.SpecialPage;
 import cc.thonly.wikikernel.common.extension.SpecialPageCategories;
 import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
 import cc.thonly.wikikernel.common.extension.Viewer;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiConfig;
+import cc.thonly.wikikernel.common.ai.AiConfig;
 import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.plugin.aiagent.AiAgentSupport;
 import cc.thonly.wikikernel.plugin.aiagent.service.AiAgentService;
-import cc.thonly.wikikernel.plugin.aiagent.service.AiProviderRegistry;
+import cc.thonly.wikikernel.common.ai.AiProviderRegistry;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -79,6 +79,7 @@ public class AiAgentSpecialPage implements SpecialPage {
 
     @Override
     public void populate(SpecialPageRequest request, Map<String, Object> model) {
+        model.put("managementUrl", AiAgentSupport.pagePath("特殊:AI管理"));
         WikiUser user = request.user();
         Viewer viewer = viewerOf(user);
         boolean canManage = AiAgentSupport.isManager(viewer);
