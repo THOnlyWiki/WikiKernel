@@ -102,10 +102,11 @@
                 <div class="form-field">
                     <label for="pref-language" th:text="#{preferences.language}">语言：</label>
                     <select id="pref-language" name="language">
-                        <option value="" th:selected="${#strings.isEmpty(user.language)}"
+                        <option value="" th:selected="${preferredInterfaceLanguage == null}"
                                 th:text="#{preferences.languageDefault}">站点默认</option>
-                        <option value="zh" th:selected="${user.language == 'zh'}">中文</option>
-                        <option value="en" th:selected="${user.language == 'en'}">English</option>
+                        <option th:each="lang : ${interfaceLanguages}" th:value="${lang.code}"
+                                th:selected="${lang == preferredInterfaceLanguage}" th:lang="${lang.locale.toLanguageTag()}"
+                                th:text="${lang.label}"></option>
                     </select>
                 </div>
                 <!-- 国家 / 地区：249 项太长，/js/preferences.js 会在下拉框上方注入输入搜索（渐进增强：

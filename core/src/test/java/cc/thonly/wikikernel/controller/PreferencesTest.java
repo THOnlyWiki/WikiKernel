@@ -91,6 +91,21 @@ class PreferencesTest {
     }
 
     @Test
+    void regionalLanguagePreferencePersistsItsRegion() throws Exception {
+        WikiUser user = userService.createUser("介面語言" + System.nanoTime(), "secret123", "");
+        MockHttpSession session = sessionOf(user);
+        mockMvc.perform(post("/api/user/preferences").session(session).param("language", "zh-Hant-HK"))
+                .andExpect(jsonPath("$.code").value(200));
+        assertEquals("zh-hk", userService.findById(user.getId()).orElseThrow().getLanguage());
+        String html = mockMvc.perform(get("/wiki/{title}", "特殊:参数设置").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var document = org.jsoup.Jsoup.parse(html);
+        assertEquals("zh-HK", document.selectFirst("html").attr("lang"));
+        assertEquals("zh-hk", document.selectFirst("#pref-language option[selected]").val());
+        assertEquals(6, document.select("#pref-language option").size());
+    }
+
+    @Test
     void savingPreferencesPersistsAndWiresLanguageRecentChangesAndSearch() throws Exception {
         WikiUser user = userService.createUser("参数保存用户" + System.nanoTime(), "secret123", "");
         MockHttpSession session = sessionOf(user);

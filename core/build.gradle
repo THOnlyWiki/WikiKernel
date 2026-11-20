@@ -34,7 +34,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // 可视化编辑器：解析渲染后的 HTML 并安全地序列化回 Wikitext
-    implementation 'org.jsoup:jsoup:1.17.2'
+    implementation 'org.jsoup:jsoup:1.24.1'
 
     // Markdown 渲染（AI 代理回复、界面展示）：CommonMark + GFM 表格 / 删除线
     implementation 'org.commonmark:commonmark:0.24.0'

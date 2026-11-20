@@ -40,6 +40,17 @@ public interface AccessControlService {
         return can(AccessAction.READ, target, user);
     }
 
+    default boolean canMove(@Nullable String source, @Nullable WikiUser user) {
+        return user != null && canRead(source, user) && can(AccessAction.EDIT, source, user)
+                && can(AccessAction.MOVE, source, user);
+    }
+
+    /** Carry the source's read/edit limits to the destination inside the page move transaction. */
+    void preserveProtectionOnMove(String source, String destination, boolean leaveRedirect);
+
+    /** An exact protection rule would be interpreted as a wildcard at this title. */
+    final class ProtectionMoveConflict extends RuntimeException { }
+
     /** 批量过滤：只保留当前用户可读的条目（列表页防标题泄露）。 */
     <T> List<T> filterReadable(List<T> items, Function<T, String> titleGetter, @Nullable WikiUser user);
 

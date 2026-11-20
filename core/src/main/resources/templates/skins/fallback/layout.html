@@ -5,7 +5,7 @@
   当 wikikernel.skins.default-skin 指向的皮肤不可用、或 Vector 被禁用且没有其它皮肤时自动生效；
   样式只依赖 core 的 /css/base.css（含 .skin-fallback 的少量补全样式）。
 */-->
-<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+<html lang="zh" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org"
       th:fragment="layout(pageTitle, content)">
 <head th:replace="~{fragments/head :: head(${pageTitle} + ' - ' + (${siteName} ?: 'WikiKernel'))}">
     <title>WikiKernel</title>

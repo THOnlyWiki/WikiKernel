@@ -50,6 +50,16 @@ class ClientInfoFilterTest {
         assertEquals(PROXY_IP, downstreamRemote.get());
     }
 
+    @Test
+    void secureTransportFlagUsesOnlyTrustedProxyHeaders() throws Exception {
+        for (boolean trusted : new boolean[] {false, true}) {
+            MockHttpServletRequest request = request();
+            request.addHeader("X-Forwarded-Proto", "https");
+            filter(trusted).doFilter(request, new MockHttpServletResponse(),
+                    (effectiveRequest, response) -> assertEquals(trusted, effectiveRequest.isSecure()));
+        }
+    }
+
     private static ClientInfoFilter filter(boolean trustProxyHeaders) {
         HttpProperties properties = new HttpProperties();
         properties.setTrustProxyHeaders(trustProxyHeaders);

@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.plugin.pagebanner.hook;
 import cc.thonly.wikikernel.common.plugin.support.SimplePluginContext;
 import cc.thonly.wikikernel.plugin.pagebanner.PageBannerFakes;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -45,6 +46,15 @@ class PageBannerMessagesTest {
         // 缺键显示键本身：不能出现「中文兜底」这种写法
         assertFalse(zh.get("pageBanner.prev").isBlank());
         assertFalse(en.get("pageBanner.prev").isBlank());
+    }
+
+    @Test
+    void additionalLocalesLoadAllPluginKeys() {
+        Map<String, Map<String, String>> messages = new PageBannerMessages().messages();
+        for (String language : List.of("zh-HK", "zh-TW", "ja")) {
+            assertEquals(messages.get("zh").keySet(), messages.get(language).keySet(), language);
+        }
+        assertEquals("次のスライド", messages.get("ja").get("pageBanner.next"));
     }
 
     @Test

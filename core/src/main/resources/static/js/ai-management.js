@@ -3,6 +3,7 @@
     var root = document.querySelector('[data-ai-management]');
     if (!root) return;
     var status = root.querySelector('[data-status]');
+    var labels = window.wikiAiManagementLabels;
     function node(tag, text) {
         var el = document.createElement(tag);
         if (text) el.textContent = text;
@@ -12,7 +13,7 @@
         var response = await fetch('/api/ai-management' + path, body ? {
             method: 'POST', body: body, headers: {'X-Requested-With': 'XMLHttpRequest'}
         } : {cache: 'no-store'});
-        if (!response.ok) throw new Error('操作失败，请检查配置、权限和接口连接。');
+        if (!response.ok) throw new Error(labels.failed);
         return response.json();
     }
     function field(form, label, name, value, type) {
@@ -32,33 +33,33 @@
         providers.replaceChildren();
         data.providers.forEach(function (row) {
             var details = node('details');
-            details.appendChild(node('summary', row.label + ' · ' + (row.siteMask || (row.yamlConfigured ? '配置文件' : '未配置'))));
+            details.appendChild(node('summary', row.label + ' · ' + (row.siteMask || (row.yamlConfigured ? labels.configFile : labels.unconfigured))));
             var form = node('form'); form.dataset.providerForm = ''; form.className = 'wiki-form';
             field(form, '', 'id', row.id, 'hidden'); field(form, '', 'type', row.type, 'hidden');
-            field(form, '名称', 'label', row.label);
-            field(form, '接口地址', 'baseUrl', row.siteBaseUrl || row.defaultBaseUrl);
-            field(form, '模型', 'model', row.siteModel || row.defaultModel);
-            field(form, '新密钥（留空保留原值）', 'apiKey', '', 'password');
-            field(form, '代理', 'proxy', row.siteProxy);
-            field(form, '允许本机或内网服务', 'allowPrivate', row.allowPrivate, 'checkbox');
-            field(form, '清除该接口的站点凭据', 'clear', false, 'checkbox');
-            var button = node('button', '保存'); button.type = 'submit'; form.appendChild(button);
+            field(form, labels.label, 'label', row.label);
+            field(form, labels.baseUrl, 'baseUrl', row.siteBaseUrl || row.defaultBaseUrl);
+            field(form, labels.model, 'model', row.siteModel || row.defaultModel);
+            field(form, labels.replaceKey, 'apiKey', '', 'password');
+            field(form, labels.proxy, 'proxy', row.siteProxy);
+            field(form, labels.allowPrivate, 'allowPrivate', row.allowPrivate, 'checkbox');
+            field(form, labels.clearCredentials, 'clear', false, 'checkbox');
+            var button = node('button', labels.save); button.type = 'submit'; form.appendChild(button);
             details.appendChild(form); providers.appendChild(details);
         });
         var scenes = root.querySelector('[data-scenes]'); scenes.replaceChildren();
         data.scenes.forEach(function (row) {
             var form = node('form'); form.dataset.sceneForm = ''; form.className = 'wiki-form';
-            form.appendChild(node('h3', row.id === 'activity' ? '活动文案整理' : '新闻起草'));
+            form.appendChild(node('h3', row.id === 'activity' ? labels.activity : labels.news));
             field(form, '', 'id', row.id, 'hidden');
-            var label = node('label', '站点接口'); var select = node('select'); select.name = 'provider';
-            select.appendChild(node('option', '请选择'));
+            var label = node('label', labels.providers); var select = node('select'); select.name = 'provider';
+            select.appendChild(node('option', labels.choose));
             data.providers.forEach(function (provider) {
                 var option = node('option', provider.label); option.value = provider.id; select.appendChild(option);
             }); select.value = row.provider; label.appendChild(select); form.appendChild(label);
-            field(form, '允许使用的用户组（用 | 分隔）', 'groups', row.groups);
-            field(form, '启用', 'enabled', row.enabled, 'checkbox');
-            var save = node('button', '保存场景'); save.type = 'submit'; form.appendChild(save);
-            var test = node('button', '测试连接'); test.type = 'button';
+            field(form, labels.groups, 'groups', row.groups);
+            field(form, labels.enabled, 'enabled', row.enabled, 'checkbox');
+            var save = node('button', labels.saveScene); save.type = 'submit'; form.appendChild(save);
+            var test = node('button', labels.test); test.type = 'button';
             test.addEventListener('click', async function () {
                 test.disabled = true;
                 try { var result = await request('/test', new URLSearchParams({scene:row.id})); status.textContent = result.result; }
@@ -73,7 +74,7 @@
         var calls = root.querySelector('[data-calls]'); calls.replaceChildren();
         data.calls.forEach(function (call) {
             calls.appendChild(node('p', call.provider + ' · ' + call.model + ' · ' + call.outcome + ' · '
-                + call.duration_ms + 'ms · ' + new Date(call.created_at).toLocaleString()));
+                + call.duration_ms + 'ms · ' + new Date(call.created_at).toLocaleString(document.documentElement.lang || undefined)));
         });
     }
     root.addEventListener('submit', async function (event) {
@@ -85,7 +86,7 @@
             if (form.hasAttribute('data-limits-form')) path = '/limits';
             if (form.hasAttribute('data-agent-policy-form')) path = '/agent';
             await request(path, new URLSearchParams(new FormData(form)));
-            status.textContent = '已保存'; await load();
+            status.textContent = labels.saved; await load();
         } catch (error) { status.textContent = error.message; }
         finally { button.disabled = false; }
     });

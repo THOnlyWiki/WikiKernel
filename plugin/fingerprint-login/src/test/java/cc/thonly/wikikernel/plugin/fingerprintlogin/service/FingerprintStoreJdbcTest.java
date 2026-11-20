@@ -95,15 +95,17 @@ class FingerprintStoreJdbcTest {
         assertEquals("公司台式机", store.byHash(hash).orElseThrow().getLabel());
         assertEquals(1, store.countByUser(userId));
 
-        // touch 更新 lastUsedAt
-        store.touch(created.getId());
-        assertNotNull(store.byHash(hash).orElseThrow().getLastUsedAt(), "登录成功后应有最近使用时间");
-        store.touch(999_999L);
+        String next = hash("f");
+        assertTrue(store.rotate(created.getId(), hash, next, null, null));
+        assertFalse(store.rotate(created.getId(), hash, hash("e"), null, null));
+        assertTrue(store.byHash(hash).isEmpty());
+        assertNotNull(store.byHash(next).orElseThrow().getLastUsedAt());
+        assertFalse(store.rotate(999_999L, next, hash("e"), null, null));
 
         // 删除自己的
         assertTrue(store.remove(userId, created.getId()));
         assertFalse(store.remove(userId, created.getId()), "再删返回 false");
-        assertTrue(store.byHash(hash).isEmpty());
+        assertTrue(store.byHash(next).isEmpty());
         assertEquals(0, store.countByUser(userId));
     }
 

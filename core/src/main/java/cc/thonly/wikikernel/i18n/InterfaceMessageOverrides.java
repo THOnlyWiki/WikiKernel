@@ -77,9 +77,16 @@ public class InterfaceMessageOverrides {
         if (!language.getLanguage().isEmpty()) {
             suffixes.add("/" + tag);
             if (tag.equals("zh-cn") || tag.equals("zh-hans")) { suffixes.add("/zh-hans"); suffixes.add("/zh-cn"); }
-            suffixes.add("/" + language.getLanguage());
+            InterfaceLanguage supported = InterfaceLanguage.fromLocale(language);
+            if (supported == InterfaceLanguage.HONG_KONG_CHINESE || supported == InterfaceLanguage.TAIWAN_CHINESE) {
+                suffixes.add("/" + supported.getCode());
+                suffixes.add("/zh-hant");
+            } else {
+                suffixes.add("/" + language.getLanguage());
+            }
         }
-        if (legacyConfig || language.getLanguage().isEmpty() || language.getLanguage().equals("zh")) suffixes.add("");
+        if (legacyConfig || language.getLanguage().isEmpty()
+                || InterfaceLanguage.fromLocale(language) == InterfaceLanguage.SIMPLIFIED_CHINESE) suffixes.add("");
         for (String namespace : List.of("WikiKernel:", "MediaWiki:")) {
             for (String suffix : suffixes) {
                 Value value = values.get(WikiTitles.normalize(namespace + key + suffix));

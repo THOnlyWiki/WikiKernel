@@ -3,6 +3,7 @@ package cc.thonly.wikikernel.auth.external;
 import cc.thonly.wikikernel.common.data.WikiExternalIdentity;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.RegistrationGuard;
+import cc.thonly.wikikernel.common.externalauth.ExternalAuthException;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthProvider;
 import cc.thonly.wikikernel.common.web.WikiUrls;
 import cc.thonly.wikikernel.common.externalauth.ExternalAuthUser;
@@ -16,13 +17,18 @@ import cc.thonly.wikikernel.user.UserSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticMessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.mockito.ArgumentCaptor;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -45,6 +51,35 @@ class ExternalAuthServiceTest {
         assertEquals(42L, result.user().getId());
         assertEquals(WikiUrls.pagePath("首页"), result.redirectTo());
         verify(fixture.avatarService).importAfterRegistration(eq(fixture.provider), eq(42L), any());
+    }
+
+    @Test
+    void bindsPkceVerifierAndOriginalRedirectUriToTheAuthorizationSession() throws Exception {
+        Fixture fixture = new Fixture();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setLocalName("wiki.example.com");
+        request.setScheme("https");
+        request.setLocalPort(443);
+        when(fixture.provider.supportsPkce()).thenReturn(true);
+        when(fixture.provider.authorizationUrl(anyString(), anyString(), anyString())).thenAnswer(invocation -> {
+            fixture.state.set(invocation.getArgument(0));
+            return "https://provider.example/authorize";
+        });
+        when(fixture.provider.exchange(anyString(), anyString(), anyString())).thenReturn(
+                new ExternalAuthUser("subject-1", "Alice", "Alice", "", false, ""));
+        String state = fixture.start(request, false);
+        request.setLocalName("another.example.com");
+        assertEquals(42L, fixture.service.callback("test", "code", null, state, request).user().getId());
+
+        ArgumentCaptor<String> challenge = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> verifier = ArgumentCaptor.forClass(String.class);
+        String callback = "https://wiki.example.com/auth/test/callback";
+        verify(fixture.provider).authorizationUrl(eq(state), eq(callback), challenge.capture());
+        verify(fixture.provider).exchange(eq("code"), eq(callback), verifier.capture());
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(verifier.getValue().getBytes(StandardCharsets.US_ASCII));
+        assertEquals(Base64.getUrlEncoder().withoutPadding().encodeToString(digest), challenge.getValue());
+        assertThrows(ExternalAuthException.class,
+                () -> fixture.service.callback("test", "code", null, state, request));
     }
 
     @Test

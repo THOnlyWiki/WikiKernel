@@ -734,6 +734,9 @@ public class WikiPageController {
             }
         }
         WikiPage page = this.wikiPageService.getVisibleByTitle(title).orElse(null);
+        if (page != null) {
+            requireRead(page.getTitle(), currentUser);
+        }
         if (page == null) {
             // 已删除的页面：给「此页面已被删除」提示（管理员可找回最近的源代码并恢复；仿 MediaWiki）
             Optional<WikiPage> deletedPage = this.wikiPageService.findDeletedByTitle(title);

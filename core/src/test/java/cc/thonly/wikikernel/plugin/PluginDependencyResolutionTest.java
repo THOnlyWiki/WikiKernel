@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *     <li>{@code p-needs-missing} / {@code p-needs-skipped} / {@code p-needs-disabled}：依赖缺失时跳过启动；</li>
  *     <li>{@code p-cycle-a ↔ p-cycle-b}：循环依赖 → 环上插件全部跳过（应用照常启动）；</li>
  *     <li>{@code p-core-too-new}（{@code requiresCore=>=99.0.0}）：core 版本不满足 → 跳过启动；</li>
- *     <li>{@code p-core-ok}（{@code requiresCore=>=0.0.1}）：{@code 0.0.1-SNAPSHOT} 满足 → 正常启动；</li>
+ *     <li>{@code p-core-ok}（{@code requiresCore=>=0.0.1}）：core 版本满足 → 正常启动；</li>
  *     <li>{@code p-client-missing}（{@code clientRequires=p-ghost}）：**照常启动**，只留 HTML 注释 + WARN。</li>
  * </ul>
  */
@@ -108,7 +108,7 @@ class PluginDependencyResolutionTest {
 
     @Test
     void coreVersionConstraintIsEnforced() {
-        assertTrue(pluginManager.find("p-core-ok").isPresent(), ">=0.0.1 应当被 0.0.1-SNAPSHOT 满足");
+        assertTrue(pluginManager.find("p-core-ok").isPresent(), "当前 core 版本应满足 >=0.0.1");
         assertTrue(pluginManager.find("p-core-too-new").isEmpty(), ">=99.0.0 不满足 → 跳过启动");
     }
 

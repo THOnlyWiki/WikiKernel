@@ -70,14 +70,14 @@ public class SidebarService {
     private static final Map<String, String> ITEM_TARGET_PAGE_KEYS = Map.of(
             "mainpage", "mainPage");
 
-    /** 条目**目标**（特殊页面）的消息键 → core 消息键（路径加「特殊:」前缀）。 */
+    /** 条目**目标**（特殊页面）的消息键 → 已注册的特殊页面名。 */
     private static final Map<String, String> ITEM_TARGET_SPECIAL_KEYS = Map.of(
-            "recentchanges-url", "special.recentChanges",
-            "randompage-url", "special.randomPage");
+            "recentchanges-url", "最近更改",
+            "randompage-url", "随机页面");
 
     /** 条目**显示文字**的消息键 → core 消息键。 */
     private static final Map<String, String> ITEM_LABEL_KEYS = Map.of(
-            "mainpage-description", "mainPage",
+            "mainpage-description", "common.home",
             "recentchanges", "special.recentChanges",
             "randompage", "special.randomPage",
             "listfiles", "files.list",
@@ -105,7 +105,7 @@ public class SidebarService {
         return result;
     }
 
-    /** 条目：显示文字按标签表本地化；目标按目标表换成「/wiki/<本地化标题>」（外链不动）。 */
+    /** 按标签表本地化显示文字，特殊页面链接始终指向已注册的页面名。 */
     private SidebarItem localizeItem(SidebarItem item) {
         String label = localize(item.getLabel(), ITEM_LABEL_KEYS);
         String href = item.getHref();
@@ -116,9 +116,9 @@ public class SidebarService {
             if (pageKey != null) {
                 href = WikiUrls.pagePath(messageOr(pageKey, target));
             } else {
-                String specialKey = ITEM_TARGET_SPECIAL_KEYS.get(target);
-                if (specialKey != null) {
-                    href = WikiUrls.pagePath("特殊:" + messageOr(specialKey, target));
+                String specialPage = ITEM_TARGET_SPECIAL_KEYS.get(target);
+                if (specialPage != null) {
+                    href = WikiUrls.pagePath("特殊:" + specialPage);
                 }
             }
         }

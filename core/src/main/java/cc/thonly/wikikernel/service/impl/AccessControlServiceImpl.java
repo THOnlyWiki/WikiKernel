@@ -19,13 +19,17 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 /**
@@ -55,6 +59,7 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
     private final PermissionProperties properties;
 
     private volatile List<WikiAccessRule> cache;
+    private final AtomicInteger movingProtection = new AtomicInteger();
 
     public AccessControlServiceImpl(WikiAccessRuleMapper accessRuleMapper,
                                     PermissionService permissionService,
@@ -208,6 +213,49 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
     }
 
     @Override
+    public void preserveProtectionOnMove(String source, String destination, boolean leaveRedirect) {
+        movingProtection.incrementAndGet();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                reload();
+                movingProtection.decrementAndGet();
+            }
+        });
+        for (AccessAction action : List.of(AccessAction.READ, AccessAction.EDIT)) {
+            String sourceGroups = requiredGroups(action, source);
+            String destinationGroups = requiredGroups(action, destination);
+            String preserved = intersectGroups(destinationGroups, sourceGroups);
+            boolean sourceHasExact = findRule(action, source).map(WikiAccessRule::getTarget)
+                    .filter(source::equals).isPresent();
+            if (!preserved.equals(destinationGroups) || sourceHasExact) {
+                saveExactMoveRule(destination, action, preserved);
+            }
+            // Keep the old title protected and do not publish a redirect into a narrower destination.
+            if (leaveRedirect && action == AccessAction.READ && !preserved.equals(sourceGroups)) {
+                saveExactMoveRule(source, action, preserved);
+            }
+        }
+    }
+
+    private void saveExactMoveRule(String title, AccessAction action, String groups) {
+        if (title.endsWith("*")) throw new ProtectionMoveConflict();
+        saveRule(title, action, groups);
+    }
+
+    private static String intersectGroups(String destination, String source) {
+        if (AccessAction.EVERYONE.equals(source)) return destination;
+        if (AccessAction.EVERYONE.equals(destination)) return source;
+        String separator = AccessAction.GROUP_SEPARATOR;
+        Set<String> allowed = new LinkedHashSet<>(Arrays.asList(destination.split("\\|")));
+        List<String> sourceGroups = Arrays.asList(source.split("\\|"));
+        if (sourceGroups.contains(PermissionService.GROUP_USER)) return destination;
+        if (allowed.contains(PermissionService.GROUP_USER)) return source;
+        allowed.retainAll(sourceGroups);
+        return String.join(separator, allowed);
+    }
+
+    @Override
     public void reload() {
         synchronized (this) {
             cache = null;
@@ -251,19 +299,26 @@ public class AccessControlServiceImpl implements AccessControlService, Applicati
     }
 
     private List<WikiAccessRule> loaded() {
+        // A request in the move transaction reads its own changes. Other requests
+        // must not repopulate or reuse the shared snapshot before the transaction ends.
+        if (movingProtection.get() != 0) return loadFromDatabase();
         List<WikiAccessRule> current = cache;
         if (current == null) {
             synchronized (this) {
                 current = cache;
                 if (current == null) {
-                    current = List.copyOf(accessRuleMapper.selectList(Wrappers.<WikiAccessRule>lambdaQuery()
-                            .orderByAsc(WikiAccessRule::getAction)
-                            .orderByAsc(WikiAccessRule::getTarget)));
+                    current = loadFromDatabase();
                     cache = current;
                 }
             }
         }
         return current;
+    }
+
+    private List<WikiAccessRule> loadFromDatabase() {
+        return List.copyOf(accessRuleMapper.selectList(Wrappers.<WikiAccessRule>lambdaQuery()
+                .orderByAsc(WikiAccessRule::getAction)
+                .orderByAsc(WikiAccessRule::getTarget)));
     }
 
     /** 启动时把 LocalSettings 里的规则写入数据库（同目标 + 动作覆盖，网页新增的规则不受影响）。 */

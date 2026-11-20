@@ -1,5 +1,6 @@
 package cc.thonly.wikikernel.service.impl;
 
+import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiRevision;
 import cc.thonly.wikikernel.common.data.WikiUser;
@@ -7,6 +8,7 @@ import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.db.mapper.WikiRevisionMapper;
 import cc.thonly.wikikernel.log.LogTypeConfig;
+import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.LogService;
 import cc.thonly.wikikernel.service.PermissionService;
 import cc.thonly.wikikernel.service.WikiPageChangedEvent;
@@ -64,6 +66,7 @@ public class WikiPageServiceImpl implements WikiPageService {
     private final WikiRevisionMapper wikiRevisionMapper;
     private final LogService logService;
     private final PermissionService permissionService;
+    private final AccessControlService accessControl;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -84,11 +87,13 @@ public class WikiPageServiceImpl implements WikiPageService {
                                WikiRevisionMapper wikiRevisionMapper,
                                LogService logService,
                                PermissionService permissionService,
+                               AccessControlService accessControl,
                                ApplicationEventPublisher eventPublisher) {
         this.wikiPageMapper = wikiPageMapper;
         this.wikiRevisionMapper = wikiRevisionMapper;
         this.logService = logService;
         this.permissionService = permissionService;
+        this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
     }
 
@@ -315,18 +320,33 @@ public class WikiPageServiceImpl implements WikiPageService {
     @Override
     @Transactional
     public WikiPage movePage(WikiUser user, String fromTitle, String toTitle, boolean leaveRedirect) {
-        WikiPage page = getByTitle(normalizeTitle(fromTitle)).orElse(null);
-        if (page == null) {
+        String source = normalizeTitle(fromTitle);
+        String destination = normalizeTitle(toTitle);
+        WikiPage page = getByTitle(source).orElse(null);
+        if (page == null || source.equals(destination) || getByTitle(destination).isPresent()
+                || !accessControl.canMove(source, user)
+                || (Boolean.TRUE.equals(page.getProtectedPage()) && !permissionService.canManage(user.getId()))
+                || !accessControl.canRead(destination, user)
+                || !accessControl.can(AccessAction.CREATE, destination, user)) {
             return null;
         }
         String previousTitle = page.getTitle();
-        page.setTitle(normalizeTitle(toTitle));
-        page.setUpdateAt(LocalDateTime.now());
-        wikiPageMapper.updateById(page);
+        LocalDateTime now = LocalDateTime.now();
+        if (wikiPageMapper.update(null, Wrappers.<WikiPage>lambdaUpdate()
+                .eq(WikiPage::getId, page.getId()).eq(WikiPage::getTitle, previousTitle)
+                .eq(WikiPage::getDeleted, false)
+                .set(WikiPage::getTitle, destination).set(WikiPage::getUpdateAt, now)) != 1) {
+            return null;
+        }
+        accessControl.preserveProtectionOnMove(previousTitle, destination, leaveRedirect);
+        page.setTitle(destination);
+        page.setUpdateAt(now);
         // 日志：目标 = 新标题，详情存原标题（展示时本地化）
         logService.record(LogTypeConfig.MOVE, actorId(user), page.getTitle(), null, previousTitle);
         if (leaveRedirect) {
             createRedirectPage(user, previousTitle, page.getTitle());
+        } else {
+            eventPublisher.publishEvent(new WikiPageChangedEvent(null, previousTitle, true));
         }
         publish(page, false);
         return page;
@@ -345,6 +365,7 @@ public class WikiPageServiceImpl implements WikiPageService {
                 "#REDIRECT [[" + newTitle + "]]", "移动页面时留下重定向", now, false, false, "", true);
         redirect.setLatestRevisionId(revision.getId());
         wikiPageMapper.updateById(redirect);
+        publish(redirect, false);
     }
 
     @Override

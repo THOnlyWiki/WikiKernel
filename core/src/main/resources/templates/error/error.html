@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- 通用错误页（404 以外的状态码）：状态码 + 本地化提示 -->
-<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+<html lang="zh" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${errorTitle}, ~{:: section})}">
 <body>
 <section>

@@ -72,4 +72,31 @@ class SvgSanitizerTest {
         assertTrue(safe.contains("<text"), safe);
         assertTrue(safe.contains("W</text>"), safe);
     }
+
+    @Test
+    void requiresWellFormedXmlAndBoundsValidGraphicNesting() {
+        String nested = "<svg>" + "<g>".repeat(127) + "</g>".repeat(127) + "</svg>";
+        SvgSanitizer.sanitize(nested.getBytes(StandardCharsets.UTF_8));
+        String tooDeep = "<svg>" + "<g>".repeat(128) + "</g>".repeat(128) + "</svg>";
+        assertThrows(SvgSanitizer.InvalidSvgException.class,
+                () -> SvgSanitizer.sanitize(tooDeep.getBytes(StandardCharsets.UTF_8)));
+        assertThrows(SvgSanitizer.InvalidSvgException.class,
+                () -> SvgSanitizer.sanitize("<svg><rect></svg>".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void preservesSvgNamesAndLocalXlinkReferences() {
+        String svg = """
+                <svg:svg xmlns:svg="http://www.w3.org/2000/svg"
+                         xmlns:x="http://www.w3.org/1999/xlink" viewBox="0 0 5 5">
+                  <svg:linearGradient id="gradient"/>
+                  <svg:use x:href="#gradient"/>
+                </svg:svg>
+                """;
+        String safe = new String(SvgSanitizer.sanitize(svg.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+        assertTrue(safe.contains("viewBox=\"0 0 5 5\""), safe);
+        assertTrue(safe.contains("<linearGradient"), safe);
+        assertTrue(safe.contains("xmlns:xlink=\"http://www.w3.org/1999/xlink\""), safe);
+        assertTrue(safe.contains("xlink:href=\"#gradient\""), safe);
+    }
 }

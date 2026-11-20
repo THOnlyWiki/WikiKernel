@@ -1,6 +1,5 @@
 package cc.thonly.wikikernel.special;
 
-import cc.thonly.wikikernel.common.access.AccessAction;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiUser;
 import cc.thonly.wikikernel.common.extension.SpecialPage;
@@ -68,17 +67,18 @@ public class MovePageSpecialPage implements SpecialPage {
             return; // 显示“输入页面标题”查找框
         }
 
-        WikiPage page = wikiPageService.getByTitle(title).orElse(null);
+        WikiUser user = request.user();
+        WikiPage page = accessControlService.canRead(title, user)
+                ? wikiPageService.getByTitle(title).orElse(null) : null;
         if (page == null) {
             model.put("pageNotFound", true);
             return;
         }
 
-        WikiUser user = request.user();
         boolean loginRequired = user == null;
         boolean adminCanOnly = Boolean.TRUE.equals(page.getProtectedPage())
                 && (user == null || !permissionService.has(user.getId(), PermissionService.GROUP_ADMIN));
-        boolean ruleAllows = accessControlService.can(AccessAction.MOVE, title, user);
+        boolean ruleAllows = accessControlService.canMove(title, user);
 
         model.put("sourcePage", page);
         model.put("moveLogin", loginRequired);

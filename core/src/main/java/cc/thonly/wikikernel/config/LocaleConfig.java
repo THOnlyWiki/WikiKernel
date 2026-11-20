@@ -5,9 +5,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.LocaleResolver;
 
 /**
- * 国际化配置：语言由 {@link WikiLocaleResolver} 决定（{@code ?uselang=zh|en}）。
+ * 国际化配置：界面语言由 {@link WikiLocaleResolver} 决定。
  * <p>
- * 文案在 {@code messages.properties}（默认中文）与 {@code messages_en.properties}；
+ * 文案在 {@code messages.properties}（默认简体中文）及对应语言的资源文件；
  * 模板用 {@code #{key}}，Java 侧注入 Spring 的 MessageSource。
  */
 @Configuration(proxyBeanMethods = false)

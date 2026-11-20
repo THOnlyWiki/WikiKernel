@@ -2,6 +2,7 @@ package cc.thonly.wikikernel.special;
 
 import cc.thonly.wikikernel.common.extension.*;
 import cc.thonly.wikikernel.common.web.WikiUrls;
+import cc.thonly.wikikernel.i18n.InterfaceLanguage;
 import cc.thonly.wikikernel.i18n.SystemMessages;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -26,11 +27,11 @@ public class AllMessagesSpecialPage implements SpecialPage {
 
     public void populate(SpecialPageRequest request, Map<String, Object> model) {
         Map<String, String> p = request.parameters();
-        String requested = p.getOrDefault("lang", "zh-hans").toLowerCase(Locale.ROOT);
-        if (Set.of("zh", "zh-cn").contains(requested)) requested = "zh-hans";
-        var languages = messages.languages();
-        boolean unknown = !languages.containsKey(requested);
-        String language = unknown ? "zh-hans" : requested;
+        InterfaceLanguage current = InterfaceLanguage.fromLocale(LocaleContextHolder.getLocale());
+        InterfaceLanguage requested = p.containsKey("lang") ? InterfaceLanguage.parse(p.get("lang")) : current;
+        boolean unknown = p.containsKey("lang") && requested == null;
+        InterfaceLanguage selectedLanguage = requested == null ? InterfaceLanguage.SIMPLIFIED_CHINESE : requested;
+        String language = selectedLanguage.getMessageCode();
         String prefix = p.getOrDefault("prefix", "");
         String filter = p.getOrDefault("filter", "all");
         if (!Set.of("all", "modified", "unmodified").contains(filter)) filter = "all";
@@ -38,7 +39,7 @@ public class AllMessagesSpecialPage implements SpecialPage {
         try { int value = Integer.parseInt(p.getOrDefault("limit", "50")); if (List.of(20, 50, 100, 250, 500, 5000).contains(value)) limit = value; }
         catch (NumberFormatException ignored) { }
         String selected = filter;
-        var rows = messages.entries(languages.get(language)).stream()
+        var rows = messages.entries(selectedLanguage.getLocale()).stream()
                 .filter(row -> row.name().toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT)))
                 .filter(row -> selected.equals("all") || row.modified() == selected.equals("modified")).toList();
         String offset = p.getOrDefault("offset", "");
@@ -61,7 +62,7 @@ public class AllMessagesSpecialPage implements SpecialPage {
         }
         model.put("allMessagesRows", items);
         model.put("amPrefix", prefix); model.put("amFilter", filter); model.put("amLang", language); model.put("amLimit", limit);
-        model.put("amUnknownLanguage", unknown); model.put("amLanguages", languages.keySet());
+        model.put("amUnknownLanguage", unknown);
         model.put("amLimits", List.of(20, 50, 100, 250, 500, 5000)); model.put("amTotal", rows.size());
         model.put("amFirst", start > 0 ? url(prefix, filter, language, limit, "", "next") : "");
         model.put("amPrev", start > 0 && !shown.isEmpty() ? url(prefix, filter, language, limit, shown.getFirst().name(), "prev") : "");

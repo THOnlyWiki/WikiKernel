@@ -5,7 +5,7 @@ rem  Usage: run.bat [port]   (default: 18080)
 rem  Stop: Ctrl+C, or run stop.bat
 rem
 rem  Preferred jar: wikikernel-server.jar next to this script
-rem  Source tree : core\build\libs\core-0.0.1-SNAPSHOT.jar
+rem  Source tree : core\build\libs\core-1.0.0.jar
 rem
 rem  The launch jar contains the Mixin agent and uses the JDK
 rem  Launcher-Agent-Class + Spring Boot PropertiesLauncher,
@@ -19,7 +19,7 @@ if not "%~1"=="" set "PORT=%~1"
 
 set "JAR="
 if exist "%~dp0wikikernel-server.jar" set "JAR=%~dp0wikikernel-server.jar"
-if not defined JAR set "JAR=core\build\libs\core-0.0.1-SNAPSHOT.jar"
+if not defined JAR set "JAR=core\build\libs\core-1.0.0.jar"
 if not exist "%JAR%" (
     echo [WikiKernel] Launcher jar not found: %JAR%
     echo [WikiKernel] Build it with: gradlew.bat dist

@@ -30,7 +30,7 @@ import java.util.Properties;
  * }
  * </pre>
  *
- * 需要别的语言时覆写 {@link #languages()}（默认已覆盖 {@code en} / {@code zh-CN} / {@code zh-TW} /
+ * 需要别的语言时覆写 {@link #languages()}（默认已覆盖 {@code en} / {@code zh-CN} / {@code zh-HK} / {@code zh-TW} /
  * {@code ja} / {@code ko} / {@code fr} / {@code de} / {@code ru} / {@code es}；文件不存在就跳过）。
  * <p>
  * 缺失的键**不会**回落到中文，也不会抛异常：由 core 的消息源统一回退成翻译键本身
@@ -57,7 +57,7 @@ public abstract class ResourceMessageBundle implements MessageBundle {
 
     /** 该插件提供的语言（键为语言标签，值为文件名后缀；默认语言见 {@link #DEFAULT_LANGUAGE}）。 */
     protected List<String> languages() {
-        return List.of("en", "zh-CN", "zh-TW", "ja", "ko", "fr", "de", "ru", "es");
+        return List.of("en", "zh-CN", "zh-HK", "zh-TW", "ja", "ko", "fr", "de", "ru", "es");
     }
 
     @Override
@@ -85,9 +85,13 @@ public abstract class ResourceMessageBundle implements MessageBundle {
             if (language == null || language.isBlank() || DEFAULT_LANGUAGE.equals(language)) {
                 continue;
             }
-            Map<String, String> bundle = read(basename + "_" + language.trim() + ".properties");
+            String tag = language.trim();
+            Map<String, String> bundle = read(basename + "_" + tag + ".properties");
+            if (bundle.isEmpty() && tag.contains("-")) {
+                bundle = read(basename + "_" + tag.replace('-', '_') + ".properties");
+            }
             if (!bundle.isEmpty()) {
-                result.put(language.trim(), bundle);
+                result.put(tag, bundle);
             }
         }
         return result;

@@ -111,6 +111,7 @@ public class VersionSpecialPage implements SpecialPage {
         WikiUser user = request.user();
         Skin activeSkin = skinRegistry.active(request.parameters().get("useskin"), user);
         model.put("wikiKernelVersion", WikiKernelInfo.VERSION);
+        model.put("wikiKernelProjectUrl", WikiKernelInfo.PROJECT_URL);
         model.put("software", software());
         model.put("entryPoints", entryPoints());
         model.put("skins", skinRegistry.available().stream()
@@ -167,7 +168,8 @@ public class VersionSpecialPage implements SpecialPage {
     /** 已安装的软件：产品 + 版本。 */
     private List<Map<String, Object>> software() {
         List<Map<String, Object>> software = new ArrayList<>();
-        software.add(row(WikiKernelInfo.NAME, WikiKernelInfo.VERSION));
+        software.add(Map.of("product", WikiKernelInfo.NAME, "version", WikiKernelInfo.VERSION,
+                "projectUrl", WikiKernelInfo.PROJECT_URL));
         software.add(row("Spring Boot", SpringBootVersion.getVersion()));
         software.add(row("Java", System.getProperty("java.version")
                 + " (" + System.getProperty("java.vendor") + ")"));

@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-description = '浏览器数字指纹登录：浏览器端采集稳定指纹分量并算 SHA-256，登录页一键登录 + 参数设置 / 特殊页管理自己的指纹'
+description = '浏览器快捷登录：使用可撤销的随机凭据，支持在个人设置中登记或移除浏览器'
 
 dependencies {
     compileOnly project(':common')

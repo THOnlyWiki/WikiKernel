@@ -19,7 +19,11 @@
         <div class="wiki-filter-grid">
             <div class="wiki-filter-field">
                 <label for="am-lang" th:text="#{allmessages-language}"></label>
-                <select id="am-lang" name="lang"><option th:each="lang : ${amLanguages}" th:value="${lang}" th:selected="${lang == amLang}" th:text="${lang == 'en' ? 'en - English' : 'zh-hans - 中文（简体）'}"></option></select>
+                <select id="am-lang" name="lang">
+                    <option th:each="lang : ${interfaceLanguages}" th:value="${lang.messageCode}"
+                            th:selected="${lang.messageCode == amLang}" th:lang="${lang.locale.toLanguageTag()}"
+                            th:text="|${lang.messageCode} - ${lang.label}|"></option>
+                </select>
             </div>
             <div class="wiki-filter-field">
                 <label for="am-limit" th:text="#{table_pager_limit_label}"></label>

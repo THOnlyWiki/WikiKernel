@@ -102,28 +102,10 @@ class FingerprintLoginPluginTest {
 
         String joined = String.join("\n", provider.headItems(null));
         assertTrue(joined.contains("WIKI_CONFIG.fingerprintLogin = true"), joined);
-        assertTrue(joined.contains("WIKI_CONFIG.fingerprintLoginHttpsOnly = false"), joined);
         assertTrue(joined.contains("/plugins/fingerprint-login/fingerprint-login.js"), joined);
         assertTrue(joined.contains("fingerprintLoginButton:"), joined);
         assertTrue(joined.contains("fingerprintLoginWorking:"), joined);
     }
-
-    @Test
-    void httpsOnlyFlagComesFromPluginConfig() {
-        Map<String, String> settings = new LinkedHashMap<>();
-        settings.put(FingerprintLoginSupport.HTTPS_ONLY_KEY, "true");
-        Fixture fixture = new Fixture(true, pluginConfig(settings));
-
-        assertTrue(fixture.support.httpsOnly());
-        assertFalse(fixture.service().httpsAllowed(false), "开了「仅 HTTPS 允许」→ 非安全上下文拒绝");
-        assertTrue(fixture.service().httpsAllowed(true));
-
-        String joined = String.join("\n",
-                new FingerprintLoginHeadProvider(fixture.support).headItems(null));
-        assertTrue(joined.contains("fingerprintLoginHttpsOnly = true"), joined);
-    }
-
-    // ==================== 增删 ====================
 
     @Test
     void addListsAndRemovesOwnFingerprints() {
@@ -137,7 +119,7 @@ class FingerprintLoginPluginTest {
         assertEquals("UA/1.0", service.list(7L).get(0).userAgent());
 
         // 同一摘要再次添加 = 更新名称与 UA（updated=true，不新增行）
-        FingerprintLoginService.AddOutcome again = service.add(7L, "公司台式机", HASH_A, "UA/2.0");
+        FingerprintLoginService.AddOutcome again = service.add(7L, "公司台式机", added.credential(), "UA/2.0");
         assertTrue(again.updated(), "同一浏览器重复登记只更新");
         assertEquals(1, service.list(7L).size());
         assertEquals("公司台式机", service.list(7L).get(0).label());
@@ -168,7 +150,7 @@ class FingerprintLoginPluginTest {
     @Test
     void listNeverReturnsAnotherUsersFingerprints() {
         Fixture fixture = fixture();
-        fixture.store.seed(7L, "我的", HASH_A);
+        fixture.service().add(7L, "我的", null, "UA");
         fixture.store.seed(8L, "别人的", HASH_B);
 
         List<String> labels = fixture.service().list(7L).stream().map(view -> view.label()).toList();
@@ -195,19 +177,7 @@ class FingerprintLoginPluginTest {
     }
 
     @Test
-    void addingAnotherUsersFingerprintIsRejected() {
-        Fixture fixture = fixture();
-        fixture.store.seed(8L, "别人的", HASH_A);
-
-        FingerprintLoginService.AddException exception = assertThrows(
-                FingerprintLoginService.AddException.class,
-                () -> fixture.service().add(7L, "抢注", HASH_A, "UA/1.0"));
-        assertEquals(FingerprintLoginService.AddError.REGISTERED_TO_ANOTHER_USER, exception.error());
-        assertEquals(8L, fixture.store.byHash(HASH_A).orElseThrow().getUserId(), "归属不变");
-    }
-
-    @Test
-    void addValidatesLabelAndHash() {
+    void addValidatesLabel() {
         Fixture fixture = fixture();
         assertEquals(FingerprintLoginService.AddError.LABEL_REQUIRED, assertThrows(
                 FingerprintLoginService.AddException.class,
@@ -216,28 +186,23 @@ class FingerprintLoginPluginTest {
                 FingerprintLoginService.AddException.class,
                 () -> fixture.service().add(7L, "x".repeat(FingerprintLoginSupport.LABEL_MAX_LENGTH + 1),
                         HASH_A, "UA")).error());
-        assertEquals(FingerprintLoginService.AddError.HASH_REQUIRED, assertThrows(
-                FingerprintLoginService.AddException.class,
-                () -> fixture.service().add(7L, "名称", "", "UA")).error());
-        assertEquals(FingerprintLoginService.AddError.HASH_INVALID, assertThrows(
-                FingerprintLoginService.AddException.class,
-                () -> fixture.service().add(7L, "名称", "不是十六进制", "UA")).error());
+
     }
 
     // ==================== 登录命中 / 未命中 / 限流 ====================
 
     @Test
-    void loginHitsStoredFingerprintAndTouchesLastUsed() {
+    void loginRotatesCredentialAndUpdatesLastUsed() {
         Fixture fixture = fixture();
-        WikiFingerprint row = fixture.store.seed(7L, "我的", HASH_A);
+        var enrolled = fixture.service().add(7L, "我的", null, "UA");
         assertFalse(fixture.service().list(7L).get(0).used(), "登记后还没用过");
 
         FingerprintLoginService.LoginOutcome outcome = fixture.service()
-                .login(HASH_A, true, "203.0.113.7", true);
+                .login(enrolled.credential(), true, "203.0.113.7", true);
 
         assertTrue(outcome.success(), outcome.message());
         assertEquals(List.of("7:true"), fixture.session.established, "以指纹所属用户建立会话");
-        assertTrue(fixture.store.calls.contains("touch:" + row.getId()), "成功后更新 lastUsedAt");
+        assertTrue(fixture.store.calls.contains("rotate:" + enrolled.id()), "成功后更新 lastUsedAt");
         assertTrue(fixture.service().list(7L).get(0).used(), "列表里显示最近使用时间");
     }
 
@@ -255,20 +220,9 @@ class FingerprintLoginPluginTest {
     }
 
     @Test
-    void loginRejectsMalformedHashWithoutCountingAsFailure() {
-        Fixture fixture = fixture();
-        FingerprintLoginService.LoginOutcome outcome = fixture.service()
-                .login("短", false, "203.0.113.7", true);
-        assertFalse(outcome.success());
-        assertEquals("fingerprint.error.hashInvalid", outcome.message());
-        assertFalse(fixture.rateLimit.limited(FingerprintLoginService.RATE_LIMIT_CATEGORY,
-                FingerprintLoginService.rateLimitKey("203.0.113.7", "短")), "格式错误不计失败");
-    }
-
-    @Test
     void rateLimitBlocksBruteForceByIpAndFingerprint() {
         Fixture fixture = fixture();
-        fixture.store.seed(7L, "我的", HASH_A);
+        var enrolled = fixture.service().add(7L, "我的", null, "UA");
         fixture.rateLimit.maxAttempts = 2;
 
         // 同一个指纹两次未命中 → 「IP + 指纹」这一层锁定
@@ -281,21 +235,21 @@ class FingerprintLoginPluginTest {
         assertTrue(blocked.message().startsWith("fingerprint.error.rateLimited"), blocked.message());
 
         // 换指纹也不能绕过：「IP」这一层同样在计数，且被锁期间即使指纹是对的也拒绝
-        assertFalse(fixture.service().login(HASH_A, false, "203.0.113.7", true).success());
+        assertFalse(fixture.service().login(enrolled.credential(), false, "203.0.113.7", true).success());
         assertTrue(fixture.session.established.isEmpty(), "锁定期间不建立任何会话");
 
         // 限流键按 IP 分类：换一个 IP 不受影响
-        assertTrue(fixture.service().login(HASH_A, false, "198.51.100.9", true).success());
+        assertTrue(fixture.service().login(enrolled.credential(), false, "198.51.100.9", true).success());
     }
 
     @Test
     void successfulLoginClearsTheRateLimitWindow() {
         Fixture fixture = fixture();
-        fixture.store.seed(7L, "我的", HASH_A);
+        var enrolled = fixture.service().add(7L, "我的", null, "UA");
         fixture.rateLimit.maxAttempts = 3;
 
         assertFalse(fixture.service().login(HASH_B, false, "10.0.0.1", true).success());
-        assertTrue(fixture.service().login(HASH_A, false, "10.0.0.1", true).success());
+        assertTrue(fixture.service().login(enrolled.credential(), false, "10.0.0.1", true).success());
         assertFalse(fixture.rateLimit.limited(FingerprintLoginService.RATE_LIMIT_CATEGORY,
                 FingerprintLoginService.rateLimitKey("10.0.0.1", HASH_A)), "成功一次即清除「IP + 指纹」计数");
         assertFalse(fixture.rateLimit.limited(FingerprintLoginService.RATE_LIMIT_CATEGORY_IP,
@@ -308,7 +262,7 @@ class FingerprintLoginPluginTest {
         fixture.store.seed(7L, "我的", HASH_A);
 
         FingerprintLoginService.LoginOutcome outcome = fixture.service()
-                .login(HASH_A, false, "203.0.113.7", true);
+                .login(null, false, "203.0.113.7", true);
 
         assertFalse(outcome.success());
         assertEquals("fingerprint.error.disabled", outcome.message());
@@ -325,11 +279,11 @@ class FingerprintLoginPluginTest {
     @Test
     void userDeletedAfterRegistrationFailsNeutrally() {
         Fixture fixture = fixture();
-        fixture.store.seed(7L, "我的", HASH_A);
+        var enrolled = fixture.service().add(7L, "我的", null, "UA");
         fixture.session.failEstablish = true;
 
         FingerprintLoginService.LoginOutcome outcome = fixture.service()
-                .login(HASH_A, false, "203.0.113.7", true);
+                .login(enrolled.credential(), false, "203.0.113.7", true);
 
         assertFalse(outcome.success());
         assertEquals("fingerprint.error.badCredentials", outcome.message(), "用户没了也给中性提示");
@@ -391,7 +345,7 @@ class FingerprintLoginPluginTest {
         Fixture fixture = fixture();
         WikiFingerprint mine = fixture.store.seed(7L, "我的笔记本 Chrome", HASH_A);
         fixture.store.seed(8L, "别人的设备", HASH_B);
-        fixture.store.touch(mine.getId());
+        mine.setLastUsedAt(java.time.LocalDateTime.now());
 
         String html = new FingerprintLoginPreferenceSection(fixture.service(), fixture.support)
                 .html(preferenceContext(7L));
@@ -514,7 +468,7 @@ class FingerprintLoginPluginTest {
             this.enabled = enabled;
             this.config = config;
             this.support = new FingerprintLoginSupport(FingerprintLoginFakes.featureConfig(enabled),
-                    FingerprintLoginFakes.messageSource(), () -> config);
+                    FingerprintLoginFakes.messageSource());
         }
 
         FingerprintLoginService service() {

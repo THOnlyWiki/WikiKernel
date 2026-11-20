@@ -104,9 +104,11 @@ public class FingerprintStoreJdbc implements FingerprintStore {
     }
 
     @Override
-    public void touch(long id) {
-        database.update("UPDATE wiki_fingerprint SET last_used_at = ? WHERE id = ?",
-                LocalDateTime.now(), id);
+    public boolean rotate(long id, String currentDigest, String nextDigest, String label, String userAgent) {
+        return database.update("UPDATE wiki_fingerprint SET fingerprint_hash = ?, last_used_at = ?,"
+                        + " label = COALESCE(?, label), user_agent = COALESCE(?, user_agent)"
+                        + " WHERE id = ? AND fingerprint_hash = ?",
+                nextDigest, LocalDateTime.now(), label, userAgent, id, currentDigest) == 1;
     }
 
     // ==================== 行 → 实体 ====================

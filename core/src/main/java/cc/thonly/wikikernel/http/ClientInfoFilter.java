@@ -41,8 +41,9 @@ public class ClientInfoFilter extends OncePerRequestFilter {
 
         HttpServletRequest effectiveRequest = request;
         String remoteAddr = Strings.trimToEmpty(request.getRemoteAddr());
-        if (!clientIp.equals(remoteAddr)) {
-            effectiveRequest = new ClientIpRequestWrapper(request, clientIp);
+        boolean secure = clientIpResolver.isSecure(request);
+        if (!clientIp.equals(remoteAddr) || secure != request.isSecure()) {
+            effectiveRequest = new ClientRequestWrapper(request, clientIp, secure);
         }
         try {
             filterChain.doFilter(effectiveRequest, response);
@@ -51,19 +52,25 @@ public class ClientInfoFilter extends OncePerRequestFilter {
         }
     }
 
-    /** 只覆盖 {@code getRemoteAddr()}，避免影响请求的其它行为。 */
-    private static final class ClientIpRequestWrapper extends HttpServletRequestWrapper {
+    private static final class ClientRequestWrapper extends HttpServletRequestWrapper {
 
         private final String clientIp;
+        private final boolean secure;
 
-        private ClientIpRequestWrapper(HttpServletRequest request, String clientIp) {
+        private ClientRequestWrapper(HttpServletRequest request, String clientIp, boolean secure) {
             super(request);
             this.clientIp = clientIp;
+            this.secure = secure;
         }
 
         @Override
         public String getRemoteAddr() {
             return clientIp;
+        }
+
+        @Override
+        public boolean isSecure() {
+            return secure;
         }
     }
 }

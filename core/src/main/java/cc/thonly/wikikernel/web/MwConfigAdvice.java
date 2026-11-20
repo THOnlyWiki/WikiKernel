@@ -154,7 +154,8 @@ public class MwConfigAdvice {
         conf.put("wgVersion", appVersion());
         conf.put("wgContentLanguage", locale.getLanguage());
         conf.put("wgPageContentLanguage", locale.getLanguage());
-        conf.put("wgUserLanguage", locale.getLanguage());
+        var interfaceLanguage = cc.thonly.wikikernel.i18n.InterfaceLanguage.fromLocale(locale);
+        conf.put("wgUserLanguage", interfaceLanguage == null ? locale.toLanguageTag() : interfaceLanguage.getCode());
         conf.put("wgCategories", categories(page));
         conf.put("wgRevisionId", page == null ? null : page.getLatestRevisionId());
         conf.put("wgCurRevisionId", page == null ? null : page.getLatestRevisionId());

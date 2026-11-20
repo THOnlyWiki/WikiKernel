@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- 404 页面：WikiKernel:404 的渲染结果会插入这里（没有该页面时用内置提示） -->
-<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+<html lang="zh" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${errorTitle}, ~{:: section})}">
 <body>
 <section>

@@ -183,9 +183,15 @@ public final class FingerprintLoginFakes {
         }
 
         @Override
-        public void touch(long id) {
-            calls.add("touch:" + id);
-            rows.stream().filter(row -> row.getId() == id).forEach(row -> row.setLastUsedAt(LocalDateTime.now()));
+        public synchronized boolean rotate(long id, String currentDigest, String nextDigest, String label, String agent) {
+            WikiFingerprint row = byHash(currentDigest).orElse(null);
+            if (row == null || row.getId() != id) return false;
+            row.setFingerprintHash(nextDigest);
+            if (label != null) row.setLabel(label);
+            if (agent != null) row.setUserAgent(agent);
+            row.setLastUsedAt(LocalDateTime.now());
+            calls.add("rotate:" + id);
+            return true;
         }
 
         /** 直接塞一行（准备测试数据；绕过上限检查）。 */

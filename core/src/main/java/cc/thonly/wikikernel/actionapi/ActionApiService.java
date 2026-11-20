@@ -421,10 +421,11 @@ public class ActionApiService {
     }
 
     private List<Map<String, Object>> allMessages(Map<String, String> params, boolean v2) {
-        String language = params.getOrDefault("amlang", LocaleContextHolder.getLocale().getLanguage().equals("en") ? "en" : "zh-hans");
-        if (Set.of("zh", "zh-cn").contains(language)) language = "zh-hans";
-        Locale locale = systemMessages.languages().get(language);
-        if (locale == null) throw new ApiError("badvalue", "Unsupported amlang value.");
+        var language = params.containsKey("amlang")
+                ? cc.thonly.wikikernel.i18n.InterfaceLanguage.parse(params.get("amlang"))
+                : cc.thonly.wikikernel.i18n.InterfaceLanguage.fromLocale(LocaleContextHolder.getLocale());
+        if (language == null) throw new ApiError("badvalue", "Unsupported amlang value.");
+        Locale locale = language.getLocale();
         String customised = params.getOrDefault("amcustomised", "all");
         if (!Set.of("all", "modified", "unmodified").contains(customised)) throw new ApiError("badvalue", "Invalid amcustomised value.");
         var entries = systemMessages.entries(locale);
@@ -1589,12 +1590,15 @@ public class ActionApiService {
         if (WikiTitles.normalize(from).equals(WikiTitles.normalize(to))) {
             throw new ApiError("selfmove", "The page title is the same; can't move.");
         }
-        WikiPage page = wikiPageService.getByTitle(from)
-                .orElseThrow(() -> new ApiError("missingtitle", "The page you specified doesn't exist."));
-        if (!accessControlService.can(AccessAction.MOVE, from, user)) {
+        if (!accessControlService.canRead(from, user)) {
             throw new ApiError("permissiondenied", "You do not have permission to move this page.");
         }
-        if (!accessControlService.can(AccessAction.CREATE, to, user)) {
+        WikiPage page = wikiPageService.getByTitle(from)
+                .orElseThrow(() -> new ApiError("missingtitle", "The page you specified doesn't exist."));
+        if (!accessControlService.canMove(from, user)) {
+            throw new ApiError("permissiondenied", "You do not have permission to move this page.");
+        }
+        if (!accessControlService.canRead(to, user) || !accessControlService.can(AccessAction.CREATE, to, user)) {
             throw new ApiError("permissiondenied", "You do not have permission to create the target page.");
         }
         if (wikiPageService.getByTitle(to).isPresent()) {
@@ -1605,10 +1609,18 @@ public class ActionApiService {
         }
         String reason = Strings.trimToEmpty(params.get("reason"));
         boolean leaveRedirect = !params.containsKey("noredirect");
-        WikiPage moved = wikiPageService.movePage(user, page.getTitle(), to, leaveRedirect);
+        WikiPage moved;
+        try {
+            moved = wikiPageService.movePage(user, page.getTitle(), to, leaveRedirect);
+        } catch (AccessControlService.ProtectionMoveConflict exception) {
+            throw new ApiError("permissiondenied", "Source protection cannot be preserved at the target title.");
+        }
+        if (moved == null) {
+            throw new ApiError("permissiondenied", "Page move could not be completed.");
+        }
         Map<String, Object> move = new LinkedHashMap<>();
         move.put("from", page.getTitle());
-        move.put("to", moved == null ? to : moved.getTitle());
+        move.put("to", moved.getTitle());
         move.put("reason", reason);
         move.put("redirectcreated", leaveRedirect);
         Map<String, Object> root = new LinkedHashMap<>();

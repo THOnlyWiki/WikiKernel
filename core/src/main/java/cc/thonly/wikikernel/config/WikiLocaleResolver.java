@@ -1,19 +1,19 @@
 package cc.thonly.wikikernel.config;
 
 import cc.thonly.wikikernel.common.data.WikiUser;
+import cc.thonly.wikikernel.i18n.InterfaceLanguage;
 import cc.thonly.wikikernel.user.UserSession;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.servlet.LocaleResolver;
 
-import java.util.List;
 import java.util.Locale;
 
 /**
  * MediaWiki 风格的语言解析：
  * <ol>
- *     <li>{@code ?uselang=zh|en}（参数名与 MediaWiki 一致），并记进会话；</li>
+ *     <li>{@code ?uselang=} 指定的界面语言，并记进会话；</li>
  *     <li>会话里记住的上次选择；</li>
  *     <li>默认简体中文。</li>
  * </ol>
@@ -25,26 +25,26 @@ public class WikiLocaleResolver implements LocaleResolver {
     public static final String LANGUAGE_PARAM = "uselang";
 
     private static final String SESSION_ATTRIBUTE = "wikiLocale";
-    private static final List<String> SUPPORTED_LANGUAGES = List.of("zh", "en");
     private static final Locale DEFAULT_LOCALE = Locale.SIMPLIFIED_CHINESE;
 
     @Override
     public Locale resolveLocale(HttpServletRequest request) {
-        Locale requested = parse(request.getParameter(LANGUAGE_PARAM));
+        InterfaceLanguage requested = InterfaceLanguage.parse(request.getParameter(LANGUAGE_PARAM));
         if (requested != null) {
-            request.getSession(true).setAttribute(SESSION_ATTRIBUTE, requested);
-            return requested;
+            request.getSession(true).setAttribute(SESSION_ATTRIBUTE, requested.getLocale());
+            return requested.getLocale();
         }
         HttpSession session = request.getSession(false);
         if (session != null && session.getAttribute(SESSION_ATTRIBUTE) instanceof Locale sessionLocale) {
-            return sessionLocale;
+            InterfaceLanguage stored = InterfaceLanguage.fromLocale(sessionLocale);
+            if (stored != null) return stored.getLocale();
         }
         // 用户「参数设置 → 国际化」里的语言偏好
         WikiUser user = UserSession.current(request);
         if (user != null) {
-            Locale preferred = parse(user.getLanguage());
+            InterfaceLanguage preferred = InterfaceLanguage.parse(user.getLanguage());
             if (preferred != null) {
-                return preferred;
+                return preferred.getLocale();
             }
         }
         return DEFAULT_LOCALE;
@@ -63,11 +63,4 @@ public class WikiLocaleResolver implements LocaleResolver {
         request.getSession(true).setAttribute(SESSION_ATTRIBUTE, locale);
     }
 
-    private static Locale parse(String language) {
-        if (language == null || language.isBlank()) {
-            return null;
-        }
-        Locale locale = Locale.forLanguageTag(language.replace('_', '-'));
-        return SUPPORTED_LANGUAGES.contains(locale.getLanguage()) ? locale : null;
-    }
 }

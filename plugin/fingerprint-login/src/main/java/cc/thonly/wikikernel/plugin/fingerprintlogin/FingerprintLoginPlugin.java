@@ -22,30 +22,7 @@ import org.springframework.context.ApplicationContext;
 
 import java.util.List;
 
-/**
- * 浏览器指纹登录（便利凭据：免密码登录）。
- * <p>
- * 功能：
- * <ul>
- *     <li><b>登录页</b>：注入的脚本在登录页 DOM 上插入「用浏览器指纹登录」按钮，
- *     点击后浏览器端采集稳定分量（UA / 语言 / 平台 / 硬件 / 屏幕 / 时区 / canvas / WebGL）
- *     拼成规范字符串，用 {@code crypto.subtle.digest('SHA-256')} 算出摘要，
- *     {@code POST /api/fingerprint-login} 命中则建立与密码登录一致的会话；</li>
- *     <li><b>管理</b>：参数设置的「指纹登录」分区与 {@code 特殊:指纹登录} 列出 / 添加 / 删除
- *     自己的指纹（每用户最多 {@link FingerprintStore#MAX_PER_USER} 个，只能删自己的）；</li>
- *     <li><b>开关</b>：core 的功能开关 {@code features.fingerprint-login}（**默认关闭**）：关闭时
- *     不注入脚本、接口返回禁用提示；</li>
- *     <li><b>限流</b>：core 的 {@code common.service.RateLimit} 桥按「IP + 指纹摘要」分类限流防爆破。</li>
- * </ul>
- * 数据访问全部走插件自己的实现（实体 {@code WikiFingerprint} 在插件内、表 {@code wiki_fingerprint} 由
- * {@code FingerprintLoginPlugin.schemaEntities()} 声明、core 的 Auto-DDL 建表，插件经
- * {@code common.service.PluginDatabase} 裸 SQL 读写；会话用 {@code LoginSessionImpl} 建立），
- * 限流仍走 core 的 {@code common.service.RateLimit} 桥。
- * <p>
- * 安全说明（也在插件 README 与站点设置里）：指纹是**比密码弱的便利凭据**——
- * 共享浏览器上的任何人都能直接登录，指纹也可能被复制到别的设备；
- * 因此有「每用户上限」「按 IP + 指纹限流」「可选仅 HTTPS」「可随时删除」这些基本防护。
- */
+/** 已登记浏览器快捷登录，复用 core 的会话与限流服务。 */
 public class FingerprintLoginPlugin implements WikiPlugin {
 
     /** 插件 id。 */
@@ -69,8 +46,7 @@ public class FingerprintLoginPlugin implements WikiPlugin {
     @Override
     public PluginDescriptor descriptor() {
         return new PluginDescriptor(ID, "Browser Fingerprint Login", "1.0.0",
-                "Passwordless sign-in with a browser-side SHA-256 device fingerprint"
-                        + " (multiple fingerprints per account, self-service management)");
+                "Passwordless sign-in with revocable credentials issued to registered browsers");
     }
 
     /**
@@ -88,7 +64,7 @@ public class FingerprintLoginPlugin implements WikiPlugin {
         // Spring 子容器已经装配好这两个 Bean（onStart 在 refresh 之后调用）；
         // 独立运行 / 测试注入缺失时退化成安全默认值，绝不让插件启动失败。
         if (support == null) {
-            support = new FingerprintLoginSupport(null, null, () -> null);
+            support = new FingerprintLoginSupport(null, null);
         }
         if (service == null) {
             service = new FingerprintLoginService(null, null, null, support);

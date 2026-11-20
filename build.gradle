@@ -15,7 +15,7 @@ if (releaseVersion?.isEmpty()) {
 
 allprojects {
     group = 'cc.thonly'
-    version = releaseVersion ?: '0.0.1-SNAPSHOT'
+    version = releaseVersion ?: '1.0.0'
 }
 
 subprojects {

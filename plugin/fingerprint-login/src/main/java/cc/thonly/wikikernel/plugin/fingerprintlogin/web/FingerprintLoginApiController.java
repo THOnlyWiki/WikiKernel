@@ -6,7 +6,11 @@ import cc.thonly.wikikernel.plugin.fingerprintlogin.FingerprintLoginSupport;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.model.FingerprintView;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintLoginService;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintStore;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,9 +25,9 @@ import java.util.Map;
 /**
  * 浏览器指纹登录的接口（插件自己的 {@code @RestController}，由 core 动态挂到 MVC）：
  * <pre>
- * POST   /api/fingerprint-login          用浏览器指纹登录（限流；命中则建立会话）
+ * POST   /api/fingerprint-login          用登记过的浏览器登录（限流并轮换 Cookie）
  * GET    /api/fingerprint-login/list     列出**自己**的指纹（需登录）
- * POST   /api/fingerprint-login/add      登记当前浏览器（需登录；同名摘要更新名称）
+ * POST   /api/fingerprint-login/add      登记当前浏览器（需登录）
  * DELETE /api/fingerprint-login/remove   删除自己的某个指纹（需登录）
  * </pre>
  * 返回结构与 core 一致：{@code {code, message, data}}（HTTP 状态一律 200，业务码在 {@code code} 里，
@@ -43,6 +47,8 @@ public class FingerprintLoginApiController {
 
     /** 登录接口的「记住我」参数值（与密码登录表单一致：{@code remember=1}）。 */
     private static final String REMEMBER_ON = "1";
+    private static final String SECURE_COOKIE = "__Host-WikiKernelDeviceLogin";
+    private static final String LOCAL_COOKIE = "WikiKernelDeviceLoginLocal";
 
     private final FingerprintLoginService service;
     private final FingerprintLoginSupport support;
@@ -59,14 +65,15 @@ public class FingerprintLoginApiController {
     /** 用浏览器指纹登录：命中则建立与密码登录一致的会话；失败给中性提示。 */
     @PostMapping
     public ResponseEntity<Map<String, Object>> login(
-            @RequestParam(value = "fingerprint", required = false) String fingerprint,
             @RequestParam(value = "remember", required = false) String remember,
-            HttpServletRequest request) {
-        FingerprintLoginService.LoginOutcome outcome = service.login(fingerprint,
+            HttpServletRequest request, HttpServletResponse servletResponse) {
+        FingerprintLoginService.LoginOutcome outcome = service.login(readCredential(request),
                 REMEMBER_ON.equals(remember), clientIp(request), isSecure(request));
         if (!outcome.success()) {
             return response(401, outcome.message(), null);
         }
+        // Append alongside the servlet container's JSESSIONID.
+        servletResponse.addHeader(HttpHeaders.SET_COOKIE, credentialCookie(request, outcome.credential()).toString());
         return response(200, outcome.message(), Map.of("loggedIn", true));
     }
 
@@ -86,9 +93,8 @@ public class FingerprintLoginApiController {
     /** 登记当前浏览器的指纹（需登录）。 */
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> add(
-            @RequestParam(value = "fingerprint", required = false) String fingerprint,
             @RequestParam(value = "label", required = false) String label,
-            HttpServletRequest request) {
+            HttpServletRequest request, HttpServletResponse servletResponse) {
         Viewer viewer = viewer();
         if (!viewer.loggedIn()) {
             return response(401, support.message("fingerprint.error.loginRequired"), null);
@@ -96,13 +102,12 @@ public class FingerprintLoginApiController {
         if (!support.enabled()) {
             return response(403, support.message("fingerprint.error.disabled"), null);
         }
-        if (!service.httpsAllowed(isSecure(request))) {
+        if (!isSecure(request)) {
             return response(403, support.message("fingerprint.httpsOnly"), null);
         }
         FingerprintLoginService.AddOutcome outcome;
         try {
-            outcome = service.add(viewer.id(), label, fingerprint,
-                    request == null ? "" : request.getHeader("User-Agent"));
+            outcome = service.add(viewer.id(), label, readCredential(request), request.getHeader("User-Agent"));
         } catch (FingerprintLoginService.AddException exception) {
             return addFailure(exception);
         }
@@ -112,6 +117,7 @@ public class FingerprintLoginApiController {
         String message = outcome.updated()
                 ? support.message("fingerprint.add.updated")
                 : support.message("fingerprint.add.success", outcome.id());
+        servletResponse.addHeader(HttpHeaders.SET_COOKIE, credentialCookie(request, outcome.credential()).toString());
         return response(200, message, data);
     }
 
@@ -149,13 +155,8 @@ public class FingerprintLoginApiController {
             case LABEL_REQUIRED -> response(400, support.message("fingerprint.error.labelRequired"), null);
             case LABEL_TOO_LONG -> response(400, support.message("fingerprint.error.labelTooLong",
                     FingerprintLoginSupport.LABEL_MAX_LENGTH), null);
-            case HASH_REQUIRED -> response(400, support.message("fingerprint.error.hashRequired"), null);
-            case HASH_INVALID -> response(400, support.message("fingerprint.error.hashInvalid"), null);
             case LIMIT_REACHED -> response(409,
                     support.message("fingerprint.maxReached", FingerprintStore.MAX_PER_USER), null);
-            // 中性提示：不说明这个指纹属于谁
-            case REGISTERED_TO_ANOTHER_USER ->
-                    response(409, support.message("fingerprint.error.forbidden"), null);
             case STORE_UNAVAILABLE -> response(500, support.message("fingerprint.error.saveFailed"), null);
         };
     }
@@ -172,7 +173,7 @@ public class FingerprintLoginApiController {
         }
     }
 
-    /** 当前请求是否安全上下文（HTTPS / localhost）：用于「仅 HTTPS 允许」配置。 */
+    /** HTTPS assertions come from the servlet container and the core's trusted proxy handling. */
     static boolean isSecure(HttpServletRequest request) {
         if (request == null) {
             return false;
@@ -180,9 +181,30 @@ public class FingerprintLoginApiController {
         if (request.isSecure()) {
             return true;
         }
-        // localhost 也是安全上下文（浏览器把它当 potentially trustworthy origin，crypto.subtle 可用）
         String host = request.getServerName();
-        return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "::1".equals(host);
+        String remote = request.getRemoteAddr();
+        return ("localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host)
+                || "::1".equals(host) || "[::1]".equals(host))
+                && ("127.0.0.1".equals(remote) || "::1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote));
+    }
+
+    private static String readCredential(HttpServletRequest request) {
+        if (request == null || request.getCookies() == null) return null;
+        String name = request.isSecure() ? SECURE_COOKIE : LOCAL_COOKIE;
+        String credential = null;
+        for (Cookie cookie : request.getCookies()) {
+            if (!name.equals(cookie.getName())) continue;
+            if (credential != null) return null;
+            credential = cookie.getValue();
+        }
+        return credential;
+    }
+
+    private static ResponseCookie credentialCookie(HttpServletRequest request, String credential) {
+        boolean secure = request.isSecure();
+        return ResponseCookie.from(secure ? SECURE_COOKIE : LOCAL_COOKIE, credential)
+                .secure(secure).httpOnly(true).sameSite("Strict").path("/")
+                .maxAge(FingerprintLoginService.CREDENTIAL_LIFETIME).build();
     }
 
     /**
@@ -199,6 +221,6 @@ public class FingerprintLoginApiController {
         body.put("code", code);
         body.put("message", message);
         body.put("data", data);
-        return ResponseEntity.ok(body);
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
     }
 }

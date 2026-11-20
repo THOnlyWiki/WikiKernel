@@ -19,6 +19,10 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -95,6 +99,90 @@ class AccessControlTest {
         } finally {
             accessControlService.deleteRule(rule.getId());
         }
+    }
+
+    @Test
+    void movingProtectedPageKeepsReadAndEditRulesAndRevisionIdentity() throws Exception {
+        WikiUser admin = admin("保护移动管理员");
+        String from = "受限制来源" + System.nanoTime();
+        String to = from + "目标";
+        var page = wikiPageService.editPage(admin, from, "受限正文");
+        accessControlService.saveRule(from, AccessAction.READ, PermissionService.GROUP_ADMIN);
+        accessControlService.saveRule(from, AccessAction.EDIT, PermissionService.GROUP_ADMIN);
+        accessControlService.saveRule(to, AccessAction.READ, AccessAction.EVERYONE);
+        mockMvc.perform(get("/wiki/{title}", from).session(sessionOf(admin))).andExpect(status().isOk());
+        mockMvc.perform(post("/api/pages/move").session(sessionOf(admin))
+                        .param("from", from).param("to", to).param("leaveRedirect", "true"))
+                .andExpect(jsonPath("$.code").value(200));
+        assertEquals(page.getId(), wikiPageService.getByTitle(to).orElseThrow().getId());
+        assertEquals(PermissionService.GROUP_ADMIN,
+                accessControlService.requiredGroups(AccessAction.EDIT, to));
+        mockMvc.perform(get("/wiki/{title}", from)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/wiki/{title}", to)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/wiki/{title}", to).param("action", "history")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/wiki/{title}", to).param("action", "raw")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/wiki/{title}", to).session(sessionOf(admin)))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("受限正文")));
+    }
+
+    @Test
+    void inheritedProtectionFollowsThePageOutOfItsNamespacePrefix() {
+        WikiUser admin = admin("前缀移动管理员");
+        String prefix = "保护前缀" + System.nanoTime() + "/";
+        String from = prefix + "页面";
+        String to = "保护前缀之外" + System.nanoTime();
+        wikiPageService.editPage(admin, from, "内容");
+        accessControlService.saveRule(prefix + "*", AccessAction.READ, PermissionService.GROUP_ADMIN);
+        assertNotNull(wikiPageService.movePage(admin, from, to, false));
+        assertFalse(accessControlService.canRead(to, null));
+        assertTrue(accessControlService.canRead(to, admin));
+    }
+
+    @Test
+    void moveRollsBackIfTheDestinationCannotHaveExactProtection() throws Exception {
+        WikiUser admin = admin("规则回滚管理员");
+        String from = "待保留的来源" + System.nanoTime();
+        String to = from + "星号*";
+        wikiPageService.editPage(admin, from, "内容");
+        accessControlService.saveRule(from, AccessAction.READ, PermissionService.GROUP_ADMIN);
+        mockMvc.perform(post("/api/pages/move").session(sessionOf(admin))
+                        .param("from", from).param("to", to))
+                .andExpect(jsonPath("$.code").value(403));
+        assertTrue(wikiPageService.getByTitle(from).isPresent());
+        assertTrue(wikiPageService.getByTitle(to).isEmpty());
+        assertFalse(accessControlService.canRead(from, null));
+    }
+
+    @Test
+    void actionApiMoveRequiresReadAndKeepsTheStricterDestinationPolicy() throws Exception {
+        WikiUser admin = admin("Action API 移动管理员");
+        WikiUser member = insertUser("Action API 移动成员" + System.nanoTime());
+        String from = "Action API 受保护页" + System.nanoTime();
+        String prefix = "Action API 目标" + System.nanoTime() + "/";
+        String to = prefix + "页面";
+        wikiPageService.editPage(admin, from, "保护内容");
+        accessControlService.saveRule(from, AccessAction.READ,
+                PermissionService.GROUP_ADMIN + "|" + PermissionService.GROUP_BUREAUCRAT);
+        accessControlService.saveRule(prefix + "*", AccessAction.READ, PermissionService.GROUP_ADMIN);
+        performActionApiMove(sessionOf(member), from, to)
+                .andExpect(jsonPath("$.error.code").value("permissiondenied"));
+        assertTrue(wikiPageService.getByTitle(from).isPresent());
+        performActionApiMove(sessionOf(admin), from, to)
+                .andExpect(jsonPath("$.move.to").value(to));
+        assertEquals(PermissionService.GROUP_ADMIN, accessControlService.requiredGroups(AccessAction.READ, to));
+        assertFalse(accessControlService.canRead(to, member));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions performActionApiMove(MockHttpSession session, String from, String to)
+            throws Exception {
+        String response = mockMvc.perform(get("/api.php").session(session)
+                        .param("action", "query").param("meta", "tokens"))
+                .andReturn().getResponse().getContentAsString();
+        String token = new tools.jackson.databind.ObjectMapper().readTree(response)
+                .path("query").path("tokens").path("csrftoken").asString();
+        return mockMvc.perform(post("/api.php").session(session)
+                .param("action", "move").param("token", token).param("noredirect", "1")
+                .param("from", from).param("to", to));
     }
 
     @Test

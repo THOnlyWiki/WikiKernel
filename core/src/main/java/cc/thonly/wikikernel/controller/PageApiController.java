@@ -105,15 +105,19 @@ public class PageApiController {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("move.sameTitle"));
         }
 
+        if (!accessControlService.canRead(fromTitle, user)) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("move.forbidden"));
+        }
         WikiPage page = wikiPageService.getByTitle(fromTitle).orElse(null);
         if (page == null) {
             return AjaxResult.error(AjaxCode.NOT_FOUND, message("error.pageMissing", fromTitle));
         }
-        if (!accessControlService.can(AccessAction.MOVE, fromTitle, user)) {
+        if (!accessControlService.canMove(fromTitle, user)) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, message("move.forbidden"));
         }
         // 目标标题也要有创建权限（防止把普通页面移进仅管理员可编辑的命名空间，如 微件:）
-        if (!accessControlService.can(AccessAction.CREATE, toTitle, user)) {
+        if (!accessControlService.canRead(toTitle, user)
+                || !accessControlService.can(AccessAction.CREATE, toTitle, user)) {
             return AjaxResult.error(AjaxCode.FORBIDDEN, message("move.targetForbidden"));
         }
         // 禁用标题名单（WikiKernel:Titleblacklist）：目标标题被禁止则不能移动
@@ -142,7 +146,15 @@ public class PageApiController {
             return AjaxResult.error(AjaxCode.CONFLICT, message("move.targetExists", toTitle));
         }
 
-        WikiPage moved = wikiPageService.movePage(user, fromTitle, toTitle, leaveRedirect);
+        WikiPage moved;
+        try {
+            moved = wikiPageService.movePage(user, fromTitle, toTitle, leaveRedirect);
+        } catch (AccessControlService.ProtectionMoveConflict exception) {
+            return AjaxResult.error(AjaxCode.FORBIDDEN, message("move.targetForbidden"));
+        }
+        if (moved == null) {
+            return AjaxResult.error(AjaxCode.CONFLICT, message("move.forbidden"));
+        }
         Map<String, Object> data = pageData(moved);
         if (!moveDecision.warnings().isEmpty()) {
             data.put("warnings", moveDecision.warnings());

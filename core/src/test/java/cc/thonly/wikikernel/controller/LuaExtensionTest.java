@@ -319,8 +319,8 @@ class LuaExtensionTest {
         String html = render("Lua站内演示页", "{{#invoke:Lua站内演示|main}}");
 
         org.junit.jupiter.api.Assertions.assertTrue(
-                html.contains("WikiKernel|0.0.1-SNAPSHOT|模板|")
-                        || html.contains("WikiKernel|0.0.1-SNAPSHOT|Template|"), html);
+                html.contains("WikiKernel|1.0.0|模板|")
+                        || html.contains("WikiKernel|1.0.0|Template|"), html);
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("|粗体|") || html.contains("|Bold|"), html);
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("你好，世界！"), html);
         org.junit.jupiter.api.Assertions.assertTrue(

@@ -3,7 +3,7 @@
   Plain 皮肤（由 plain-skin 插件提供）布局：templates/skins/plain/layout.html
   居中卡片、无侧栏；通用组件样式来自 core 的 /css/base.css，皮肤样式 /skins/plain/plain.css。
 -->
-<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+<html lang="zh" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org"
       th:fragment="layout(pageTitle, content)">
 <head th:replace="~{fragments/head :: head(${pageTitle} + ' - WikiKernel')}">
     <title>WikiKernel</title>

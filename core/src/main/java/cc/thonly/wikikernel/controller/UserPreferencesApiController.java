@@ -6,6 +6,7 @@ import cc.thonly.wikikernel.common.util.AjaxResult;
 import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.WikiLocaleResolver;
 import cc.thonly.wikikernel.i18n.CountryNames;
+import cc.thonly.wikikernel.i18n.InterfaceLanguage;
 import cc.thonly.wikikernel.mail.EmailTokenService;
 import cc.thonly.wikikernel.mail.EmailTypeConfig;
 import cc.thonly.wikikernel.service.FeatureService;
@@ -41,7 +42,6 @@ import java.util.Set;
 @RequestMapping("/api/user/preferences")
 public class UserPreferencesApiController {
 
-    private static final Set<String> LANGUAGES = Set.of("", "zh", "en");
     private static final Set<String> GENDERS = Set.of("", "female", "male");
     private static final Set<Integer> RC_LIMITS = Set.of(0, 50, 100, 250, 500);
     private static final Set<Integer> RC_DAYS = Set.of(0, 1, 3, 7, 30);
@@ -98,8 +98,12 @@ public class UserPreferencesApiController {
         String emailValue = Strings.trimToEmpty(email);
         String realNameValue = Strings.trimToEmpty(realName);
         String signatureValue = Strings.trimToEmpty(signature);
-        if (!LANGUAGES.contains(languageValue)) {
-            return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.invalidLanguage"));
+        if (!languageValue.isEmpty()) {
+            InterfaceLanguage preferred = InterfaceLanguage.parse(languageValue);
+            if (preferred == null) {
+                return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.invalidLanguage"));
+            }
+            languageValue = preferred.getCode();
         }
         if (!GENDERS.contains(genderValue)) {
             return AjaxResult.error(AjaxCode.BAD_REQUEST, message("preferences.invalidGender"));

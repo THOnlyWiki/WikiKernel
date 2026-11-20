@@ -4,8 +4,9 @@
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
 <section>
-    <p th:text="#{version.intro(${wikiKernelVersion})}">
-        本 wiki 由 WikiKernel 驱动，版本 0.0.1-SNAPSHOT。
+    <p>
+        <span th:text="#{version.intro(${wikiKernelVersion})}">本 wiki 由 WikiKernel 驱动，版本 1.0.0。</span>
+        <a th:href="${wikiKernelProjectUrl}" th:text="#{version.projectRepository}">项目仓库</a>
     </p>
 
     <h2 th:text="#{version.installedSoftware}">已安装的软件</h2>
@@ -15,8 +16,11 @@
             <th th:text="#{version.table.version}">版本</th>
         </tr>
         <tr th:each="item : ${software}">
-            <td th:text="${item.product}">WikiKernel</td>
-            <td th:text="${item.version}">0.0.1-SNAPSHOT</td>
+            <td>
+                <a th:if="${item['projectUrl'] != null}" th:href="${item['projectUrl']}" th:text="${item.product}">WikiKernel</a>
+                <th:block th:unless="${item['projectUrl'] != null}" th:text="${item.product}">Java</th:block>
+            </td>
+            <td th:text="${item.version}">1.0.0</td>
         </tr>
     </table>
 

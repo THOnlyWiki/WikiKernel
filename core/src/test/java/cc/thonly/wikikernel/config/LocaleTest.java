@@ -1,12 +1,17 @@
 package cc.thonly.wikikernel.config;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.jsoup.Jsoup;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -67,5 +72,29 @@ class LocaleTest {
         mockMvc.perform(get("/wiki/{title}", "特殊:登录").param("uselang", "fr"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("用户名")));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "zh-Hant-HK, zh-HK, zh-hk, 用戶名",
+            "zh_TW, zh-TW, zh-tw, 使用者名稱",
+            "ja-JP, ja, ja, 利用者名"
+    })
+    void regionalLanguageUsesLocalizedMessagesAndKeepsQuery(String parameter, String tag, String code, String username)
+            throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        String html = mockMvc.perform(get("/wiki/{title}?action=view&uselang={lang}", "特殊:登录", parameter).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(username)))
+                .andReturn().getResponse().getContentAsString();
+        var document = Jsoup.parse(html);
+        assertEquals(tag, document.selectFirst("html").attr("lang"));
+        var selected = document.selectFirst(".footer-languages a[aria-current=true]");
+        assertNotNull(selected);
+        assertEquals(tag, selected.attr("hreflang"));
+        assertEquals("action=view&uselang=" + code, java.net.URI.create(selected.attr("href")).getQuery());
+        mockMvc.perform(get("/wiki/{title}", "特殊:登录").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("lang=\"" + tag + "\"")));
     }
 }

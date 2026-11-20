@@ -1,14 +1,16 @@
 package cc.thonly.wikikernel.plugin.fingerprintlogin;
 
 import cc.thonly.wikikernel.plugin.fingerprintlogin.data.WikiFingerprint;
-import cc.thonly.wikikernel.common.plugin.support.MapPluginConfig;
 import cc.thonly.wikikernel.common.service.CurrentUser;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.service.FingerprintLoginService;
 import cc.thonly.wikikernel.plugin.fingerprintlogin.web.FingerprintLoginApiController;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import jakarta.servlet.http.Cookie;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,13 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -56,216 +58,105 @@ class FingerprintLoginApiTest {
     }
 
     @Test
-    void loginSucceedsAndTouchesStoredFingerprint() {
+    void secureBrowserRegistrationIssuesAndRotatesPrivateCredential() {
         Fixture fixture = new Fixture(true);
-        WikiFingerprint row = fixture.store.seed(7L, "我的", HASH_A);
-        FingerprintLoginApiController controller = fixture.controller(0L);
+        var enrollHeaders = new MockHttpServletResponse();
+        var enrolled = fixture.controller(7L).add("我的笔记本", secureRequest(), enrollHeaders);
+        assertEquals(200, fixture.body(enrolled).get("code"));
+        Cookie cookie = credential(enrollHeaders);
+        String header = enrollHeaders.getHeader(HttpHeaders.SET_COOKIE);
+        assertTrue(header.contains("; Secure") && header.contains("; HttpOnly") && header.contains("SameSite=Strict"));
+        assertTrue(header.startsWith("__Host-WikiKernelDeviceLogin=") && header.contains("Path=/"));
+        assertFalse(String.valueOf(enrolled.getBody()).contains(cookie.getValue()));
+        assertFalse(fixture.store.rows.getFirst().getFingerprintHash().contains(cookie.getValue()));
+        assertEquals(7L, fixture.store.rows.getFirst().getUserId());
 
-        Map<String, Object> body = fixture.body(controller.login(HASH_A, "1", secureRequest()));
-
-        assertEquals(200, body.get("code"));
+        var loginHeaders = new MockHttpServletResponse();
+        var authenticated = fixture.controller(0L).login("1", requestWith(cookie), loginHeaders);
+        assertEquals(200, fixture.body(authenticated).get("code"));
         assertEquals(List.of("7:true"), fixture.session.established);
-        assertTrue(fixture.store.calls.contains("touch:" + row.getId()));
+        Cookie next = credential(loginHeaders);
+        assertNotEquals(cookie.getValue(), next.getValue());
+
+        assertEquals(401, fixture.body(fixture.controller(0L).login("0", requestWith(cookie), new MockHttpServletResponse())).get("code"));
+        assertEquals(200, fixture.body(fixture.controller(0L).login("0", requestWith(next), new MockHttpServletResponse())).get("code"));
+        assertEquals(List.of("7:true", "7:false"), fixture.session.established);
     }
 
     @Test
-    void loginMissReturnsNeutralUnauthorizedAndNeverLeaksOwnership() {
+    void legacyEntriesStayInManagementButCannotAuthenticate() {
         Fixture fixture = new Fixture(true);
-        fixture.store.seed(7L, "我的", HASH_A);
-        FingerprintLoginApiController controller = fixture.controller(0L);
+        fixture.store.seed(7L, "旧浏览器", HASH_A);
+        var request = secureRequest();
+        request.setParameter("fingerprint", HASH_A);
+        assertEquals(401, fixture.body(fixture.controller(0L).login("0", request, new MockHttpServletResponse())).get("code"));
+        assertTrue(fixture.session.established.isEmpty());
+        assertTrue(String.valueOf(fixture.controller(7L).list().getBody()).contains("旧浏览器"));
+        assertFalse(String.valueOf(fixture.controller(7L).list().getBody()).contains(HASH_A));
+    }
 
-        Map<String, Object> body = fixture.body(controller.login(HASH_B, "0", secureRequest()));
+    @Test
+    void expiredAndRemovedCredentialsCannotEstablishSession() {
+        Fixture fixture = new Fixture(true);
+        var expiredHeaders = new MockHttpServletResponse();
+        fixture.controller(7L).add("已过期", secureRequest(), expiredHeaders);
+        var row = fixture.store.rows.getFirst();
+        row.setCreatedAt(java.time.LocalDateTime.now().minusDays(31));
+        assertEquals(401, fixture.body(fixture.controller(0L).login("0", requestWith(credential(expiredHeaders)), new MockHttpServletResponse())).get("code"));
 
-        assertEquals(401, body.get("code"));
-        assertEquals("fingerprint.error.badCredentials", body.get("message"),
-                "中性提示：不透露哪个用户有这个指纹");
+        var activeHeaders = new MockHttpServletResponse();
+        fixture.controller(7L).add("待撤销", secureRequest(), activeHeaders);
+        long id = fixture.store.rows.getLast().getId();
+        assertEquals(404, fixture.body(fixture.controller(8L).remove(Long.toString(id))).get("code"));
+        assertEquals(200, fixture.body(fixture.controller(7L).remove(Long.toString(id))).get("code"));
+        assertEquals(401, fixture.body(fixture.controller(0L).login("0", requestWith(credential(activeHeaders)), new MockHttpServletResponse())).get("code"));
         assertTrue(fixture.session.established.isEmpty());
     }
 
     @Test
-    void loginIsRateLimitedPerIpAndFingerprint() {
+    void publicHttpCannotIssueOrConsumeCredentials() {
         Fixture fixture = new Fixture(true);
-        fixture.store.seed(7L, "我的", HASH_A);
-        fixture.rateLimit.maxAttempts = 2;
-        FingerprintLoginApiController controller = fixture.controller(0L);
+        var request = secureRequest();
+        request.setSecure(false);
+        assertEquals(403, fixture.body(fixture.controller(7L).add("我的", request, new MockHttpServletResponse())).get("code"));
+        assertEquals(401, fixture.body(fixture.controller(0L).login("0", request, new MockHttpServletResponse())).get("code"));
+        request.setServerName("localhost");
+        assertEquals(403, fixture.body(fixture.controller(7L).add("我的", request, new MockHttpServletResponse())).get("code"));
 
-        // 同一指纹连续失败 → 「IP + 指纹」这一层锁定
-        controller.login(HASH_B, "0", secureRequest());
-        controller.login(HASH_B, "0", secureRequest());
-        Map<String, Object> blocked = fixture.body(controller.login(HASH_B, "0", secureRequest()));
-
-        assertEquals(401, blocked.get("code"));
-        assertTrue(String.valueOf(blocked.get("message")).startsWith("fingerprint.error.rateLimited"),
-                String.valueOf(blocked.get("message")));
-        assertTrue(fixture.session.established.isEmpty(), "锁定期间不建立会话");
-
-        // 换指纹也不能绕过：「IP」这一层同样计数
-        assertEquals(401, fixture.body(controller.login(HASH_A, "0", secureRequest())).get("code"));
-
-        // 换 IP 不受影响（限流键按 IP 分类）
-        MockHttpServletRequest other = secureRequest();
-        other.setRemoteAddr("198.51.100.9");
-        assertEquals(200, fixture.body(controller.login(HASH_A, "0", other)).get("code"));
+        request.setRemoteAddr("127.0.0.1");
+        var localHeaders = new MockHttpServletResponse();
+        var result = fixture.controller(7L).add("本机测试", request, localHeaders);
+        assertEquals(200, fixture.body(result).get("code"));
+        request.setCookies(credential(localHeaders));
+        assertEquals(200, fixture.body(fixture.controller(0L).login("0", request, new MockHttpServletResponse())).get("code"));
     }
 
     @Test
-    void everyEndpointRefusesWhenFeatureIsDisabled() {
-        Fixture fixture = new Fixture(false);
-        fixture.store.seed(7L, "我的", HASH_A);
-        FingerprintLoginApiController controller = fixture.controller(7L);
+    void disabledFeatureAndAnonymousManagementFailClosed() {
+        var disabled = new Fixture(false);
+        assertEquals(401, disabled.body(disabled.controller(0L).login("0", secureRequest(), new MockHttpServletResponse())).get("code"));
+        assertEquals(403, disabled.body(disabled.controller(7L).add("设备", secureRequest(), new MockHttpServletResponse())).get("code"));
+        assertEquals(403, disabled.body(disabled.controller(7L).list()).get("code"));
+        assertEquals(403, disabled.body(disabled.controller(7L).remove("1")).get("code"));
 
-        Map<String, Object> login = fixture.body(controller.login(HASH_A, "0", secureRequest()));
-        assertEquals(401, login.get("code"));
-        assertEquals("fingerprint.error.disabled", login.get("message"));
-
-        Map<String, Object> list = fixture.body(controller.list());
-        assertEquals(403, list.get("code"));
-        assertEquals("fingerprint.error.disabled", list.get("message"));
-
-        Map<String, Object> add = fixture.body(controller.add(HASH_B, "名称", secureRequest()));
-        assertEquals(403, add.get("code"));
-        assertEquals("fingerprint.error.disabled", add.get("message"));
-
-        Map<String, Object> remove = fixture.body(controller.remove("1"));
-        assertEquals(403, remove.get("code"));
-        assertEquals("fingerprint.error.disabled", remove.get("message"));
-
-        assertTrue(fixture.store.rows.stream().noneMatch(row -> HASH_B.equals(row.getFingerprintHash())),
-                "关闭时不写入任何指纹");
+        var enabled = new Fixture(true);
+        assertEquals(401, enabled.body(enabled.controller(0L).add("设备", secureRequest(), new MockHttpServletResponse())).get("code"));
+        assertEquals(401, enabled.body(enabled.controller(0L).list()).get("code"));
+        assertEquals(401, enabled.body(enabled.controller(0L).remove("1")).get("code"));
+        assertTrue(enabled.store.rows.isEmpty());
     }
 
-    @Test
-    void managementEndpointsRequireLogin() {
-        Fixture fixture = new Fixture(true);
-        FingerprintLoginApiController controller = fixture.controller(0L);
-
-        assertEquals(401, fixture.body(controller.list()).get("code"));
-        assertEquals(401, fixture.body(controller.add(HASH_A, "名称", secureRequest())).get("code"));
-        assertEquals(401, fixture.body(controller.remove("1")).get("code"));
-        assertTrue(fixture.store.rows.stream().noneMatch(row -> HASH_A.equals(row.getFingerprintHash())));
+    private static MockHttpServletRequest requestWith(Cookie cookie) {
+        var request = secureRequest();
+        request.setCookies(cookie);
+        return request;
     }
 
-    @Test
-    void addStoresFingerprintOnlyForTheSessionUser() {
-        Fixture fixture = new Fixture(true);
-        fixture.store.seed(8L, "别人的", HASH_B);
-        FingerprintLoginApiController controller = fixture.controller(7L);
-
-        Map<String, Object> body = fixture.body(controller.add(HASH_A, "我的笔记本", secureRequest()));
-
-        assertEquals(200, body.get("code"));
-        WikiFingerprint stored = fixture.store.byHash(HASH_A).orElseThrow();
-        assertEquals(7L, stored.getUserId(), "归属永远取自会话，不接受请求里的 userId");
-        assertEquals("我的笔记本", stored.getLabel());
-
-        // 抢注别人的指纹 → 中性提示 + 409
-        Map<String, Object> conflict = fixture.body(controller.add(HASH_B, "抢注", secureRequest()));
-        assertEquals(409, conflict.get("code"));
-        assertEquals("fingerprint.error.forbidden", conflict.get("message"));
-        assertEquals(8L, fixture.store.byHash(HASH_B).orElseThrow().getUserId(), "归属不变");
-    }
-
-    @Test
-    void addReportsLimitAndValidationErrors() {
-        Fixture fixture = new Fixture(true);
-        FingerprintLoginApiController controller = fixture.controller(7L);
-
-        assertEquals(400, fixture.body(controller.add(HASH_A, "  ", secureRequest())).get("code"));
-        assertEquals(400, fixture.body(controller.add(HASH_A, "x".repeat(101), secureRequest())).get("code"));
-        assertEquals(400, fixture.body(controller.add("", "名称", secureRequest())).get("code"));
-        assertEquals(400, fixture.body(controller.add("不是摘要", "名称", secureRequest())).get("code"));
-
-        for (int index = 0; index < 10; index++) {
-            fixture.store.seed(7L, "设备" + index, String.format("%064x", index));
-        }
-        Map<String, Object> full = fixture.body(controller.add(HASH_A, "第十一台", secureRequest()));
-        assertEquals(409, full.get("code"));
-        assertEquals("fingerprint.maxReached", full.get("message"));
-    }
-
-    @Test
-    void removeOnlyTouchesOwnRows() {
-        Fixture fixture = new Fixture(true);
-        WikiFingerprint mine = fixture.store.seed(7L, "我的", HASH_A);
-        WikiFingerprint theirs = fixture.store.seed(8L, "别人的", HASH_B);
-        FingerprintLoginApiController controller = fixture.controller(7L);
-
-        Map<String, Object> denied = fixture.body(controller.remove(String.valueOf(theirs.getId())));
-        assertEquals(404, denied.get("code"), "别人的指纹当作不存在（不泄露归属）");
-        assertTrue(fixture.store.rows.contains(theirs));
-
-        Map<String, Object> removed = fixture.body(controller.remove(String.valueOf(mine.getId())));
-        assertEquals(200, removed.get("code"));
-        assertFalse(fixture.store.rows.contains(mine));
-
-        assertEquals(404, fixture.body(controller.remove("abc")).get("code"), "非法 id 当作不存在");
-    }
-
-    @Test
-    void listReturnsOwnRowsWithoutFingerprintHash() {
-        Fixture fixture = new Fixture(true);
-        fixture.store.seed(7L, "我的", HASH_A);
-        fixture.store.seed(8L, "别人的", HASH_B);
-        FingerprintLoginApiController controller = fixture.controller(7L);
-
-        Map<String, Object> body = fixture.body(controller.list());
-        assertEquals(200, body.get("code"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) body.get("data");
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> rows = (List<Map<String, Object>>) data.get("fingerprints");
-        assertEquals(1, rows.size());
-        assertEquals("我的", rows.get(0).get("label"));
-        assertEquals(10, data.get("max"));
-        assertFalse(String.valueOf(rows.get(0)).contains(HASH_A), "摘要不回显");
-    }
-
-    @Test
-    void httpsOnlyConfigurationRejectsPlainHttp() {
-        Fixture fixture = new Fixture(true, true);
-        FingerprintLoginApiController controller = fixture.controller(7L);
-        fixture.store.seed(7L, "我的", HASH_A);
-
-        MockHttpServletRequest plain = new MockHttpServletRequest();
-        plain.setServerName("wiki.example.org");
-        plain.setRemoteAddr("203.0.113.7");
-
-        Map<String, Object> login = fixture.body(controller.login(HASH_A, "0", plain));
-        assertEquals(401, login.get("code"));
-        assertEquals("fingerprint.httpsOnly", login.get("message"));
-        assertTrue(fixture.session.established.isEmpty());
-
-        Map<String, Object> add = fixture.body(controller.add(HASH_B, "名称", plain));
-        assertEquals(403, add.get("code"));
-        assertEquals("fingerprint.httpsOnly", add.get("message"));
-
-        // localhost 视为安全上下文；HTTPS 请求也可以
-        MockHttpServletRequest localhost = new MockHttpServletRequest();
-        localhost.setServerName("localhost");
-        localhost.setRemoteAddr("127.0.0.1");
-        assertEquals(200, fixture.body(controller.login(HASH_A, "0", localhost)).get("code"));
-
-        MockHttpServletRequest https = new MockHttpServletRequest();
-        https.setServerName("wiki.example.org");
-        https.setSecure(true);
-        assertEquals(200, fixture.body(controller.login(HASH_A, "0", https)).get("code"));
-    }
-
-    @Test
-    void missingBridgesFailClosedInsteadOfThrowing() {
-        // 桥未装配（只会在插件被独立运行时出现）：接口拒绝服务，不抛 NPE
-        FingerprintLoginSupport support = new FingerprintLoginSupport(FingerprintLoginFakes.featureConfig(true),
-                FingerprintLoginFakes.messageSource(), () -> null);
-        FingerprintLoginService service = new FingerprintLoginService(null, null, null, support);
-        assertFalse(service.bridgesReady());
-
-        FingerprintLoginApiController controller = new FingerprintLoginApiController(service, support,
-                FingerprintLoginFakes.currentUser(7L, "甲"));
-        assertEquals(401, fixtureBody(controller.login(HASH_A, "0", secureRequest())).get("code"));
-        assertEquals(200, fixtureBody(controller.list()).get("code"), "列表退化成空");
-        assertEquals(500, fixtureBody(controller.add(HASH_A, "名称", secureRequest())).get("code"),
-                "桥缺失时登记拒绝服务");
-        assertEquals(404, fixtureBody(controller.remove("1")).get("code"));
+    private static Cookie credential(MockHttpServletResponse response) {
+        String header = response.getHeader(HttpHeaders.SET_COOKIE);
+        assertNotNull(header);
+        String[] pair = header.split(";", 2)[0].split("=", 2);
+        return new Cookie(pair[0], pair[1]);
     }
 
     // ==================== 工具 ====================
@@ -317,14 +208,8 @@ class FingerprintLoginApiTest {
         final FingerprintLoginSupport support;
 
         Fixture(boolean enabled) {
-            this(enabled, false);
-        }
-
-        Fixture(boolean enabled, boolean httpsOnly) {
-            Map<String, String> settings = new LinkedHashMap<>();
-            settings.put(FingerprintLoginSupport.HTTPS_ONLY_KEY, Boolean.toString(httpsOnly));
             this.support = new FingerprintLoginSupport(FingerprintLoginFakes.featureConfig(enabled),
-                    FingerprintLoginFakes.messageSource(), () -> new MapPluginConfig(settings));
+                    FingerprintLoginFakes.messageSource());
         }
 
         FingerprintLoginService service() {

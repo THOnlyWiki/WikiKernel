@@ -66,6 +66,15 @@ public interface ExternalAuthProvider extends Extension {
     /** 构造 provider 授权页 URL。 */
     String authorizationUrl(String state, String redirectUri) throws Exception;
 
+    /** 支持时由 core 生成一次性的 S256 challenge 与 verifier，并绑定到会话。 */
+    default boolean supportsPkce() {
+        return false;
+    }
+
+    default String authorizationUrl(String state, String redirectUri, String codeChallenge) throws Exception {
+        return authorizationUrl(state, redirectUri);
+    }
+
     /**
      * 用授权码换取用户身份。
      *
@@ -73,4 +82,8 @@ public interface ExternalAuthProvider extends Extension {
      * @param redirectUri 与授权时完全一致的回调地址
      */
     ExternalAuthUser exchange(String code, String redirectUri) throws Exception;
+
+    default ExternalAuthUser exchange(String code, String redirectUri, String codeVerifier) throws Exception {
+        return exchange(code, redirectUri);
+    }
 }

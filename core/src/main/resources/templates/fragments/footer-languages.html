@@ -4,11 +4,14 @@
 <body>
 <li class="footer-languages" th:fragment="languages">
     <span th:text="#{site.language}">语言：</span>
-    <a th:href="${currentPath + '?uselang=zh'}"
-       th:classappend="${#locale.language == 'zh'} ? 'selected'">中文</a>
-    <span class="language-separator">·</span>
-    <a th:href="${currentPath + '?uselang=en'}"
-       th:classappend="${#locale.language == 'en'} ? 'selected'">English</a>
+    <th:block th:each="lang,loop : ${interfaceLanguages}">
+        <span th:unless="${loop.first}" class="language-separator" aria-hidden="true">·</span>
+        <a th:href="${currentPath + interfaceLanguageQuery + 'uselang=' + lang.code}"
+           th:lang="${lang.locale.toLanguageTag()}" th:hreflang="${lang.locale.toLanguageTag()}"
+           th:classappend="${interfaceLanguage == lang} ? 'selected'"
+           th:attr="aria-current=${interfaceLanguage == lang ? 'true' : null}"
+           th:text="${lang.label}"></a>
+    </th:block>
 </li>
 </body>
 </html>

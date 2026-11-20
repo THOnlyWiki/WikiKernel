@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- 邮箱确认结果页（邮件里的一次性链接） -->
-<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+<html lang="zh" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
 <section>

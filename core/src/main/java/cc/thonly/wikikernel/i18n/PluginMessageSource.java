@@ -16,7 +16,7 @@ import java.util.Set;
 
 /**
  * 消息源：core 的 {@code messages*.properties} 优先，找不到时查插件注册的
- * {@link MessageBundle}（插件消息，支持语言回退 zh-CN → zh → en → 任意）。
+ * {@link MessageBundle}（插件消息，依次查询地区、基础语言和默认翻译）。
  * <p>
  * core 把它注册为 {@code messageSource} Bean（替代 Boot 默认实现），
  * 因此控制器 / 模板 {@code #{…}} / 邮件等处的解析都能拿到插件消息。
@@ -123,7 +123,7 @@ public class PluginMessageSource implements MessageSource {
         if (code == null) return null;
         var store = overrides.getIfAvailable();
         var value = store == null ? null : store.find(code, locale);
-        return value == null ? null : format(value.text(), args);
+        return value == null ? null : format(value.text(), args, locale);
     }
 
     /** Unformatted installed defaults, including active plugin bundles, with the same core-first precedence. */
@@ -168,18 +168,22 @@ public class PluginMessageSource implements MessageSource {
                 }
                 String value = texts.get(code);
                 if (value != null) {
-                    return format(value, args);
+                    return format(value, args, locale);
                 }
             }
         }
         return null;
     }
 
-    /** 语言回退链：zh-CN → zh → en → 任意一个已有语言。 */
+    /** 先查完整语言标签及其规范地区，再查基础语言和默认翻译。 */
     private static List<String> localeFallback(Locale locale) {
         Set<String> languages = new LinkedHashSet<>();
         if (locale != null) {
-            languages.add(locale.toString().replace('_', '-'));
+            languages.add(locale.toLanguageTag());
+            InterfaceLanguage supported = InterfaceLanguage.fromLocale(locale);
+            if (supported != null) {
+                languages.add(supported.getLocale().toLanguageTag());
+            }
             languages.add(locale.getLanguage());
         }
         languages.add("en");
@@ -202,13 +206,12 @@ public class PluginMessageSource implements MessageSource {
         return true;
     }
 
-    /** 语言回退链注释见上（zh-CN → zh → en → zh）。 */
-    private static String format(String pattern, Object[] args) {
+    private static String format(String pattern, Object[] args, Locale locale) {
         if (args == null || args.length == 0) {
             return pattern;
         }
         try {
-            return new MessageFormat(pattern).format(args);
+            return new MessageFormat(pattern, locale).format(args);
         } catch (IllegalArgumentException exception) {
             return pattern;
         }

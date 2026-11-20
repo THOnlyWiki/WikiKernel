@@ -11,8 +11,7 @@ import java.util.List;
  * <ul>
  *     <li>{@code window.WIKI_CONFIG.fingerprintLogin = true}；</li>
  *     <li>登录页文案（{@code window.WIKI_MESSAGES}）；</li>
- *     <li>{@code /plugins/fingerprint-login/fingerprint-login.js}（浏览器端采集分量 + SHA-256，
- *     登录页插入「用浏览器指纹登录」按钮，管理页插入列表 / 添加 / 删除交互）。</li>
+ *     <li>{@code /plugins/fingerprint-login/fingerprint-login.js}（登录按钮和浏览器登记管理）。</li>
  * </ul>
  * 功能关闭时**什么都不注入**（登录页按钮不出现，接口也返回禁用提示）。
  */
@@ -43,7 +42,6 @@ public class FingerprintLoginHeadProvider implements HtmlHeadProvider {
         }
         StringBuilder script = new StringBuilder("<script>window.WIKI_CONFIG = window.WIKI_CONFIG || {};")
                 .append("window.WIKI_CONFIG.fingerprintLogin = true;")
-                .append("window.WIKI_CONFIG.fingerprintLoginHttpsOnly = ").append(support.httpsOnly()).append(';')
                 .append("window.WIKI_MESSAGES = Object.assign(window.WIKI_MESSAGES || {}, {")
                 .append("fingerprintLoginButton: ").append(json("fingerprint.login.button")).append(',')
                 .append("fingerprintLoginHint: ").append(json("fingerprint.login.buttonHint")).append(',')
@@ -58,7 +56,7 @@ public class FingerprintLoginHeadProvider implements HtmlHeadProvider {
                 .append("});</script>");
         return List.of(script.toString(),
                 "<link rel=\"stylesheet\" href=\"/plugins/fingerprint-login/fingerprint-login.css\">",
-                "<script defer src=\"/plugins/fingerprint-login/fingerprint-login.js\"></script>");
+                "<script defer src=\"/plugins/fingerprint-login/fingerprint-login.js?v=2\"></script>");
     }
 
     private String json(String key) {

@@ -44,6 +44,6 @@ public interface FingerprintStore {
     /** 删除自己的某个指纹（别人的 / 不存在的返回 false）。 */
     boolean remove(long userId, long id);
 
-    /** 记录一次成功登录（更新 {@code lastUsedAt}）。 */
-    void touch(long id);
+    /** 原子消耗旧凭据。登记时可一并更新名称和 UA。 */
+    boolean rotate(long id, String currentDigest, String nextDigest, String label, String userAgent);
 }

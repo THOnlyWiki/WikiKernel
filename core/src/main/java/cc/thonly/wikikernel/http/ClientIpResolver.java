@@ -60,4 +60,11 @@ public class ClientIpResolver {
         }
         return Strings.trimToEmpty(request.getRemoteAddr());
     }
+
+    boolean isSecure(HttpServletRequest request) {
+        if (request.isSecure()) return true;
+        if (!properties.isTrustProxyHeaders()) return false;
+        String forwardedProto = Strings.trimToEmpty(request.getHeader("X-Forwarded-Proto"));
+        return "https".equalsIgnoreCase(forwardedProto.split(",", 2)[0].trim());
+    }
 }

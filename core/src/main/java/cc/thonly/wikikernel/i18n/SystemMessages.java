@@ -41,14 +41,6 @@ public class SystemMessages {
         return result;
     }
 
-    public Map<String, Locale> languages() {
-        Map<String, Locale> result = new LinkedHashMap<>();
-        result.put("zh-hans", Locale.SIMPLIFIED_CHINESE);
-        result.put("en", Locale.ENGLISH);
-        // The interface itself currently supports Chinese and English. Do not advertise untranslated languages.
-        return result;
-    }
-
     public Optional<String> editDefault(String title) {
         if (WikiTitles.normalize(title).equals(WikiTitles.normalize(sidebarProperties.getPage()))) {
             return Optional.of(sidebar.defaultSource(org.springframework.context.i18n.LocaleContextHolder.getLocale()));
@@ -60,8 +52,9 @@ public class SystemMessages {
         int slash = name.lastIndexOf('/');
         if (slash >= 0) {
             String code = name.substring(slash + 1);
-            language = languages().get(code);
-            if (language == null) return Optional.empty();
+            InterfaceLanguage selected = InterfaceLanguage.parse(code);
+            if (selected == null) return Optional.empty();
+            language = selected.getLocale();
             name = name.substring(0, slash);
         }
         String target = WikiTitles.normalize("WikiKernel:" + name);

@@ -28,6 +28,7 @@ import java.io.Serializable;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -115,12 +116,16 @@ public class ExternalAuthService {
         String safeReturnTo = ExternalAuthSettings.safeReturnTo(returnTo,
                 link ? WikiUrls.pagePath("特殊:参数设置") : "/");
         String state = randomToken(32);
-        ExternalAuthState authState = new ExternalAuthState(
-                provider.id(), state, link, current == null ? null : current.getId(),
-                safeReturnTo, System.currentTimeMillis());
-        request.getSession(true).setAttribute(STATE_ATTRIBUTE, authState);
         try {
-            return provider.authorizationUrl(state, redirectUri(provider, request));
+            String callback = redirectUri(provider, request);
+            String verifier = provider.supportsPkce() ? randomToken(32) : null;
+            String authorizationUrl = verifier == null ? provider.authorizationUrl(state, callback)
+                    : provider.authorizationUrl(state, callback, codeChallenge(verifier));
+            ExternalAuthState authState = new ExternalAuthState(
+                    provider.id(), state, link, current == null ? null : current.getId(),
+                    safeReturnTo, System.currentTimeMillis(), callback, verifier);
+            request.getSession(true).setAttribute(STATE_ATTRIBUTE, authState);
+            return authorizationUrl;
         } catch (Exception exception) {
             log.warn("第三方登录授权地址生成失败 provider={} error={}",
                     provider.id(), exception.getClass().getSimpleName());
@@ -146,7 +151,9 @@ public class ExternalAuthService {
 
         ExternalAuthUser profile;
         try {
-            profile = provider.exchange(code, redirectUri(provider, request));
+            String callback = authState.callback() == null ? redirectUri(provider, request) : authState.callback();
+            profile = authState.codeVerifier() == null ? provider.exchange(code, callback)
+                    : provider.exchange(code, callback, authState.codeVerifier());
         } catch (ExternalAuthException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -393,6 +400,11 @@ public class ExternalAuthService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(buffer);
     }
 
+    private static String codeChallenge(String verifier) throws NoSuchAlgorithmException {
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII));
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+    }
+
     private static String appendQuery(String url, String... pairs) {
         StringBuilder out = new StringBuilder(url);
         out.append(url.contains("?") ? '&' : '?');
@@ -427,7 +439,8 @@ public class ExternalAuthService {
     }
 
     private record ExternalAuthState(String provider, String state, boolean link, Long userId,
-                                     String returnTo, long createdAt) implements Serializable {
+                                     String returnTo, long createdAt, String callback,
+                                     String codeVerifier) implements Serializable {
     }
 }
 

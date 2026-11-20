@@ -1,20 +1,4 @@
-/*
- * 浏览器指纹登录（插件 fingerprint-login，1.0.0）
- * ---------------------------------------------------------------------------
- * 一个文件承担两件事（脚本自己在 DOM 上找宿主，找不到就什么都不做）：
- *
- *   1) 登录页（特殊:登录 / Special:UserLogin）：
- *      在密码表单上插入「用浏览器指纹登录」按钮。点击 → 采集稳定分量 → 拼规范字符串 →
- *      crypto.subtle.digest('SHA-256') → 十六进制摘要 → POST /api/fingerprint-login。
- *      非安全上下文（http + 非 localhost）拿不到 crypto.subtle → 隐藏按钮并提示。
- *
- *   2) 管理界面（参数设置 → 指纹登录 分区 / 特殊:指纹登录）：
- *      容器 #fingerprint-login-panel 里列出自己的指纹（名称 / 创建时间 / 最近使用 / UA 摘要）、
- *      添加当前浏览器（填名称）、删除某个指纹；接口与登录页共用 /api/fingerprint-login/*。
- *
- * 指纹只在浏览器端计算，服务端不重算、不保存原始特征（只保存摘要与 UA 摘要）。
- * 分量都取自「同一台设备同一浏览器基本不变」的项，跨重启 / 跨隐身窗口保持稳定。
- */
+/* Saved browser login and credential management. */
 ( function () {
     'use strict';
 
@@ -59,11 +43,6 @@
         return result;
     }
 
-    /** 当前是否安全上下文（crypto.subtle 只在安全上下文可用）。 */
-    function cryptoAvailable() {
-        return !!( window.crypto && window.crypto.subtle && window.crypto.subtle.digest );
-    }
-
     /** JSON 解析（失败返回 null，不抛异常）。 */
     function parseJson( raw ) {
         try {
@@ -73,128 +52,12 @@
         }
     }
 
-    // ==================== 指纹采集 ====================
-
-    /** 分量收集失败时用 '-' 占位，保证字符串长度稳定（不会因为某项缺失而整体错位）。 */
-    function part( name, value ) {
-        return name + '=' + ( value === undefined || value === null || value === '' ? '-' : String( value ) );
-    }
-
-    /** canvas 绘制结果（同一设备同一浏览器稳定；隐私插件可能返回噪声，那就只能靠其它分量）。 */
-    function canvasSignature() {
-        try {
-            var canvas = document.createElement( 'canvas' );
-            canvas.width = 240;
-            canvas.height = 60;
-            var context = canvas.getContext( '2d' );
-            if ( !context ) {
-                return '-';
-            }
-            // 固定文本 + 渐变 + 曲线 + 圆形：不同 GPU / 驱动 / 字体栈得到不同像素
-            var gradient = context.createLinearGradient( 0, 0, 240, 60 );
-            gradient.addColorStop( 0, '#f60' );
-            gradient.addColorStop( 1, '#069' );
-            context.fillStyle = gradient;
-            context.fillRect( 0, 0, 240, 60 );
-            context.font = '17px "Arial"';
-            context.fillStyle = 'rgba(20,20,20,0.7)';
-            context.fillText( 'WikiKernel fingerprint 指纹', 4, 22 );
-            context.strokeStyle = 'rgba(255,255,255,0.6)';
-            context.beginPath();
-            context.arc( 180, 30, 18, 0, Math.PI * 2, true );
-            context.stroke();
-            context.beginPath();
-            context.moveTo( 0, 50 );
-            context.bezierCurveTo( 60, 10, 120, 55, 240, 15 );
-            context.stroke();
-            return canvas.toDataURL();
-        } catch ( error ) {
-            return '-';
-        }
-    }
-
-    /** WebGL 未遮罩的厂商 / 渲染器（取不到就跳过，返回 '-'）。 */
-    function webglSignature() {
-        try {
-            var canvas = document.createElement( 'canvas' );
-            var gl = canvas.getContext( 'webgl' ) || canvas.getContext( 'experimental-webgl' );
-            if ( !gl ) {
-                return '-';
-            }
-            var info = gl.getExtension( 'WEBGL_debug_renderer_info' );
-            if ( !info ) {
-                return '-';
-            }
-            var vendor = gl.getParameter( info.UNMASKED_VENDOR_WEBGL );
-            var renderer = gl.getParameter( info.UNMASKED_RENDERER_WEBGL );
-            if ( !vendor && !renderer ) {
-                return '-';
-            }
-            return String( vendor || '-' ) + ' / ' + String( renderer || '-' );
-        } catch ( error ) {
-            return '-';
-        }
-    }
-
-    function timeZone() {
-        try {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone || '-';
-        } catch ( error ) {
-            return '-';
-        }
-    }
-
-    /**
-     * 规范指纹字符串：一行一个分量，顺序固定。
-     * 顺序 / 命名一旦改变，所有已登记的指纹都会失配——要改就当作一次「重新登记」。
-     */
-    function canonicalString() {
-        var nav = window.navigator || {};
-        var screen_ = window.screen || {};
-        var languages = nav.languages && nav.languages.join ? nav.languages.join( ',' ) : '-';
-        return [
-            'v=1',
-            part( 'ua', nav.userAgent ),
-            part( 'lang', nav.language ),
-            part( 'langs', languages ),
-            part( 'platform', nav.platform ),
-            part( 'cores', nav.hardwareConcurrency ),
-            part( 'memory', nav.deviceMemory ),
-            part( 'screen', screen_.width + 'x' + screen_.height ),
-            part( 'colorDepth', screen_.colorDepth ),
-            part( 'avail', screen_.availWidth + 'x' + screen_.availHeight ),
-            part( 'tz', timeZone() ),
-            part( 'canvas', canvasSignature() ),
-            part( 'webgl', webglSignature() )
-        ].join( '\n' );
-    }
-
-    /**
-     * 计算指纹摘要：SHA-256(规范字符串) → 小写十六进制。
-     * 返回 Promise<string>；不安全上下文 / 浏览器不支持时 reject。
-     */
-    function computeFingerprint() {
-        if ( !cryptoAvailable() ) {
-            return Promise.reject( new Error( 'crypto-unavailable' ) );
-        }
-        var encoder = new TextEncoder();
-        var bytes = encoder.encode( canonicalString() );
-        return window.crypto.subtle.digest( 'SHA-256', bytes ).then( function ( buffer ) {
-            var view = new Uint8Array( buffer );
-            var hex = '';
-            for ( var i = 0; i < view.length; i++ ) {
-                hex += ( '0' + view[ i ].toString( 16 ) ).slice( -2 );
-            }
-            return hex;
-        } );
-    }
-
     // ==================== HTTP ====================
 
     function postForm( url, params ) {
         return fetch( url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
             body: params.toString(),
             credentials: 'same-origin'
         } ).then( function ( response ) {
@@ -257,14 +120,11 @@
             message.classList.toggle( 'error', !ok );
         }
 
-        if ( !cryptoAvailable() || ( CONFIG.fingerprintLoginHttpsOnly && !window.isSecureContext ) ) {
-            // 不可用：隐藏按钮并提示（http + 非 localhost 拿不到 crypto.subtle）
+        if ( !window.isSecureContext ) {
             block.hidden = true;
             var notice = document.createElement( 'p' );
             notice.className = 'wiki-warning fingerprint-login-unavailable';
-            notice.textContent = !cryptoAvailable()
-                ? text( 'fingerprintLoginNotSupported', '' )
-                : text( 'fingerprintHttpsOnly', '' );
+            notice.textContent = text( 'fingerprintHttpsOnly', '' );
             if ( form && form.parentNode ) {
                 form.parentNode.insertBefore( notice, block );
             } else {
@@ -276,12 +136,8 @@
         button.addEventListener( 'click', function () {
             button.disabled = true;
             show( text( 'fingerprintLoginWorking', '' ), true );
-            computeFingerprint().then( function ( hash ) {
-                var params = new URLSearchParams();
-                params.append( 'fingerprint', hash );
-                params.append( 'remember', rememberBox.checked ? '1' : '0' );
-                return postForm( LOGIN_API, params );
-            } ).then( function ( result ) {
+            var params = new URLSearchParams( { remember: rememberBox.checked ? '1' : '0' } );
+            postForm( LOGIN_API, params ).then( function ( result ) {
                 if ( result && result.code === 200 ) {
                     show( result.message || text( 'fingerprintLoginSuccess', '' ), true );
                     redirectAfterLogin();
@@ -360,8 +216,9 @@
             }
             return;
         }
-        if ( CONFIG.fingerprintLoginHttpsOnly && !window.isSecureContext && httpsNotice ) {
-            httpsNotice.hidden = false;
+        if ( !window.isSecureContext ) {
+            if ( httpsNotice ) httpsNotice.hidden = false;
+            if ( addButton ) addButton.disabled = true;
         }
 
         /** 渲染一行（用 DOM API，避免把用户输入当 HTML 拼）。 */
@@ -471,12 +328,7 @@
                 }
                 addButton.disabled = true;
                 show( panelText( 'working', '' ), true );
-                computeFingerprint().then( function ( hash ) {
-                    var params = new URLSearchParams();
-                    params.append( 'fingerprint', hash );
-                    params.append( 'label', label );
-                    return postForm( ADD_API, params );
-                } ).then( function ( result ) {
+                postForm( ADD_API, new URLSearchParams( { label: label } ) ).then( function ( result ) {
                     addButton.disabled = false;
                     if ( result && result.code === 200 ) {
                         if ( result.data ) {
@@ -491,12 +343,8 @@
                         return;
                     }
                     show( result && result.message ? result.message : panelText( 'error', '' ), false );
-                } ).catch( function ( error ) {
+                } ).catch( function () {
                     addButton.disabled = false;
-                    if ( error && error.message === 'crypto-unavailable' ) {
-                        show( panelText( 'notSupported', '' ), false );
-                        return;
-                    }
                     show( panelText( 'networkError', '' ), false );
                 } );
             } );

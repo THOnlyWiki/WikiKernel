@@ -152,4 +152,18 @@ class AllMessagesTest {
         var sidebar = system.entries(Locale.ENGLISH).stream().filter(e -> e.name().equals("sidebar")).findFirst().orElseThrow();
         assertEquals("WikiKernel:Sidebar", sidebar.title());
     }
+
+    @Test void regionalCataloguesAndOverridesUseTheSelectedLanguage() throws Exception {
+        pages.editPage(null, "WikiKernel:Common.cancel", "SIMPLIFIED_CANCEL");
+        pages.editPage(null, "WikiKernel:Common.cancel/zh-hk", "香港取消測試");
+        assertEquals("香港取消測試", messages.getMessage("common.cancel", null, Locale.of("zh", "HK")));
+        assertEquals("取消", messages.getMessage("common.cancel", null, Locale.TAIWAN));
+        assertEquals("キャンセル", system.editDefault("WikiKernel:Common.cancel/ja").orElseThrow());
+        mvc.perform(get("/wiki/特殊:所有消息").param("uselang", "ja").param("prefix", "common.cancel"))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("キャンセル")))
+                .andExpect(content().string(containsString("繁體中文（香港）")));
+        mvc.perform(get("/api.php").param("action", "query").param("meta", "allmessages")
+                        .param("amlang", "zh-HK").param("ammessages", "common.cancel"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.query.allmessages[0]['*']").value("香港取消測試"));
+    }
 }

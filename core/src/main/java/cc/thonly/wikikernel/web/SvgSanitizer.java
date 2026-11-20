@@ -1,11 +1,18 @@
 package cc.thonly.wikikernel.web;
 
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Attribute;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Node;
-import org.jsoup.parser.Parser;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.ParseSettings;
+import org.jsoup.parser.Tag;
+
+import javax.xml.XMLConstants;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import java.io.ByteArrayInputStream;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -22,6 +29,11 @@ import java.util.regex.Pattern;
  * 仍然建议在 {@code /files/**} 响应上加 CSP sandbox（见 {@code FileController}）作为第二道防线。
  */
 public final class SvgSanitizer {
+    private static final String SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+    private static final String XLINK_NAMESPACE = "http://www.w3.org/1999/xlink";
+    private static final int MAX_DEPTH = 128;
+    private static final int MAX_ATTRIBUTES_PER_ELEMENT = 256;
+    private static final int MAX_ELEMENTS = 100_000;
 
     private SvgSanitizer() {
     }
@@ -89,15 +101,10 @@ public final class SvgSanitizer {
         if (content == null || content.length == 0) {
             throw new InvalidSvgException("empty svg");
         }
-        String text = new String(content, StandardCharsets.UTF_8).replace("\uFEFF", "");
-        String lower = text.toLowerCase(Locale.ROOT);
-        if (lower.contains("<!doctype") || lower.contains("<!entity")) {
-            throw new InvalidSvgException("DTD / entity is not allowed");
-        }
-        Document document;
+        Document document = new Document("");
         try {
-            document = Jsoup.parse(text, "", Parser.xmlParser());
-        } catch (RuntimeException exception) {
+            readXml(content, document);
+        } catch (XMLStreamException exception) {
             throw new InvalidSvgException("invalid svg xml", exception);
         }
         Element root = document.children().isEmpty() ? null : document.children().first();
@@ -105,38 +112,87 @@ public final class SvgSanitizer {
             throw new InvalidSvgException("root element must be svg");
         }
 
-        // 注释 / 处理指令（<?xml …?>）不进入输出
-        for (Node node : new ArrayList<>(document.childNodes())) {
-            if (!(node instanceof Element)) {
-                node.remove();
-            }
-        }
-
-        for (Element element : new ArrayList<>(root.getAllElements())) {
-            if (element == root) {
-                sanitizeAttributes(root);
-                continue;
-            }
-            String tag = element.tagName().toLowerCase(Locale.ROOT);
-            if (!ALLOWED_ELEMENTS.contains(tag)) {
-                element.remove();
-                continue;
-            }
+        for (Element element : root.getAllElements()) {
             sanitizeAttributes(element);
-            if ("style".equals(tag)) {
-                String css = element.wholeText().toLowerCase(Locale.ROOT);
-                if (unsafeCss(css)) {
-                    element.remove();
-                }
+            if ("style".equalsIgnoreCase(element.tagName()) && unsafeCss(element.wholeText())) {
+                element.remove();
             }
         }
 
         // 统一成标准 SVG 命名空间，避免用错误命名空间伪装成 SVG
-        root.attr("xmlns", "http://www.w3.org/2000/svg");
+        root.attr("xmlns", SVG_NAMESPACE);
         document.outputSettings()
                 .syntax(Document.OutputSettings.Syntax.xml)
                 .prettyPrint(false);
         return root.outerHtml().getBytes(StandardCharsets.UTF_8);
+    }
+
+    /** Parse with the JDK's streaming XML reader and bound the tree before creating nodes. */
+    private static void readXml(byte[] content, Document document) throws XMLStreamException {
+        XMLInputFactory factory = XMLInputFactory.newDefaultFactory();
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        factory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        XMLStreamReader reader = factory.createXMLStreamReader(new ByteArrayInputStream(content));
+        Element parent = document;
+        int depth = 0;
+        int elements = 0;
+        int skipDepth = 0;
+        try {
+            while (reader.hasNext()) {
+                switch (reader.next()) {
+                    case XMLStreamConstants.DTD, XMLStreamConstants.ENTITY_REFERENCE ->
+                            throw new InvalidSvgException("DTD / entity is not allowed");
+                    case XMLStreamConstants.START_ELEMENT -> {
+                        if (++depth > MAX_DEPTH || ++elements > MAX_ELEMENTS
+                                || reader.getAttributeCount() + reader.getNamespaceCount() > MAX_ATTRIBUTES_PER_ELEMENT) {
+                            throw new InvalidSvgException("svg structure exceeds limits");
+                        }
+                        if (skipDepth != 0) continue;
+                        String name = reader.getLocalName();
+                        String namespace = reader.getNamespaceURI();
+                        boolean svgElement = namespace == null || namespace.isEmpty() || SVG_NAMESPACE.equals(namespace);
+                        if (depth == 1 && (!"svg".equals(name) || !svgElement)) {
+                            throw new InvalidSvgException("root element must be svg");
+                        }
+                        if (!svgElement || !ALLOWED_ELEMENTS.contains(name.toLowerCase(Locale.ROOT))) {
+                            skipDepth = depth;
+                            continue;
+                        }
+                        Element element = new Element(Tag.valueOf(name, ParseSettings.preserveCase), "");
+                        parent.appendChild(element);
+                        parent = element;
+                        for (int index = 0; index < reader.getAttributeCount(); index++) {
+                            String attribute = reader.getAttributeLocalName(index);
+                            String uri = reader.getAttributeNamespace(index);
+                            if (uri == null || uri.isEmpty()) {
+                                element.attributes().put(attribute, reader.getAttributeValue(index));
+                            } else if ("href".equals(attribute) && XLINK_NAMESPACE.equals(uri)) {
+                                element.attr("xlink:href", reader.getAttributeValue(index));
+                                document.children().first().attr("xmlns:xlink", XLINK_NAMESPACE);
+                            } else if (XMLConstants.XML_NS_URI.equals(uri)
+                                    && ("space".equals(attribute) || "lang".equals(attribute))) {
+                                element.attr("xml:" + attribute, reader.getAttributeValue(index));
+                            }
+                        }
+                    }
+                    case XMLStreamConstants.END_ELEMENT -> {
+                        if (skipDepth == 0) {
+                            parent = parent.parent();
+                        } else if (skipDepth == depth) {
+                            skipDepth = 0;
+                        }
+                        depth--;
+                    }
+                    case XMLStreamConstants.CHARACTERS, XMLStreamConstants.CDATA, XMLStreamConstants.SPACE -> {
+                        if (skipDepth == 0 && depth > 0) parent.appendChild(new TextNode(reader.getText()));
+                    }
+                    default -> { }
+                }
+            }
+        } finally {
+            reader.close();
+        }
     }
 
     private static void sanitizeAttributes(Element element) {

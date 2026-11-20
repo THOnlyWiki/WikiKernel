@@ -8,7 +8,7 @@
   页面模板统一用 ~{__${skin.layout}__ :: layout(...)} 套用当前皮肤；
   通用组件在 /css/base.css，本皮肤的样式在 /skins/vector/vector.css。
 -->
-<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+<html lang="zh" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org"
       th:fragment="layout(pageTitle, content)">
 <head th:replace="~{fragments/head :: head(${pageTitle} + ' - ' + (${siteName} ?: 'WikiKernel'))}">
     <title>WikiKernel</title>

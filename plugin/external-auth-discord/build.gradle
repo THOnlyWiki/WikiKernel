@@ -1,0 +1,17 @@
+plugins {
+    id 'java'
+}
+
+description = 'Discord OAuth login, registration and account binding'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'tools.jackson.core:jackson-databind'
+    testImplementation project(':common')
+    testImplementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    testImplementation 'tools.jackson.core:jackson-databind'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

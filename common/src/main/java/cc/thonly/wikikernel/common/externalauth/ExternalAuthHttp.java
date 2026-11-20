@@ -20,9 +20,13 @@ public final class ExternalAuthHttp {
     private final HttpClient client;
 
     public ExternalAuthHttp() {
+        this(HttpClient.Redirect.NORMAL);
+    }
+
+    public ExternalAuthHttp(HttpClient.Redirect redirectPolicy) {
         this.client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(redirectPolicy)
                 .build();
     }
 

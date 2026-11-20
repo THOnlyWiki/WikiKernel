@@ -124,7 +124,8 @@ public class SameOriginWriteFilter extends OncePerRequestFilter {
         }
         for (Cookie cookie : cookies) {
             String name = cookie.getName();
-            if ("JSESSIONID".equalsIgnoreCase(name) || "wiki_token".equalsIgnoreCase(name)) {
+            if ("JSESSIONID".equalsIgnoreCase(name) || "wiki_token".equalsIgnoreCase(name)
+                    || "__Host-WikiKernelDeviceLogin".equals(name) || "WikiKernelDeviceLoginLocal".equals(name)) {
                 return true;
             }
         }
