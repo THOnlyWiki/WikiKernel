@@ -65,11 +65,11 @@
             </div>
             <div class="message-body" th:utext="${messageHtml}">内容</div>
             <div class="message-actions">
-                <a class="wiki-button sp-button-primary" th:href="@{/wiki/特殊:私信(write=1,to=${messageOther})}"
+                <a class="wiki-button wiki-button-primary" th:href="@{/wiki/特殊:私信(write=1,to=${messageOther})}"
                    th:text="#{messages.reply}">回复</a>
                 <a class="wiki-button" th:href="@{/wiki/特殊:私信(with=${messageOther})}"
                    th:text="#{messages.openThread}">进入会话</a>
-                <button type="button" class="wiki-button message-delete" th:attr="data-id=${messageId}"
+                <button type="button" class="wiki-button wiki-button-danger message-delete" th:attr="data-id=${messageId}"
                         th:aria-label="#{messages.delete}"
                         th:text="#{messages.delete}">删除</button>
                 <a th:if="${messageInbox}" th:href="@{/wiki/特殊:私信}" th:text="#{messages.backInbox}">返回收件箱</a>
@@ -110,7 +110,7 @@
                 </div>
                 <div class="form-message" role="alert" hidden="hidden"></div>
                 <div class="form-actions sp-form-actions">
-                    <button type="submit" class="wiki-button sp-button-primary"
+                    <button type="submit" class="wiki-button wiki-button-primary"
                             th:aria-label="#{messages.send}" th:text="#{messages.send}">发送</button>
                 </div>
             </form>
@@ -137,13 +137,13 @@
                 </thead>
                 <tbody>
                 <tr th:each="row : ${conversationRows}" th:classappend="${row['unread'] > 0} ? 'message-unread'">
-                    <td class="sp-message-peer" data-label="#{messages.peer}">
+                    <td class="sp-message-peer" th:data-label="#{messages.peer}">
                         <a th:href="${row['peerUrl']}" th:aria-label="${row['peer']}" th:text="${row['peer']}">用户</a>
                     </td>
-                    <td class="message-excerpt" data-label="#{messages.colLastMessage}" th:text="${row['excerpt']}">摘要</td>
-                    <td class="message-time" data-label="#{messages.colTime}" th:text="${row['timeText']}">时间</td>
+                    <td class="message-excerpt" th:data-label="#{messages.colLastMessage}" th:text="${row['excerpt']}">摘要</td>
+                    <td class="message-time" th:data-label="#{messages.colTime}" th:text="${row['timeText']}">时间</td>
                     <td th:text="${row['count']}">3</td>
-                    <td class="message-row-actions" data-label="#{messages.colActions}">
+                    <td class="message-row-actions" th:data-label="#{messages.colActions}">
                         <a th:href="@{/wiki/特殊:私信(with=${row['peer']})}"
                            th:aria-label="#{messages.openThread}" th:text="#{messages.openThread}">进入会话</a>
                     </td>
@@ -169,7 +169,7 @@
                 </div>
                 <div class="form-message" role="alert" hidden="hidden"></div>
                 <div class="form-actions sp-form-actions">
-                    <button type="submit" class="wiki-button sp-button-primary"
+                    <button type="submit" class="wiki-button wiki-button-primary"
                             th:aria-label="#{messages.send}" th:text="#{messages.send}">发送</button>
                     <a class="sp-secondary-link" th:href="@{/wiki/特殊:私信}"
                        th:text="#{messages.backInbox}">返回收件箱</a>
@@ -208,14 +208,14 @@
                         th:data-label="${messagesMode == 'sent'} ? #{messages.toUser} : #{messages.fromUser}">
                         <a th:href="${row['otherUrl']}" th:aria-label="${row['other']}" th:text="${row['other']}">用户</a>
                     </td>
-                    <td class="message-time" data-label="#{messages.colTime}" th:text="${row['timeText']}">时间</td>
-                    <td class="message-excerpt" data-label="#{messages.colExcerpt}" th:text="${row['excerpt']}">摘要</td>
-                    <td class="message-row-actions" data-label="#{messages.colActions}">
+                    <td class="message-time" th:data-label="#{messages.colTime}" th:text="${row['timeText']}">时间</td>
+                    <td class="message-excerpt" th:data-label="#{messages.colExcerpt}" th:text="${row['excerpt']}">摘要</td>
+                    <td class="message-row-actions" th:data-label="#{messages.colActions}">
                         <a th:href="@{/wiki/特殊:私信(id=${row['id']})}"
                            th:aria-label="#{messages.view}" th:text="#{messages.view}">查看</a>
                         <a th:href="@{/wiki/特殊:私信(with=${row['other']})}"
                            th:aria-label="#{messages.associate}" th:text="#{messages.associate}">关联</a>
-                        <button type="button" class="message-delete" th:attr="data-id=${row['id']}"
+                        <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger message-delete" th:attr="data-id=${row['id']}"
                                 th:aria-label="#{messages.delete}" th:text="#{messages.delete}">删除</button>
                     </td>
                 </tr>

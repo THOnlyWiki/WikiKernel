@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +39,7 @@ import java.util.Set;
  *     <li>表不存在 → {@code CREATE TABLE}（含主键、NOT NULL、唯一约束）；</li>
  *     <li>表已存在 → 对比 JDBC 元数据，给缺失的字段执行 {@code ALTER TABLE ... ADD COLUMN}。</li>
  * </ul>
- * 只增不减：不会删列、不会改类型、不会动索引（与 JPA 的 update 策略一样保守）。
+ * 只增不减：不会删列、不会改类型、不会修改已有索引（与 JPA 的 update 策略一样保守）。
  * 支持项目内置的 SQLite / MySQL / MariaDB / H2；语句生成与方言差异在 {@link DdlSchema}。
  * <p>
  * 字段类型可直接用 Java 类型推断，也可以加 {@link DbColumn} 精确控制：
@@ -94,8 +95,31 @@ public class MybatisPlusAutoDdl implements ApplicationRunner {
                     warnIdentityMismatch(metaData, tableInfo, actualName);
                 }
             }
+            ensureReportIndex(connection, existingTables, "wiki_page_report_link",
+                    "wiki_report_link_page", "page_id, revision_id, link_kind");
+            ensureReportIndex(connection, existingTables, "wiki_page_report_link",
+                    "wiki_report_link_kind", "link_kind, id");
+            ensureReportIndex(connection, existingTables, "wiki_page_property",
+                    "wiki_page_property_name", "prop_name, page_id");
             log.info("Auto-DDL 检查完成（{}，共 {} 张表）", dataSourceProperties.determineUrl(), tableInfos.size());
         }
+    }
+
+    private void ensureReportIndex(Connection connection, Map<String, String> existingTables,
+                                   String table, String index, String columns) throws SQLException {
+        String actual = existingTables.getOrDefault(table, table);
+        DatabaseMetaData meta = connection.getMetaData();
+        if (!existingTables.containsKey(table) && meta.storesUpperCaseIdentifiers()) {
+            actual = table.toUpperCase(Locale.ROOT);
+        }
+        try (ResultSet indexes = meta.getIndexInfo(connection.getCatalog(), null, actual, false, true)) {
+            while (indexes.next()) {
+                if (index.equalsIgnoreCase(indexes.getString("INDEX_NAME"))) {
+                    return;
+                }
+            }
+        }
+        DdlSchema.execute(connection, "CREATE INDEX " + index + " ON " + table + " (" + columns + ")");
     }
 
     // ==================== 实体元数据 → 表定义 ====================

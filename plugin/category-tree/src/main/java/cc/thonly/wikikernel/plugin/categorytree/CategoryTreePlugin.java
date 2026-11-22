@@ -31,7 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  *     <li>「分类树」全部选项：{@code mode} / {@code hideprefix} / {@code showcount} / {@code namespaces} /
  *     {@code hideroot} / {@code depth} / {@code class} / {@code style} / {@code id} / {@code notranslations}。</li>
  * </ul>
- * 未移植的部分（侧栏 portlet、分类页树按钮、页面底部分类链接劫持、SpecialTrackingCategories、
+ * 未移植的部分（侧栏 portlet、分类页树按钮、页面底部分类链接劫持、
  * 解析缓存与 Translate 的 notranslations）见插件 {@code README.md}。
  */
 public class CategoryTreePlugin implements WikiPlugin {

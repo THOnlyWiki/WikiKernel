@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section th:fragment="query" data-wiki-query="disambiguation-report">
+    <p th:if="${disambiguationBacklinks}" th:text="#{disambiguator.links.intro}"></p>
+    <p th:unless="${disambiguationBacklinks}" th:text="#{disambiguator.pages.intro}"></p>
+    <nav class="allpages-nav" data-wiki-query-links th:fragment="pager"
+         th:if="${disambiguationPrev != null or disambiguationNext != null}">
+        <a th:if="${disambiguationPrev != null}" th:href="${disambiguationPrev}" th:text="#{log.page.prev}"></a>
+        <a th:if="${disambiguationNext != null}" th:href="${disambiguationNext}" th:text="#{log.page.next}"></a>
+    </nav>
+    <p th:if="${#lists.isEmpty(disambiguationItems)}" th:text="#{report.empty}"></p>
+    <ol th:unless="${#lists.isEmpty(disambiguationItems)}" th:start="${disambiguationStart}">
+        <li th:each="item : ${disambiguationItems}">
+            <a th:href="${item.sourceUrl}" th:text="${item.source}"></a>
+            <th:block th:if="${item.targetUrl != null}">
+                <span aria-hidden="true"> → </span>
+                <a th:href="${item.targetUrl}" th:text="${item.target}"></a>
+            </th:block>
+            <th:block th:if="${item.editUrl != null}">
+                (<a th:href="${item.editUrl}" th:text="#{common.edit}"></a>)
+            </th:block>
+        </li>
+    </ol>
+    <th:block th:replace="~{special/disambiguation-report :: pager}"></th:block>
+</section>
+</body>
+</html>

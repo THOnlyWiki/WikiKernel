@@ -83,7 +83,7 @@
                     <input type="text" name="user" required="required"
                            th:aria-label="#{socialProfile.friends.addPlaceholder}"
                            th:placeholder="#{socialProfile.friends.addPlaceholder}"/>
-                    <button type="submit" class="wiki-button sp-button-primary"
+                    <button type="submit" class="wiki-button wiki-button-primary"
                             th:aria-label="#{socialProfile.friends.add}"
                             th:text="#{socialProfile.friends.add}">加为好友</button>
                     <span class="form-message" role="alert" hidden="hidden"></span>
@@ -108,10 +108,10 @@
                             <a th:href="@{/wiki/特殊:送礼物(user=${row['username']})}"
                                th:aria-label="#{socialProfile.gifts.send}"
                                th:text="#{socialProfile.gifts.send}">送礼物</a>
-                            <button type="button" class="sp-friend-remove" th:attr="data-user=${row['username']}"
+                            <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-friend-remove" th:attr="data-user=${row['username']}"
                                     th:aria-label="#{socialProfile.friends.remove}"
                                     th:text="#{socialProfile.friends.remove}">解除好友</button>
-                            <button type="button" class="sp-foe-add" th:attr="data-user=${row['username']}"
+                            <button type="button" class="wiki-button wiki-button-quiet sp-foe-add" th:attr="data-user=${row['username']}"
                                     th:aria-label="#{socialProfile.foes.add}"
                                     th:text="#{socialProfile.foes.add}">加为仇敌</button>
                         </span>
@@ -150,7 +150,7 @@
                               th:text="${#strings.isEmpty(row['username']) ? '·' : #strings.substring(row['username'], 0, 1)}">用</span>
                         <a class="sp-user-name" th:href="${row['userUrl']}" th:text="${row['username']}">用户</a>
                         <span class="sp-user-actions" th:if="${friendsSelf}">
-                            <button type="button" class="sp-foe-remove" th:attr="data-user=${row['username']}"
+                            <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-foe-remove" th:attr="data-user=${row['username']}"
                                     th:aria-label="#{socialProfile.foes.remove}"
                                     th:text="#{socialProfile.foes.remove}">移出仇敌</button>
                         </span>
@@ -174,10 +174,10 @@
                               th:text="${#strings.isEmpty(row['username']) ? '·' : #strings.substring(row['username'], 0, 1)}">用</span>
                         <a class="sp-user-name" th:href="${row['userUrl']}" th:text="${row['username']}">用户</a>
                         <span class="sp-user-actions">
-                            <button type="button" class="sp-friend-accept" th:attr="data-id=${row['relationId']}"
+                            <button type="button" class="wiki-button wiki-button-quiet sp-friend-accept" th:attr="data-id=${row['relationId']}"
                                     th:aria-label="#{socialProfile.friends.accept}"
                                     th:text="#{socialProfile.friends.accept}">接受</button>
-                            <button type="button" class="sp-friend-reject" th:attr="data-id=${row['relationId']}"
+                            <button type="button" class="wiki-button wiki-button-quiet sp-friend-reject" th:attr="data-id=${row['relationId']}"
                                     th:aria-label="#{socialProfile.friends.reject}"
                                     th:text="#{socialProfile.friends.reject}">拒绝</button>
                         </span>
@@ -192,7 +192,7 @@
                               th:text="${#strings.isEmpty(row['username']) ? '·' : #strings.substring(row['username'], 0, 1)}">用</span>
                         <a class="sp-user-name" th:href="${row['userUrl']}" th:text="${row['username']}">用户</a>
                         <span class="sp-user-actions">
-                            <button type="button" class="sp-friend-remove" th:attr="data-user=${row['username']}"
+                            <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-friend-remove" th:attr="data-user=${row['username']}"
                                     th:aria-label="#{socialProfile.friends.cancel}"
                                     th:text="#{socialProfile.friends.cancel}">撤回请求</button>
                         </span>

@@ -111,7 +111,7 @@
                 <form class="log-hide-form" method="post" th:action="@{/api/logs/hide}">
                     <input type="hidden" name="id" th:value="${row.log.id}"/>
                     <input type="hidden" name="hidden" th:value="${!row.log.hided}"/>
-                    <button type="submit" class="link-button"
+                    <button type="submit" class="wiki-button wiki-button-quiet"
                             th:text="${row.log.hided} ? #{log.unhide} : #{log.hide}">隐藏</button>
                 </form>
             </td>

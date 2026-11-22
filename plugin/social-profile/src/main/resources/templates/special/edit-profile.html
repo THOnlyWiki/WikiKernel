@@ -2,7 +2,7 @@
 <!-- 插件 social-profile：特殊:编辑资料 / Special:EditProfile（仿 MediaWiki SocialProfile 的 Special:EditProfile）
      表单提交到 POST /api/social-profile/profile（脚本 /plugins/social-profile/social-profile.js）。
      字段分三组：基本信息 / 社交信息 / 隐私开关（第二个表单，走 /api/social-profile/preferences）；
-     保存按钮是主操作（.sp-button-primary），返回用户页是次要操作（.sp-secondary-link）。 -->
+     保存按钮是主操作（.wiki-button-primary），返回用户页是次要操作（.sp-secondary-link）。 -->
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
@@ -107,7 +107,7 @@
 
             <div class="form-message" role="alert" hidden="hidden"></div>
             <div class="form-actions sp-form-actions">
-                <button type="submit" class="wiki-button sp-button-primary"
+                <button type="submit" class="wiki-button wiki-button-primary"
                         th:aria-label="#{socialProfile.profile.save}"
                         th:text="#{socialProfile.profile.save}">保存资料</button>
                 <a class="sp-secondary-link" th:href="${userPageUrl}"
@@ -153,7 +153,7 @@
             </fieldset>
             <div class="form-message" role="alert" hidden="hidden"></div>
             <div class="form-actions sp-form-actions">
-                <button type="submit" class="wiki-button sp-button-primary"
+                <button type="submit" class="wiki-button wiki-button-primary"
                         th:aria-label="#{socialProfile.preferences.save}"
                         th:text="#{socialProfile.preferences.save}">保存偏好</button>
                 <a class="sp-secondary-link" th:href="${boardUrl}"

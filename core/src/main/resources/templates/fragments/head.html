@@ -23,6 +23,7 @@
     <!-- Wikimedia Codex 2.7.0（本地内置，完整组件样式 + 图标）+ 本站旧 class 的 Codex 适配层 -->
     <link rel="stylesheet" th:href="@{/vendor/codex/2.7.0/codex.style.css(v=${assetVersion})}">
     <link rel="stylesheet" th:href="@{/css/codex-bridge.css(v=${assetVersion})}">
+    <link rel="stylesheet" th:href="@{/css/form-controls.css(v=${assetVersion})}">
     <script th:inline="javascript">
         /* 站点级前端配置：各功能插件自己往 window.WIKI_CONFIG 里加自己的键（core 不再内置功能开关）。
            这里合并而不是重建：前面的页面级插件片段可能已经写过自己的键，重建会把它们清掉 */
@@ -45,6 +46,7 @@
             prefCountrySearchPlaceholder: /*[[#{preferences.countrySearchPlaceholder}]]*/ '',
             prefCountrySearchCount: /*[[#{preferences.countrySearchCount}]]*/ '',
             prefCountrySearchNone: /*[[#{preferences.countrySearchNone}]]*/ '',
+            veSourceChanged: /*[[#{edit.tools.sourceChanged}]]*/ '',
             draftRestored: /*[[#{edit.draftRestored}]]*/ '',
             draftSaved: /*[[#{edit.draftSaved}]]*/ '',
             draftConflict: /*[[#{edit.draftConflict}]]*/ '',
@@ -208,7 +210,7 @@
     <!-- 编辑辅助工具栏（仿 MediaWiki WikiEditor，仅 Wikitext 编辑页加载） -->
     <script th:if="${showEditToolbar}" th:src="@{/js/edit-toolbar.js(v=${assetVersion})}" defer></script>
     <!-- 编辑预览（仿 MediaWiki「显示预览」，仅 Wikitext 编辑页加载） -->
-    <script th:if="${showEditToolbar}" th:src="@{/js/edit-preview.js(v=${assetVersion})}" defer></script>
+    <script th:if="${showEditToolbar == true or editConflictTemplate != null}" th:src="@{/js/edit-preview.js(v=${assetVersion})}" defer></script>
     <!-- 编辑页本地草稿保护（自动保存 / 关闭确认 / 恢复草稿） -->
     <script th:src="@{/js/edit-draft.js(v=${assetVersion})}" defer></script>
     <!-- 可视化编辑器（仅 Wikitext 整页编辑：从编辑框源码出发，目录等生成内容不会进入） -->

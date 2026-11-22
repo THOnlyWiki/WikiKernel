@@ -554,6 +554,22 @@
             getValue: function () {
                 return editor ? editor.getValue() : textarea.value;
             },
+            setValue: function (text) {
+                if (editor && editor.getValue() !== text) {
+                    editor.setValue(text);
+                }
+                textarea.value = text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            },
+            setVisible: function (visible) {
+                textarea.hidden = !visible;
+                if (editor) {
+                    editor.getWrapperElement().hidden = !visible;
+                    if (visible) {
+                        editor.refresh();
+                    }
+                }
+            },
             getSelectionRange: function () {
                 if (!editor) {
                     return { start: textarea.selectionStart, end: textarea.selectionEnd };
@@ -562,6 +578,13 @@
                     start: editor.indexFromPos(editor.getCursor('from')),
                     end: editor.indexFromPos(editor.getCursor('to'))
                 };
+            },
+            selectRange: function (start, end) {
+                if (editor) {
+                    editor.setSelection(editor.posFromIndex(start), editor.posFromIndex(end));
+                } else {
+                    textarea.setSelectionRange(start, end);
+                }
             },
             /** 以「字符偏移」替换（与 textarea.setRangeText 同一坐标系）；未激活返回 false。 */
             replaceRange: function (text, start, end, selectionStart, selectionEnd) {
@@ -579,13 +602,16 @@
             },
             /** 开关语法高亮，返回切换后的状态（true = 已开启）。 */
             toggle: function () {
+                var range = this.getSelectionRange();
                 if (editor) {
                     destroyEditor();
+                    textarea.setSelectionRange(range.start, range.end);
                     rememberHighlight(false);
                     textarea.focus();
                     return false;
                 }
                 createEditor();
+                editor.setSelection(editor.posFromIndex(range.start), editor.posFromIndex(range.end));
                 rememberHighlight(true);
                 editor.focus();
                 return true;

@@ -94,9 +94,6 @@ body.skin-timeless .cdx-table {
 }
 
 /* ===== 按钮 ===== */
-body .wiki-button,
-body .sp-button-primary,
-body .comment-form .wiki-button,
 body .cdx-button {
     display: inline-flex;
     align-items: center;
@@ -118,8 +115,6 @@ body .cdx-button {
     transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
 }
 
-body .wiki-button:hover,
-body .sp-button-primary:hover,
 body .cdx-button:hover {
     background-color: var(--background-color-interactive-subtle, #f8f9fa);
     border-color: var(--color-base, #202122);
@@ -127,76 +122,16 @@ body .cdx-button:hover {
     text-decoration: none;
 }
 
-body .wiki-button:active,
-body .sp-button-primary:active,
 body .cdx-button:active {
     background-color: var(--background-color-interactive, #eaecf0);
     border-color: var(--color-base, #202122);
 }
 
-body .wiki-button:focus-visible,
-body .sp-button-primary:focus-visible,
 body .cdx-button:focus-visible {
     outline: 2px solid var(--color-progressive, #36c);
     outline-offset: -1px;
 }
 
-body .wiki-button-primary,
-body .sp-button-primary {
-    background-color: var(--background-color-progressive, #36c);
-    border-color: var(--color-progressive, #36c);
-    color: #fff;
-}
-
-body .wiki-button-primary:hover,
-body .sp-button-primary:hover {
-    background-color: var(--background-color-progressive--hover, #447ff5);
-    border-color: var(--color-progressive--hover, #447ff5);
-    color: #fff;
-}
-
-body .wiki-button-primary:active,
-body .sp-button-primary:active {
-    background-color: var(--background-color-progressive--active, #2a4b8d);
-    border-color: var(--color-progressive--active, #2a4b8d);
-}
-
-body .wiki-button-danger {
-    background-color: var(--background-color-destructive, #bf3c2c);
-    border-color: var(--color-destructive, #bf3c2c);
-    color: #fff;
-}
-
-body .wiki-button-danger:hover {
-    background-color: var(--background-color-destructive--hover, #9f3526);
-    border-color: var(--color-destructive--hover, #9f3526);
-    color: #fff;
-}
-
-body .wiki-button-quiet,
-body .link-button,
-body .rc-link-button,
-body .toolbar-button,
-body .version-tag-button {
-    border-color: transparent;
-    background-color: transparent;
-    color: var(--color-progressive, #36c);
-    font-weight: 700;
-    box-shadow: none;
-}
-
-body .wiki-button-quiet:hover,
-body .link-button:hover,
-body .rc-link-button:hover,
-body .toolbar-button:hover,
-body .version-tag-button:hover {
-    background-color: var(--background-color-interactive-subtle, #f8f9fa);
-    border-color: transparent;
-    color: var(--color-progressive--hover, #447ff5);
-}
-
-body .wiki-button:disabled,
-body .wiki-button[disabled],
 body .cdx-button:disabled,
 body .cdx-button[disabled] {
     background-color: var(--background-color-disabled, #c8ccd1);
@@ -441,7 +376,6 @@ body .wiki-form .wiki-filter-choice:has(input:checked) {
     background: var(--filter-surface);
 }
 
-body .wiki-filter-panel .wiki-filter-actions > .wiki-button-primary,
 body .wiki-group-picker .wiki-group-modes button[aria-pressed="true"] {
     border-color: var(--filter-accent);
     background: var(--filter-accent);
@@ -453,7 +387,6 @@ body .wiki-filter-panel .wiki-filter-actions > .wiki-button {
     margin-inline-start: auto;
 }
 
-body .wiki-filter-panel .wiki-filter-actions > .wiki-button:hover,
 body .wiki-group-picker .wiki-group-modes button[aria-pressed="true"]:hover {
     filter: brightness(.93);
 }
@@ -621,7 +554,6 @@ body .cdx-message.cdx-message--progressive {
 /* ===== 标签页 ===== */
 body .pref-tabs,
 body .setup-tabs,
-body .sp-tabs,
 body .ve-dialog-tabs,
 body .fallback-tabs,
 body .wiki-tabs-row {
@@ -636,7 +568,6 @@ body .wiki-tabs-row {
 
 body .pref-tab,
 body .setup-tab,
-body .sp-tabs > li,
 body .ve-dialog-tabs > button,
 body .fallback-tabs > li {
     margin: 0;
@@ -653,7 +584,6 @@ body .fallback-tabs > li {
 body .pref-tab.selected,
 body .pref-tab[aria-selected="true"],
 body .setup-tab.active,
-body .sp-tabs > li.selected,
 body .ve-dialog-tabs > button.selected,
 body .fallback-tabs > li.selected {
     border-color: var(--border-color-subtle, #c8ccd1);
@@ -680,8 +610,6 @@ body .cdx-dialog__header__title {
     font-weight: 700;
 }
 
-body .wiki-dialog-close,
-body .ve-dialog-close,
 body .cdx-dialog__header__close-button {
     min-width: 32px;
     min-height: 32px;
@@ -693,8 +621,6 @@ body .cdx-dialog__header__close-button {
     cursor: pointer;
 }
 
-body .wiki-dialog-close:hover,
-body .ve-dialog-close:hover,
 body .cdx-dialog__header__close-button:hover {
     background: var(--background-color-interactive-subtle, #f8f9fa);
     color: var(--color-base, #202122);
@@ -816,7 +742,6 @@ body .comment-delete-link:hover {
 }
 
 body .sp-gift-card,
-body .sp-tabs,
 body .sp-gift-picker,
 body .sp-profile-head {
     border-color: var(--border-color-subtle, #c8ccd1);
@@ -899,7 +824,6 @@ body.skin-timeless #mw-content .cdx-button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    body .wiki-button,
     body .cdx-button,
     body .wiki-comments .comment-item {
         transition: none;
@@ -907,7 +831,6 @@ body.skin-timeless #mw-content .cdx-button {
 }
 
 /* ===== 参数设置：核心 / 插件共用的复选框、单选框、卡片选项统一为 Codex 外观 ===== */
-body .pref-checkbox input[type="checkbox"],
 body .pref-radios input[type="radio"],
 body .skin-option input[type="radio"] {
     appearance: none;
@@ -932,48 +855,18 @@ body .skin-option input[type="radio"] {
     border-radius: 50%;
 }
 
-body .pref-checkbox input[type="checkbox"]:checked,
-body .pref-checkbox input[type="checkbox"]:indeterminate {
-    border-color: var(--background-color-progressive, #36c);
-    background: var(--background-color-progressive, #36c);
-}
-
-body .pref-checkbox input[type="checkbox"]:checked::after {
-    content: "";
-    position: absolute;
-    left: 6px;
-    top: 2px;
-    width: 5px;
-    height: 10px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-}
-
-body .pref-checkbox input[type="checkbox"]:indeterminate::after {
-    content: "";
-    position: absolute;
-    left: 4px;
-    right: 4px;
-    top: 9px;
-    height: 2px;
-    background: #fff;
-}
-
 body .pref-radios input[type="radio"]:checked,
 body .skin-option input[type="radio"]:checked {
     border: 6px solid var(--background-color-progressive, #36c);
     background: var(--background-color-base, #fff);
 }
 
-body .pref-checkbox input:focus-visible,
 body .pref-radios input:focus-visible,
 body .skin-option input:focus-visible {
     outline: 2px solid var(--color-progressive, #36c);
     outline-offset: 1px;
 }
 
-body .pref-checkbox input:disabled,
 body .pref-radios input:disabled,
 body .skin-option input:disabled {
     background: var(--background-color-disabled, #c8ccd1);

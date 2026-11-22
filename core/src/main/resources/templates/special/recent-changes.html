@@ -24,7 +24,7 @@
     <div class="rc-filters">
         <div class="rc-filters-head">
             <span th:text="#{recentChanges.filters}">激活的过滤器</span>
-            <button type="button" id="rc-filters-toggle" class="rc-link-button"
+            <button type="button" id="rc-filters-toggle" class="wiki-button wiki-button-quiet rc-link-button"
                     th:attr="data-hide=#{recentChanges.filtersHide},data-show=#{recentChanges.filtersShow}"
                     th:text="#{recentChanges.filtersHide}">隐藏</button>
         </div>
@@ -140,14 +140,14 @@
                      th:classappend="${entry.hided} ? ' rc-hided'">
                     <th:block th:replace="~{special/recent-changes-log :: rcLogLine(${entry})}">…</th:block>
                 </div>
-                <!-- 多条同类型日志：折叠成一行「（日志名） [目标；目标]」，展开看每条 -->
+                <!-- 同类日志显示数量和最新操作，展开后逐条查看。 -->
                 <details class="rc-group rc-log-group" th:if="${entry.kind == 'loggroup'}">
                     <summary>
-                        <span class="rc-time" th:text="${entry.timeText}">01:27</span>
-                        <span class="rc-log-label"><a th:href="${entry.labelUrl}"
-                                                      th:text="${entry.label}">（论坛日志）</a></span>
-                        <span class="rc-log-targets" th:if="${entry.targetsText != null}"
-                              th:text="${entry.targetsText}">[甲；乙]</span>
+                        <th:block th:replace="~{special/recent-changes-log :: rcLogHeader(${entry.latest})}"/>
+                        <span class="rc-log-count" th:text="#{recentChanges.logGroupCount(${entry.count})}">（3条日志）</span>
+                        <span class="rc-log-latest" th:classappend="${entry.latest.hided} ? ' rc-hided'">
+                            <th:block th:replace="~{special/recent-changes-log :: rcLogAction(${entry.latest})}"/>
+                        </span>
                     </summary>
                     <ul class="rc-changes">
                         <li th:each="logEntry : ${entry.entries}"

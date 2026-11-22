@@ -61,7 +61,7 @@ AI 提案由用户自己核对后保存；队列里历史遗留的 `aiAssisted` 
 - **没有「合并到已有页面」**：MediaWiki Moderation 允许审核员把待审创建合并进同名页面；
   这里只有「通过 / 拒绝」两种结果；
 - **没有「待审编辑也要过过滤器」的二次评估**：待审内容在**提交时**经过 `EditGuard` 链（滥用过滤器等），
-  通过时不再重新评估（移动端审核时页面可能已被别人改动，此时以 `PageWriter` 直接写入；
+  通过时不再重新评估（审核期间若页面已被其他编辑修改，审核通过时直接以 `PageWriter` 写入；
   迁移前的 core 行为相同——审核通过不复查过滤器 / 版本）；
 - **队列不显示 ip / user-agent**：迁移前的 core 队列页就没有这两列，这里沿用；
 - **豁免组名单不同**：MediaWiki Moderation 的 `automoderated` / `moderator` / `automoderated` 组在此对应

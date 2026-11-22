@@ -82,6 +82,145 @@
     var status = root.querySelector('[data-news-status]');
     var editor = root.querySelector('[data-news-editor]');
     var currentRow = null, changed = false, activityOptions = [];
+    var activityRequest = 0, draftRequest = 0, loadedActivityYear;
+    var narrow = window.matchMedia('(max-width: 700px)');
+    if (narrow.matches) root.querySelector('[data-news-draft-list]').open = false;
+    var syncSelects = typeof HTMLElement.prototype.showPopover === 'function'
+        ? Array.from(editor.querySelectorAll('[data-news-select]'), enhanceSelect) : [];
+
+    function enhanceSelect(select) {
+        var id = 'news-select-' + select.name;
+        var label = select.labels[0];
+        var caption = label.firstChild.textContent.trim();
+        var searchLabel = select.dataset.newsSelect;
+        var trigger = el('button', '', 'wiki-button news-select-trigger');
+        trigger.type = 'button';
+        trigger.id = id;
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.setAttribute('aria-controls', id + '-menu');
+        trigger.setAttribute('aria-expanded', 'false');
+        var panel = el('div', '', 'news-select-menu');
+        panel.id = id + '-menu';
+        panel.setAttribute('popover', 'auto');
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', caption);
+        var list = el('div', '', 'news-select-options');
+        var search;
+        if (searchLabel) {
+            search = document.createElement('input');
+            search.type = 'search';
+            search.placeholder = searchLabel;
+            search.setAttribute('aria-label', searchLabel);
+            search.addEventListener('input', renderOptions);
+            panel.appendChild(search);
+        }
+        panel.appendChild(list);
+        select.after(trigger);
+        document.body.appendChild(panel);
+        trigger.setAttribute('popovertarget', panel.id);
+
+        function renderOptions() {
+            var query = search ? search.value.trim().toLowerCase() : '';
+            var options = Array.from(select.options).filter(function (option) {
+                return !option.disabled && !option.hidden && option.textContent.toLowerCase().includes(query);
+            });
+            list.replaceChildren(...options.map(function (option) {
+                var row = el('button', option.textContent, 'wiki-button news-select-option');
+                row.type = 'button';
+                row.setAttribute('aria-pressed', String(option.selected));
+                row.addEventListener('click', function () {
+                    panel.hidePopover();
+                    trigger.focus({preventScroll:true});
+                    if (!option.selected) {
+                        select.value = option.value;
+                        select.dispatchEvent(new Event('input', {bubbles:true}));
+                        select.dispatchEvent(new Event('change', {bubbles:true}));
+                    }
+                });
+                return row;
+            }));
+            if (!options.length) list.appendChild(el('p', '没有匹配的选项', 'news-select-empty'));
+        }
+
+        function position() {
+            if (!panel.matches(':popover-open')) return;
+            var anchor = trigger.getBoundingClientRect();
+            var viewport = window.visualViewport;
+            var top = viewport ? viewport.offsetTop : 0;
+            var left = viewport ? viewport.offsetLeft : 0;
+            var bottom = top + (viewport ? viewport.height : window.innerHeight);
+            var width = viewport ? viewport.width : document.documentElement.clientWidth;
+            if (!anchor.width || anchor.bottom <= top || anchor.top >= bottom) {
+                panel.hidePopover();
+                return;
+            }
+            var below = bottom - anchor.bottom - 12, above = anchor.top - top - 12;
+            var opensUp = below < Math.min(panel.scrollHeight, 300) && above > below;
+            var menuWidth = Math.min(Math.max(anchor.width, 180), width - 16);
+            panel.style.width = menuWidth + 'px';
+            panel.style.left = Math.max(left + 8, Math.min(anchor.left, left + width - menuWidth - 8)) + 'px';
+            panel.style.top = opensUp ? 'auto' : anchor.bottom + 4 + 'px';
+            panel.style.bottom = opensUp ? window.innerHeight - anchor.top + 4 + 'px' : 'auto';
+            panel.style.maxHeight = Math.max(40, Math.min(300, opensUp ? above : below)) + 'px';
+        }
+
+        function sync() {
+            var native = !searchLabel && narrow.matches;
+            select.hidden = !native;
+            trigger.hidden = native;
+            label.htmlFor = native ? select.id : trigger.id;
+            var selected = select.selectedOptions[0]?.textContent || '请选择';
+            trigger.textContent = selected;
+            trigger.setAttribute('aria-label', caption + '：' + selected);
+            trigger.disabled = select.disabled;
+            if (panel.matches(':popover-open')) {
+                if (native || select.disabled) panel.hidePopover();
+                else renderOptions();
+            }
+        }
+        select.id = id + '-native';
+        select.addEventListener('change', sync);
+        narrow.addEventListener('change', sync);
+        panel.addEventListener('toggle', function (event) {
+            var open = event.newState === 'open';
+            trigger.setAttribute('aria-expanded', String(open));
+            if (!open) return;
+            if (search) search.value = '';
+            renderOptions();
+            position();
+            (search || list.querySelector('[aria-pressed="true"]') || list.firstElementChild)?.focus({preventScroll:true});
+        });
+        trigger.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowDown' && !panel.matches(':popover-open')) {
+                event.preventDefault();
+                panel.showPopover();
+            }
+        });
+        panel.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                panel.hidePopover();
+                trigger.focus({preventScroll:true});
+                return;
+            }
+            if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+            var rows = Array.from(list.querySelectorAll('button'));
+            if (!rows.length) return;
+            event.preventDefault();
+            var index = rows.indexOf(document.activeElement);
+            var next = event.key === 'ArrowDown' ? Math.min(index + 1, rows.length - 1)
+                : index < 0 ? rows.length - 1 : index - 1;
+            (next < 0 ? search || rows[rows.length - 1] : rows[next]).focus();
+        });
+        window.addEventListener('resize', position);
+        window.addEventListener('scroll', position, true);
+        window.visualViewport?.addEventListener('resize', position);
+        window.visualViewport?.addEventListener('scroll', position);
+        sync();
+        return sync;
+    }
+
+    function syncFormSelects() { syncSelects.forEach(function (sync) { sync(); }); }
     var stateNames = {DRAFT:'草稿', PENDING:'待审核', PUBLISHED:'已发布', REJECTED:'已退回', WITHDRAWN:'已撤下'};
     var timeFields = ['publishAt','expiresAt','pinUntil'];
     function localTime(value) {
@@ -98,61 +237,123 @@
     }
     async function activities(year) {
         var select = editor.elements.activityId;
-        activityOptions = await api('/activities?year=' + year);
         select.replaceChildren(); var none = el('option', '不关联活动'); none.value = '0'; select.appendChild(none);
-        activityOptions.forEach(function (a) { var option = el('option', a.name + ' · ' + a.date); option.value = a.id; select.appendChild(option); });
+        var request = ++activityRequest;
+        activityOptions = [];
+        editor.elements.activityRevision.value = '';
+        select.disabled = Boolean(year);
+        syncFormSelects();
+        try {
+            var rows = year ? await api('/activities?year=' + encodeURIComponent(year)) : [];
+            if (request !== activityRequest) return false;
+            activityOptions = rows;
+            loadedActivityYear = year;
+            rows.forEach(function (a) { var option = el('option', a.name + ' · ' + a.date); option.value = a.id; select.appendChild(option); });
+            return true;
+        } catch (error) {
+            if (request === activityRequest) status.textContent = error.message;
+            return false;
+        } finally {
+            if (request === activityRequest) {
+                select.disabled = false;
+                syncFormSelects();
+            }
+        }
+    }
+    function updateActions() {
+        var pending = currentRow && currentRow.status === 'PENDING' && !changed;
+        root.querySelector('[data-news-action="submit"]').hidden = Boolean(pending);
+        root.querySelector('[data-news-action="publish"]').hidden = !(pending && currentRow.canReview);
+        root.querySelector('[data-news-action="reject"]').hidden = !(pending && currentRow.canReview);
+        root.querySelector('[data-news-action="withdraw"]').hidden = !(currentRow && currentRow.canReview && currentRow.hasPublished);
     }
     async function show(row) {
+        var request = ++draftRequest;
         currentRow = row || null; editor.reset();
         editor.elements.id.value = row ? row.id : 0; editor.elements.version.value = row ? row.version : 0;
-        await activities(row && row.content.activityYear || new Date().getFullYear());
+        var historyList = root.querySelector('[data-news-history]');
+        historyList.textContent = row ? '正在载入操作记录…' : '选择稿件后查看。';
         if (row) {
             Object.keys(row.content).forEach(function (key) {
                 if (key === 'region' && row.content[key] && !Array.from(editor.elements.region.options).some(function (o) { return o.value === row.content[key]; })) {
                     var legacy = el('option', row.content[key]); legacy.value = row.content[key]; editor.elements.region.appendChild(legacy);
                 }
-                if (editor.elements[key]) editor.elements[key].value = timeFields.includes(key) ? localTime(row.content[key]) : row.content[key];
+                if (editor.elements[key] && !['activityId', 'activityRevision'].includes(key)) {
+                    editor.elements[key].value = timeFields.includes(key) ? localTime(row.content[key]) : row.content[key];
+                    if (key === 'activityYear' && !row.content[key]) editor.elements[key].value = '';
+                }
             });
             root.querySelector('[data-editor-title]').textContent = stateNames[row.status] + ' · ' + (row.content.aiAssisted ? 'AI 协助起草' : '人工投稿');
-            var history = await api('/history/' + row.id), list = root.querySelector('[data-news-history]'); list.replaceChildren();
-            history.forEach(function (revision) { list.appendChild(el('p', '版本 ' + revision.version + ' · ' + revision.action + ' · ' + date(revision.created_at))); });
         } else root.querySelector('[data-editor-title]').textContent = '新建投稿';
-        ['publish','reject','withdraw'].forEach(function (action) {
-            root.querySelector('[data-news-action="' + action + '"]').hidden = !row || !row.canReview ||
-                (action === 'withdraw' ? !row.hasPublished : row.status !== 'PENDING');
+        root.querySelectorAll('[data-draft-id]').forEach(function (button) {
+            if (row && Number(button.dataset.draftId) === row.id) button.setAttribute('aria-current', 'true');
+            else button.removeAttribute('aria-current');
         });
         root.querySelector('[data-news-preview-area]').hidden = true;
         root.querySelector('[data-save-hint]').textContent = row && row.hasPublished ? '当前公开版本会保留，修改需重新提交审核。' : '';
         changed = false;
+        updateActions();
+        var year = Number(editor.elements.activityYear.value) || new Date().getFullYear();
+        var loading = activities(year);
+        var activityVersion = activityRequest;
+        await loading;
+        if (request !== draftRequest || !row) return;
+        if (activityVersion === activityRequest && row.content.activityId) {
+            var selected = editor.elements.activityId;
+            if (!Array.from(selected.options).some(function (option) { return Number(option.value) === row.content.activityId; })) {
+                var unavailable = el('option', '原关联活动 #' + row.content.activityId);
+                unavailable.value = row.content.activityId;
+                selected.appendChild(unavailable);
+            }
+            selected.value = row.content.activityId;
+            editor.elements.activityRevision.value = row.content.activityRevision || '';
+            syncFormSelects();
+        }
+        var history = await api('/history/' + row.id);
+        if (request !== draftRequest) return;
+        historyList.replaceChildren();
+        history.forEach(function (revision) { historyList.appendChild(el('p', '版本 ' + revision.version + ' · ' + revision.action + ' · ' + date(revision.created_at))); });
     }
     async function drafts() {
         var rows = await api('/drafts'); var container = root.querySelector('[data-drafts]'); container.replaceChildren();
+        if (!rows.length) container.appendChild(el('p', '暂无稿件', 'news-meta'));
         rows.forEach(function (row) {
-            var button = el('button', (stateNames[row.status] || row.status) + ' · ' + row.content.title);
+            var button = el('button', (stateNames[row.status] || row.status) + ' · ' + row.content.title, 'wiki-button');
+            button.dataset.draftId = row.id;
+            if (currentRow && currentRow.id === row.id) button.setAttribute('aria-current', 'true');
             button.type = 'button'; button.addEventListener('click', function () {
                 if (changed && !window.confirm('有尚未保存的修改，仍要切换稿件吗？')) return;
+                if (narrow.matches) root.querySelector('[data-news-draft-list]').open = false;
                 show(row).catch(function (e) { status.textContent = e.message; });
             }); container.appendChild(button);
         });
     }
     async function save() {
+        if (editor.elements.activityId.disabled) throw Error('正在载入关联活动，请稍后再试。');
         if (!editor.reportValidity()) throw Error('请补全标题和正文。');
         var row = await api('/save', {id:Number(editor.elements.id.value), version:Number(editor.elements.version.value), content:content()}, true);
         await show(row); await drafts(); return row;
     }
-    editor.addEventListener('input', function () { changed = true; });
+    editor.addEventListener('input', function () { changed = true; updateActions(); });
     editor.elements.activityYear.addEventListener('change', function () { activities(editor.elements.activityYear.value).catch(function (e) { status.textContent = e.message; }); });
     editor.elements.activityId.addEventListener('change', function () {
         var match = activityOptions.find(function (a) { return a.id === Number(editor.elements.activityId.value); });
         editor.elements.activityRevision.value = match ? match.revision : '';
-        if (match) editor.elements.region.value = match.region;
+        if (match) editor.elements.activityYear.value = loadedActivityYear;
+        if (match && Array.from(editor.elements.region.options).some(function (option) { return option.value === match.region; })) {
+            editor.elements.region.value = match.region;
+        }
+        syncFormSelects();
     });
     editor.addEventListener('submit', async function (event) {
         event.preventDefault();
         try { await save(); status.textContent = '草稿已保存'; } catch (error) { status.textContent = error.message; }
     });
     root.querySelector('[data-news-new]').addEventListener('click', function () {
-        if (!changed || window.confirm('放弃尚未保存的修改？')) show(null);
+        if (!changed || window.confirm('放弃尚未保存的修改？')) {
+            if (narrow.matches) root.querySelector('[data-news-draft-list]').open = false;
+            show(null).catch(function (error) { status.textContent = error.message; });
+        }
     });
     root.querySelector('[data-news-preview]').addEventListener('click', function () {
         var data = content(), preview = root.querySelector('[data-news-preview-area]'); preview.replaceChildren(); preview.hidden = false;
@@ -181,12 +382,12 @@
             var job = await api('/job/' + id); box.replaceChildren(el('p', {QUEUED:'正在排队…', RUNNING:'正在起草…', COMPLETED:'草稿已进入待审核列表。', FAILED:job.error}[job.state]));
             if (job.state === 'COMPLETED') {
                 sessionStorage.removeItem('news-job'); await drafts();
-                var open = el('button', '查看待审核草稿'); open.type = 'button';
+                var open = el('button', '查看待审核草稿', 'wiki-button'); open.type = 'button';
                 open.addEventListener('click', async function () {
                     if (!changed || window.confirm('放弃未保存修改，查看新草稿？')) await show(await api('/draft/' + job.newsId));
                 }); box.appendChild(open);
             } else if (job.state === 'FAILED') {
-                var retry = el('button', '重试'); retry.type = 'button'; retry.addEventListener('click', async function () { await api('/retry', new URLSearchParams({id:id})); pollJob(id); }); box.appendChild(retry);
+                var retry = el('button', '重试', 'wiki-button'); retry.type = 'button'; retry.addEventListener('click', async function () { await api('/retry', new URLSearchParams({id:id})); pollJob(id); }); box.appendChild(retry);
             } else window.setTimeout(function () { pollJob(id); }, 2500);
         } catch (error) { box.textContent = error.message; }
     }

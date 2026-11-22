@@ -290,26 +290,6 @@ table.mw-page-info td:first-child {
     box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.25);
 }
 
-/* 伪装成链接的按钮（日志隐藏 / 显示） */
-.link-button {
-    border: 0;
-    padding: 0;
-    background: none;
-    color: #0645ad;
-    font-family: inherit;
-    font-size: inherit;
-    cursor: pointer;
-}
-
-.link-button:hover {
-    text-decoration: underline;
-}
-
-.link-button[disabled] {
-    opacity: 0.6;
-    cursor: progress;
-}
-
 /* ---------- 日志页 ---------- */
 .log-filter-form {
     margin: 0 0 1em;
@@ -452,19 +432,6 @@ table.mw-page-info td:first-child {
     align-items: center;
     padding: 0.5em 0.8em;
     font-weight: bold;
-}
-
-.rc-link-button {
-    border: 0;
-    padding: 0;
-    background: none;
-    color: #36c;
-    font: inherit;
-    cursor: pointer;
-}
-
-.rc-link-button:hover {
-    text-decoration: underline;
 }
 
 .rc-active-filters {
@@ -797,9 +764,18 @@ table.mw-page-info td:first-child {
     color: #202122;
 }
 
-/* 同类型日志折叠组的摘要行：[目标；目标] */
-.rc-log-targets {
-    color: #54595d;
+.rc-log-count {
+    color: var(--color-subtle, #54595d);
+    white-space: nowrap;
+}
+
+.rc-log-latest,
+.rc-log-line {
+    overflow-wrap: anywhere;
+}
+
+.rc-log-group[open] > summary > .rc-log-latest {
+    display: none;
 }
 
 /* 已隐藏的日志（管理员可见）：整行删除线 + （已隐藏）标记 */
@@ -1113,110 +1089,140 @@ body .wiki-auth .auth-external-button:focus-visible {
 }
 
 /* ============================================================
-   通用组件：按钮（所有皮肤 / 插件共用；皮肤只需覆盖 :root 里的 --wiki-button-* 变量）
-     .wiki-button          次要按钮（灰底）
-     .wiki-button-primary  主按钮（填色；Timeless 皮肤里就是站点糖果粉）
-     .wiki-button-danger   危险按钮（红底白字，删除等破坏性操作）
-     .wiki-button-quiet    安静按钮（无底无框，图标 / 工具条用）
-   悬停一律“加深一档”；禁用 60% 透明度；焦点环用 --wiki-focus-ring。
+   通用按钮。使用 .wiki-button，按需叠加 -primary、-danger 或 -quiet。
+   .wiki-button-quiet.wiki-button-danger 用于表格与列表里的删除等操作。
+   皮肤通过 --wiki-button-*、--wiki-quiet-* 和 --wiki-focus-ring 提供主题变量。
    ============================================================ */
-.wiki-button,
-.wiki-button-primary,
-.wiki-button-danger,
-.wiki-button-quiet {
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close) {
+    --wiki-control-bg: var(--wiki-button-bg);
+    --wiki-control-bg-hover: var(--wiki-button-bg-hover);
+    --wiki-control-bg-active: var(--wiki-button-bg-active);
+    --wiki-control-border: var(--wiki-button-border);
+    --wiki-control-border-hover: var(--wiki-button-border-hover);
+    --wiki-control-color: var(--wiki-button-text);
+    --wiki-control-color-hover: var(--wiki-control-color);
+
+    appearance: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3em;
+    box-sizing: border-box;
+    min-height: 32px;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 4px 12px;
+    border: 1px solid var(--wiki-control-border);
+    border-radius: var(--border-radius-base, 2px);
+    background: var(--wiki-control-bg);
+    color: var(--wiki-control-color);
+    box-shadow: none;
+    text-shadow: none;
+    transform: none;
     font-family: inherit;
-    font-size: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
     cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.wiki-button,
-.wiki-button-primary,
-.wiki-button-danger {
-    padding: 0.4em 0.85em;
-    border: 1px solid var(--wiki-button-border);
-    border-radius: 2px;
-    background: var(--wiki-button-bg);
-    color: var(--wiki-button-text);
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close):not([hidden]) {
+    display: inline-flex;
 }
 
-.wiki-button:hover:not([disabled]) {
-    background: var(--wiki-button-bg-hover);
-    border-color: var(--wiki-button-border-hover);
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close)[hidden] {
+    display: none;
 }
 
-.wiki-button:active:not([disabled]) {
-    background: var(--wiki-button-bg-active);
+body :is(a.wiki-button, a.wiki-button-primary, a.wiki-button-danger, a.wiki-button-quiet, a.toolbar-button):any-link {
+    color: var(--wiki-control-color);
+    text-decoration: none;
 }
 
-.wiki-button-primary {
-    border-color: var(--wiki-button-primary-bg);
-    background: var(--wiki-button-primary-bg);
-    color: var(--wiki-button-primary-text);
+body .wiki-button-primary {
+    --wiki-control-bg: var(--wiki-button-primary-bg);
+    --wiki-control-bg-hover: var(--wiki-button-primary-bg-hover);
+    --wiki-control-bg-active: var(--wiki-button-primary-bg-active);
+    --wiki-control-border: var(--wiki-control-bg);
+    --wiki-control-border-hover: var(--wiki-control-bg-hover);
+    --wiki-control-color: var(--wiki-button-primary-text);
 }
 
-.wiki-button-primary:hover:not([disabled]) {
-    background: var(--wiki-button-primary-bg-hover);
-    border-color: var(--wiki-button-primary-bg-hover);
-    color: var(--wiki-button-primary-text);
+body .wiki-button-danger {
+    --wiki-control-bg: var(--wiki-button-danger-bg);
+    --wiki-control-bg-hover: var(--wiki-button-danger-bg-hover);
+    --wiki-control-bg-active: var(--wiki-button-danger-bg-active);
+    --wiki-control-border: var(--wiki-control-bg);
+    --wiki-control-border-hover: var(--wiki-control-bg-hover);
+    --wiki-control-color: var(--wiki-button-danger-text);
 }
 
-.wiki-button-primary:active:not([disabled]) {
-    background: var(--wiki-button-primary-bg-active);
-    border-color: var(--wiki-button-primary-bg-active);
-    color: var(--wiki-button-primary-text);
+body :is(.wiki-button-quiet, .toolbar-button, .wiki-dialog-close) {
+    --wiki-control-bg: transparent;
+    --wiki-control-bg-hover: var(--wiki-quiet-bg-hover);
+    --wiki-control-bg-active: var(--wiki-quiet-bg-active);
+    --wiki-control-border: transparent;
+    --wiki-control-border-hover: transparent;
+    --wiki-control-color: var(--wiki-quiet-text);
+    --wiki-control-color-hover: var(--wiki-quiet-text-hover);
+    padding-inline: 8px;
 }
 
-.wiki-button-danger {
-    border-color: var(--wiki-button-danger-bg);
-    background: var(--wiki-button-danger-bg);
-    color: var(--wiki-button-danger-text);
+body .wiki-button-quiet.wiki-button-danger {
+    --wiki-control-color: var(--wiki-quiet-danger-text, var(--wiki-error));
+    --wiki-control-color-hover: var(--wiki-control-color);
+    --wiki-control-bg-hover: color-mix(in srgb, var(--wiki-control-color) 10%, transparent);
+    --wiki-control-bg-active: color-mix(in srgb, var(--wiki-control-color) 18%, transparent);
 }
 
-.wiki-button-danger:hover:not([disabled]) {
-    background: var(--wiki-button-danger-bg-hover);
-    border-color: var(--wiki-button-danger-bg-hover);
-    color: var(--wiki-button-danger-text);
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close):hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--wiki-control-bg-hover);
+    border-color: var(--wiki-control-border-hover);
+    color: var(--wiki-control-color-hover);
+    box-shadow: none;
+    text-decoration: none;
 }
 
-.wiki-button-danger:active:not([disabled]) {
-    background: var(--wiki-button-danger-bg-active);
-    border-color: var(--wiki-button-danger-bg-active);
-    color: var(--wiki-button-danger-text);
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close):active:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--wiki-control-bg-active);
+    /* Older site styles set a shadow with !important on all pressed buttons. */
+    box-shadow: none !important;
+    transform: none;
 }
 
-.wiki-button[disabled],
-.wiki-button-primary[disabled],
-.wiki-button-danger[disabled] {
-    opacity: 0.6;
-    cursor: progress;
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close):focus {
+    box-shadow: none;
+    text-decoration: none;
 }
 
-.wiki-button:focus-visible,
-.wiki-button-primary:focus-visible,
-.wiki-button-danger:focus-visible,
-.wiki-button-quiet:focus-visible {
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close):focus-visible {
     outline: 2px solid var(--wiki-focus-ring);
     outline-offset: 1px;
 }
 
-.wiki-button-quiet {
-    padding: 0.15em 0.4em;
-    border: 0;
-    border-radius: 2px;
-    background: transparent;
+body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close):is(:disabled, [aria-disabled="true"]) {
+    background: var(--wiki-control-bg);
+    border-color: var(--wiki-control-border);
+    color: var(--wiki-control-color);
     box-shadow: none;
-    color: var(--wiki-quiet-text);
-    line-height: 1;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
-.wiki-button-quiet:hover:not([disabled]) {
-    background: var(--wiki-quiet-bg-hover);
-    color: var(--wiki-quiet-text-hover);
+@media (pointer: coarse) {
+    body .wiki-button-quiet {
+        min-height: 40px;
+    }
 }
 
-.wiki-button-quiet:active:not([disabled]) {
-    background: var(--wiki-quiet-bg-active);
-    color: var(--wiki-quiet-text-hover);
+@media (prefers-reduced-motion: reduce) {
+    body :is(.wiki-button, .wiki-button-primary, .wiki-button-danger, .wiki-button-quiet, .toolbar-button, .wiki-dialog-close) {
+        transition: none;
+    }
 }
 
 /* ---------- 编辑页（控件样式由 .wiki-form 提供） ---------- */
@@ -1348,38 +1354,15 @@ body .wiki-auth .auth-external-button:focus-visible {
     margin-left: auto;
 }
 
-.toolbar-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+body .toolbar-button {
     width: 32px;
     height: 32px;
-    margin: 0;
     padding: 0;
-    border: 0;
-    border-radius: 2px;
-    /* 皮肤可能给 button 元素加了投影 / 按下缩放：工具条要保持扁平 */
-    box-shadow: none;
-    transform: none;
-    background: transparent;
-    color: #54595d;
-    font-size: 14px;
     line-height: 1;
-    cursor: pointer;
-    text-decoration: none;
-}
-
-.toolbar-button:hover {
-    background: rgba(0, 0, 0, 0.07);
-    color: #202122;
-}
-
-.toolbar-button:active {
-    background: rgba(0, 0, 0, 0.12);
 }
 
 /* 文字按钮（「语法高亮」这类，宽度自适应） */
-.toolbar-button-text {
+body .toolbar-button-text {
     width: auto;
     padding: 0 10px;
     font-size: 13px;
@@ -1387,10 +1370,9 @@ body .wiki-auth .auth-external-button:focus-visible {
 }
 
 /* 开关型按钮处于开启状态（如语法高亮） */
-.toolbar-button.active {
-    background: rgba(243, 104, 104, 0.14);
-    color: var(--wiki-accent, #f36868);
-    font-weight: 500;
+body .toolbar-button.active {
+    --wiki-control-bg: var(--wiki-quiet-bg-hover);
+    --wiki-control-color: var(--wiki-accent);
 }
 
 .toolbar-glyph {
@@ -1679,34 +1661,12 @@ body .wiki-auth .auth-external-button:focus-visible {
     font-weight: bold;
 }
 
-/* 弹窗右上角 ×：安静按钮。选择器带 .wiki-dialog 前缀提高特异性——
-   否则会被通用 button 悬停规则（或站点 / 皮肤的 button 主题）压成“悬停白块”。 */
-.wiki-dialog .wiki-dialog-close {
-    padding: 0.05em 0.35em;
-    border: 0;
-    border-radius: 2px;
-    background: transparent;
-    box-shadow: none;
-    color: var(--wiki-quiet-text);
-    font-size: 18px;
-    font-family: inherit;
+body .wiki-dialog-close {
+    flex: 0 0 auto;
+    min-width: 32px;
+    padding: 0 4px;
+    font-size: 1.2rem;
     line-height: 1;
-    cursor: pointer;
-}
-
-.wiki-dialog .wiki-dialog-close:hover {
-    background: var(--wiki-quiet-bg-hover);
-    color: var(--wiki-quiet-text-hover);
-}
-
-.wiki-dialog .wiki-dialog-close:active {
-    background: var(--wiki-quiet-bg-active);
-    color: var(--wiki-quiet-text-hover);
-}
-
-.wiki-dialog .wiki-dialog-close:focus-visible {
-    outline: 2px solid var(--wiki-focus-ring);
-    outline-offset: 1px;
 }
 
 .wiki-dialog-body {
@@ -1836,24 +1796,6 @@ body .wiki-auth .auth-external-button:focus-visible {
     display: flex;
     gap: 8px;
     padding: 0 12px 12px;
-}
-
-/* ---------- 特殊:版本：解析器标签 ---------- */
-/* 标签可点击（弹窗看用法与参数），但伪装成行内 <code> 文本：
-   按钮完全去掉外观（all: unset），不吃各皮肤的按钮主题（避免悬停变白之类的问题） */
-.version-parser-tags .version-tag-button {
-    all: unset;
-    cursor: pointer;
-}
-
-.version-parser-tags .version-tag-button:focus-visible {
-    outline: 2px solid #36c;
-    outline-offset: 2px;
-}
-
-.version-parser-tags .version-tag-button:hover code,
-.version-parser-tags .version-tag-button:focus-visible code {
-    text-decoration: underline;
 }
 
 /* ---------- <gallery>（仿 MediaWiki 画廊） ---------- */
@@ -2357,15 +2299,6 @@ body .wiki-auth .auth-external-button:focus-visible {
 .ve-dialog-title {
     flex: 1;
     font-weight: bold;
-}
-
-.ve-dialog-close {
-    border: 0;
-    background: none;
-    color: #54595d;
-    font-size: 1.3em;
-    line-height: 1;
-    cursor: pointer;
 }
 
 .ve-dialog-tabs {
@@ -4342,23 +4275,6 @@ html {
     scroll-behavior: smooth;
 }
 
-.wiki-button,
-.wiki-button-primary,
-.wiki-button-danger,
-.wiki-button-quiet {
-    transition: background-color 0.15s ease, border-color 0.15s ease,
-        color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.wiki-button:not([disabled]):active {
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-
-.wiki-button:focus-visible {
-    outline: 2px solid #36c;
-    outline-offset: 1px;
-}
-
 .wiki-form input[type="text"],
 .wiki-form input[type="search"],
 .wiki-form input[type="password"],
@@ -4375,10 +4291,7 @@ html {
     box-shadow: 0 0 0 2px rgba(51, 102, 204, 0.15);
 }
 
-.pref-tab,
-.wiki-button,
-.comment-reply-link,
-.comment-delete-link {
+.pref-tab {
     transition: background-color 0.15s ease, border-color 0.15s ease,
         color 0.12s ease, text-decoration-color 0.12s ease;
 }

@@ -96,7 +96,7 @@
                     </div>
                     <div class="form-message" role="alert" hidden="hidden"></div>
                     <div class="form-actions">
-                        <button type="submit" class="wiki-button sp-button-primary"
+                        <button type="submit" class="wiki-button wiki-button-primary"
                                 th:aria-label="#{socialProfile.board.submit}"
                                 th:text="#{socialProfile.board.submit}">发布留言</button>
                     </div>
@@ -127,10 +127,10 @@
                              th:text="#{socialProfile.board.deleted}">（这条留言已被删除）</div>
                         <div class="sp-board-body" th:unless="${row['deleted']}" th:utext="${row['contentHtml']}">正文</div>
                         <div class="sp-board-actions" th:unless="${row['deleted']}">
-                            <button type="button" class="sp-reply-button" th:attr="data-parent=${row['id']}"
+                            <button type="button" class="wiki-button wiki-button-quiet sp-reply-button" th:attr="data-parent=${row['id']}"
                                     th:if="${boardCanPost}" th:aria-label="#{socialProfile.board.reply}"
                                     th:text="#{socialProfile.board.reply}">回复</button>
-                            <button type="button" class="sp-delete-button" th:attr="data-id=${row['id']}"
+                            <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-delete-button" th:attr="data-id=${row['id']}"
                                     th:if="${row['canDelete']}" th:aria-label="#{socialProfile.board.delete}"
                                     th:text="#{socialProfile.board.delete}">删除</button>
                         </div>
@@ -153,10 +153,10 @@
                                 <div class="sp-board-body" th:unless="${reply['deleted']}"
                                      th:utext="${reply['contentHtml']}">正文</div>
                                 <div class="sp-board-actions" th:unless="${reply['deleted']}">
-                                    <button type="button" class="sp-reply-button" th:attr="data-parent=${reply['id']}"
+                                    <button type="button" class="wiki-button wiki-button-quiet sp-reply-button" th:attr="data-parent=${reply['id']}"
                                             th:if="${boardCanPost}" th:aria-label="#{socialProfile.board.reply}"
                                             th:text="#{socialProfile.board.reply}">回复</button>
-                                    <button type="button" class="sp-delete-button" th:attr="data-id=${reply['id']}"
+                                    <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-delete-button" th:attr="data-id=${reply['id']}"
                                             th:if="${reply['canDelete']}" th:aria-label="#{socialProfile.board.delete}"
                                             th:text="#{socialProfile.board.delete}">删除</button>
                                 </div>

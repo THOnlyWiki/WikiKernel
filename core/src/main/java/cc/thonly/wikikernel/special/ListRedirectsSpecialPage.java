@@ -1,22 +1,21 @@
 package cc.thonly.wikikernel.special;
 
-import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
-import cc.thonly.wikikernel.service.AccessControlService;
-import cc.thonly.wikikernel.service.WikiPageService;
+import cc.thonly.wikikernel.common.extension.SpecialPageRequest;
+import cc.thonly.wikikernel.common.web.WikiUrls;
+import cc.thonly.wikikernel.service.impl.PageReportQueries;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
-/** {@code 特殊:重定向列表} / {@code Special:ListRedirects}。 */
 @Component
-public class ListRedirectsSpecialPage extends AbstractRedirectReportPage {
+public class ListRedirectsSpecialPage extends PageListReport {
+    private final PageReportQueries queries;
 
-    public ListRedirectsSpecialPage(MessageSource messageSource,
-                                    WikiPageMapper wikiPageMapper,
-                                    WikiPageService wikiPageService,
-                                    AccessControlService accessControlService) {
-        super(messageSource, wikiPageMapper, wikiPageService, accessControlService);
+    ListRedirectsSpecialPage(MessageSource messages, PageReportQueries queries) {
+        super(messages);
+        this.queries = queries;
     }
 
     @Override
@@ -30,7 +29,15 @@ public class ListRedirectsSpecialPage extends AbstractRedirectReportPage {
     }
 
     @Override
-    protected Mode mode() {
-        return Mode.LIST;
+    protected String messageKey() {
+        return "listRedirects";
+    }
+
+    @Override
+    protected String body(SpecialPageRequest request) {
+        int start = offset(request);
+        return intro() + results(queries.redirects(start, REPORT_LIMIT, request.user()), start, Map.of(),
+                row -> "<a href=\"" + escape(WikiUrls.pagePath(row.title()) + "?redirect=no") + "\">"
+                        + escape(row.title()) + "</a> → " + link(row.value()));
     }
 }

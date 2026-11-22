@@ -1,0 +1,76 @@
+.twocolconflict {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.twocolconflict [hidden],
+.twocolconflict[hidden] {
+    display: none;
+}
+
+.twocolconflict-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.twocolconflict-option {
+    padding: 0.6rem;
+    min-width: 0;
+    border: 1px solid var(--border-color-subtle, #a2a9b1);
+    background: var(--background-color-warning-subtle, #fff2cc);
+    color: var(--color-base, #202122);
+}
+
+.twocolconflict-submitted {
+    background: var(--background-color-progressive-subtle, #eaf3ff);
+}
+
+.twocolconflict-shared {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.twocolconflict-shared .twocolconflict-option {
+    background: var(--background-color-neutral-subtle, #f8f9fa);
+}
+
+.twocolconflict-option label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.twocolconflict-option pre {
+    margin: 0.5rem 0;
+    background: transparent;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.twocolconflict-option mark {
+    background: var(--background-color-warning, #f8d165);
+    color: #202122;
+}
+
+.twocolconflict-submitted mark {
+    background: #bedbff;
+}
+
+.twocolconflict textarea {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.twocolconflict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+@media (max-width: 700px) {
+    .twocolconflict-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

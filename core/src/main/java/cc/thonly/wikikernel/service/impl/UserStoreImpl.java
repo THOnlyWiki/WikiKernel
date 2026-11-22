@@ -98,27 +98,37 @@ public class UserStoreImpl implements UserStore {
     }
 
     @Override
+    public List<UserRef> randomUsers(int limit) {
+        return sample(limit, false);
+    }
+
+    @Override
     public List<UserRef> randomWithAvatar(int limit) {
+        return sample(limit, true);
+    }
+
+    private List<UserRef> sample(int limit, boolean withAvatar) {
         if (limit <= 0) {
             return List.of();
         }
-        long total = userMapper.selectCount(Wrappers.<WikiUser>lambdaQuery()
-                .isNotNull(WikiUser::getAvatar)
-                .ne(WikiUser::getAvatar, ""));
+        var query = Wrappers.<WikiUser>lambdaQuery()
+                .isNotNull(withAvatar, WikiUser::getAvatar)
+                .ne(withAvatar, WikiUser::getAvatar, "");
+        long total = userMapper.selectCount(query);
         if (total <= 0) {
             return List.of();
         }
         int wanted = (int) Math.min(limit, total);
         // 随机起点 + 一个窗口内的用户：只查一次，避免「取全表再洗牌」
-        int start = (int) ThreadLocalRandom.current().nextLong(Math.max(total - wanted, 0) + 1);
-        return userMapper.selectList(Wrappers.<WikiUser>lambdaQuery()
-                        .isNotNull(WikiUser::getAvatar)
-                        .ne(WikiUser::getAvatar, "")
-                        .orderByAsc(WikiUser::getId)
-                        .last("limit " + wanted + " offset " + start))
-                .stream()
-                .map(UserStoreImpl::ref)
-                .toList();
+        long start = ThreadLocalRandom.current().nextLong(total);
+        query.orderByAsc(WikiUser::getId);
+        int tail = (int) Math.min(wanted, total - start);
+        var selected = new java.util.ArrayList<>(userMapper.selectList(query.clone()
+                .last("limit " + tail + " offset " + start)));
+        if (wanted > tail) {
+            selected.addAll(userMapper.selectList(query.last("limit " + (wanted - tail))));
+        }
+        return selected.stream().map(UserStoreImpl::ref).toList();
     }
 
     private static UserRef ref(WikiUser user) {

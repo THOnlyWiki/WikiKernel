@@ -1,8 +1,7 @@
 /*
  * 编辑预览（仿 MediaWiki「显示预览」）：
  * 点「显示预览」把编辑框内容 POST 到 /api/pages/preview 服务端渲染（不落盘），
- * 结果显示在编辑框上方（含目录折叠、脚注、分类栏、模板 / 微件等）；
- * 未登录 / 无编辑权限时显示服务端返回的错误提示。
+ * 工具栏实时预览复用同一接口，在输入停顿后刷新编辑区旁的预览面板。
  */
 (function () {
     'use strict';
@@ -25,9 +24,14 @@
         return MESSAGES[key] || key;
     }
 
-    /** 预览区里的目录折叠（toc.js 只在页面加载时绑定一次，预览内容是后插入的，这里补绑）。 */
-    function bindTocToggles() {
-        Array.prototype.forEach.call(preview.querySelectorAll('.toc .toctoggle'), function (toggle) {
+    function source() {
+        return window.wikiCodeEditor ? window.wikiCodeEditor.getValue() : textarea.value;
+    }
+
+    /** 预览目录的内容是后插入的，需要单独绑定折叠按钮。 */
+    function renderContent(target, html) {
+        target.innerHTML = html;
+        target.querySelectorAll('.toc .toctoggle').forEach(function (toggle) {
             toggle.addEventListener('click', function () {
                 var toc = toggle.closest ? toggle.closest('.toc') : null;
                 if (toc) {
@@ -37,46 +41,141 @@
         });
     }
 
-    function showError(text) {
-        contentBox.innerHTML = '';
+    function showError(target, text) {
+        target.replaceChildren();
         var error = document.createElement('div');
         error.className = 'form-message';
         error.textContent = text;
-        contentBox.appendChild(error);
-        preview.hidden = false;
-        preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.appendChild(error);
     }
 
-    button.addEventListener('click', function () {
+    async function fetchPreview(text, signal) {
+        var response = await fetch('/api/pages/preview', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: new URLSearchParams({ title: title, content: text }),
+            signal: signal
+        });
+        var result = await response.json().catch(function () { return null; });
+        if (!result || result.code !== 200 || !result.data || typeof result.data.html !== 'string') {
+            throw new Error((result && result.message) || msg('previewFailed'));
+        }
+        return result.data.html;
+    }
+
+    button.addEventListener('click', async function () {
         var originalText = button.textContent;
         button.disabled = true;
         button.textContent = msg('previewLoading');
-        var body = new URLSearchParams();
-        body.append('title', title);
-        body.append('content', textarea.value);
-        fetch('/api/pages/preview', {
-            method: 'POST',
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: body
-        }).then(function (response) {
-            return response.json().catch(function () {
-                return null;
-            });
-        }).then(function (result) {
+        try {
+            renderContent(contentBox, await fetchPreview(source()));
+        } catch (error) {
+            showError(contentBox, error instanceof TypeError ? msg('networkError') : error.message);
+        } finally {
             button.disabled = false;
             button.textContent = originalText;
-            if (result && result.code === 200 && result.data && typeof result.data.html === 'string') {
-                contentBox.innerHTML = result.data.html;
-                preview.hidden = false;
-                bindTocToggles();
-                preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                return;
+        }
+        if (!document.getElementById('visual-editor') || document.getElementById('visual-editor').hidden) {
+            preview.hidden = false;
+            preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+
+    var workspace = document.getElementById('wk-edit-workspace');
+    var livePanel = document.getElementById('wk-live-preview');
+    var toggle = document.getElementById('wk-live-preview-toggle');
+    if (!workspace || !livePanel || !toggle) {
+        return;
+    }
+    var viewTabs = workspace.querySelector('.wk-preview-tabs');
+    var liveContent = livePanel.querySelector('.wk-live-preview-content');
+    var liveStatus = livePanel.querySelector('.wk-live-preview-status');
+    var refresh = document.getElementById('wk-live-preview-refresh');
+    var timer;
+    var request;
+    var renderedText;
+
+    function cancelPending() {
+        clearTimeout(timer);
+        if (request) {
+            request.abort();
+            request = null;
+        }
+        liveStatus.textContent = '';
+        liveContent.removeAttribute('aria-busy');
+    }
+
+    async function updateLive(force) {
+        cancelPending();
+        var text = source();
+        if (livePanel.hidden || (!force && text === renderedText)) {
+            return;
+        }
+        var controller = new AbortController();
+        request = controller;
+        liveStatus.textContent = msg('previewLoading');
+        liveContent.setAttribute('aria-busy', 'true');
+        try {
+            var html = await fetchPreview(text, controller.signal);
+            if (request === controller) {
+                renderContent(liveContent, html);
+                renderedText = text;
             }
-            showError((result && result.message) || msg('previewFailed'));
-        }).catch(function () {
-            button.disabled = false;
-            button.textContent = originalText;
-            showError(msg('networkError'));
+        } catch (error) {
+            if (request === controller) {
+                showError(liveContent, error instanceof TypeError ? msg('networkError') : error.message);
+                renderedText = undefined;
+            }
+        } finally {
+            if (request === controller) {
+                request = null;
+                liveStatus.textContent = '';
+                liveContent.removeAttribute('aria-busy');
+            }
+        }
+    }
+
+    function showView(view) {
+        workspace.dataset.previewView = view;
+        viewTabs.querySelectorAll('[data-preview-view]').forEach(function (item) {
+            item.setAttribute('aria-pressed', String(item.dataset.previewView === view));
         });
+        if (view === 'source' && !workspace.hidden && window.wikiCodeEditor) {
+            window.wikiCodeEditor.setVisible(true);
+        }
+    }
+
+    function setLive(open) {
+        livePanel.hidden = !open;
+        viewTabs.hidden = !open;
+        workspace.classList.toggle('wk-live-open', open);
+        toggle.setAttribute('aria-pressed', String(open));
+        showView(open ? 'preview' : 'source');
+        if (open) {
+            updateLive(false);
+        } else {
+            cancelPending();
+        }
+    }
+
+    toggle.addEventListener('click', function () { setLive(livePanel.hidden); });
+    refresh.addEventListener('click', function () { updateLive(true); });
+    viewTabs.addEventListener('click', function (event) {
+        var tab = event.target.closest('[data-preview-view]');
+        if (tab) {
+            showView(tab.dataset.previewView);
+        }
+    });
+    textarea.addEventListener('input', function () {
+        if (!livePanel.hidden) {
+            cancelPending();
+            timer = setTimeout(function () { updateLive(false); }, 650);
+        }
+    });
+    form.addEventListener('wiki-edit-mode-change', function (event) {
+        button.disabled = event.detail.visual;
+        if (event.detail.visual) {
+            setLive(false);
+        }
     });
 })();

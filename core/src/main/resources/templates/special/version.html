@@ -127,7 +127,7 @@
         <tbody>
         <tr th:each="tag : ${parserTags}">
             <td>
-                <button type="button" class="version-tag-button"
+                <button type="button" class="wiki-button wiki-button-quiet version-tag-button"
                         th:attr="data-tag=${tag.name},data-source=${tag.source},
                                  data-usage=${tag.usage},data-description=${tag.description},
                                  data-aliases=${#strings.listJoin(tag.aliases, '、')}">

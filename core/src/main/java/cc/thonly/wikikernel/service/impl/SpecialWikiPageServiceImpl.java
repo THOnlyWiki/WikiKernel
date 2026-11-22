@@ -54,13 +54,18 @@ public class SpecialWikiPageServiceImpl implements SpecialWikiPageService {
         int slash = bareName.indexOf('/');
         if (slash > 0 && slash < bareName.length() - 1) {
             String base = bareName.substring(0, slash).trim();
-            String rest = WikiTitles.normalize(bareName.substring(slash + 1));
+            String rest = bareName.substring(slash + 1).strip();
             SpecialPage basePage = base.isEmpty() ? null : registry().get(normalizeKey(base));
             if (basePage != null && !rest.isEmpty()) {
                 Map<String, String> merged = new LinkedHashMap<>(parameters);
                 // 不为每个特殊页定制参数名：page（链入/相关更改/页面信息）与 name（贡献/日志）都兜底注入
-                merged.putIfAbsent(WhatLinksHereSpecialPage.PARAM_PAGE, rest);
-                merged.putIfAbsent("name", rest);
+                if (!basePage.subpageParameter().isEmpty()) {
+                    merged.putIfAbsent(basePage.subpageParameter(), rest);
+                } else {
+                    String normalized = WikiTitles.normalize(rest);
+                    merged.putIfAbsent(WhatLinksHereSpecialPage.PARAM_PAGE, normalized);
+                    merged.putIfAbsent("name", normalized);
+                }
                 return Optional.of(new SpecialPageMatch(base, basePage, merged));
             }
         }

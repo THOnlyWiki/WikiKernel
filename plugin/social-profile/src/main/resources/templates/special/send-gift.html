@@ -52,7 +52,10 @@
                     <label class="sp-gift-card" th:each="gift, iter : ${giftCatalog}">
                         <input class="sp-gift-radio" type="radio" name="gift" th:value="${gift['id']}"
                                th:checked="${iter.index == 0}"/>
-                        <span class="sp-gift-card-icon" th:text="${gift['icon']}">🎁</span>
+                        <span class="sp-gift-card-icon">
+                            <img class="sp-gift-image" th:if="${gift['imageUrl'] != null}" th:src="${gift['imageUrl']}" alt=""/>
+                            <span th:unless="${gift['imageUrl'] != null}" th:text="${gift['icon']}">🎁</span>
+                        </span>
                         <span class="sp-gift-card-name" th:text="${gift['name']}">礼物</span>
                         <span class="sp-gift-card-desc" th:text="${gift['description']}">礼物说明</span>
                     </label>
@@ -65,7 +68,7 @@
             </div>
             <div class="form-message" role="alert" hidden="hidden"></div>
             <div class="form-actions">
-                <button type="submit" class="wiki-button sp-button-primary"
+                <button type="submit" class="wiki-button wiki-button-primary"
                         th:aria-label="#{socialProfile.gifts.submit}"
                         th:text="#{socialProfile.gifts.submit}">送出礼物</button>
                 <a th:href="${giftsUrl}" th:text="#{socialProfile.gifts.receivedBox}">收到的礼物</a>

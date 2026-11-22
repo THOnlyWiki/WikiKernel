@@ -138,6 +138,9 @@
         sup: function () { insertAround('<sup>', '</sup>', msg('toolbarSupSample')); },
         sub: function () { insertAround('<sub>', '</sub>', msg('toolbarSubSample')); },
         nowiki: function () { insertAround('<nowiki>', '</nowiki>', ''); },
+        newline: function () { insertText('<br />'); },
+        gallery: function () { insertAround('<gallery>\n', '\n</gallery>', 'File:Example.png'); },
+        redirect: function () { insertAround('#REDIRECT [[', ']]', msg('toolbarLinkSample')); },
         line: function () {
             var start = selectionRange().start;
             var before = start > 0 && value().charAt(start - 1) !== '\n' ? '\n' : '';
@@ -154,6 +157,7 @@
     function closeMenus() {
         dropdowns.forEach(function (dropdown) {
             dropdown.querySelector('.toolbar-menu').hidden = true;
+            dropdown.querySelector('.toolbar-dropdown-toggle').setAttribute('aria-expanded', 'false');
         });
     }
 
@@ -163,6 +167,7 @@
         var open = menu.hidden;
         closeMenus();
         menu.hidden = !open;
+        button.setAttribute('aria-expanded', String(open));
         var body = menu.querySelector('.toolbar-menu-body');
         if (!menu.hidden && menu.classList.contains('toolbar-menu-special') && body && !body.childElementCount) {
             buildSpecialChars(body);
@@ -189,6 +194,108 @@
                 insertText(character); // 面板保持打开，方便连续插入
             });
             body.appendChild(button);
+        });
+    }
+
+    // Kawaii Timeless 的工具区和现有编辑动作共享同一选区。
+    var panelButtons = toolbar.querySelectorAll('[data-wk-panel]');
+    var characterGrid = toolbar.querySelector('.wk-editor-char-grid');
+    var currentPanel = null;
+    var findDialog = document.getElementById('wk-find-dialog');
+
+    function openPanel(target) {
+        var next = target === currentPanel ? null : target;
+        closeMenus();
+        panelButtons.forEach(function (button) {
+            var id = button.getAttribute('aria-controls');
+            var open = id === next;
+            button.setAttribute('aria-expanded', String(open));
+            document.getElementById(id).hidden = !open;
+        });
+        currentPanel = next;
+        if (next === 'wk-editor-special' && !characterGrid.childElementCount) {
+            showCharacterGroup('latin');
+        }
+    }
+
+    function unicodeLetters(first, last) {
+        return Array.from({ length: last - first + 1 }, function (_, offset) {
+            return String.fromCodePoint(first + offset);
+        }).filter(function (character) { return /\p{L}/u.test(character); });
+    }
+
+    function showCharacterGroup(group) {
+        toolbar.querySelectorAll('[data-char-group]').forEach(function (button) {
+            button.setAttribute('aria-pressed', String(button.dataset.charGroup === group));
+        });
+        var characters = {
+            latin: function () { return unicodeLetters(0xc0, 0xff); },
+            extendedLatin: function () { return unicodeLetters(0x100, 0x24f); },
+            ipa: function () { return unicodeLetters(0x250, 0x2af).concat(['ˈ', 'ˌ', 'ː', 'ˑ']); },
+            symbols: function () { return SPECIAL_CHARS; }
+        }[group]();
+        var buttons = characters.map(function (character) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.dataset.insertChar = character;
+            button.textContent = character;
+            return button;
+        });
+        characterGrid.replaceChildren.apply(characterGrid, buttons);
+        characterGrid.scrollTop = 0;
+    }
+
+    function showHelpTopic(topic) {
+        toolbar.querySelectorAll('[data-help-topic]').forEach(function (button) {
+            button.setAttribute('aria-pressed', String(button.dataset.helpTopic === topic));
+        });
+        toolbar.querySelectorAll('[data-help-example]').forEach(function (example) {
+            example.hidden = example.dataset.helpExample !== topic;
+        });
+        toolbar.querySelector('.wk-editor-examples').scrollTop = 0;
+    }
+
+    function findOrReplace(action) {
+        if (action === 'close') {
+            findDialog.close();
+            return;
+        }
+        var needle = findDialog.querySelector('[name="find"]').value;
+        var replacement = findDialog.querySelector('[name="replacement"]').value;
+        var status = findDialog.querySelector('.wk-find-status');
+        if (!needle) {
+            status.textContent = '';
+            return;
+        }
+        var text = value();
+        var range = selectionRange();
+        var index = text.indexOf(needle, range.end);
+        if (index < 0) {
+            index = text.indexOf(needle);
+        }
+        if (action === 'all') {
+            var parts = text.split(needle);
+            if (parts.length > 1) {
+                replaceRange(parts.join(replacement), 0, text.length);
+            }
+            status.textContent = status.dataset.result.replace('$1', String(parts.length - 1));
+        } else if (action === 'replace' && text.slice(range.start, range.end) === needle) {
+            replaceRange(replacement, range.start, range.end, range.start, range.start + replacement.length);
+            status.textContent = status.dataset.result.replace('$1', '1');
+        } else {
+            if (index >= 0) {
+                window.wikiCodeEditor.selectRange(index, index + needle.length);
+            }
+            status.textContent = status.dataset.result.replace('$1', index >= 0 ? '1' : '0');
+        }
+    }
+
+    if (findDialog) {
+        findDialog.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && event.target.tagName === 'INPUT') {
+                event.preventDefault();
+                findOrReplace('next');
+            }
         });
     }
 
@@ -227,6 +334,27 @@
         if (!button || !toolbar.contains(button)) {
             return;
         }
+        if (button.dataset.wkPanel) {
+            openPanel(button.getAttribute('aria-controls'));
+            return;
+        }
+        if (button.dataset.charGroup) {
+            showCharacterGroup(button.dataset.charGroup);
+            return;
+        }
+        if (button.dataset.insertChar) {
+            insertText(button.dataset.insertChar);
+            button.focus({ preventScroll: true });
+            return;
+        }
+        if (button.dataset.helpTopic) {
+            showHelpTopic(button.dataset.helpTopic);
+            return;
+        }
+        if (button.dataset.findAction) {
+            findOrReplace(button.dataset.findAction);
+            return;
+        }
         var heading = button.getAttribute('data-heading');
         if (heading) {
             applyHeading(parseInt(heading, 10));
@@ -234,6 +362,11 @@
             return;
         }
         var action = button.getAttribute('data-action');
+        if (action === 'search-replace') {
+            findDialog.showModal();
+            findDialog.querySelector('[name="find"]').focus();
+            return;
+        }
         if (action === 'file') {
             openDialog();
             closeMenus();
@@ -252,6 +385,20 @@
     document.addEventListener('click', function (event) {
         if (!toolbar.contains(event.target)) {
             closeMenus();
+        }
+    });
+
+    toolbar.addEventListener('keydown', function (event) {
+        if (event.defaultPrevented || event.key !== 'Escape' || (findDialog && findDialog.open)) {
+            return;
+        }
+        var openMenu = toolbar.querySelector('.toolbar-menu:not([hidden])');
+        if (openMenu) {
+            openMenu.parentElement.querySelector('.toolbar-dropdown-toggle').focus();
+            closeMenus();
+        } else if (currentPanel) {
+            toolbar.querySelector('[aria-controls="' + currentPanel + '"]').focus();
+            openPanel(currentPanel);
         }
     });
 

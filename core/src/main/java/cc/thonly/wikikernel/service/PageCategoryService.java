@@ -3,7 +3,9 @@ package cc.thonly.wikikernel.service;
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.wikitext.WikiLinkScanner;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 页面分类索引（{@code wiki_page_category}）：
@@ -35,6 +37,11 @@ public interface PageCategoryService {
 
     /** 页面归入的分类（规范标题 + 排序键，保持插入顺序）。 */
     List<WikiLinkScanner.CategoryRef> categoriesOf(String pageTitle);
+
+    /** Titles marked with the hidden-category behavior switch. */
+    default Set<String> hiddenTitles(Collection<String> titles) {
+        return Set.of();
+    }
 
     /** 全部分类与成员数（分类列表页）。 */
     List<CategoryCount> allCategories(int limit);

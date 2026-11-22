@@ -347,7 +347,18 @@ public class WikitextRenderer {
         withoutCategories = applyPluginBehaviorSwitches(withoutCategories);
         // <comment />（Comments 扩展）已迁到插件 comments：core 不再剥离该标签，
         // 插件注册的 ParserTag 会把它剥离并写页面属性 comments=1
-        String text = withoutCategories
+        var hiddenCategory = TrackingCategories.HIDDEN_SWITCH.matcher(withoutCategories);
+        if (hiddenCategory.find() && WikiLinkScanner.isCategoryTitle(pageTitle)) {
+            var context = CURRENT.get();
+            if (context != null) {
+                context.setProperty(TrackingCategories.HIDDEN_PROPERTY, "");
+            }
+            String trackingTitle = TrackingCategories.categoryTitle(messageSource, TrackingCategories.HIDDEN_CATEGORY);
+            if (!trackingTitle.isEmpty()) {
+                categories.add(new WikiLinkScanner.CategoryRef(trackingTitle, ""));
+            }
+        }
+        String text = hiddenCategory.reset().replaceAll("")
                 .replace("__NOTOC__", "")
                 .replace("__TOC__", "")
                 .replace("__FORCETOC__", "")
@@ -355,8 +366,7 @@ public class WikitextRenderer {
                 .replace("__NOINDEX__", "")
                 .replace("__INDEX__", "")
                 .replace("__NEWSECTIONLINK__", "")
-                .replace("__NONEWSECTIONLINK__", "")
-                .replace("__HIDDENCAT__", "");
+                .replace("__NONEWSECTIONLINK__", "");
 
         List<Heading> headings = new ArrayList<>();
         String html = renderBlocks(text, headings, new LinkedHashMap<>());
@@ -1051,7 +1061,8 @@ public class WikitextRenderer {
             return null;
         }
         RenderContextState state = CURRENT.get();
-        if (state == null || state.parserFunction(name) == null) {
+        ParserFunction extension = state == null ? null : state.parserFunction(name);
+        if (extension == null || extension.replacesBuiltIn()) {
             return null;
         }
         return parserFunction("#" + expression, frame, pageTitle, depth, stack, trusted);
@@ -1064,6 +1075,11 @@ public class WikitextRenderer {
                 .trim().toLowerCase(Locale.ROOT);
         String rest = colon < 0 ? "" : expression.substring(colon + 1);
         List<String> args = splitTopLevel(rest, '|');
+        RenderContextState functionContext = CURRENT.get();
+        ParserFunction extension = functionContext == null ? null : functionContext.parserFunction(name);
+        if (extension != null && extension.replacesBuiltIn()) {
+            return extension.invoke(new PluginFunctionCall(functionContext, args, frame, pageTitle, depth, stack, trusted));
+        }
         switch (name) {
             case "if" -> {
                 String condition = args.isEmpty() ? ""
@@ -1325,10 +1341,8 @@ public class WikitextRenderer {
             }
             default -> {
                 // 插件解析器函数（如 Variables 的 #var / WikiSEO 的 #seo）
-                RenderContextState state = CURRENT.get();
-                ParserFunction function = state == null ? null : state.parserFunction(name);
-                if (function != null) {
-                    return function.invoke(new PluginFunctionCall(state, args, frame, pageTitle, depth, stack, trusted));
+                if (extension != null) {
+                    return extension.invoke(new PluginFunctionCall(functionContext, args, frame, pageTitle, depth, stack, trusted));
                 }
                 return "{{" + expression + "}}";
             }
@@ -1475,6 +1489,16 @@ public class WikitextRenderer {
 
     // ==================== 插件扩展点支持 ====================
     private final class PluginFunctionCall implements ParserFunctionCall {
+
+        @Override
+        public int assignmentSeparator(String argument) {
+            return indexOfTopLevel(argument, '=');
+        }
+
+        @Override
+        public boolean pageExists(String title) {
+            return pageExistenceService != null && pageExistenceService.exists(title);
+        }
 
         private final RenderContextState state;
         private final List<String> args;

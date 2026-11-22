@@ -25,12 +25,15 @@
     var messageBox = document.getElementById('visual-editor-message');
     var toolbar = document.getElementById('wiki-editor-toolbar');
     var preview = document.getElementById('wiki-preview');
+    var workspace = document.getElementById('wk-edit-workspace');
+    var switchSource = panel.querySelector('[data-ve-switch-source]');
     var submitButton = form ? form.querySelector('button[type="submit"]') : null;
     var title = form ? (form.getAttribute('data-title') || '') : '';
     var messages = window.WIKI_MESSAGES || {};
     var tokens = [];
     var active = false;
     var dirty = false;
+    var busy = false;
     // ?veaction=edit 打开时页面加载即进入可视化编辑（与 MediaWiki 的 URL 参数一致）
     var autoOpen = panel.getAttribute('data-ve-auto') === '1';
 
@@ -77,7 +80,12 @@
     }
 
     function setEditChromeVisible(visible) {
-        if (textarea) {
+        if (workspace) {
+            workspace.hidden = !visible;
+        }
+        if (window.wikiCodeEditor) {
+            window.wikiCodeEditor.setVisible(visible);
+        } else if (textarea) {
             textarea.hidden = !visible;
         }
         if (toolbar) {
@@ -89,6 +97,24 @@
         if (submitButton) {
             submitButton.disabled = !visible;
         }
+        if (switchSource) {
+            document.getElementById('ca-edit')?.classList.toggle('selected', visible);
+            document.getElementById('ca-ve-edit')?.classList.toggle('selected', !visible);
+        }
+        form.dispatchEvent(new CustomEvent('wiki-edit-mode-change', { detail: { visual: !visible } }));
+    }
+
+    function currentText() {
+        return window.wikiCodeEditor ? window.wikiCodeEditor.getValue() : textarea.value;
+    }
+
+    function setBusy(value) {
+        busy = value;
+        [openButton, applyButton, exitButton, switchSource].forEach(function (button) {
+            if (button) {
+                button.disabled = value;
+            }
+        });
     }
 
     function close() {
@@ -109,7 +135,7 @@
     }
 
     function open() {
-        if (!textarea) {
+        if (!textarea || busy || active) {
             return;
         }
         try {
@@ -118,13 +144,18 @@
         } catch (error) {
             /* 部分浏览器不支持：忽略 */
         }
-        openButton && (openButton.disabled = true);
+        var source = currentText();
+        setBusy(true);
         showMessage(msg('veLoading'), true);
-        post('/api/pages/visual/render', { title: title, content: textarea.value })
+        post('/api/pages/visual/render', { title: title, content: source })
             .then(function (result) {
-                openButton && (openButton.disabled = false);
+                setBusy(false);
                 if (!result || result.code !== 200) {
                     showMessage((result && result.message) || msg('veFailed'));
+                    return;
+                }
+                if (source !== currentText()) {
+                    showMessage(msg('veSourceChanged'));
                     return;
                 }
                 tokens = (result.data && result.data.tokens) || [];
@@ -139,32 +170,52 @@
                 surface.focus();
             })
             .catch(function () {
-                openButton && (openButton.disabled = false);
+                setBusy(false);
                 showMessage(msg('veFailed'));
             });
     }
 
     function apply() {
-        if (!active || !textarea) {
+        if (!active || !textarea || busy) {
             return;
         }
-        applyButton.disabled = true;
+        if (!dirty) {
+            close();
+            window.wikiCodeEditor?.focus();
+            return;
+        }
+        setBusy(true);
+        surface.contentEditable = 'false';
         showMessage(msg('veApplying'), true);
         post('/api/pages/visual/serialize', {
             title: title,
             html: surface.innerHTML,
             tokens: JSON.stringify(tokens)
         }).then(function (result) {
-            applyButton.disabled = false;
+            setBusy(false);
+            surface.contentEditable = 'true';
             if (!result || result.code !== 200) {
                 showMessage((result && result.message) || msg('veFailed'));
                 return;
             }
-            textarea.value = (result.data && result.data.text) || '';
+            var text = result.data && result.data.text;
+            if (typeof text !== 'string') {
+                showMessage(msg('veFailed'));
+                return;
+            }
+            if (window.wikiCodeEditor) {
+                window.wikiCodeEditor.setValue(text);
+            } else {
+                textarea.value = text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
             close();
+            window.wikiEditDraft?.save();
+            window.wikiCodeEditor?.focus();
             showMessage(msg('veApplied'), true);
         }).catch(function () {
-            applyButton.disabled = false;
+            setBusy(false);
+            surface.contentEditable = 'true';
             showMessage(msg('veFailed'));
         });
     }
@@ -183,7 +234,7 @@
         box.innerHTML = '<div class="ve-dialog-backdrop"></div>'
             + '<div class="ve-dialog-box" role="dialog" aria-modal="true">'
             + '<div class="ve-dialog-head"><span class="ve-dialog-title"></span>'
-            + '<button type="button" class="ve-dialog-close" title="' + msg('veDialogClose') + '">×</button></div>'
+            + '<button type="button" class="wiki-dialog-close ve-dialog-close" title="' + msg('veDialogClose') + '">×</button></div>'
             + '<div class="ve-dialog-tabs" hidden>'
             + '<button type="button" data-ve-tab="params"></button>'
             + '<button type="button" data-ve-tab="gallery"></button>'
@@ -787,6 +838,41 @@
     if (openButton) {
         openButton.addEventListener('click', open);
     }
+    if (switchSource) {
+        switchSource.addEventListener('click', apply);
+        document.querySelectorAll('#ca-edit a, #ca-ve-edit a').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                    return;
+                }
+                event.preventDefault();
+                if (link.closest('#ca-ve-edit')) {
+                    open();
+                } else {
+                    apply();
+                }
+            });
+        });
+        form.querySelectorAll('.wk-edit-mode').forEach(function (menu) {
+            menu.addEventListener('click', function (event) {
+                if (event.target.closest('.wk-mode-options button')) {
+                    menu.open = false;
+                }
+            });
+            menu.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && menu.open) {
+                    event.stopPropagation();
+                    menu.open = false;
+                    menu.querySelector('summary').focus();
+                }
+            });
+            document.addEventListener('click', function (event) {
+                if (!menu.contains(event.target)) {
+                    menu.open = false;
+                }
+            });
+        });
+    }
     applyButton.addEventListener('click', apply);
     exitButton.addEventListener('click', function () {
         if (dirty && !window.confirm(msg('veDiscardConfirm'))) {
@@ -801,6 +887,9 @@
             event.preventDefault(); // 保持选区
         });
         button.addEventListener('click', function () {
+            if (busy) {
+                return;
+            }
             var command = button.getAttribute('data-ve-command');
             surface.focus();
             if (command === 'bold' || command === 'italic') {
@@ -887,6 +976,10 @@
 
     // 源码块 / 模板块：点击打开对话框（模板块里是渲染预览，链接不跳转）
     surface.addEventListener('click', function (event) {
+        if (busy) {
+            event.preventDefault();
+            return;
+        }
         var chip = event.target && event.target.closest ? event.target.closest('.ve-token') : null;
         if (!chip) {
             return;

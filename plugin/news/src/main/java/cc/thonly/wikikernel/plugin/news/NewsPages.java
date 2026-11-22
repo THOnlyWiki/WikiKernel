@@ -10,14 +10,18 @@ public class NewsPages implements PageDisplayHook, HtmlHeadProvider {
     public NewsPages(NewsService news) { this.news = news; }
     public boolean siteWide() { return true; }
     public int order() { return 650; }
+    @Override
+    public String editDestination(String title) {
+        return (title.equals("新闻") || title.matches("新闻/[0-9]+")) && news.enabled() ? "特殊:新闻管理" : null;
+    }
     public List<String> headItems(HeadContext context) {
         if (!news.enabled()) return List.of();
         String title = context.pageTitle().replace('_', ' ');
         if (!title.equals("新闻") && !title.startsWith("新闻/")
                 && !title.endsWith(":新闻管理") && !title.endsWith(":Newsroom")
                 && !context.properties().containsKey("news-used")) return List.of();
-        return List.of("<link rel=\"stylesheet\" href=\"/plugins/news/news.css?v=2\">",
-                "<script defer src=\"/plugins/news/news.js?v=3\"></script>");
+        return List.of("<link rel=\"stylesheet\" href=\"/plugins/news/news.css?v=5\">",
+                "<script defer src=\"/plugins/news/news.js?v=5\"></script>");
     }
 
     public String renderMissingPage(PageDisplayContext context) { return renderBody(context); }
@@ -27,12 +31,12 @@ public class NewsPages implements PageDisplayHook, HtmlHeadProvider {
             return "<section class=\"news-portal\" data-news-page><h2>活动资讯</h2>"
                     + "<p>活动定档、重要变更、报名与返图消息。</p>"
                     + "<a href=\"" + WikiUrls.pagePath("特殊:新闻管理") + "\">投稿与管理</a>"
-                    + "<form data-news-filter><label>搜索<input name=\"q\" type=\"search\"></label>"
+                    + "<form class=\"news-filter\" data-news-filter><label>搜索<input name=\"q\" type=\"search\"></label>"
                     + "<label>地区<select name=\"region\"><option value=\"\">全部地区</option></select></label>"
                     + "<label>类型<select name=\"category\"><option value=\"\">全部</option>"
                     + NewsService.CATEGORIES.stream().map(c -> "<option>" + c + "</option>").collect(java.util.stream.Collectors.joining())
-                    + "</select></label><button>查询</button></form><div data-news-list>正在载入…</div>"
-                    + "<button type=\"button\" data-news-more>加载更多</button></section>";
+                    + "</select></label><button type=\"submit\" class=\"wiki-button wiki-button-primary\">查询</button></form><div data-news-list>正在载入…</div>"
+                    + "<button type=\"button\" class=\"wiki-button\" data-news-more>加载更多</button></section>";
         }
         if (!context.title().matches("新闻/[0-9]+")) return null;
         try {

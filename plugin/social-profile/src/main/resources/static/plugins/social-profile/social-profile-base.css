@@ -245,11 +245,6 @@
     white-space: nowrap;
 }
 
-.message-delete {
-    transition: background-color 0.15s ease, border-color 0.15s ease,
-        color 0.12s ease, text-decoration-color 0.12s ease;
-}
-
 .message-view {
     margin-top: 0.5em;
 }

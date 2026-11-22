@@ -59,7 +59,10 @@
             </thead>
             <tbody>
             <tr th:each="row : ${giftManagerRows}">
-                <td class="gift-manager-icon" th:text="${row['icon']}">🎁</td>
+                <td class="gift-manager-icon">
+                    <img class="sp-gift-image" th:if="${row['imageUrl'] != null}" th:src="${row['imageUrl']}" alt=""/>
+                    <span th:unless="${row['imageUrl'] != null}" th:text="${row['icon']}">🎁</span>
+                </td>
                 <td th:text="${row['name']}">礼物名称</td>
                 <td th:text="${row['description']}">说明</td>
                 <td>
@@ -67,6 +70,16 @@
                     <span th:unless="${row['enabled']}" th:text="#{socialProfile.giftManager.disabledState}">已停用</span>
                 </td>
                 <td>
+                    <form class="gift-manager-image" method="post" enctype="multipart/form-data"
+                          action="/api/social-profile/gift/image" data-reload="true" th:if="${row['canManage']}">
+                        <input type="hidden" name="id" th:value="${row['id']}"/>
+                        <label th:for="|gift-image-${row['id']}|" th:text="#{socialProfile.giftManager.image}">礼物图片</label>
+                        <input th:id="|gift-image-${row['id']}|" type="file" name="image"
+                               accept="image/png,image/jpeg,image/gif" required/>
+                        <button type="submit" class="wiki-button"
+                                th:text="#{socialProfile.giftManager.imageUpload}">上传图片</button>
+                        <p class="form-message" role="status" hidden></p>
+                    </form>
                     <form class="gift-manager-toggle" method="post"
                           action="/api/social-profile/gift/toggle" data-reload="true"
                           th:if="${row['canManage'] and row['enabled']}">

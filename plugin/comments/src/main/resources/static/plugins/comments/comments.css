@@ -124,35 +124,12 @@
     font-style: italic;
 }
 
-/* 操作：回复（蓝）/ 删除（红），小字紧凑 */
+/* 评论操作沿用 Core 的行内按钮。 */
 .comment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
     margin-top: 0.05em;
-    font-size: 0.8125em;
-    line-height: 1.6;
-}
-
-.comment-reply-link,
-.comment-delete-link,
-.message-delete {
-    border: 0;
-    background: transparent;
-    padding: 0;
-    margin-right: 0.9em;
-    color: #36c;
-    font: inherit;
-    font-size: inherit;
-    cursor: pointer;
-}
-
-.comment-reply-link:hover,
-.comment-delete-link:hover,
-.message-delete:hover {
-    text-decoration: underline;
-}
-
-.comment-delete-link,
-.message-delete {
-    color: #d73333;
 }
 
 /* 输入区：移到评论区最上面；简洁紧凑的小输入框 */

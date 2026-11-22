@@ -92,7 +92,7 @@
                         <span class="sp-sep">·</span>
                         <span class="sp-award-time" th:text="${row['timeText']}">时间</span>
                     </span>
-                    <button type="button" class="sp-award-revoke" th:if="${row['canRevoke']}"
+                    <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-award-revoke" th:if="${row['canRevoke']}"
                             th:attr="data-id=${row['id']}"
                             th:aria-label="#{socialProfile.awards.revoke}"
                             th:text="#{socialProfile.awards.revoke}">撤销</button>

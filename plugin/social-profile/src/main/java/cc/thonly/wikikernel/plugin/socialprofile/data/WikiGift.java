@@ -1,6 +1,8 @@
 package cc.thonly.wikikernel.plugin.socialprofile.data;
 
 import cc.thonly.wikikernel.common.data.DbColumn;
+import cc.thonly.wikikernel.common.data.DbType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -42,6 +44,12 @@ public class WikiGift {
     /** 图标（emoji / 单个字符，最长 16 个 UTF-16 单元）。 */
     @DbColumn(length = 16, defaultValue = "'🎁'")
     private String icon = "🎁";
+
+    @DbColumn(type = DbType.BLOB)
+    private byte[] imageData;
+
+    @TableField(exist = false)
+    private boolean hasImage;
 
     /** 创建者用户 ID。 */
     @DbColumn

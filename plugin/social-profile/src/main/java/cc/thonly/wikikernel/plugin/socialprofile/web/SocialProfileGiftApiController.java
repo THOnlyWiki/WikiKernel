@@ -6,6 +6,15 @@ import cc.thonly.wikikernel.common.service.UserStore;
 import cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport;
 import cc.thonly.wikikernel.plugin.socialprofile.data.WikiUserGift;
 import cc.thonly.wikikernel.plugin.socialprofile.service.GiftService;
+import cc.thonly.wikikernel.plugin.socialprofile.service.GiftImage;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -95,6 +104,37 @@ public class SocialProfileGiftApiController extends SocialProfileApiSupport {
         } catch (GiftService.GiftException exception) {
             return fail(exception);
         }
+    }
+
+    @PostMapping(path = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> uploadImage(@RequestParam("id") long id, @RequestParam("image") MultipartFile image) {
+        Map<String, Object> closed = gateLoggedIn();
+        if (closed != null) {
+            return closed;
+        }
+        try {
+            if (image.isEmpty() || image.getSize() > GiftImage.MAX_BYTES) {
+                return error("socialProfile.giftManager.imageInvalid");
+            }
+            try (var input = image.getInputStream()) {
+                gifts.updateImage(userId(), isAdmin(), id, GiftImage.resize(input));
+            }
+            return ok("socialProfile.giftManager.imageSaved", null);
+        } catch (IOException | IllegalArgumentException invalidImage) {
+            return error("socialProfile.giftManager.imageInvalid");
+        } catch (GiftService.GiftException exception) {
+            return fail(exception);
+        }
+    }
+
+    @GetMapping(value = "/image/{id}", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> image(@PathVariable("id") long id) {
+        if (gate() != null) {
+            return ResponseEntity.notFound().build();
+        }
+        return gifts.image(id).map(data -> ResponseEntity.ok().contentType(MediaType.IMAGE_PNG)
+                .cacheControl(CacheControl.noCache()).body(data))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /** 启用 / 停用自定义礼物（创建者本人或管理员）。 */

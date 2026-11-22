@@ -2,7 +2,9 @@ package cc.thonly.wikikernel.service.impl;
 
 import cc.thonly.wikikernel.common.data.WikiPage;
 import cc.thonly.wikikernel.common.data.WikiPageCategory;
+import cc.thonly.wikikernel.common.service.PagePropertyStore;
 import cc.thonly.wikikernel.common.util.Strings;
+import cc.thonly.wikikernel.wikitext.TrackingCategories;
 import cc.thonly.wikikernel.db.mapper.WikiPageCategoryMapper;
 import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.service.PageCategoryService;
@@ -21,6 +23,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.stream.Collectors;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -56,6 +60,8 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
     private final WikitextRenderer wikitextRenderer;
     private final PageLinkService pageLinkService;
     private final PageIndexGate indexGate;
+    private final PagePropertyStore pageProperties;
+    private final PagePropertyEventListener pageReports;
     private final TransactionTemplate transactionTemplate;
 
     /** 本服务的索引写入串行锁：本页索引队列与后台依赖队列可能同时重建同一页，避免删/插交错。 */
@@ -67,6 +73,8 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
                                    WikitextRenderer wikitextRenderer,
                                    PageLinkService pageLinkService,
                                    PageIndexGate indexGate,
+                                   PagePropertyStore pageProperties,
+                                   PagePropertyEventListener pageReports,
                                    PlatformTransactionManager transactionManager) {
         this.categoryMapper = categoryMapper;
         this.wikiPageMapper = wikiPageMapper;
@@ -74,6 +82,8 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
         this.wikitextRenderer = wikitextRenderer;
         this.pageLinkService = pageLinkService;
         this.indexGate = indexGate;
+        this.pageProperties = pageProperties;
+        this.pageReports = pageReports;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -141,10 +151,26 @@ public class PageCategoryServiceImpl implements PageCategoryService, Application
         for (WikiPage page : pageLinkService.pagesTranscluding(templateTitle, DEPENDENT_LIMIT)) {
             try {
                 reindex(page.getId());
+                pageReports.reindex(page.getId());
             } catch (RuntimeException exception) {
-                log.warn("重建依赖页分类索引失败: {}", page.getTitle(), exception);
+                log.warn("重建依赖页分类与页面索引失败: {}", page.getTitle(), exception);
             }
         }
+    }
+
+    @Override
+    public Set<String> hiddenTitles(Collection<String> titles) {
+        if (titles.isEmpty()) {
+            return Set.of();
+        }
+        indexGate.awaitIdle();
+        List<WikiPage> pages = wikiPageMapper.selectList(Wrappers.<WikiPage>lambdaQuery()
+                .select(WikiPage::getId, WikiPage::getTitle)
+                .in(WikiPage::getTitle, titles).eq(WikiPage::getDeleted, false));
+        var properties = pageProperties.batch(pages.stream().map(WikiPage::getId).toList(),
+                List.of(TrackingCategories.HIDDEN_PROPERTY));
+        return pages.stream().filter(page -> properties.containsKey(page.getId()))
+                .map(WikiPage::getTitle).collect(Collectors.toSet());
     }
 
     @Override

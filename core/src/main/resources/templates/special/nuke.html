@@ -87,10 +87,10 @@
 
             <div class="form-message" role="alert" hidden></div>
             <div class="form-actions">
-                <button type="submit" id="nuke-delete-selected" class="wiki-button"
+                <button type="submit" id="nuke-delete-selected" class="wiki-button wiki-button-danger"
                         th:attr="data-confirm-template=#{nuke.confirmSelected('__N__')}"
                         th:text="#{nuke.deleteSelected}">删除所选页面</button>
-                <button type="submit" id="nuke-delete-all" class="wiki-button"
+                <button type="submit" id="nuke-delete-all" class="wiki-button wiki-button-danger"
                         th:attr="data-confirm-template=#{nuke.confirmAll('__N__')}"
                         th:text="#{nuke.deleteAll}">删除全部匹配页面</button>
             </div>

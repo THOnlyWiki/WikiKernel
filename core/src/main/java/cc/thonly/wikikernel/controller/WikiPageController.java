@@ -24,6 +24,8 @@ import cc.thonly.wikikernel.common.util.Strings;
 import cc.thonly.wikikernel.config.PluginHeadAdvice;
 import cc.thonly.wikikernel.http.RequestMetadata;
 import cc.thonly.wikikernel.plugin.PluginManager;
+import cc.thonly.wikikernel.common.extension.EditConflictUi;
+import cc.thonly.wikikernel.wikitext.ParagraphDiff;
 import cc.thonly.wikikernel.service.AccessControlService;
 import cc.thonly.wikikernel.service.BlockService;
 import cc.thonly.wikikernel.service.EditHookService;
@@ -125,7 +127,8 @@ public class WikiPageController {
     private static final Set<String> QUERY_VIEWS = Set.of(
             "special/all-pages", "special/new-pages", "special/list-files", "special/log",
             "special/all-messages", "special/what-links-here", "special/search", "special/user-rights",
-            "special/nuke", "special/export", "special/replace-text");
+            "special/nuke", "special/export", "special/replace-text", "special/page-list-report",
+            "special/disambiguation-report");
 
     /** #REDIRECT 链最多解析跳数（超过按普通页面渲染，防止死循环）。 */
     private static final int MAX_REDIRECTS = 5;
@@ -288,7 +291,7 @@ public class WikiPageController {
             if ("info".equals(parameters.getOrDefault("action", ""))) {
                 return renderPageInfo(fullTitle, parameters, request);
             }
-            return this.specialWikiPageService.resolve(fullTitle, parameters)
+            return this.specialWikiPageService.resolve(requestedTitle, parameters)
                     .map(match -> renderSpecialPage(match, request))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             message("error.specialPageMissing", fullTitle)));
@@ -313,6 +316,14 @@ public class WikiPageController {
         //   ?veaction=edit       → 可视化编辑（不可用时与 MediaWiki 一样回退到源代码编辑）
         //   ?veaction=editsource → 源代码编辑
         String veaction = Strings.trimToEmpty(parameters.get("veaction"));
+        String action = parameters.getOrDefault("action", "view");
+        if ("edit".equals(action) || "edit".equals(veaction) || "editsource".equals(veaction)) {
+            String destination = this.pageDisplayHookService.editDestination(fullTitle);
+            if (destination != null) {
+                requireRead(fullTitle, UserSession.current(request));
+                return new ModelAndView("redirect:" + WikiUrls.pagePath(destination));
+            }
+        }
         if ("edit".equals(veaction) || "editsource".equals(veaction)) {
             WikiPage vePage = this.wikiPageService.getByTitle(fullTitle).orElse(null);
             WikiUser veUser = UserSession.current(request);
@@ -323,7 +334,6 @@ public class WikiPageController {
             return new ModelAndView("redirect:" + WikiUrls.pagePath(fullTitle) + "?action=edit"
                     + (oldId == null ? "" : "&oldid=" + oldId));
         }
-        String action = parameters.getOrDefault("action", "view");
         return switch (action) {
             case "edit" -> renderEdit(fullTitle, parameters, request);
             case "history" -> renderHistory(fullTitle, request);
@@ -547,8 +557,9 @@ public class WikiPageController {
 
         // 整页编辑：基于的版本已被他人推进时进入「编辑冲突提示」页（不自动合并、不直接覆盖）。
         // 管理员带 force=1 时跳过检查，进入下面的强制写入路径。
+        WikiRevision latestRevision = existing == null ? null
+                : this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
         if (!forceSave && section == null && existing != null) {
-            WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
             if (latestRevision != null && baserevid != null
                     && !Objects.equals(baserevid, latestRevision.getId())) {
                 return conflictNoticeView(normalized, existing, user, content, null, comment);
@@ -562,7 +573,7 @@ public class WikiPageController {
         if (sectionEdit) {
             // 段落编辑只展开这次提交的段落：讨论页里其他人保存过的签名不能按当前用户重签。
             String submittedSection = SignatureExpander.expand(content, user, LocalDateTime.now());
-            saveContent = mergeSection(existing, section, submittedSection, baserevid, forceSave);
+            saveContent = mergeSection(existing, latestRevision, section, submittedSection, baserevid, forceSave);
             if (saveContent == null) {
                 return conflictNoticeView(normalized, existing, user, content, section, comment);
             }
@@ -592,7 +603,6 @@ public class WikiPageController {
                 saved = this.wikiPageService.editPage(user, normalized, saveContent, comment,
                         botEditFlag, minorEditFlag, changeTags, false);
             } else {
-                WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
                 saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
                         botEditFlag, minorEditFlag, changeTags,
                         latestRevision == null ? existing.getLatestRevisionId() : latestRevision.getId(),
@@ -615,8 +625,7 @@ public class WikiPageController {
                         botEditFlag, minorEditFlag, changeTags);
             } else {
                 // 保存瞬间又被别人改写（竞态）时 CAS 会失败：同样进入冲突提示页
-                Long expected = this.wikiPageService.getLatestRevision(existing.getId())
-                        .map(WikiRevision::getId).orElse(existing.getLatestRevisionId());
+                Long expected = latestRevision == null ? existing.getLatestRevisionId() : latestRevision.getId();
                 saved = this.wikiPageService.editPageIfLatest(user, normalized, saveContent, comment,
                         botEditFlag, minorEditFlag, changeTags, expected);
             }
@@ -638,9 +647,8 @@ public class WikiPageController {
      * 段落不存在 / 基准版本已过期且该段被别人改过 / 替换失败时返回 {@code null}（调用方进入编辑冲突提示页）。
      * {@code force=true}（管理员强制提交）时跳过「该段是否被别人改过」的比较，直接替换最新版里的对应段落。
      */
-    private String mergeSection(WikiPage existing, Integer section, String content, Long baserevid,
-                                boolean force) {
-        WikiRevision latestRevision = this.wikiPageService.getLatestRevision(existing.getId()).orElse(null);
+    private String mergeSection(WikiPage existing, WikiRevision latestRevision, Integer section,
+                                String content, Long baserevid, boolean force) {
         String latest = latestRevision == null
                 ? this.wikiPageService.getLatestContent(existing.getId()).orElse("")
                 : latestRevision.getContent();
@@ -1244,10 +1252,12 @@ public class WikiPageController {
 
     /** 分类栏模型：规范标题 + 显示名 + URL + 是否红链（分类说明页不存在）。 */
     private List<Map<String, Object>> categoryRows(List<WikiLinkScanner.CategoryRef> refs) {
+        Set<String> hidden = this.pageCategoryService.hiddenTitles(
+                refs.stream().map(WikiLinkScanner.CategoryRef::title).toList());
         List<Map<String, Object>> rows = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
         for (WikiLinkScanner.CategoryRef ref : refs) {
-            if (!seen.add(ref.title())) {
+            if (hidden.contains(ref.title()) || !seen.add(ref.title())) {
                 continue;
             }
             boolean red = this.wikiPageService.getVisibleByTitle(ref.title()).isEmpty();
@@ -1421,6 +1431,7 @@ public class WikiPageController {
      */
     private ModelAndView conflictNoticeView(String title, WikiPage page, WikiUser user,
                                             String submittedContent, Integer section, String comment) {
+        requireRead(title, user);
         WikiRevision latestRevision = this.wikiPageService.getLatestRevision(page.getId()).orElse(null);
         String latestContent = latestRevision == null
                 ? this.wikiPageService.getLatestContent(page.getId()).orElse("")
@@ -1484,6 +1495,12 @@ public class WikiPageController {
         modelAndView.addObject("canForceSave", isAdmin(user));
         modelAndView.addObject("editConflictNotice", intro);
         modelAndView.addObject("editConflictStructureChanged", structureChanged);
+        List<EditConflictUi> conflictUis = pluginManager.extensions(EditConflictUi.class);
+        if (structureChanged == null && codeLanguage(title) == null && !conflictUis.isEmpty()) {
+            modelAndView.addObject("editConflictTemplate", conflictUis.getFirst().template());
+            modelAndView.addObject("editConflictBlocks", ParagraphDiff.compare(latestForDiff, submittedContent));
+            modelAndView.addObject("showEditToolbar", false);
+        }
         modelAndView.addObject("editConflictDiffRows", DiffRows.build(submittedContent, latestForDiff));
         modelAndView.addObject("editConflictLatestUrl", WikiUrls.pagePath(title));
         modelAndView.addObject("editConflictDiffUrl", latestRevision == null ? null
@@ -1650,6 +1667,8 @@ public class WikiPageController {
         boolean canMove = this.accessControlService.can(AccessAction.MOVE, title, user)
                 && (page == null || !Boolean.TRUE.equals(page.getProtectedPage()) || isAdmin(user));
         modelAndView.addObject("canEditPage", canEditPage(title, page, user));
+        boolean pluginManagesEditing = this.pageDisplayHookService.editDestination(title) != null;
+        modelAndView.addObject("pluginManagesEditing", pluginManagesEditing);
         modelAndView.addObject("canMove", canMove);
         modelAndView.addObject("canProtect", this.accessControlService.can(AccessAction.PROTECT, title, user));
         // 删除：与移动一致，受保护页面只有管理员能删
@@ -1670,7 +1689,7 @@ public class WikiPageController {
         modelAndView.addObject("editWatchChecked", user != null && this.watchService.isWatched(user.getId(), title));
         // 页签：可视化编辑（?veaction=edit）仅在页面可编辑且是 Wikitext 页面时显示
         modelAndView.addObject("canVisualEdit",
-                page != null && codeLanguage(title) == null && canEditPage(title, page, user));
+                !pluginManagesEditing && page != null && codeLanguage(title) == null && canEditPage(title, page, user));
         modelAndView.addObject("veMode", false);
     }
 

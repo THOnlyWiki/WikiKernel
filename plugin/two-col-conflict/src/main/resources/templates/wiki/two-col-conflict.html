@@ -1,0 +1,40 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="resolution">
+    <link rel="stylesheet" th:href="@{/plugins/two-col-conflict/two-col-conflict.css}"/>
+    <script defer th:src="@{/plugins/two-col-conflict/two-col-conflict.js}"></script>
+    <section class="twocolconflict" data-conflict-resolution hidden>
+        <h2 th:text="#{twoColConflict.title}">按段落解决编辑冲突</h2>
+        <p th:text="#{twoColConflict.hint}">依次选择要保留的段落，也可以编辑选中的文字。</p>
+        <details>
+            <summary th:text="#{twoColConflict.draft}">查看完整草稿</summary>
+            <textarea readonly rows="7" th:text="|${' '}${editContent}|" data-conflict-draft></textarea>
+        </details>
+        <div class="twocolconflict-row" th:each="block, loop : ${editConflictBlocks}"
+             th:classappend="${block.same} ? 'twocolconflict-shared' : ''" data-conflict-block>
+            <div th:each="side : ${block.same ? {'current'} : {'current', 'submitted'}}"
+                 th:class="|twocolconflict-option twocolconflict-${side}|"
+                 th:with="mine=${side == 'submitted'}, highlight=${mine ? block.submittedHighlight : block.currentHighlight}, raw=${mine ? block.submitted : block.current}"
+                 data-conflict-option>
+                <label>
+                    <input th:unless="${block.same}" type="radio" th:name="|conflict-choice-${loop.index}|"
+                           th:checked="${!mine}" />
+                    <span th:if="${block.same}" th:text="#{twoColConflict.shared}">相同段落</span>
+                    <span th:unless="${block.same}" th:text="${mine} ? #{twoColConflict.submitted} : #{twoColConflict.current}">当前版本</span>
+                </label>
+                <pre data-conflict-preview><span th:text="${highlight.before}"></span><mark
+                        th:if="${!highlight.change.isEmpty()}" th:text="${highlight.change}"></mark><span
+                        th:text="${highlight.after}"></span><em th:if="${raw.isEmpty()}" th:text="#{twoColConflict.empty}">此版本无文字</em></pre>
+                <textarea data-conflict-source hidden th:text="|${' '}${raw}|"></textarea>
+                <textarea data-conflict-text hidden rows="5"
+                          th:aria-label="#{twoColConflict.edit}"></textarea>
+                <div class="twocolconflict-actions">
+                    <button type="button" class="wiki-button wiki-button-quiet" data-conflict-edit
+                            th:disabled="${mine}" th:text="#{twoColConflict.edit}">编辑段落</button>
+                    <button type="button" class="wiki-button" data-conflict-apply hidden
+                            th:text="#{twoColConflict.apply}">应用</button>
+                    <button type="button" class="wiki-button wiki-button-quiet" data-conflict-reset hidden
+                            th:text="#{common.cancel}">取消</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

@@ -119,9 +119,9 @@ class SocialProfileHooksTest {
         assertTrue(top.contains("送一份礼物"), top);
         assertTrue(top.contains(">贡献</a>"), top);
 
-        // 本人：编辑个人资料 / 上传头像 / 监视列表 / 贡献
+        // 编辑链接在个人信息标题栏，顶部保留个人工具。
         String self = hook.profileTopHtml(profile(1, "甲", true, SocialProfileFakes.viewer(1, "甲")));
-        assertTrue(self.contains("编辑个人资料"), self);
+        assertFalse(self.contains("编辑个人资料"), self);
         assertTrue(self.contains("上传头像"), self);
         assertTrue(self.contains("监视列表"), self);
         assertFalse(self.contains("data-friend-add"), "本人不显示加好友：" + self);
@@ -230,14 +230,17 @@ class SocialProfileHooksTest {
         assertTrue(self.contains("<b>性别</b> 女"), "没关的字段仍然显示：" + self);
         assertFalse(self.contains("/api/social-profile/board/post"), "自己的板不给输入框：" + self);
         assertTrue(self.contains("留言内容"), "留言本身仍然是公开的：" + self);
-        // 本人顶部：编辑个人资料 / 上传头像 / 监视列表
         String selfTop = hook.profileTopHtml(profile(1, "甲", true, SocialProfileFakes.viewer(1, "甲")));
-        assertTrue(selfTop.contains("编辑个人资料") && selfTop.contains("上传头像")
-                && selfTop.contains("监视列表"), selfTop);
+        assertTrue(selfTop.contains("上传头像") && selfTop.contains("监视列表"), selfTop);
+        String editPath = cc.thonly.wikikernel.plugin.socialprofile.SocialProfileSupport.pagePath("特殊:编辑资料");
+        assertEquals(1, self.split(java.util.regex.Pattern.quote(editPath), -1).length - 1);
+        assertFalse(selfTop.contains(editPath));
+        assertFalse(self.contains("编辑自己的个人资料"));
 
         String other = hook.panelHtml(profile(1, "甲", false, SocialProfileFakes.viewer(2, "乙")));
         assertFalse(other.contains("03-09"), "别人也看不到关掉的生日：" + other);
         assertTrue(other.contains("该用户已关闭留言板。"), other);
+        assertFalse(other.contains(editPath));
         assertFalse(other.contains("/api/social-profile/board/post"), other);
 
         // 匿名 + 对方开着留言板：提示登录，不给输入框

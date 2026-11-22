@@ -29,14 +29,14 @@
             </ul>
         </nav>
 
-        <p class="wiki-hint" th:text="#{socialProfile.randomUsers.hint}">随机抽取几位上传过头像的用户。</p>
+        <p class="wiki-hint" th:text="#{socialProfile.randomUsers.hint}">从全站用户中随机抽取几位。</p>
         <p class="sp-pager">
             <a class="sp-pager-button" th:href="${randomUsersReloadUrl}" th:text="#{socialProfile.randomUsers.reload}">换一批</a>
             <a th:href="${topUsersUrl}" th:text="#{socialProfile.nav.topUsers}">积分排行</a>
         </p>
 
         <div class="sp-empty-block" th:if="${#lists.isEmpty(randomUsers)}">
-            <p class="sp-empty" th:text="#{socialProfile.randomUsers.empty}">还没有用户上传头像。</p>
+            <p class="sp-empty" th:text="#{socialProfile.randomUsers.empty}">暂无用户。</p>
             <p class="sp-empty-next">
                 <span th:text="#{socialProfile.empty.next.generic}">下一步可以：</span>
                 <a th:href="@{/wiki/特殊:上传头像}" th:text="#{socialProfile.empty.next.uploadAvatar}">去上传一张头像</a>

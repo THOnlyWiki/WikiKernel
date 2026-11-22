@@ -64,7 +64,10 @@
             <p class="sp-board-count" th:text="#{socialProfile.gifts.received(${giftTotal})}">收到 0 个礼物</p>
             <ul class="sp-gift-list" th:unless="${#lists.isEmpty(giftTypeRows)}">
                 <li class="sp-gift-item" th:each="entry : ${giftTypeRows}">
-                    <span class="sp-gift-icon" th:text="${entry['icon']}">🎁</span>
+                    <span class="sp-gift-icon">
+                            <img class="sp-gift-image" th:if="${entry['imageUrl'] != null}" th:src="${entry['imageUrl']}" alt=""/>
+                            <span th:unless="${entry['imageUrl'] != null}" th:text="${entry['icon']}">🎁</span>
+                        </span>
                     <span th:text="|${entry['name']} × ${entry['count']}|">礼物 × 1</span>
                 </li>
             </ul>
@@ -105,16 +108,19 @@
                         <a class="sp-gift-other-link" th:href="${row['otherUrl']}"
                            th:aria-label="${row['other']}" th:text="${row['other']}">用户</a>
                     </td>
-                    <td class="sp-gift-name" data-label="#{socialProfile.gifts.colGift}">
-                        <span class="sp-gift-icon" th:text="${row['giftIcon']}">🎁</span>
+                    <td class="sp-gift-name" th:data-label="#{socialProfile.gifts.colGift}">
+                        <span class="sp-gift-icon">
+                            <img class="sp-gift-image" th:if="${row['imageUrl'] != null}" th:src="${row['imageUrl']}" alt=""/>
+                            <span th:unless="${row['imageUrl'] != null}" th:text="${row['giftIcon']}">🎁</span>
+                        </span>
                         <span th:text="${row['giftName']}">礼物</span>
                     </td>
-                    <td class="sp-gift-message" data-label="#{socialProfile.gifts.colMessage}"
+                    <td class="sp-gift-message" th:data-label="#{socialProfile.gifts.colMessage}"
                         th:text="${row['message']}">附言</td>
-                    <td class="message-time" data-label="#{socialProfile.gifts.colTime}"
+                    <td class="message-time" th:data-label="#{socialProfile.gifts.colTime}"
                         th:text="${row['timeText']}">时间</td>
-                    <td class="message-row-actions" data-label="#{socialProfile.gifts.colActions}">
-                        <button type="button" class="sp-gift-delete" th:if="${row['canDelete']}"
+                    <td class="message-row-actions" th:data-label="#{socialProfile.gifts.colActions}">
+                        <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger sp-gift-delete" th:if="${row['canDelete']}"
                                 th:attr="data-id=${row['id']}"
                                 th:aria-label="#{socialProfile.gifts.delete}"
                                 th:text="#{socialProfile.gifts.delete}">删除</button>

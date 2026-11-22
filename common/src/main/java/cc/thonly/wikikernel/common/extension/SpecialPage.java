@@ -53,6 +53,11 @@ public interface SpecialPage extends Extension {
         return SpecialPageCategories.OTHER;
     }
 
+    /** Optional query parameter populated from the text after the first slash in this page's title. */
+    default String subpageParameter() {
+        return "";
+    }
+
     /** 模板名（相对 templates/），默认统一外壳 special/view。 */
     default String template() {
         return "special/view";

@@ -506,38 +506,18 @@ public class RecentChangesSpecialPage implements SpecialPage {
         return Strings.trimToEmpty(comment).matches("^/\\*\\s*.+?\\s*\\*/\\s*$");
     }
 
-    /**
-     * 连续的同类型日志合并成一组（仿 MediaWiki 的「（论坛日志） [甲；乙]」：
-     * 摘要行显示日志名 + 涉及的用户 / 目标，展开后是各条日志），跨日期不合并。
-     */
+    /** 按本地日期与日志类型分组，与动态更新使用的稳定键一致。 */
     private List<Map<String, Object>> groupLogs(List<Map<String, Object>> logs) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        List<Map<String, Object>> pending = new ArrayList<>();
-        String pendingType = null;
-        LocalDate pendingDay = null;
+        Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
         for (Map<String, Object> log : logs) {
-            String type = String.valueOf(log.get("logType"));
-            LocalDate day = ((LocalDateTime) log.get("time")).toLocalDate();
-            if (pending.isEmpty() || (type.equals(pendingType) && day.equals(pendingDay))) {
-                pending.add(log);
-                pendingType = type;
-                pendingDay = day;
-                continue;
-            }
-            flushLogGroup(result, pending);
-            pending = new ArrayList<>();
-            pending.add(log);
-            pendingType = type;
-            pendingDay = day;
+            groups.computeIfAbsent((String) log.get("key"), key -> new ArrayList<>()).add(log);
         }
-        flushLogGroup(result, pending);
+        List<Map<String, Object>> result = new ArrayList<>();
+        groups.values().forEach(group -> flushLogGroup(result, group));
         return result;
     }
 
     private void flushLogGroup(List<Map<String, Object>> result, List<Map<String, Object>> pending) {
-        if (pending.isEmpty()) {
-            return;
-        }
         if (pending.size() == 1) {
             result.add(pending.get(0));
             return;
@@ -546,26 +526,11 @@ public class RecentChangesSpecialPage implements SpecialPage {
         Map<String, Object> group = new LinkedHashMap<>();
         group.put("kind", "loggroup");
         group.put("time", first.get("time"));
-        group.put("timeText", first.get("timeText"));
-        group.put("label", first.get("label"));
-        group.put("labelUrl", first.get("labelUrl"));
+        group.put("latest", first);
+        group.put("count", pending.size());
         group.put("entries", List.copyOf(pending));
         group.put("highlight", pending.stream().anyMatch(log -> Boolean.TRUE.equals(log.get("highlight"))));
-        // 动态更新用的稳定键（按天 + 类型：同一天的同类日志都在这一组里原地更新）
-        group.put("key", "lg-" + ((LocalDateTime) first.get("time")).toLocalDate() + "-" + first.get("logType"));
-        // 涉及的目标（去重、保序，最多 8 个）：[甲；乙]
-        LinkedHashSet<String> targets = new LinkedHashSet<>();
-        for (Map<String, Object> log : pending) {
-            Object target = log.get("targetText");
-            if (target != null && !target.toString().isEmpty()) {
-                targets.add(target.toString());
-            }
-            if (targets.size() >= 8) {
-                break;
-            }
-        }
-        group.put("targetsText", targets.isEmpty() ? null
-                : "[" + String.join(message("recentChanges.logGroupSeparator"), targets) + "]");
+        group.put("key", first.get("key"));
         result.add(group);
     }
 

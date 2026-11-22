@@ -19,6 +19,7 @@ dependencies {
 }
 
 processResources {
+    filteringCharset = 'UTF-8'
     filesMatching('META-INF/wiki-plugin.properties') {
         expand(pluginName: project.findProperty('pluginName') ?: project.name,
                 pluginVersion: project.findProperty('pluginVersion') ?: '0.0.1',

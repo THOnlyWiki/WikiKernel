@@ -100,7 +100,7 @@
             </td>
             <td th:if="${canManage}">
                 <a th:href="@{/wiki/特殊:跨Wiki(edit=${row.id})}" th:text="#{common.edit}">编辑</a>
-                <button type="button" class="wiki-button interwiki-delete"
+                <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger interwiki-delete"
                         th:attr="data-id=${row.id},data-prefix=${row.prefix}"
                         th:text="#{interwiki.delete}">删除</button>
             </td>

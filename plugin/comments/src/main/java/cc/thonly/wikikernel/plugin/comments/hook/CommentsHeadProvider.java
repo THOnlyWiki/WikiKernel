@@ -37,7 +37,7 @@ public class CommentsHeadProvider implements HtmlHeadProvider {
             return List.of();
         }
         return List.of(
-                "<link rel=\"stylesheet\" href=\"/plugins/comments/comments.css\">",
+                "<link rel=\"stylesheet\" href=\"/plugins/comments/comments.css?v=2\">",
                 "<script>window.WIKI_CONFIG = window.WIKI_CONFIG || {};"
                         + "window.WIKI_CONFIG.comments = true;"
                         + "window.WIKI_MESSAGES = Object.assign(window.WIKI_MESSAGES || {}, {"

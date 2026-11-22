@@ -52,10 +52,15 @@
             form.appendChild(node('h3', row.id === 'activity' ? labels.activity : labels.news));
             field(form, '', 'id', row.id, 'hidden');
             var label = node('label', labels.providers); var select = node('select'); select.name = 'provider';
-            select.appendChild(node('option', labels.choose));
+            var placeholder = node('option', labels.choose);
+            placeholder.value = '';
+            select.appendChild(placeholder);
             data.providers.forEach(function (provider) {
                 var option = node('option', provider.label); option.value = provider.id; select.appendChild(option);
-            }); select.value = row.provider; label.appendChild(select); form.appendChild(label);
+            });
+            select.value = row.provider || '';
+            if (select.selectedIndex < 0) select.value = '';
+            label.appendChild(select); form.appendChild(label);
             field(form, labels.groups, 'groups', row.groups);
             field(form, labels.enabled, 'enabled', row.enabled, 'checkbox');
             var save = node('button', labels.saveScene); save.type = 'submit'; form.appendChild(save);

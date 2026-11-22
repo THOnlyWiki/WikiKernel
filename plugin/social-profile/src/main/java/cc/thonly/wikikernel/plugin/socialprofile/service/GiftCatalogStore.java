@@ -17,6 +17,8 @@ public interface GiftCatalogStore {
     List<WikiGift> all();
 
     void setEnabled(long id, boolean enabled);
+    default boolean updateImage(long id, byte[] image) { return false; }
+    default Optional<byte[]> image(long id) { return Optional.empty(); }
 
     void delete(long id);
 }

@@ -116,9 +116,9 @@
             <div class="moderation-actions" th:if="${row.status == 'pending'}">
                 <input type="text" class="moderation-comment-input"
                        th:placeholder="#{moderation.commentPlaceholder}"/>
-                <button type="button" class="wiki-button moderation-approve"
+                <button type="button" class="wiki-button wiki-button-quiet moderation-approve"
                         th:text="#{moderation.approve}">通过</button>
-                <button type="button" class="wiki-button moderation-reject"
+                <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger moderation-reject"
                         th:text="#{moderation.reject}">拒绝</button>
             </div>
             <p class="form-message moderation-message" hidden="hidden"></p>

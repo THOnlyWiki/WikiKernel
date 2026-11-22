@@ -72,7 +72,7 @@
                     <td th:text="${row.deletedAt}">时间</td>
                     <td>
                         <a th:href="${row.detailUrl}" th:text="#{deletedPages.view}">查看</a>
-                        <button type="button" class="wiki-restore-button wiki-link-button"
+                        <button type="button" class="wiki-button wiki-button-quiet wiki-restore-button"
                                 th:attr="data-title=${row.title}"
                                 th:text="#{deletedPages.restore}">恢复</button>
                     </td>

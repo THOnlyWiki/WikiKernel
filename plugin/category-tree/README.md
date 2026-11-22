@@ -115,7 +115,7 @@ wikikernel:
    WikiKernel 的分类行由 core 渲染，没有对应钩子。
 3. **分类页的子分类树按钮**（`CategoryViewer::doCategoryQuery` / `CategoryViewerGenerateLink`、`?notree`、`?mode=`、
    `$wgCategoryTreeCategoryPageOptions` / `CategoryPageMode`）：WikiKernel 的 `/特殊:分类` 由 core 渲染。
-4. **`SpecialTrackingCategories::preprocess` / `generateCatLink`**：WikiKernel 没有「特殊:追踪分类」。
+4. **`SpecialTrackingCategories::preprocess` / `generateCatLink`**：WikiKernel 的「特殊:追踪分类」由 Core 提供。CategoryTree 尚未在该表格内提供树形展开入口。
 5. **解析缓存失效**（`$wgCategoryTreeDisableCache`、`ParserOutput::updateCacheExpiry`）与
    **`CategoryTreeHijackPageCategories` 的 categories 钩子**：core 未向插件暴露缓存 / 失效接口。
 6. **Translate 扩展的 `notranslations`**：选项仍会被解析、写进 `data-ct-options`（保持契约），但不会过滤任何页面。

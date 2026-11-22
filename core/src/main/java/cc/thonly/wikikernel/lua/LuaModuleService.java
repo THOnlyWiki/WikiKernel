@@ -9,6 +9,7 @@ import cc.thonly.wikikernel.web.WikiTitles;
 import cc.thonly.wikikernel.wikitext.TransclusionPolicy;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
+import cc.thonly.wikikernel.common.parser.MediaWikiExpression;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -1371,7 +1372,11 @@ public class LuaModuleService {
             parserFunctions.set("expr", new OneArgFunction() {
                 @Override
                 public LuaValue call(LuaValue value) {
-                    return LuaValue.valueOf(evaluateExpression(value.optjstring("")));
+                    try {
+                        return LuaValue.valueOf(MediaWikiExpression.evaluate(value.checkjstring()));
+                    } catch (IllegalArgumentException | ArithmeticException invalid) {
+                        throw new LuaError("Invalid ParserFunctions expression");
+                    }
                 }
             });
             ext.set("ParserFunctions", parserFunctions);

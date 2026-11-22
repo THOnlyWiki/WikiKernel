@@ -3,7 +3,8 @@
 <html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{__${skin.layout}__ :: layout(${editHeading}, ~{:: section})}">
 <body>
-<section>
+<section th:with="timelessEditor=${skin.id() == 'kawaii-timeless' and codeLanguage == null and showEditToolbar == true and editConflictTemplate == null},
+                  switchEditor=${timelessEditor and canVisualEdit == true and editSection == null and editingOldRevision == null and editConflictNotice == null}">
     <th:block th:replace="~{fragments/system-interface :: editnotice}"/>
     <th:block th:unless="${editConflictNotice != null}">
         <p class="edit-intro" th:if="${editSection != null}"
@@ -82,7 +83,7 @@
     </div>
 
     <form id="wiki-edit-form" class="wiki-form wiki-editor" method="post" th:action="${pageUrl}"
-          th:attr="data-title=${wikiTitle},data-revision=${baseRevisionId != null ? baseRevisionId : ''},data-section=${editSection != null ? editSection : ''}">
+          th:attr="data-title=${wikiTitle},data-revision=${baseRevisionId != null ? baseRevisionId : ''},data-section=${editSection != null ? editSection : ''},data-wk-editor=${timelessEditor ? 'true' : null}">
         <th:block th:if="${codeLanguage != null and !widgetPage}">
             <th:block th:replace="~{fragments/code-cache-notice :: notice}"/>
         </th:block>
@@ -96,12 +97,31 @@
             </div>
             <div id="wiki-preview-content" class="wiki-content"></div>
         </div>
+        <p id="visual-editor-message" class="form-message" role="status" hidden></p>
         <!-- 编辑辅助工具栏（仿 MediaWiki WikiEditor；Wikitext 页面专用，代码页用 CodeMirror） -->
-        <th:block th:if="${codeLanguage == null}">
+        <th:block th:if="${timelessEditor}">
+            <th:block th:replace="~{skins/kawaii-timeless/editor :: toolbar}"/>
+        </th:block>
+        <th:block th:if="${codeLanguage == null and !timelessEditor}">
             <th:block th:replace="~{fragments/edit-toolbar :: toolbar}"/>
         </th:block>
-        <textarea name="content" rows="24" autofocus th:attr="data-language=${codeLanguage}"
-                  th:text="${editContent}">请输入 Wikitext 内容</textarea>
+        <th:block th:if="${editConflictTemplate != null}">
+            <th:block th:replace="~{__${editConflictTemplate}__ :: resolution}"></th:block>
+        </th:block>
+        <div id="wk-edit-workspace" class="wk-edit-workspace" th:remove="${timelessEditor ? 'none' : 'tag'}">
+            <th:block th:if="${timelessEditor}">
+                <th:block th:replace="~{skins/kawaii-timeless/editor :: previewTabs}"/>
+            </th:block>
+            <div class="wk-edit-panes" th:remove="${timelessEditor ? 'none' : 'tag'}">
+                <div class="wk-edit-source" th:remove="${timelessEditor ? 'none' : 'tag'}">
+                    <textarea name="content" rows="24" autofocus th:attr="data-language=${codeLanguage}"
+                              th:text="${editContent}">请输入 Wikitext 内容</textarea>
+                </div>
+                <th:block th:if="${timelessEditor}">
+                    <th:block th:replace="~{skins/kawaii-timeless/editor :: livePreview}"/>
+                </th:block>
+            </div>
+        </div>
 
         <!-- 可视化编辑器（仅 Wikitext 整页编辑；从编辑框源码出发，目录/分类栏等生成内容不会进入）
              data-ve-auto=1 时（?veaction=edit）页面加载即打开；源代码编辑可点页签「编辑」进入 -->
@@ -119,10 +139,13 @@
                 <button type="button" data-ve-command="hr" th:title="#{toolbar.rule}" th:text="#{toolbar.rule}">水平线</button>
                 <button type="button" data-ve-command="gallery" th:title="#{toolbar.gallery}" th:text="#{toolbar.gallery}">画廊</button>
                 <span class="visual-editor-spacer"></span>
-                <button type="button" id="ve-apply" class="wiki-button"
+                <button type="button" id="ve-apply" class="wiki-button" th:hidden="${switchEditor}"
                         th:text="#{edit.visualApply}">应用更改到源代码</button>
-                <button type="button" id="ve-exit" class="wiki-button"
+                <button type="button" id="ve-exit" class="wiki-button" th:hidden="${switchEditor}"
                         th:text="#{edit.visualExit}">返回源代码编辑</button>
+                <th:block th:if="${switchEditor}">
+                    <th:block th:replace="~{skins/kawaii-timeless/editor :: mode(true)}"/>
+                </th:block>
             </div>
             <div id="visual-editor-surface" class="wiki-content visual-editor-surface"
                  contenteditable="true"></div>
@@ -177,8 +200,6 @@
            th:text="#{editConflict.forceHint}">
             强制提交会跳过版本冲突检查，直接用编辑框中的文本生成新版本。
         </p>
-        <p id="visual-editor-message" class="form-message" hidden></p>
-
         <p class="wiki-hint" th:if="${widgetPage}" th:text="#{edit.widgetHint}">
             微件页：HTML + Smarty 子集语法，只有小部件编辑者可以编辑。
         </p>

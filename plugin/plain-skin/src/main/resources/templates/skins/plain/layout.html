@@ -49,7 +49,7 @@
     </nav>
     <nav class="plain-tabs" th:if="${wikiTitle != null}" th:unless="${printableView}">
         <a th:href="${pageUrl}" th:text="#{common.view}">阅读</a>
-        <a th:href="${pageUrl + '?action=edit'}"
+        <a th:unless="${pluginManagesEditing == true}" th:href="${pageUrl + '?action=edit'}"
            th:text="${canEditPage} ? #{common.edit} : #{common.viewSource}">编辑</a>
         <a th:href="${pageUrl + '?action=history'}" th:text="#{common.history}">查看历史</a>
     </nav>

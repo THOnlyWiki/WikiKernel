@@ -77,7 +77,7 @@
     font-weight: bold;
 }
 
-/* ===== 页面内的标签行（与 .messages-tabs 同一套观感） ===== */
+/* 礼物和好友页的子导航沿用皮肤的文字色与强调色。 */
 .sp-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -85,27 +85,35 @@
     margin: 0 0 1em;
     padding: 0;
     list-style: none;
-    border-bottom: 1px solid var(--wiki-border);
+    border-bottom: 1px solid var(--border-color-subtle, var(--wiki-border-light));
 }
 
-.sp-tabs li a {
+.sp-tabs > li {
+    display: flex;
+    align-items: center;
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+}
+
+.sp-tabs > li > a {
     display: block;
-    padding: 0.4em 0.9em;
-    border: 1px solid transparent;
-    border-bottom: 0;
-    color: var(--wiki-link);
+    padding: 0.45em 0.8em;
+    color: var(--color-base--subtle, var(--wiki-text-muted));
     text-decoration: none;
 }
 
-.sp-tabs li a:hover {
-    text-decoration: underline;
+.sp-tabs > li > a:hover,
+.sp-tabs > li.selected > a {
+    color: var(--color-primary, var(--wiki-accent));
 }
 
-.sp-tabs li.selected a {
-    border-color: var(--wiki-border);
-    background: #ffffff;
-    color: #202122;
-    font-weight: bold;
+.sp-tabs > li > a:focus-visible {
+    outline: 2px solid var(--color-primary, var(--wiki-accent));
+    outline-offset: -2px;
+}
+
+.sp-tabs > li.selected {
+    border-bottom-color: var(--color-primary, var(--wiki-accent));
 }
 
 .sp-badge {
@@ -172,20 +180,6 @@
     color: var(--wiki-text-muted);
     font-weight: normal;
     cursor: default;
-}
-
-.sp-button-primary {
-    border-color: #36c;
-    background: #36c;
-    color: #ffffff;
-    font-weight: bold;
-}
-
-.sp-button-primary:hover,
-.sp-button-primary:focus {
-    border-color: #2a4b8d;
-    background: #2a4b8d;
-    color: #ffffff;
 }
 
 /* 关系状态行（已是好友 / 请求待处理 / 对方把我加为仇敌） */
@@ -455,19 +449,6 @@
     font-size: 0.875em;
 }
 
-.sp-board-actions button {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--wiki-link);
-    cursor: pointer;
-    font: inherit;
-}
-
-.sp-board-actions button:hover {
-    text-decoration: underline;
-}
-
 .sp-board-form {
     margin-top: 0.9em;
 }
@@ -508,10 +489,6 @@
 
 .sp-secondary-link {
     color: var(--wiki-link);
-}
-
-.sp-button-primary {
-    font-weight: bold;
 }
 
 /* ===== 用户列表（好友 / 仇敌 / 请求） ===== */
@@ -560,19 +537,6 @@
     font-size: 0.875em;
 }
 
-.sp-user-actions button {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--wiki-link);
-    cursor: pointer;
-    font: inherit;
-}
-
-.sp-user-actions button:hover {
-    text-decoration: underline;
-}
-
 /* ===== 礼物 ===== */
 .sp-gift-list {
     display: flex;
@@ -590,21 +554,6 @@
 
 .sp-gift-message {
     color: var(--wiki-text-muted);
-}
-
-.sp-gift-table button,
-.sp-award-item button {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--wiki-link);
-    cursor: pointer;
-    font: inherit;
-}
-
-.sp-gift-table button:hover,
-.sp-award-item button:hover {
-    text-decoration: underline;
 }
 
 /* 送礼物：可点选的礼物卡片（label + radio，选中态在 CSS 里） */
@@ -1286,16 +1235,6 @@
     padding: 0 0 5px 5px;
 }
 
-.user-board-message-links a {
-    font-size: 11px;
-    text-decoration: none;
-    margin: 0 10px 0 0;
-}
-
-.user-board-red a {
-    color: #f00;
-}
-
 /* ---------- 插件提供资料卡整体时的外层（core 的 .wiki-profile 卡片框去掉） ---------- */
 
 .wiki-profile-plugin {
@@ -1328,3 +1267,14 @@ body:has(#profile-top) h1#firstHeading {
 }
 .skin-timeless-dark #user-page-left h2, .skin-timeless-dark #user-page-right h2 { color: var(--color-base--emphasized); }
 .skin-timeless-dark .user-board-message-from { background: var(--color-surface-2); }
+
+.sp-gift-image {
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.gift-manager-image input[type="file"] {
+    max-width: 100%;
+}

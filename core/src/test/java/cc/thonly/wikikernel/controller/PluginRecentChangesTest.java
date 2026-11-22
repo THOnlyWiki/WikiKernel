@@ -29,8 +29,12 @@ class PluginRecentChangesTest {
     @MockitoSpyBean PluginManager plugins;
 
     private void register() {
+        register("plugin-change-test");
+    }
+
+    private void register(String id) {
         LogType type = new LogType() {
-            public String id() { return "plugin-change-test"; }
+            public String id() { return id; }
             public boolean inRecentChanges() { return true; }
             public TargetKind targetKind() { return TargetKind.PAGE; }
             public boolean visibleTo(cc.thonly.wikikernel.common.data.WikiLog log, Viewer viewer) {
@@ -38,6 +42,25 @@ class PluginRecentChangesTest {
             }
         };
         doReturn(List.of(type)).when(plugins).extensions(LogType.class);
+    }
+
+    @Test void groupedLogsShowCountAndLatestActionWithoutDuplicatingInterleavedGroups() throws Exception {
+        String type = "grouped-plugin-test";
+        register(type);
+        logs.record(type, null, "ActivitySchedule", null, "EARLIER_ACTIVITY");
+        logs.record("register", null, null, null, "INTERLEAVED_REGISTRATION");
+        logs.record(type, null, "ActivitySchedule", null, "LATEST_ACTIVITY");
+
+        var response = mvc.perform(get("/wiki/特殊:最近更改")
+                        .param("group", "1").param("useskin", "kawaii-timeless").param("uselang", "zh-CN"))
+                .andExpect(status().isOk()).andReturn().getResponse();
+        var document = org.jsoup.Jsoup.parse(response.getContentAsString(java.nio.charset.StandardCharsets.UTF_8));
+        var groups = document.select("li[data-key$=-grouped-plugin-test] > .rc-log-group");
+        org.junit.jupiter.api.Assertions.assertEquals(1, groups.size());
+        var group = groups.first();
+        org.junit.jupiter.api.Assertions.assertEquals("（2条日志）", group.selectFirst("summary .rc-log-count").text());
+        org.junit.jupiter.api.Assertions.assertTrue(group.selectFirst("summary").text().contains("LATEST_ACTIVITY"));
+        org.junit.jupiter.api.Assertions.assertEquals(2, group.select(".rc-changes > li").size());
     }
 
     @Test void registeredPluginLogsAppearInPageAndApiWithoutArtificialWikiPages() throws Exception {

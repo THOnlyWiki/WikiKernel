@@ -99,9 +99,11 @@
         const form = event.target;
         const button = event.submitter;
         if (event.defaultPrevented || !(form instanceof HTMLFormElement)
-                || (button?.getAttribute('formmethod') || form.method).toLowerCase() !== 'get'
-                || (button?.getAttribute('formtarget') || form.target || '_self') !== '_self') return;
-        const url = new URL(button?.getAttribute('formaction') || form.action, location.href);
+                || (button?.getAttribute('formmethod') || form.getAttribute('method') || 'get').toLowerCase() !== 'get'
+                || (button?.getAttribute('formtarget') || form.getAttribute('target') || '_self') !== '_self') return;
+        // Named inputs such as LinkSearch's "target" can shadow the form's DOM properties.
+        const action = button?.getAttribute('formaction') || form.getAttribute('action') || location.href;
+        const url = new URL(action, location.href);
         if (url.origin !== location.origin) return;
         const fields = new FormData(form);
         if (button?.name) fields.append(button.name, button.value);

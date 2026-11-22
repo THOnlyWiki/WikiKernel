@@ -1,0 +1,11 @@
+plugins {
+    id 'java'
+}
+
+description = 'Disambiguator magic word and special pages'
+
+dependencies {
+    compileOnly project(':common')
+    compileOnly platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
+    compileOnly 'org.springframework:spring-context'
+}

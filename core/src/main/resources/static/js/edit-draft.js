@@ -23,19 +23,17 @@
     var AUTOSAVE_DELAY = 5000;
 
     var textarea = form.querySelector('textarea[name="content"]');
-    var wrapper = form.querySelector('.CodeMirror');
-    var codeMirror = wrapper && wrapper.CodeMirror ? wrapper.CodeMirror : null;
-    if (!textarea && !codeMirror) {
+    if (!textarea) {
         return;
     }
 
     function getText() {
-        return codeMirror ? codeMirror.getValue() : textarea.value;
+        return window.wikiCodeEditor ? window.wikiCodeEditor.getValue() : textarea.value;
     }
 
     function setText(text) {
-        if (codeMirror) {
-            codeMirror.setValue(text);
+        if (window.wikiCodeEditor) {
+            window.wikiCodeEditor.setValue(text);
         } else {
             textarea.value = text;
         }
@@ -139,12 +137,8 @@
         timer = setTimeout(saveDraft, AUTOSAVE_DELAY);
     }
 
-    if (codeMirror) {
-        codeMirror.on('change', scheduleSave);
-    } else {
-        textarea.addEventListener('input', scheduleSave);
-        textarea.addEventListener('change', scheduleSave);
-    }
+    textarea.addEventListener('input', scheduleSave);
+    textarea.addEventListener('change', scheduleSave);
 
     window.addEventListener('beforeunload', function (event) {
         if (!isDirty()) {
@@ -217,7 +211,7 @@
     }
 
     var draft = readDraft();
-    if (draft && draft.text && draft.text !== originalText) {
+    if (draft && draft.text !== originalText) {
         setText(draft.text);
         showNotice(draft);
     } else if (draft) {
@@ -234,8 +228,8 @@
             restoredText = null;
             hideNotice(); // 立即隐藏提示条与「放弃草稿」
             setText(originalText);
-            if (codeMirror) {
-                codeMirror.focus();
+            if (window.wikiCodeEditor) {
+                window.wikiCodeEditor.focus();
             }
         });
     }

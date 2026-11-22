@@ -175,12 +175,12 @@ public class CommentSection {
         if (!row.deleted()) {
             html.append("<div class=\"comment-actions\">");
             if (canComment) {
-                html.append("<button type=\"button\" class=\"comment-reply-link\" data-id=\"")
+                html.append("<button type=\"button\" class=\"wiki-button wiki-button-quiet comment-reply-link\" data-id=\"")
                         .append(row.id()).append("\" data-author=\"").append(escapeAttribute(row.author()))
                         .append("\">").append(escape(message("comment.reply"))).append("</button>");
             }
             if (row.canDelete()) {
-                html.append("<button type=\"button\" class=\"comment-delete-link\" data-id=\"")
+                html.append("<button type=\"button\" class=\"wiki-button wiki-button-quiet wiki-button-danger comment-delete-link\" data-id=\"")
                         .append(row.id()).append("\">")
                         .append(escape(message("comment.delete"))).append("</button>");
             }

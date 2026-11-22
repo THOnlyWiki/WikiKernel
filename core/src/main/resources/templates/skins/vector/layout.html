@@ -72,7 +72,7 @@
                 <li th:if="${canVisualEdit}" th:classappend="${veMode} ? 'selected'">
                     <a th:href="${pageUrl + '?veaction=edit'}" th:text="#{common.edit}">编辑</a>
                 </li>
-                <li th:classappend="${activeTab == 'edit' and !veMode} ? 'selected'">
+                <li th:unless="${pluginManagesEditing == true}" th:classappend="${activeTab == 'edit' and !veMode} ? 'selected'">
                     <a th:if="${canVisualEdit}" th:href="${pageUrl + '?action=edit'}"
                        th:text="#{common.editSource}">编辑源代码</a>
                     <a th:unless="${canVisualEdit}" th:href="${pageUrl + '?action=edit'}"

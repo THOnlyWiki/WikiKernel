@@ -56,9 +56,8 @@ public class TeamApiController {
     /**
      * 允许的组队类型。
      *
-     * <p>**没有 room（拼房）**：平台不撮合陌生人合宿。拼房是把两个陌生人配对到
-     * 同一间房过夜，一旦出事平台很难说清「只是提供信息」，所以这类需求交给用户
-     * 自己在群里沟通，风险自担。
+     * <p>**不提供拼房（room）**：平台不支持陌生人住宿匹配服务，以保障用户人身与财产安全；
+     * 用户如需协同住宿，由双方自行在线下或社群协商确认。
      */
     private static final java.util.Set<String> ALLOWED_TYPES =
             java.util.Set.of("car", "company", "booth", "shoot");

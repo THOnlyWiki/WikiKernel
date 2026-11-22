@@ -61,10 +61,10 @@
     <!-- 大号 / 小号 / 上标 / 下标（MediaWiki「高级」栏的四个，平铺在这里） -->
     <div class="toolbar-group">
         <button type="button" class="toolbar-button" data-action="big" th:title="#{toolbar.big}">
-            <span class="toolbar-glyph toolbar-glyph-big">大</span>
+            <span class="toolbar-glyph toolbar-glyph-big" th:text="#{toolbar.glyph.big}">大</span>
         </button>
         <button type="button" class="toolbar-button" data-action="small" th:title="#{toolbar.small}">
-            <span class="toolbar-glyph toolbar-glyph-small">小</span>
+            <span class="toolbar-glyph toolbar-glyph-small" th:text="#{toolbar.glyph.small}">小</span>
         </button>
         <button type="button" class="toolbar-button" data-action="sup" th:title="#{toolbar.sup}">
             <span class="toolbar-glyph toolbar-glyph-sup">x²</span>

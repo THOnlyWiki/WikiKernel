@@ -160,7 +160,7 @@ public class PageIndexService {
                 () -> typeScriptListener.onPageChanged(event));
     }
 
-    private void enqueueBackground(String key, Runnable task) {
+    void enqueueBackground(String key, Runnable task) {
         if (key == null || task == null) {
             return;
         }

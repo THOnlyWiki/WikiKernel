@@ -42,7 +42,8 @@ class CategoryTreeSpecialPageTest {
         assertEquals("分类树", page.name());
         assertEquals("分类树", page.displayName());
         assertEquals(List.of("CategoryTree"), page.aliases());
-        assertEquals(SpecialPageCategories.WIKI, page.category());
+        assertEquals(SpecialPageCategories.PAGES, page.category());
+        assertEquals("target", page.subpageParameter());
         assertEquals("special/category-tree", page.template());
     }
 

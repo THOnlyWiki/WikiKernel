@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="zh" th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
+<body>
+<section th:fragment="query" data-wiki-query="page-list-report">
+    <div class="wiki-content" th:utext="${reportHtml}"></div>
+</section>
+</body>
+</html>

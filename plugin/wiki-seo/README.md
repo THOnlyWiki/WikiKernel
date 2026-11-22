@@ -235,8 +235,8 @@ JSON-LD 内部还会把 `<`、`>`、`&` 转成 `\uXXXX`，避免正文内容破�
    attribute.` 的错误框。
 5. **自闭合标签**：`<seo … />` 不支持（core 的标签匹配要求闭合标签）。
 6. **标签内容展开时机**：WikiKernel 先随正文展开标签内容（`expandBody=true`），插件再展开一次（用于属性值）；
-   原版把原始标签内容交给 hook 后自己 `recursiveTagParseFully`。对绝大多数页面等价，但如果正文里出现**字面量**
-   `{{…}}`（例如 `<nowiki>{{</nowiki>`）可能被二次展开，注意用 `<nowiki>` 规避。
+   原版把原始标签内容交给 hook 后自己 `recursiveTagParseFully`。对绝大多数页面等价；若正文包含**字面量**
+   `{{…}}`，会被二次展开，须使用 `<nowiki>` 标签转义。
 7. **robots 默认值**：没有 `robots` 参数且未命中 noindex 启发式时**不输出** `robots` meta；原版由 MediaWiki 的
    OutputPage 输出默认的 `index,follow`。
 8. **article 时间的自动补全**：只有页面未显式声明非 article 类型（如 `type=website`）时才用页面最后更新时间补
@@ -257,7 +257,7 @@ JSON-LD 内部还会把 `<`、`>`、`&` 转成 `\uXXXX`，避免正文内容破�
     `Logo.svg` / `Wiki.png` / `WikiLogo.png` 这些本地候选文件，都没有就**不输出图片**（可用 `disable-logo-fallback-image` 关闭）。
 16. **图片兜底与默认图片**：原版在 PageImages 已给页面图片时跳过默认图片；WikiKernel 没有 PageImages，只要有 `image`
     参数就用它，否则用 `default-image`。
-17. **相对图片地址**：原版把找不到的文件名原样输出（可能是坏链接）；WikiKernel 会把相对地址补上站点地址。
+17. **相对图片地址**：原版将未匹配到的文件名按原始相对路径直接输出；WikiKernel 会为相对地址补齐站点基准 URL。
 18. **不存在的参数不会清空旧属性**：与原版一致（`array_merge(existing, new)`），一次 `#seo` 只覆盖它给出的参数。
 19. **`twitter_card` 的合法范围**：原版把它算作 Twitter 生成器的参数（未启用 Twitter 时忽略）；本插件把它放进基础参数集合，
     未启用 Twitter 时参数仍会被保存，但不会产生输出。

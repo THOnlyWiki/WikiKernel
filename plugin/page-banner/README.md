@@ -20,7 +20,7 @@ core 里不再有页面横幅代码（设置页的分区与安装向导步骤都
 - 图片来源优先级：`{{PAGEBANNER:…}}` > 逐页配置 > 图片池（按轮换机制）；
   文件不存在或不是图片时不显示横幅；
 - 样式：`static/plugins/page-banner/page-banner.css`（原 core `base.css` 的 `.page-banner*` 区块），
-  本页**可能**显示横幅时由 `PageDisplayHook.headItems` 注入到 `<head>`。
+  当本页满足横幅展示条件时由 `PageDisplayHook.headItems` 注入到 `<head>`。
 
 ## 配置（插件自己注册的设置分区与向导步骤，键与迁移前完全一致）
 

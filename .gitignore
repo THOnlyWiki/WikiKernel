@@ -61,5 +61,15 @@ core/run/
 /client/
 local.properties
 
-### WorkBuddy 本地工作数据，不入库 ###
+### AI 助手与自动化测试临时工作目录，不入库 ###
+.playwright-cli/
+**/.playwright-cli/
+.agent-tmp/
+**/.agent-tmp/
 .workbuddy-ai/
+.claude/
+.cursor/
+.gemini/
+.antigravity/
+playwright-report/
+test-results/

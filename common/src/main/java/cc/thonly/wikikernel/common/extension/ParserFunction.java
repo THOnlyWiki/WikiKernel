@@ -18,6 +18,11 @@ public interface ParserFunction extends Extension {
         return java.util.List.of();
     }
 
+    /** Compatibility plugins may replace an existing implementation of the same function. */
+    default boolean replacesBuiltIn() {
+        return false;
+    }
+
     /** 执行并返回文本（会按 wikitext 继续展开；需要输出可信 HTML 时请让调用方约定占位）。 */
     String invoke(ParserFunctionCall call);
 }

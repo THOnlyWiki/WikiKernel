@@ -4,7 +4,7 @@
       th:replace="~{__${skin.layout}__ :: layout(${title}, ~{:: section})}">
 <body>
 <section>
-    <p th:if="${canManage}"><a th:href="${wikiUrl.page('特殊:AI管理')}">AI 管理</a></p>
+    <p th:if="${canManage}"><a th:href="${wikiUrl.page('特殊:AI管理')}" th:text="#{special.aiManagement}">AI 管理</a></p>
     <p th:text="#{access.intro}">
         在这里配置「谁可以查看 / 编辑 / 创建 / 移动 / 保护 / 删除」页面，保存后立即生效。
     </p>
@@ -420,7 +420,7 @@
             <td th:text="${item.actionName}">查看</td>
             <td th:text="${item.groupsText}">管理员</td>
             <td th:if="${canManage}">
-                <button type="button" class="link-button access-rule-delete"
+                <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger access-rule-delete"
                         th:attr="data-id=${item.id}" th:text="#{access.delete}">删除</button>
             </td>
         </tr>

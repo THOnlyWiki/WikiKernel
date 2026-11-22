@@ -94,6 +94,7 @@ public class GiftsSpecialPage extends SocialProfileSpecialPage implements Specia
             type.put("id", entry.getKey());
             type.put("name", gifts.giftName(entry.getKey()));
             type.put("icon", gifts.giftIcon(entry.getKey()));
+            type.put("imageUrl", gifts.imageUrl(entry.getKey()));
             type.put("count", entry.getValue());
             typeRows.add(type);
         }
@@ -124,6 +125,7 @@ public class GiftsSpecialPage extends SocialProfileSpecialPage implements Specia
             view.put("giftId", row.getGiftId());
             view.put("giftName", gifts.giftName(row.getGiftId()));
             view.put("giftIcon", gifts.giftIcon(row.getGiftId()));
+            view.put("imageUrl", gifts.imageUrl(row.getGiftId()));
             view.put("other", other.isEmpty() ? "#" + otherId : other);
             view.put("otherUrl", SocialProfileSupport.pagePath("用户:" + other));
             view.put("message", row.getMessage());

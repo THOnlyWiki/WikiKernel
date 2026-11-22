@@ -63,6 +63,11 @@ public interface UserStore {
      */
     List<UserRef> randomWithAvatar(int limit);
 
+    /** Random sample of all accounts, including those using the site's default avatar. */
+    default List<UserRef> randomUsers(int limit) {
+        return randomWithAvatar(limit);
+    }
+
     /**
      * 按用户名片段搜索（不区分大小写）。
      *

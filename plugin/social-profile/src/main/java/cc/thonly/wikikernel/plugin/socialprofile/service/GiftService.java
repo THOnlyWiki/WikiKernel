@@ -167,6 +167,7 @@ public final class GiftService {
                 row.put("name", gift.getName());
                 row.put("description", gift.getDescription());
                 row.put("icon", Strings.trimToEmpty(gift.getIcon()).isEmpty() ? "🎁" : gift.getIcon());
+                row.put("imageUrl", imageUrl(gift));
                 row.put("custom", true);
                 rows.add(row);
             }
@@ -189,6 +190,7 @@ public final class GiftService {
             row.put("name", gift.getName());
             row.put("description", gift.getDescription());
             row.put("icon", Strings.trimToEmpty(gift.getIcon()).isEmpty() ? "🎁" : gift.getIcon());
+            row.put("imageUrl", imageUrl(gift));
             row.put("enabled", Boolean.TRUE.equals(gift.getEnabled()));
             row.put("canManage", admin || Objects.equals(gift.getCreatedBy(), actorId));
             rows.add(row);
@@ -225,7 +227,7 @@ public final class GiftService {
             key = "custom-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
         } while (CATALOG.contains(key) || catalogStore.findByKey(key).isPresent());
         WikiGift gift = new WikiGift(null, key, cleanName, cleanDescription, cleanIcon,
-                actorId, Boolean.TRUE, LocalDateTime.now());
+                null, false, actorId, Boolean.TRUE, LocalDateTime.now());
         return catalogStore.insert(gift);
     }
 
@@ -248,6 +250,35 @@ public final class GiftService {
         }
         catalogStore.setEnabled(id, enabled);
         return true;
+    }
+
+    public void updateImage(long actorId, boolean admin, long id, byte[] image) {
+        if (actorId <= 0) {
+            throw new GiftException(GiftException.LOGIN_REQUIRED);
+        }
+        if (catalogStore == null) {
+            throw new GiftException(GiftException.CATALOG_UNAVAILABLE);
+        }
+        WikiGift gift = catalogStore.find(id).orElseThrow(() -> new GiftException(GiftException.NOT_FOUND));
+        if (!admin && !Objects.equals(gift.getCreatedBy(), actorId)) {
+            throw new GiftException(GiftException.MANAGER_FORBIDDEN);
+        }
+        if (!catalogStore.updateImage(id, image)) {
+            throw new GiftException(GiftException.NOT_FOUND);
+        }
+    }
+
+    public java.util.Optional<byte[]> image(long id) {
+        return catalogStore == null ? java.util.Optional.empty() : catalogStore.image(id);
+    }
+
+    public String imageUrl(String key) {
+        return catalogStore == null || key == null || !key.startsWith("custom-") ? null
+                : catalogStore.findByKey(key).map(GiftService::imageUrl).orElse(null);
+    }
+
+    private static String imageUrl(WikiGift gift) {
+        return gift.isHasImage() ? "/api/social-profile/gift/image/" + gift.getId() : null;
     }
 
     /** 某人收到的礼物，新的在前。 */

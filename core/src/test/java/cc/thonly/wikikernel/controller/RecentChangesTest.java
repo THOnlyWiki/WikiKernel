@@ -180,7 +180,7 @@ class RecentChangesTest {
                 .andExpect(content().string(containsString("rc-comment-section")))
                 .andExpect(content().string(containsString("普通摘要文本")));
 
-        // 两条注册日志合并成折叠组：「（用户注册日志） [甲；乙]」
+        // 注册日志合并成折叠组，摘要有数量，展开后保留每个账号。
         String userA = "合并日志甲" + System.nanoTime();
         String userB = "合并日志乙" + System.nanoTime();
         mockMvc.perform(post("/api/user/register")
@@ -193,7 +193,7 @@ class RecentChangesTest {
         mockMvc.perform(get("/wiki/{title}", "特殊:最近更改"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("rc-log-group")))
-                .andExpect(content().string(containsString("rc-log-targets")))
+                .andExpect(content().string(containsString("rc-log-count")))
                 .andExpect(content().string(containsString("data-key=\"lg-")))
                 .andExpect(content().string(containsString(userA)))
                 .andExpect(content().string(containsString(userB)));

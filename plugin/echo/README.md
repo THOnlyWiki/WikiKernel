@@ -26,8 +26,8 @@
 
 - **讨论页 / 提及**：扩展点 `EditGuard`（保存前钩子，网页 / API / AI 提交都走）。core 的插件 AOP 桥
   会跳过 `@Transactional` 服务（`WikiPageService` 正是），因此这里**不能**用 AOP；`EditGuard` 在事务之外调用，
-  通知写库不会与编辑事务抢 SQLite 写锁。代价：保存被后续钩子 / 乐观锁拦下时可能留一条「幽灵通知」，
-  已用「同类同页 60 秒去重」压到最小。
+  通知写库不会与编辑事务抢 SQLite 写锁。若保存动作被后续钩子或乐观锁拦截，
+  系统通过「同类同页 60 秒去重」机制抑制多余通知生成。
 - **回退**：回退**不走** `EditGuard`（core 直接调 `WikiPageService.editPage`），使用 `CoreAopHook`
   切 `ActionApiService.handle`（非事务 Bean，桥接代理可命中）：调用前按参数查「该用户对本页的连续编辑者」，
   调用成功后给这些人发通知。注意：通知写库放在事务**提交之后**（`afterCommit`），

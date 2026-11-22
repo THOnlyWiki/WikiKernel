@@ -2,6 +2,8 @@ package cc.thonly.wikikernel.plugin.oss;
 
 import cc.thonly.wikikernel.common.extension.FileChangeListener;
 import cc.thonly.wikikernel.common.extension.FileUrlResolver;
+import cc.thonly.wikikernel.common.extension.MessageBundle;
+import cc.thonly.wikikernel.common.plugin.support.ResourceMessageBundle;
 import cc.thonly.wikikernel.common.plugin.PluginContext;
 import cc.thonly.wikikernel.common.plugin.PluginDescriptor;
 import cc.thonly.wikikernel.common.plugin.WikiPlugin;
@@ -32,6 +34,7 @@ public class OssExtensionPlugin implements WikiPlugin {
 
     @Override
     public void onStart(PluginContext context) {
+        context.register(MessageBundle.class, new OssMessages());
         OssSettings settings = new OssSettings(context.config());
         if (!settings.enabled()) {
             context.logger().log(System.Logger.Level.INFO,
@@ -47,6 +50,8 @@ public class OssExtensionPlugin implements WikiPlugin {
                 "OSS 扩展已启用：mode=" + settings.mode() + "，operation=" + settings.operationUrl()
                         + "，read=" + settings.readBase());
     }
+
+    private static final class OssMessages extends ResourceMessageBundle {}
 
     @Override
     public void onStop(PluginContext context) {

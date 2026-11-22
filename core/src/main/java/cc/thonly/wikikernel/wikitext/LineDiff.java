@@ -59,8 +59,10 @@ public final class LineDiff {
 
     /** 行级差异（旧文本 → 新文本）。 */
     public static List<Line> diff(String oldText, String newText) {
-        List<String> oldLines = splitLines(oldText);
-        List<String> newLines = splitLines(newText);
+        return diffLines(splitLines(oldText), splitLines(newText));
+    }
+
+    static List<Line> diffLines(List<String> oldLines, List<String> newLines) {
         if (oldLines.size() + newLines.size() > MAX_TOTAL_LINES) {
             return fallback(oldLines, newLines);
         }

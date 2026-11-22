@@ -16,6 +16,16 @@ public interface ParserFunctionCall {
      */
     List<String> args();
 
+    /** Position of an unescaped, top-level assignment separator in a raw argument. */
+    default int assignmentSeparator(String argument) {
+        return argument.indexOf('=');
+    }
+
+    /** Page existence as seen by the current viewer. */
+    default boolean pageExists(String title) {
+        return false;
+    }
+
     /** 当前页面标题。 */
     default String pageTitle() {
         return context().pageTitle();

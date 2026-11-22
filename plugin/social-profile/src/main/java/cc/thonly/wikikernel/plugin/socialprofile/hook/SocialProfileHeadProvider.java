@@ -41,8 +41,8 @@ public final class SocialProfileHeadProvider implements HtmlHeadProvider {
             return List.of();
         }
         return List.of(
-                "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile-base.css\">",
-                "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile.css?v=2\">",
+                "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile-base.css?v=2\">",
+                "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile.css?v=3\">",
                 "<link rel=\"stylesheet\" href=\"/plugins/social-profile/social-profile-mobile.css\">",
                 "<script>window.WIKI_CONFIG = window.WIKI_CONFIG || {};"
                         + "window.WIKI_CONFIG.userInteraction = true;"

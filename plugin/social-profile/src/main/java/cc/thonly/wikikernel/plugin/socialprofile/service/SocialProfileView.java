@@ -151,18 +151,25 @@ public final class SocialProfileView {
     private final PointsService points;
     private final FriendsService friends;
     private final WikiText wikiText;
+    private final GiftService gifts;
 
     /**
      * 生产构造器（Spring 注入；{@code FriendsService} 用于列表渲染）。
      */
     @Autowired
     public SocialProfileView(SocialProfileSupport support, ProfileService profiles, PointsService points,
-                             FriendsService friends, WikiText wikiText) {
+                             FriendsService friends, WikiText wikiText, GiftService gifts) {
         this.support = support;
         this.profiles = profiles;
         this.points = points;
         this.friends = friends;
         this.wikiText = wikiText;
+        this.gifts = gifts;
+    }
+
+    public SocialProfileView(SocialProfileSupport support, ProfileService profiles, PointsService points,
+                             FriendsService friends, WikiText wikiText) {
+        this(support, profiles, points, friends, wikiText, null);
     }
 
     /** 简版构造器（没有好友服务；单元测试与老调用方用）。 */
@@ -212,7 +219,7 @@ public final class SocialProfileView {
 
     /**
      * 操作链接行（原版 {@code .profile-actions}，粗体文字链接）：
-     * 本人 = 编辑个人资料 / 上传头像 / 监视列表；登录访客 = 加为好友 / 加为仇敌 / 发送消息 / 送一份礼物；
+     * 本人 = 上传头像 / 监视列表；登录访客 = 加为好友 / 加为仇敌 / 发送消息 / 送一份礼物；
      * 最后都跟一个「贡献」。
      */
     private String actions(View view) {
@@ -221,8 +228,6 @@ public final class SocialProfileView {
         boolean account = view.userId() > 0;
         StringBuilder html = new StringBuilder();
         if (account && view.self()) {
-            html.append(link(SocialProfileSupport.pagePath("特殊:编辑资料"),
-                    support.message("socialProfile.classic.editProfile"), null));
             html.append(link(SocialProfileSupport.pagePath("特殊:上传头像"),
                     support.message("socialProfile.classic.uploadAvatar"), null));
             html.append(link(SocialProfileSupport.pagePath("特殊:编辑监视列表"),
@@ -378,11 +383,16 @@ public final class SocialProfileView {
             if (shown++ >= SIDE_LIST_LIMIT) {
                 break;
             }
-            String name = giftName(entry.getKey());
+            String key = entry.getKey();
+            boolean customGift = "特殊:礼物".equals(specialPage) && gifts != null && key.startsWith("custom-");
+            String name = customGift ? gifts.giftName(key) : giftName(key);
+            String image = customGift ? gifts.imageUrl(key) : null;
+            String icon = image == null ? escape(customGift ? gifts.giftIcon(key) : giftIcon(key))
+                    : "<img class=\"sp-gift-image\" src=\"" + escape(image) + "\" alt=\"\">";
             body.append("<a href=\"").append(escape(SocialProfileSupport.pagePath(specialPage + "?user="
                             + SocialProfileSupport.encodeQuery(view.username()))))
                     .append("\" title=\"").append(escape(name)).append("\"><span class=\"sp-gift-icon\">")
-                    .append(giftIcon(entry.getKey())).append("</span></a>");
+                    .append(icon).append("</span></a>");
         }
         body.append("<div class=\"visualClear\"></div></div>");
         return section(support.message(titleKey), more, null, body.toString());
@@ -404,7 +414,7 @@ public final class SocialProfileView {
 
     /**
      * 右栏「个人信息」（原版 {@code getPersonalInfo}）：每行 {@code <b>标签</b>值}；
-     * 空字段本人看到「编辑自己的个人资料」链接、别人看到「没有提供」。
+     * 空字段显示「没有提供」，本人可以通过标题栏的编辑入口更新资料。
      */
     private String personalSection(View view) {
         if (view.userId() <= 0) {
@@ -414,25 +424,25 @@ public final class SocialProfileView {
         ProfileService.SocialPreferences prefs = view.preferences() == null
                 ? ProfileService.SocialPreferences.DEFAULT : view.preferences();
         List<String> rows = new ArrayList<>();
-        addPersonalRow(rows, view, support.message("socialProfile.field.gender"),
+        addPersonalRow(rows, support.message("socialProfile.field.gender"),
                 escape(profiles.genderLabel(fields.gender())), fields.gender());
         if (prefs.showBirthday()) {
-            addPersonalRow(rows, view, support.message("socialProfile.field.birthday"),
+            addPersonalRow(rows, support.message("socialProfile.field.birthday"),
                     escape(fields.birthday()), fields.birthday());
         }
         if (prefs.showLocation()) {
-            addPersonalRow(rows, view, support.message("socialProfile.field.location"),
+            addPersonalRow(rows, support.message("socialProfile.field.location"),
                     escape(fields.location()), fields.location());
         }
-        addPersonalRow(rows, view, support.message("socialProfile.field.hometown"),
+        addPersonalRow(rows, support.message("socialProfile.field.hometown"),
                 escape(fields.hometown()), fields.hometown());
-        addPersonalRow(rows, view, support.message("socialProfile.field.occupation"),
+        addPersonalRow(rows, support.message("socialProfile.field.occupation"),
                 escape(fields.occupation()), fields.occupation());
-        addPersonalRow(rows, view, support.message("socialProfile.field.interests"),
+        addPersonalRow(rows, support.message("socialProfile.field.interests"),
                 escape(fields.interests()), fields.interests());
         if (Strings.isNotBlank(fields.website())) {
             String url = escape(fields.website());
-            addPersonalRow(rows, view, support.message("socialProfile.field.website"),
+            addPersonalRow(rows, support.message("socialProfile.field.website"),
                     "<a rel=\"nofollow noopener\" target=\"_blank\" href=\"" + url + "\">" + url + "</a>",
                     fields.website());
         }
@@ -445,21 +455,14 @@ public final class SocialProfileView {
             body.append(line);
         }
         body.append("</div>");
-        return section(support.message("socialProfile.classic.personalInfo"), null, null, body.toString());
+        String edit = view.self() ? link(SocialProfileSupport.pagePath("特殊:编辑资料"),
+                support.message("common.edit"), null) : null;
+        return section(support.message("socialProfile.classic.personalInfo"), edit, null, body.toString());
     }
 
-    /** 个人信息一行：有值输出值；空值本人给编辑链接、别人给「没有提供」。 */
-    private void addPersonalRow(List<String> rows, View view, String label, String valueHtml, String rawValue) {
-        if (Strings.isNotBlank(rawValue)) {
-            rows.add(row(label, valueHtml));
-            return;
-        }
-        if (view.self()) {
-            rows.add(row(label, "<a href=\"" + escape(SocialProfileSupport.pagePath("特殊:编辑资料"))
-                    + "\">" + escape(support.message("socialProfile.classic.editOwn")) + "</a>"));
-        } else {
-            rows.add(row(label, escape(support.message("socialProfile.classic.notProvided"))));
-        }
+    private void addPersonalRow(List<String> rows, String label, String valueHtml, String rawValue) {
+        rows.add(row(label, Strings.isNotBlank(rawValue) ? valueHtml
+                : escape(support.message("socialProfile.classic.notProvided"))));
     }
 
     // ==================== 用户墙（右栏，原版 UserBoard） ====================
@@ -561,14 +564,14 @@ public final class SocialProfileView {
         html.append("</div><div class=\"visualClear\"></div></div>");
         html.append("<div class=\"user-board-message-links\">");
         if (view.canPost()) {
-            html.append("<a href=\"#\" class=\"sp-reply-button\" data-parent=\"")
+            html.append("<button type=\"button\" class=\"wiki-button wiki-button-quiet sp-reply-button\" data-parent=\"")
                     .append(row.getId()).append("\">")
-                    .append(escape(support.message("socialProfile.classic.reply"))).append("</a>");
+                    .append(escape(support.message("socialProfile.classic.reply"))).append("</button>");
         }
         if (view.self() || authorId == view.userId()) {
-            html.append("<span class=\"user-board-red\"><a href=\"#\" class=\"sp-delete-button\" data-id=\"")
+            html.append("<button type=\"button\" class=\"wiki-button wiki-button-quiet wiki-button-danger sp-delete-button\" data-id=\"")
                     .append(row.getId()).append("\">")
-                    .append(escape(support.message("socialProfile.classic.delete"))).append("</a></span>");
+                    .append(escape(support.message("socialProfile.classic.delete"))).append("</button>");
         }
         html.append("</div></div>");
         return html.toString();

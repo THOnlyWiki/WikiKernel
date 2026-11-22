@@ -38,9 +38,9 @@
                     th:text="${@wikiTime.format(item.deletedAt)}">时间</td>
                 <td th:unless="${item.deletedAt != null}">—</td>
                 <td>
-                    <button type="button" class="wiki-button file-restore" th:attr="data-id=${item.id}"
+                    <button type="button" class="wiki-button wiki-button-quiet file-restore" th:attr="data-id=${item.id}"
                             th:text="#{files.restore}">恢复</button>
-                    <button type="button" class="wiki-button file-purge" th:if="${item.canPurge}"
+                    <button type="button" class="wiki-button wiki-button-quiet wiki-button-danger file-purge" th:if="${item.canPurge}"
                             th:attr="data-id=${item.id},data-name=${item.name}"
                             th:text="#{files.purge}">彻底删除</button>
                 </td>

@@ -1,42 +1,50 @@
 package cc.thonly.wikikernel.service.impl;
 
-import cc.thonly.wikikernel.common.extension.WikiRenderContext;
-import cc.thonly.wikikernel.common.service.PagePropertyStore;
+import cc.thonly.wikikernel.common.data.WikiPage;
+import cc.thonly.wikikernel.db.mapper.WikiPageMapper;
 import cc.thonly.wikikernel.service.WikiPageChangedEvent;
 import cc.thonly.wikikernel.service.WikiPageService;
 import cc.thonly.wikikernel.wikitext.WikitextRenderer;
 import org.springframework.stereotype.Component;
 
-/**
- * 页面变更 → 页面属性持久化（仿 MediaWiki 的 page_props）。
- * <p>
- * 由 {@link PageIndexService} 在后台索引线程调用；不再阻塞保存请求。
- * 渲染时通过扩展点写入的属性（SEO 元数据、{@code templatedata}、{@code notitle} 等）
- * 覆盖保存到 {@code wiki_page_property}；持久属性（如浏览计数）不受影响。
- */
+/** Updates the parser-derived report data and page properties together. */
 @Component
 public class PagePropertyEventListener {
+    private final WikiPageMapper pages;
+    private final WikiPageService revisions;
+    private final WikitextRenderer renderer;
+    private final PageReportIndex index;
 
-    private final WikiPageService wikiPageService;
-    private final WikitextRenderer wikitextRenderer;
-    private final PagePropertyStore pagePropertyStore;
-
-    public PagePropertyEventListener(WikiPageService wikiPageService,
-                                     WikitextRenderer wikitextRenderer,
-                                     PagePropertyStore pagePropertyStore) {
-        this.wikiPageService = wikiPageService;
-        this.wikitextRenderer = wikitextRenderer;
-        this.pagePropertyStore = pagePropertyStore;
+    PagePropertyEventListener(WikiPageMapper pages, WikiPageService revisions,
+                              WikitextRenderer renderer, PageReportIndex index) {
+        this.pages = pages;
+        this.revisions = revisions;
+        this.renderer = renderer;
+        this.index = index;
     }
 
     public void onPageChanged(WikiPageChangedEvent event) {
-        if (event.deleted()) {
-            pagePropertyStore.removeAll(event.pageId());
+        reindex(event.pageId());
+    }
+
+    // The regular queue, template changes and upgrade backfill can reach the same page.
+    synchronized void reindex(long pageId) {
+        WikiPage page = pages.selectById(pageId);
+        if (page == null || Boolean.TRUE.equals(page.getDeleted())) {
+            index.clear(pageId);
             return;
         }
-        String content = wikiPageService.getLatestContent(event.pageId()).orElse("");
-        WikiRenderContext context = wikitextRenderer.createContext(event.title());
-        wikitextRenderer.renderWithMeta(content, event.title(), context);
-        pagePropertyStore.replaceRendered(event.pageId(), context.properties());
+        revisions.getRevision(page.getLatestRevisionId()).ifPresent(revision -> {
+            if (Boolean.TRUE.equals(revision.getDeleted())) {
+                index.clear(pageId);
+                return;
+            }
+            String version = index.indexVersion();
+            String title = page.getTitle();
+            String content = revision.getContent() == null ? "" : revision.getContent();
+            var context = renderer.createContext(title);
+            var rendered = renderer.renderWithMeta(content, title, context);
+            index.replace(pageId, revision.getId(), title, content, rendered.html(), context.properties(), version);
+        });
     }
 }

@@ -3,8 +3,14 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <th:block th:fragment="rcLogLine(entry)">
+    <th:block th:replace="~{special/recent-changes-log :: rcLogHeader(${entry})}"/>
+    <th:block th:replace="~{special/recent-changes-log :: rcLogAction(${entry})}"/>
+</th:block>
+<th:block th:fragment="rcLogHeader(entry)">
     <span class="rc-time" th:text="${entry.timeText}">21:34</span>
     <span class="rc-log-label"><a th:href="${entry.labelUrl}" th:text="${entry.label}">（用户注册日志）</a></span>
+</th:block>
+<th:block th:fragment="rcLogAction(entry)">
     <b class="rc-bot" th:if="${entry.bot}" th:title="#{recentChanges.legendBot}"
        th:text="#{recentChanges.botMark}">机</b>
     <!--/* 操作者（仿 MediaWiki 日志行：日志名 → 用户（留言 | 贡献）→ 动作文本） */-->

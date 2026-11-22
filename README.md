@@ -9,7 +9,7 @@ MediaWiki 的 `/api.php` 和 `mw` JS API。皮肤、扩展语法和治理功能�
 
 WikiKernel 是：
 
-- 面向 MediaWiki 使用习惯的：标题、命名空间、模板、特殊页的规则尽量与 MediaWiki 一致；
+- 面向 MediaWiki 使用习惯的：标题、命名空间、模板、特殊页的规则与 MediaWiki 保持一致；
 - 可扩展的：core 只提供 SPI 和扩展点，插件单独编译、可运行时装卸；
 - 能直接跑起来的：一个可执行 jar 加一个配置文件，SQLite 即可起步；
 - 中英双语的：界面文案在 core 与各插件自己的 `messages*.properties` 里。

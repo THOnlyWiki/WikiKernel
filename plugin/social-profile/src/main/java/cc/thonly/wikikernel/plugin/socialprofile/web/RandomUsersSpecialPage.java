@@ -19,11 +19,11 @@ import java.util.Map;
 
 /**
  * {@code 特殊:随机用户} / {@code Special:RandomUsersWithAvatars}（插件特殊页，对应 MediaWiki
- * SocialProfile 的 {@code Special:RandomUsersWithAvatars}）：随机抽几个**上传过头像**的用户展示。
+ * SocialProfile 的 {@code Special:RandomUsersWithAvatars}）：从全站用户中随机抽取一组展示。
  * <ul>
  *     <li>条数：{@code ?limit=N}（上限 {@code socialProfile.randomUsers.limit}，插件配置
  *     {@code randomUsers.limit}，默认 12）；</li>
- *     <li>数据来自 {@code common.service.UserStore.randomWithAvatar}（core 侧随机取一段有头像的用户，
+ *     <li>数据来自 {@code common.service.UserStore.randomUsers}（core 侧随机取一组用户，
  *     不是「全表拉回来再洗牌」）；</li>
  *     <li>每个用户显示头像、用户名、好友数与收到的礼物数（都是聚合计数，不拉明细）。</li>
  * </ul>
@@ -78,7 +78,7 @@ public class RandomUsersSpecialPage extends SocialProfileSpecialPage implements 
         int max = Math.min(configured, MAX_LIMIT);
         int requested = parseLimit(Strings.trimToEmpty(request.parameters().get("limit")), configured);
         int limit = Math.min(Math.max(requested, 1), max);
-        List<UserStore.UserRef> refs = users == null ? List.of() : users.randomWithAvatar(limit);
+        List<UserStore.UserRef> refs = users == null ? List.of() : users.randomUsers(limit);
         List<Long> ids = new ArrayList<>();
         for (UserStore.UserRef ref : refs) {
             ids.add(ref.id());

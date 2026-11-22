@@ -31,6 +31,20 @@ class WikitextRendererTest {
             new WikitextProperties(), title -> Optional.ofNullable(templates.get(title)));
 
     @Test
+    void tracksHiddenCategoriesWithoutTreatingOtherPagesAsCategories() {
+        WikiRenderContext category = renderer.createContext("分类:测试");
+        var result = renderer.renderWithMeta("__HIDDENCAT__", "分类:测试", category);
+        assertEquals(List.of(new WikiLinkScanner.CategoryRef("分类:隐藏分类", "")), result.categories());
+        assertTrue(category.properties().containsKey("hiddencat"));
+        assertFalse(result.html().contains("HIDDENCAT"));
+
+        WikiRenderContext article = renderer.createContext("词条");
+        var renderedArticle = renderer.renderWithMeta("__HIDDENCAT__", "词条", article);
+        assertTrue(renderedArticle.categories().isEmpty());
+        assertFalse(article.properties().containsKey("hiddencat"));
+    }
+
+    @Test
     void rendersInlineMarkup() {
         String html = renderer.render("'''粗体''' 和 ''斜体'' 和 '''''两者'''''", "测试");
         assertTrue(html.contains("<b>粗体</b>"), html);

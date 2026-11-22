@@ -43,6 +43,20 @@ public class PageDisplayHookService {
         return firstClaim(context, false);
     }
 
+    public String editDestination(String title) {
+        for (PageDisplayHook hook : sortedHooks()) {
+            try {
+                String destination = hook.editDestination(title);
+                if (destination != null && !destination.isBlank()) {
+                    return destination;
+                }
+            } catch (RuntimeException exception) {
+                warn(hook, exception);
+            }
+        }
+        return null;
+    }
+
     /** 标题上方的片段（页面横幅等）。 */
     public List<String> beforeTitle(PageDisplayContext context) {
         return fragments(context, FragmentSlot.BEFORE_TITLE);

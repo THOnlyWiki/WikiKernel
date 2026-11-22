@@ -33,6 +33,11 @@ public interface PageDisplayHook extends Extension {
         return null;
     }
 
+    /** 由插件管理内容的标题可提供站内编辑入口；默认使用 Wiki 源码编辑器。 */
+    default String editDestination(String title) {
+        return null;
+    }
+
     /**
      * 页面**不存在**时认领该标题的显示（如审核的「待审创建」页：作者 / 审核员在页面通过前
      * 看到待审内容预览，其他人照常 404）。返回非 {@code null}（空串也算认领为一个空页面）时

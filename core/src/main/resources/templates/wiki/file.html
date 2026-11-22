@@ -72,7 +72,7 @@
             <input type="checkbox" name="hard"/>
             <span th:text="#{files.hardDelete}">彻底删除（不可恢复）</span>
         </label>
-        <button type="button" class="wiki-button file-delete"
+        <button type="button" class="wiki-button wiki-button-danger file-delete"
                 th:attr="data-id=${file.id},data-name=${file.name}" th:text="#{files.delete}">删除</button>
     </div>
     <p class="file-actions" th:if="${deleted and canDelete}">

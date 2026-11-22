@@ -14,6 +14,12 @@ import java.util.Optional;
 @Service
 public class GiftCatalogStoreJdbc implements GiftCatalogStore {
 
+    private static final String SELECT = """
+            SELECT id, gift_key, name, description, icon, created_by, enabled, create_at,
+                   CASE WHEN image_data IS NULL THEN 0 ELSE 1 END AS has_image
+            FROM wiki_gift
+            """;
+
     private final PluginDatabase database;
 
     public GiftCatalogStoreJdbc(PluginDatabase database) {
@@ -34,19 +40,19 @@ public class GiftCatalogStoreJdbc implements GiftCatalogStore {
 
     @Override
     public Optional<WikiGift> find(long id) {
-        return database.queryOne("SELECT * FROM wiki_gift WHERE id = ?", id).map(GiftCatalogStoreJdbc::gift);
+        return database.queryOne(SELECT + " WHERE id = ?", id).map(GiftCatalogStoreJdbc::gift);
     }
 
     @Override
     public Optional<WikiGift> findByKey(String giftKey) {
-        return database.queryOne("SELECT * FROM wiki_gift WHERE gift_key = ?", text(giftKey))
+        return database.queryOne(SELECT + " WHERE gift_key = ?", text(giftKey))
                 .map(GiftCatalogStoreJdbc::gift);
     }
 
     @Override
     public List<WikiGift> all() {
         List<WikiGift> rows = new ArrayList<>();
-        for (DbRow row : database.query("SELECT * FROM wiki_gift ORDER BY id ASC")) {
+        for (DbRow row : database.query(SELECT + " ORDER BY id ASC")) {
             rows.add(gift(row));
         }
         return rows;
@@ -55,6 +61,18 @@ public class GiftCatalogStoreJdbc implements GiftCatalogStore {
     @Override
     public void setEnabled(long id, boolean enabled) {
         database.update("UPDATE wiki_gift SET enabled = ? WHERE id = ?", enabled ? 1 : 0, id);
+    }
+
+    @Override
+    public boolean updateImage(long id, byte[] image) {
+        return database.update("UPDATE wiki_gift SET image_data = ? WHERE id = ?", image, id) == 1;
+    }
+
+    @Override
+    public Optional<byte[]> image(long id) {
+        return database.queryOne("SELECT image_data FROM wiki_gift WHERE id = ?", id)
+                .map(row -> row.value("image_data"))
+                .filter(byte[].class::isInstance).map(byte[].class::cast);
     }
 
     @Override
@@ -69,6 +87,7 @@ public class GiftCatalogStoreJdbc implements GiftCatalogStore {
         gift.setName(row.string("name"));
         gift.setDescription(row.string("description"));
         gift.setIcon(row.string("icon"));
+        gift.setHasImage(row.boolValue("has_image", false));
         gift.setCreatedBy(row.longOrNull("created_by"));
         gift.setEnabled(row.boolValue("enabled", true));
         gift.setCreateAt(row.dateTime("create_at"));

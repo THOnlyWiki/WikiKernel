@@ -164,8 +164,8 @@ wikikernel:
   `<span class="mw-templatedata-format">`；样式用一小段内联 `<style>`（每个页面渲染只输出一次）代替
   原版的 `ext.templateData` 样式模块，参数多于 1 个时保留 `sortable` 类名但没有 `jquery.tablesorter`；
 - API 的 `pages` 顺序按请求里 `titles` 的先后（原版按 `page_props.pp_page` 升序）；
-- `notemplatedata` 页面的 `params` 在 PHP 里可能因为「空数组 / 纯数字键」被编码成 JSON 数组，
-  本移植始终输出 JSON 对象；
+- `notemplatedata` 页面的 `params` 在原版 PHP 环境中会因「空数组 / 纯数字键」被编码成 JSON 数组，
+  本移植统一规范化输出 JSON 对象；
 - 原版对非法 `lang` 报 `apierror-invalidlang`，本移植不校验（按给定语言做回退，最差退到 `en` / `null`）；
 - `type` 里的 `string/wiki-template-name` 在原版（REL1_43 的 `DEPRECATED_PARAMETER_TYPES`）里**不含**
   该项，因此仍属非法值，本移植保持一致；

@@ -55,7 +55,12 @@ public final class CategoryTreeSpecialPage implements SpecialPage {
 
     @Override
     public String category() {
-        return SpecialPageCategories.WIKI;
+        return SpecialPageCategories.PAGES;
+    }
+
+    @Override
+    public String subpageParameter() {
+        return "target";
     }
 
     @Override

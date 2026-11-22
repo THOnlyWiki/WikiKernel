@@ -1,0 +1,94 @@
+/* 独立页面与 Wiki 页面共享同一套表单控件。 */
+body :where(input[type="checkbox"]:not(.cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"])) {
+    accent-color: var(--color-primary, var(--color-progressive, #36c));
+}
+
+@media (forced-colors: none) {
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]) {
+        --wiki-check-accent: var(--color-primary, var(--background-color-progressive, #36c));
+        appearance: none;
+        box-sizing: border-box;
+        position: relative;
+        flex: 0 0 auto;
+        inline-size: 1.2rem;
+        block-size: 1.2rem;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--border-color-interactive, #72777d);
+        border-radius: 3px;
+        background: var(--color-surface-1, var(--background-color-base, #fff));
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]):enabled:hover {
+        border-color: var(--wiki-check-accent);
+    }
+
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]):is(:checked, :indeterminate) {
+        border-color: var(--wiki-check-accent);
+        background: var(--wiki-check-accent);
+    }
+
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]):is(:checked, :indeterminate)::after {
+        content: "";
+        position: absolute;
+        inset: 20%;
+        background: var(--color-inverted, #fff);
+        pointer-events: none;
+        clip-path: polygon(0 50%, 14% 35%, 38% 59%, 85% 10%, 100% 25%, 38% 88%);
+    }
+
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]):indeterminate::after {
+        clip-path: inset(40% 0);
+    }
+
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]):focus-visible {
+        outline: 2px solid var(--wiki-check-accent);
+        outline-offset: 2px;
+    }
+
+    body input[type="checkbox"]:not([hidden], .cdx-checkbox__input, .oo-ui-inputWidget-input, [role="switch"]):disabled {
+        border-color: var(--border-color-disabled, #a2a9b1);
+        background: var(--background-color-disabled, #c8ccd1);
+        cursor: not-allowed;
+    }
+}
+
+/* 单选下拉保留表单与键盘语义，通过浏览器的 picker 接入站点配色。 */
+@supports (appearance: base-select) and selector(::picker(select)) {
+    @media (forced-colors: none) {
+        body select:not([multiple]):is(:not([size]), [size=""], [size="0"], [size="1"]),
+        body select:not([multiple]):is(:not([size]), [size=""], [size="0"], [size="1"])::picker(select) {
+            appearance: base-select;
+        }
+
+        body select:not([multiple]):is(:not([size]), [size=""], [size="0"], [size="1"])::picker(select) {
+            min-inline-size: anchor-size(width);
+            max-block-size: min(20rem, 55dvh);
+            padding: 4px;
+            overflow: auto;
+            border: 1px solid var(--border-color-subtle, #c8ccd1);
+            border-radius: var(--border-radius--medium, 6px);
+            background: var(--color-surface-1, var(--background-color-base, #fff));
+            color: var(--color-base, #202122);
+            box-shadow: 0 4px 16px rgb(0 0 0 / 14%);
+        }
+
+        body select:not([multiple]):is(:not([size]), [size=""], [size="0"], [size="1"]) option {
+            min-block-size: 2rem;
+            padding: 5px 9px;
+            border-radius: 3px;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        body select:not([multiple]):is(:not([size]), [size=""], [size="0"], [size="1"]) option:checked {
+            background: color-mix(in srgb, var(--color-primary, var(--color-progressive, #36c)) 17%, transparent);
+        }
+
+        body select:not([multiple]):is(:not([size]), [size=""], [size="0"], [size="1"]) option:enabled:is(:hover, :focus-visible) {
+            background: color-mix(in srgb, var(--color-primary, var(--color-progressive, #36c)) 24%, transparent);
+        }
+    }
+}

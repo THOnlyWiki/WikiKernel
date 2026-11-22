@@ -21,7 +21,7 @@
 4. **CSRF**：管理写接口除了同源检查，还要求 HttpSession 内的随机令牌和 `X-Reverse-Proxy-CSRF` 请求头。跨站表单无法伪造。
 5. **CSP sandbox**：默认给 HTML 响应加 `sandbox`（不包含 `allow-same-origin`），让上游脚本以不透明源执行；必要时可以按路由关闭以换取兼容性。
 6. **重定向**：不自动跟随上游 3xx。同源 `Location` 会改写回 `/proxy_<路由名>/...`，外部 Location 保持原样，避免代理被利用做 SSRF 跳转。
-7. **HTML / CSS 改写**：可选，只改写与上游同源的 URL。适合普通静态站点；复杂 SPA / Google Docs 可能依赖绝对 API、跨域、登录 Cookie 或 WebSocket，无法保证完整可用。
+7. **HTML / CSS 改写**：可选，只改写与上游同源的 URL。适用于常规静态页面与服务端渲染站点；依赖绝对域名 API、跨域认证、登录态 Cookie 或 WebSocket 的单页应用（SPA）不属于改写支持范围。
 
 ## 使用
 

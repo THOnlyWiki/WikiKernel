@@ -766,7 +766,7 @@ class WikiPageControllerTest {
     void specialPagesIndexListsRegisteredPages() throws Exception {
         mockMvc.perform(get("/wiki/{title}", "特殊:特殊页面"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("全部页面")))
+                .andExpect(content().string(containsString("所有页面")))
                 .andExpect(content().string(containsString("特殊页面")))
                 .andExpect(content().string(containsString("创建页面")))
                 // MediaWiki 标准分组排版（与 thonly.cc 的 Timeless 一致）
